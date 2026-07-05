@@ -14,7 +14,7 @@ EBYS is three things simultaneously:
 
 **2. A radio.** A web radio that streams live EBYS performances and plays archived sets. The radio page shows what's playing: track, artist, transformation level. Listeners can tip the set from the radio page. The tip automatically splits between the DJ and all contributing artists.
 
-**3. A protocol.** An open tipping protocol for music performances. Listeners tip in dollars — no app, no account, no crypto required. The split runs automatically. Artists and DJs choose independently whether to receive dollars or convert to CRKT (a revenue-share token backed by cricket protein powder margin).
+**3. A protocol.** An open tipping protocol for music performances. Listeners tip in dollars — no app, no account, no crypto required. The split runs automatically. Artists and DJs receive their share via Stripe.
 
 ---
 
@@ -27,7 +27,7 @@ EBYS/
 │   ├── platform/              ← what EBYS is (you are here)
 │   ├── protocol/              ← tipping, split, token
 │   ├── instrument/            ← the engine, the AI, the hardware
-│   └── business/              ← cricket powder company
+│   └── business/              ← revenue models, speculative layer
 │
 ├── Tipping_protocole/
 │   └── backend/               ← Node.js API (tip.js, auth.js, slicer.js)
@@ -64,5 +64,4 @@ EBYS/
 - **DJ profile page** — logged-in DJ opens sessions, sees stats, manages Stripe Connect
 - **Domain transfer** — eatbugsyouspider.com/.org from Cargo to Cloudflare
 - **EBYS-A1** — hardware instrument
-- **CRKT on-chain** — token implementation (currently in-database only)
 - **Card reader** — physical venue tipping device
