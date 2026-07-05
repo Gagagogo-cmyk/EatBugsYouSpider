@@ -33,8 +33,10 @@ autowatch = 1;
 inlets    = 1;
 outlets   = 2;
 
-var TRACKS  = ['vocals', 'melody', 'bass', 'drums'];
-var SR      = 44100;   // sample rate — update if you use a different rate
+var TRACKS       = ['vocals', 'melody', 'bass', 'drums'];
+var LIVE_TRACKS  = ['live1', 'live2'];
+var ALL_TRACKS   = TRACKS.concat(LIVE_TRACKS);
+var SR           = 44100;   // sample rate — update if you use a different rate
 
 // EQ band defaults — low and high shelves are fixed frequency; mid is parametric
 var EQ_BANDS = {
@@ -51,10 +53,12 @@ var MID_FC_MAX = 8000;
 //   low/mid/high = gain dB  |  midFreq = mid bell center Hz  |  trim = input gain dB
 //   gain = channel fader (0–1 linear)  |  mute = 0|1
 var state = {
-    vocals: { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0 },
-    melody: { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0 },
-    bass:   { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0 },
-    drums:  { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0 },
+    vocals: { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0, fader: 1.0 },
+    melody: { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0, fader: 1.0 },
+    bass:   { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0, fader: 1.0 },
+    drums:  { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0, fader: 1.0 },
+    live1:  { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0, fader: 1.0 },
+    live2:  { low: 0, mid: 0, midFreq: 1000, high: 0, trim: 0, gain: 1.0, mute: 0, fader: 1.0 },
 };
 
 // ── Biquad coefficient math ───────────────────────────────────────────────────
@@ -152,7 +156,7 @@ function applyEQ(stem, band, db) {
 
 function eqLow(stem, db) {
     if (!stem) return;
-    var targets = String(stem) === 'all' ? TRACKS : [String(stem)];
+    var targets = String(stem) === 'all' ? ALL_TRACKS : [String(stem)];
     for (var i = 0; i < targets.length; i++) {
         if (state[targets[i]]) applyEQ(targets[i], 'low', db);
     }
@@ -160,7 +164,7 @@ function eqLow(stem, db) {
 
 function eqMid(stem, db) {
     if (!stem) return;
-    var targets = String(stem) === 'all' ? TRACKS : [String(stem)];
+    var targets = String(stem) === 'all' ? ALL_TRACKS : [String(stem)];
     for (var i = 0; i < targets.length; i++) {
         if (state[targets[i]]) applyEQ(targets[i], 'mid', db);
     }
@@ -168,7 +172,7 @@ function eqMid(stem, db) {
 
 function eqHigh(stem, db) {
     if (!stem) return;
-    var targets = String(stem) === 'all' ? TRACKS : [String(stem)];
+    var targets = String(stem) === 'all' ? ALL_TRACKS : [String(stem)];
     for (var i = 0; i < targets.length; i++) {
         if (state[targets[i]]) applyEQ(targets[i], 'high', db);
     }
@@ -180,7 +184,7 @@ function eqHigh(stem, db) {
 function eqMidFreq(stem, hz) {
     if (!stem) return;
     var fc = clamp(parseFloat(hz) || 1000, MID_FC_MIN, MID_FC_MAX);
-    var targets = String(stem) === 'all' ? TRACKS : [String(stem)];
+    var targets = String(stem) === 'all' ? ALL_TRACKS : [String(stem)];
     for (var i = 0; i < targets.length; i++) {
         var t = targets[i];
         if (!state[t]) continue;
@@ -194,7 +198,7 @@ function eqMidFreq(stem, hz) {
 function trim(stem, db) {
     if (!stem) return;
     db = clamp(parseFloat(db) || 0, -12, 12);
-    var targets = String(stem) === 'all' ? TRACKS : [String(stem)];
+    var targets = String(stem) === 'all' ? ALL_TRACKS : [String(stem)];
     for (var i = 0; i < targets.length; i++) {
         if (state[targets[i]]) {
             state[targets[i]].trim = db;
@@ -207,10 +211,11 @@ function trim(stem, db) {
 // ── setStemGain ───────────────────────────────────────────────────────────────
 // setStemGain <stem> <0–1>  — channel fader (post-EQ output level)
 // 0 = silence, 1 = full, 0.75 = unity for most DJ contexts
+// Also works for live1 / live2 channels.
 function setStemGain(stem, val) {
     if (!stem) return;
     var v = clamp(parseFloat(val) || 0, 0, 1);
-    var targets = String(stem) === 'all' ? TRACKS : [String(stem)];
+    var targets = String(stem) === 'all' ? ALL_TRACKS : [String(stem)];
     for (var i = 0; i < targets.length; i++) {
         var t = targets[i];
         if (!state[t]) continue;
@@ -225,10 +230,11 @@ function setStemGain(stem, val) {
 
 // ── setStemMute ───────────────────────────────────────────────────────────────
 // setStemMute <stem> <0|1>  — mute button (0=unmute, 1=mute)
+// Also works for live1 / live2 channels.
 function setStemMute(stem, val) {
     if (!stem) return;
     var v = (parseInt(val) === 1 || String(val) === 'on') ? 1 : 0;
-    var targets = String(stem) === 'all' ? TRACKS : [String(stem)];
+    var targets = String(stem) === 'all' ? ALL_TRACKS : [String(stem)];
     for (var i = 0; i < targets.length; i++) {
         var t = targets[i];
         if (!state[t]) continue;
@@ -241,29 +247,47 @@ function setStemMute(stem, val) {
     }
 }
 
+// ── setFader ──────────────────────────────────────────────────────────────────
+// setFader <stem> <0–1>  — post-EQ channel fader (independent of gain/mute)
+// Also works for live1 / live2 channels.
+function setFader(stem, val) {
+    if (!stem) return;
+    var v = clamp(parseFloat(val) || 0, 0, 1);
+    var targets = String(stem) === 'all' ? ALL_TRACKS : [String(stem)];
+    for (var i = 0; i < targets.length; i++) {
+        var t = targets[i];
+        if (!state[t]) continue;
+        state[t].fader = v;
+        outlet(0, 'fader_' + t, v);
+        outlet(1, 'param', 'fader_' + t, v);
+        post('eq_router: fader[' + t + '] = ' + v.toFixed(3) + '\n');
+    }
+}
+
 function info() {
-    for (var i = 0; i < TRACKS.length; i++) {
-        var t = TRACKS[i];
+    for (var i = 0; i < ALL_TRACKS.length; i++) {
+        var t = ALL_TRACKS[i];
         var s = state[t];
         post('eq_router: ' + t + ' — trim=' + s.trim.toFixed(1)
              + ' low=' + s.low.toFixed(1)
              + ' mid=' + s.mid.toFixed(1) + 'dB@' + s.midFreq.toFixed(0) + 'Hz'
              + ' high=' + s.high.toFixed(1) + ' dB'
-             + '  gain=' + s.gain.toFixed(2)
+             + '  gain=' + s.gain.toFixed(2) + '  fader=' + s.fader.toFixed(2)
              + (s.mute ? '  [MUTED]' : '') + '\n');
     }
 }
 
 // Re-push all state to Max (e.g. after autowatch reload)
 function resend() {
-    for (var i = 0; i < TRACKS.length; i++) {
-        var t = TRACKS[i];
+    for (var i = 0; i < ALL_TRACKS.length; i++) {
+        var t = ALL_TRACKS[i];
         sendTrim(t, state[t].trim);
         sendCoefs(t, 'low',  state[t].low);
         sendCoefs(t, 'mid',  state[t].mid);   // uses state[t].midFreq internally
         sendCoefs(t, 'high', state[t].high);
         var effective = state[t].mute ? 0 : state[t].gain;
-        outlet(0, 'gain_' + t, effective);
+        outlet(0, 'gain_'  + t, effective);
+        outlet(0, 'fader_' + t, state[t].fader);
     }
     post('eq_router: resent all params\n');
 }

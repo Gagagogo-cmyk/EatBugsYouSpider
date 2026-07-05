@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const fs     = require('fs');
 const path   = require('path');
 const { spawn } = require('child_process');
+const dgram      = require('dgram');
 
 const PORT = 8080;
 
@@ -20,10 +21,17 @@ const state = {
     slices:       [0, 0, 0, 0],
     analysisDone: false,   // set true when analysisDone arrives (or library already exists)
     ms: {
-        width:    { vocals: 0, melody: 0, bass: 0, drums: 0 },
-        pan:      { vocals: 0, melody: 0, bass: 0, drums: 0 },
-        fxSend:   0,
-        fxReturn: 0,
+        width:    { vocals: 0, melody: 0, bass: 0, drums: 0, live1: 0, live2: 0 },
+        joy:      { vocals: {x:0,y:0}, melody: {x:0,y:0},   // 2D joystick per stem
+                    bass:   {x:0,y:0}, drums:  {x:0,y:0},
+                    live1:  {x:0,y:0}, live2:  {x:0,y:0} },
+        fx: { vocals: 0, drums: 0, bass: 0, melody: 0, live1: 0, live2: 0 },
+        fxSwitch: { 1: 0, 2: 0 },
+        boothGain: 0.7,
+        recGain:   1.0,
+        masterL: 1,
+        masterR: 1,
+        masterJoy: { x: 0, y: 0 },
     },
     recording:     false,
     recordingFile: null,
@@ -33,11 +41,32 @@ const state = {
         bass:   { id: '--', pos: 0.0, C: 0, E: 0, F: 0, P: 0, H: 0, T: 0, track: '', slot: 0 },
         drums:  { id: '--', pos: 0.0, C: 0, E: 0, F: 0, P: 0, H: 0, T: 0, track: '', slot: 0 },
     },
+    // Engine macros
+    entropy:     0.5,
+    followGraph: { vocals: null, drums: null, bass: null, melody: null },
+    // Track mode: page (1=global, 2=per-stem) × subpage (a=lo range, b=hi range)
+    // 'all' = no stem selected (global context, always page 1)
+    trackMode:   { all: '1a', vocals: '1a', drums: '1a', bass: '1a', melody: '1a', live1: '1a', live2: '1a' },
+    // Last touched performative parameter (for LINK missile)
+    lastTouchedParam: null,
     // Tipping session
     segBars:     { vocals: 4, melody: 4, bass: 4, drums: 4 },
     sessionId:   null,
     sessionDeck: 'ebys',  // 'ebys' | 'direct' — direct = no pings, no slice logging
 };
+
+// ── Last touched param tracker ───────────────────────────────────────────────
+// Called after every performative TUI command.  Missile fires this.
+const TOUCH_COMMANDS = new Set([
+    'eqLow','eqMid','eqHigh','eqMidFreq',
+    'trim','fader','width','joystick','masterJoystick',
+    'entropy','pitchShift','boothGain','recGain','fx','fxSwitch',
+    'followStem','master',
+]);
+function touch(atoms) {
+    if (!TOUCH_COMMANDS.has(atoms[0])) return;
+    state.lastTouchedParam = atoms.slice();   // snapshot
+}
 
 // ── Tipping backend ──────────────────────────────────────────────────────────
 const TIPPING_URL = 'http://localhost:3000';
@@ -90,7 +119,7 @@ function updatePingTimer() {
 // Pre-check: if analysis_library.json already has entries, mark analysisDone now so
 // new TUI clients that connect after the patch loads get the flag immediately.
 try {
-    const lib = parseMaxDictJSON(fs.readFileSync(path.join(__dirname, 'analysis_library.json'), 'utf8'));
+    const lib = parseMaxDictJSON(fs.readFileSync(path.join(__dirname, '..', '..', 'data', 'analysis_library.json'), 'utf8'));
     if (Object.keys(lib).length > 0) {
         state.analysisDone = true;
         Max.post('ws_server: library present — analysisDone pre-set\n');
@@ -188,7 +217,14 @@ const server = http.createServer((req, res) => {
         let body = '';
         req.on('data', chunk => { body += chunk; });
         req.on('end', () => {
-            try { broadcast(JSON.parse(body)); } catch(e) {}
+            try {
+                const msg = JSON.parse(body);
+                broadcast(msg);
+                // stemsReady → tell Max to re-read stream.txt and load buffers
+                if (msg.type === 'stemsReady') {
+                    Max.outlet('stemsReady');
+                }
+            } catch(e) {}
             res.writeHead(200); res.end('ok');
         });
         return;
@@ -227,12 +263,12 @@ server.on('upgrade', (req, socket) => {
     // Sending it on every reconnect caused a second buildIndex on every boot.
 
     let buf = Buffer.alloc(0);
-    socket.on('data', chunk => {
+    socket.on('data', async chunk => {
         buf = Buffer.concat([buf, chunk]);
         const { messages, consumed } = decodeFrames(buf);
         buf = buf.slice(consumed); // trim processed bytes so old frames aren't replayed
-        messages.forEach(msg => {
-            if (msg === null) { socket.destroy(); return; }
+        for (const msg of messages) {
+            if (msg === null) { socket.destroy(); break; }
             try {
                 const m = JSON.parse(msg);
 
@@ -248,16 +284,17 @@ server.on('upgrade', (req, socket) => {
                         bpm:              state.bpm,
                         stems:            JSON.parse(JSON.stringify(state.stems)),
                     };
-                    const logPath = path.join(__dirname, '..', 'training_log.jsonl');
+                    const logPath = path.join(__dirname, '..', '..', 'data', 'training_log.jsonl');
                     fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
                     Max.post('ws_server: 🫳 baked\n');
                     broadcast({ type: 'sys', msg: '🫳 baked' });
-                    return;
+                    continue;
                 }
 
                 if (m.type === 'command' && m.text) {
                     const parts = m.text.trim().split(/\s+/);
                     const atoms = parts.map(p => isNaN(p) ? p : parseFloat(p));
+                    touch(atoms);   // record last touched performative param for LINK missile
                     if (atoms[0] === 'sessionOpen') {
                         // :sessionOpen <djId> <venue> <mode: web|venue> [deck: ebys|direct]
                         const djId  = String(atoms[1] || '1');
@@ -280,10 +317,10 @@ server.on('upgrade', (req, socket) => {
                         } catch(e) {
                             broadcast({ type: 'sys', msg: '✗ sessionOpen failed — ' + e.message });
                         }
-                        return;
+                        continue;
                     } else if (atoms[0] === 'sessionClose') {
                         // :sessionClose
-                        if (!state.sessionId) { broadcast({ type: 'sys', msg: '✗ no active session' }); return; }
+                        if (!state.sessionId) { broadcast({ type: 'sys', msg: '✗ no active session' }); continue; }
                         try {
                             await fetch(`${TIPPING_URL}/slices/session/close`, {
                                 method:  'POST',
@@ -298,7 +335,7 @@ server.on('upgrade', (req, socket) => {
                         } catch(e) {
                             broadcast({ type: 'sys', msg: '✗ sessionClose failed — ' + e.message });
                         }
-                        return;
+                        continue;
                     } else if (atoms[0] === 'pitchShift') {
                         // :pitchShift <stem> <semitones>
                         // stem = vocals | melody | bass | drums | all
@@ -312,37 +349,100 @@ server.on('upgrade', (req, socket) => {
                         // stem = vocals | melody | bass | drums | all
                         const stem  = String(atoms[1] || 'all');
                         const value = Math.max(0, Math.min(1, parseFloat(atoms[2]) || 0));
-                        const targets = stem === 'all' ? ['vocals','melody','bass','drums'] : [stem];
+                        const targets = stem === 'all' ? ['vocals','melody','bass','drums','live1','live2'] : [stem];
                         targets.forEach(s => { if (state.ms.width.hasOwnProperty(s)) state.ms.width[s] = value; });
                         broadcast({ type: 'param', key: 'width', stem, value });
                         Max.outlet('width', stem, value);
                     } else if (atoms[0] === 'pan') {
-                        // :pan <stem> <-1–+1>  — stereo pan (-1=left, 0=center, +1=right)
+                        // :pan <stem> <0–360>  — quadraphonic rotation angle
+                        //   0° / 360° = front pair (FL+FR)
+                        //   180°      = rear pair  (RL+RR)
+                        //   90°/270°  = all four equally
                         const stem  = String(atoms[1] || 'all');
-                        const value = Math.max(-1, Math.min(1, parseFloat(atoms[2]) || 0));
+                        const raw   = parseFloat(atoms[2]) || 0;
+                        const value = ((raw % 360) + 360) % 360;  // normalise to [0, 360)
                         const targets = stem === 'all' ? ['vocals','melody','bass','drums'] : [stem];
                         targets.forEach(s => { if (state.ms.pan.hasOwnProperty(s)) state.ms.pan[s] = value; });
                         broadcast({ type: 'param', key: 'pan', stem, value });
                         Max.outlet('pan', stem, value);
-                    } else if (atoms[0] === 'fxSend') {
-                        // :fxSend <0–1>  — send level to dac~ 3 4 (hardware FX loop)
-                        const value = Math.max(0, Math.min(1, parseFloat(atoms[1]) || 0));
-                        state.ms.fxSend = value;
-                        broadcast({ type: 'param', key: 'fxSend', value });
-                        Max.outlet('fxSend', value);
-                    } else if (atoms[0] === 'fxReturn') {
-                        // :fxReturn <0–1>  — return level from adc~ 3 4 to main mix
-                        const value = Math.max(0, Math.min(1, parseFloat(atoms[1]) || 0));
-                        state.ms.fxReturn = value;
-                        broadcast({ type: 'param', key: 'fxReturn', value });
-                        Max.outlet('fxReturn', value);
-                    } else if (atoms[0] === 'fxStereo') {
-                        // :fxStereo 0 | 1 | on | off
-                        // 0/off = mono pedal chain (default)
-                        // 1/on  = stereo pedal chain (dac~ 3+4 carry L/R, adc~ 3+4 return L/R)
-                        const val = String(atoms[1] || '0');
-                        broadcast({ type: 'param', key: 'fxStereo', value: val });
-                        Max.outlet('fxStereo', val);
+                    } else if (atoms[0] === 'master') {
+                        // :master <L|R|gain> <0–1>
+                        // master gain = both L and R linked
+                        // master L / master R = independent
+                        const side  = String(atoms[1] || 'gain');
+                        const value = Math.max(0, Math.min(1, parseFloat(atoms[2]) || 0));
+                        if (side === 'L') {
+                            state.ms.masterL = value;
+                            broadcast({ type: 'param', key: 'masterPanLeft', value });
+                            Max.outlet('masterPanLeft', value);
+                        } else if (side === 'R') {
+                            state.ms.masterR = value;
+                            broadcast({ type: 'param', key: 'masterPanRight', value });
+                            Max.outlet('masterPanRight', value);
+                        } else {
+                            // linked — move both
+                            state.ms.masterL = value; state.ms.masterR = value;
+                            broadcast({ type: 'param', key: 'master_gain', value });
+                            Max.outlet('master_gain', value);
+                        }
+                    } else if (atoms[0] === 'masterJoystick') {
+                        // :masterJoystick <x> <y>  — 2D position of entire 4ch mix
+                        //   x: -1 (full left)  to +1 (full right)
+                        //   y: -1 (full rear)  to +1 (full front)
+                        const x = Math.max(-1, Math.min(1, parseFloat(atoms[1]) || 0));
+                        const y = Math.max(-1, Math.min(1, parseFloat(atoms[2]) || 0));
+                        state.ms.masterJoy = { x, y };
+                        broadcast({ type: 'param', key: 'masterJoystick', x, y });
+                        Max.outlet('masterJoystick', x, y);
+                    } else if (atoms[0] === 'joystick') {
+                        // :joystick <stem> <x> <y>
+                        //   stem: vocals | drums | bass | melody | all
+                        //   x: -1 (full left)  to +1 (full right)
+                        //   y: -1 (full rear)  to +1 (full front)
+                        const stem    = String(atoms[1] || 'all');
+                        const x       = Math.max(-1, Math.min(1, parseFloat(atoms[2]) || 0));
+                        const y       = Math.max(-1, Math.min(1, parseFloat(atoms[3]) || 0));
+                        const targets = stem === 'all'
+                            ? ['vocals','melody','bass','drums','live1','live2'] : [stem];
+                        targets.forEach(s => {
+                            if (state.ms.joy.hasOwnProperty(s)) {
+                                state.ms.joy[s] = { x, y };
+                            }
+                        });
+                        broadcast({ type: 'param', key: 'joystick', stem, x, y });
+                        Max.outlet('joystick', stem, x, y);
+                    } else if (atoms[0] === 'fx') {
+                        // :fx <stem> <0–1>  — FX knob: controls send + return together
+                        // stem = vocals|drums|bass|melody|live1|live2
+                        const stem  = String(atoms[1] || 'vocals');
+                        if (!['vocals','drums','bass','melody','live1','live2'].includes(stem)) break;
+                        const value = Math.max(0, Math.min(1, parseFloat(atoms[2]) || 0));
+                        state.ms.fx[stem] = value;
+                        broadcast({ type: 'param', key: 'fx_' + stem, value });
+                        Max.outlet('fxSend',   stem, value);
+                        Max.outlet('fxReturn', stem, value);
+                    } else if (atoms[0] === 'fxSwitch') {
+                        // :fxSwitch <1|2> <0|1>
+                        // 0 = stem uses hardware FX channel (vocals ch1, drums ch2)
+                        // 1 = live input uses hardware FX channel (live1 ch1, live2 ch2)
+                        const ch  = parseInt(atoms[1]) || 1;
+                        const val = parseInt(atoms[2]) || 0;
+                        if (ch !== 1 && ch !== 2) break;
+                        state.ms.fxSwitch[ch] = val;
+                        broadcast({ type: 'param', key: 'fxSwitch' + ch, value: val });
+                        Max.outlet('fxSwitch', ch, val);
+                    } else if (atoms[0] === 'boothGain') {
+                        // :boothGain <0–1>  — booth monitor level (dac~ 15 16)
+                        const val = Math.min(1, Math.max(0, parseFloat(atoms[1]) || 0));
+                        state.ms.boothGain = val;
+                        broadcast({ type: 'param', key: 'boothGain', value: val });
+                        Max.outlet('boothGain', val);
+                    } else if (atoms[0] === 'recGain') {
+                        // :recGain <0–1>  — recording output level (dac~ 17 18)
+                        const val = Math.min(1, Math.max(0, parseFloat(atoms[1]) || 0));
+                        state.ms.recGain = val;
+                        broadcast({ type: 'param', key: 'recGain', value: val });
+                        Max.outlet('recGain', val);
                     } else if (atoms[0] === 'eqLow') {
                         // :eqLow <stem|all> <dB>   — low shelf gain (-96 = kill, +12 = boost)
                         const stem  = String(atoms[1] || 'all');
@@ -367,6 +467,12 @@ server.on('upgrade', (req, socket) => {
                         const db    = parseFloat(atoms[2]) || 0;
                         broadcast({ type: 'param', key: 'trim', stem, value: db });
                         Max.outlet('trim', stem, db);
+                    } else if (atoms[0] === 'fader') {
+                        // :fader <stem|all> <0–1>  — post-EQ channel fader
+                        const stem  = String(atoms[1] || 'all');
+                        const val   = Math.min(1, Math.max(0, parseFloat(atoms[2]) || 0));
+                        broadcast({ type: 'param', key: 'fader', stem, value: val });
+                        Max.outlet('setFader', stem, val);
                     } else if (atoms[0] === 'analysisMode') {
                         // :analysisMode on | off
                         // on  = slicer auto-drives pan/width per slice (default)
@@ -391,7 +497,7 @@ server.on('upgrade', (req, socket) => {
                             const pad  = n => String(n).padStart(2, '0');
                             const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
                             const fname = customName ? `${customName}.wav` : `EBYS_${stamp}.wav`;
-                            const recDir  = path.join(__dirname, '..', 'recordings');
+                            const recDir  = path.join(__dirname, '..', '..', 'data', 'recordings');
                             const recPath = path.join(recDir, fname);
                             try { fs.mkdirSync(recDir, { recursive: true }); } catch(e) {}
                             Max.outlet('record_cmd', 'open', recPath);
@@ -429,12 +535,126 @@ server.on('upgrade', (req, socket) => {
                                 Max.outlet(...atoms);
                                 buildIndexInProgress = false;
                             });
+                    } else if (atoms[0] === 'mode') {
+                        // :mode <stem> [1 | 2 [a|b]]
+                        // Page 1  — global descriptors (all stems), no subpage
+                        // Page 2a — per-stem descriptors, low range
+                        // Page 2b — per-stem descriptors, high range
+                        // No args after stem → cycle: 1 → 2a → 2b → 1
+                        // Sticky — stays until explicitly changed
+                        const stem = String(atoms[1] || '');
+                        if (!stem || !state.trackMode.hasOwnProperty(stem)) break;
+                        // 'all' = no stem selected — page 1 only, page 2 is invalid
+                        const isAll = stem === 'all';
+                        const cycle = isAll ? ['1a', '1b'] : ['1a', '1b', '2a', '2b'];
+                        let newMode;
+                        if (!atoms[2]) {
+                            // cycle through valid pages for this stem
+                            const cur = state.trackMode[stem];
+                            newMode = cycle[(cycle.indexOf(cur) + 1) % cycle.length];
+                        } else {
+                            const arg2 = String(atoms[2]).toLowerCase();
+                            const cur  = state.trackMode[stem];
+                            if (arg2 === 'a' || arg2 === 'b') {
+                                // subpage only — keep current page
+                                newMode = cur[0] + arg2;
+                            } else if (arg2 === '1' || (arg2 === '2' && !isAll)) {
+                                const subp = atoms[3] ? String(atoms[3]).toLowerCase() : null;
+                                const curSub = cur[0] === arg2 ? cur[1] : 'a';
+                                newMode = arg2 + (subp || curSub);
+                            } else {
+                                break; // invalid (e.g. :mode all 2 ...)
+                            }
+                        }
+                        state.trackMode[stem] = newMode;
+                        broadcast({ type: 'mode', track: stem, mode: newMode });
+
+                    } else if (atoms[0] === 'entropy') {
+                        // :entropy <0–1>  — ORDER (0) ↔ CHAOS (1) macro
+                        // Drives matchProb, stayProb, dirWeight simultaneously in slicer.js
+                        const val = Math.min(1, Math.max(0, parseFloat(atoms[1]) || 0));
+                        state.entropy = val;
+                        broadcast({ type: 'param', key: 'entropy', value: val });
+                        Max.outlet('setEntropy', val);
+                        if (link.active) link.broadcastState();
+
+                    } else if (atoms[0] === 'followStem') {
+                        // :followStem <stem> [<target> <weight> ...]  — blend another stem's
+                        //   end descriptors when selecting next slice for <stem>
+                        // :followStem <stem> self  — reset to reading own descriptors
+                        const stem = String(atoms[1] || '');
+                        if (stem && state.followGraph.hasOwnProperty(stem)) {
+                            if (atoms.length <= 2 || String(atoms[2]) === 'self') {
+                                state.followGraph[stem] = null;
+                                broadcast({ type: 'param', key: 'followStem', stem, follows: null });
+                            } else {
+                                const pairs = [];
+                                let totalW = 0;
+                                for (let i = 2; i + 1 < atoms.length; i += 2) {
+                                    const w = parseFloat(atoms[i + 1]) || 0;
+                                    pairs.push({ target: String(atoms[i]), weight: w });
+                                    totalW += w;
+                                }
+                                if (totalW > 0) pairs.forEach(p => p.weight /= totalW);
+                                state.followGraph[stem] = pairs;
+                                broadcast({ type: 'param', key: 'followStem', stem, follows: pairs });
+                            }
+                        }
+                        Max.outlet(...atoms);   // forward all args to slicer.js
+
+                    } else if (atoms[0] === 'link') {
+                        // :link on | off | status | mode <m> | arm [entropy] | fire | abort | token <hex>
+                        const sub = String(atoms[1] || '');
+                        if (sub === 'on') {
+                            if (!link.active) linkActivate();
+                            else broadcast({ type: 'sys', msg: 'LINK already active' });
+                        } else if (sub === 'off') {
+                            linkDeactivate();
+                        } else if (sub === 'status') {
+                            const deckList = Object.entries(link.decks).map(([id, d]) => ({
+                                id, entropy: d.entropy, mode: d.mode,
+                                agoSec: Math.round((Date.now() - d.lastSeen) / 1000),
+                            }));
+                            broadcast({ type: 'linkStatus', deckId: link.deckId, token: link.token,
+                                        active: link.active, decks: deckList,
+                                        mode: link.mode, armed: [...link.armed] });
+                        } else if (sub === 'mode') {
+                            const m = String(atoms[2] || 'off');
+                            if (['avoid','mirror','complement','off'].includes(m)) {
+                                link.mode = m;
+                                broadcast({ type: 'param', key: 'linkMode', value: m });
+                                if (link.active) link.broadcastState();
+                            }
+                        } else if (sub === 'arm') {
+                            // :link arm  — arm the missile switch; param is captured at fire-time
+                            link.armed.add(link.deckId);
+                            broadcast({ type: 'linkMissile', event: 'arm',
+                                        deck: link.deckId, armed: [...link.armed] });
+                            sendLinkMissile('arm', null);
+                        } else if (sub === 'fire') {
+                            // Capture lastTouchedParam at the moment the switch is flipped
+                            const param = state.lastTouchedParam;
+                            sendLinkMissile('fire', param);
+                            handleLinkMissile({ event: 'fire', deckId: link.deckId, syncParam: param });
+                        } else if (sub === 'abort') {
+                            link.armed.clear();
+                            broadcast({ type: 'linkMissile', event: 'abort' });
+                            sendLinkMissile('abort', null);
+                        } else if (sub === 'token') {
+                            const tok = String(atoms[2] || '');
+                            if (tok) {
+                                link.token = tok;
+                                if (link.active) link.broadcastState();
+                                broadcast({ type: 'param', key: 'linkToken', value: tok });
+                            }
+                        }
+
                     } else {
                         Max.outlet(...atoms);
                     }
                 }  // end command
             } catch(e) {}
-        });
+        }  // end for...of messages
     });
 
     socket.on('close', () => {
@@ -445,6 +665,14 @@ server.on('upgrade', (req, socket) => {
     socket.on('error', () => { clients.delete(socket); });
 });
 
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        Max.post('ws_server: port ' + PORT + ' already in use — close other Max sessions and reload\n');
+    } else {
+        Max.post('ws_server: server error — ' + err.message + '\n');
+    }
+});
+
 server.listen(PORT, () => {
     Max.post('ws_server: ready on port ' + PORT + '\n');
     Max.outlet('ws_ready');   // signals the patch to start the meter metro
@@ -452,7 +680,7 @@ server.listen(PORT, () => {
     // Send downbeats.json before the cached index so loadDownbeats() finds data ready.
     // downbeatchunk goes out outlet 0 → route else [24] → slicer.js inlet 0.
     try {
-        const dbStr = fs.readFileSync(path.join(__dirname, '..', 'downbeats.json'), 'utf8');
+        const dbStr = fs.readFileSync(path.join(__dirname, '..', '..', 'data', 'downbeats.json'), 'utf8');
         const { sid, total } = sendChunked('downbeatchunk', dbStr);
         Max.post('ws_server: downbeats sent (stream ' + sid + ', ' + total + ' chunks)\n');
     } catch(e) {
@@ -490,7 +718,7 @@ function parseMaxDictJSON(raw) {
 }
 
 function prepareLibraryDict() {
-    const libPath = path.join(__dirname, 'analysis_library.json');
+    const libPath = path.join(__dirname, '..', '..', 'data', 'analysis_library.json');
     const raw  = fs.readFileSync(libPath, 'utf8');
     cachedLibraryData = parseMaxDictJSON(raw);
 
@@ -504,7 +732,7 @@ function prepareLibraryDict() {
 
     // Send genres.json the same way — slicer.js uses it to tag slices for genre filtering.
     try {
-        const genresPath = path.join(__dirname, '..', 'genres.json');
+        const genresPath = path.join(__dirname, '..', '..', 'data', 'genres.json');
         const genresStr  = fs.readFileSync(genresPath, 'utf8');
         const { sid: gSid, total: gTotal } = sendChunked('genrechunk', genresStr);
         Max.post('ws_server: genres sent (stream ' + gSid + ', ' + gTotal + ' chunks)\n');
@@ -906,6 +1134,181 @@ Max.addHandler('param', (key, value) => {
     broadcast({ type: 'param', key, value });
 });
 
+// ── Entropy feedback (from slicer.js outlet 1) ───────────────────────────────
+// slicer emits: outlet(1, "entropy", e, matchProb, stayProb, dirWeight)
+// when setEntropy() is called internally (e.g. auto-temperature drive in future).
+Max.addHandler('entropy', (e, mp, sp, dw) => {
+    const ev = Math.min(1, Math.max(0, parseFloat(e) || 0));
+    state.entropy = ev;
+    broadcast({ type: 'param', key: 'entropy', value: ev,
+                matchProb:  parseFloat(mp) || 0,
+                stayProb:   parseFloat(sp) || 0,
+                dirWeight:  parseFloat(dw) || 0 });
+    if (link.active) link.broadcastState();
+});
+
+// stayProb feedback (slicer emits when individual stem stayProb changes)
+Max.addHandler('stayProb', (track, val) => {
+    broadcast({ type: 'param', key: 'stayProb', track: String(track), value: parseFloat(val) || 0 });
+});
+
+// matchProb feedback
+Max.addHandler('matchProb', (val) => {
+    broadcast({ type: 'param', key: 'matchProb', value: parseFloat(val) || 0 });
+});
+
+// ── LINK protocol ─────────────────────────────────────────────────────────────
+//
+// Layer 1  — clock sync (implemented in slicer.js bar-grid quantisation)
+// Layer 2  — arc visibility: each deck broadcasts entropy + stem state over UDP
+//            multicast; remote deck state appears in TUI sidebar
+// Missile  — two-key launch: :link arm [e]  then :link fire → all armed decks
+//            simultaneously set entropy to the armed value
+// Layer 3  — selection sync (avoid/mirror/complement): mode is broadcast with
+//            every state packet; slicer.js integration is future work
+
+const LINK_MULTICAST = '239.255.1.1';
+const LINK_PORT      = 9999;
+
+const link = {
+    active:         false,
+    socket:         null,
+    decks:          {},          // { deckId: { entropy, stems, mode, lastSeen } }
+    token:          null,        // shared session token — decks with same token sync
+    deckId:         'deck_' + crypto.randomBytes(3).toString('hex'),
+    armed:          new Set(),   // deckIds that have pressed arm
+
+    mode:           'off',       // Layer 3: off | avoid | mirror | complement
+    timer:          null,
+    cleanTimer:     null,
+    broadcastState: () => {},    // overwritten in linkActivate
+};
+
+function linkActivate() {
+    const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    link.token = link.token || crypto.randomBytes(4).toString('hex');
+
+    sock.bind(LINK_PORT, () => {
+        try { sock.addMembership(LINK_MULTICAST); } catch(e) {
+            Max.post('ws_server: LINK multicast join failed — ' + e.message + '\n');
+        }
+        sock.setMulticastTTL(4);
+        link.socket = sock;
+        link.active = true;
+        Max.post('ws_server: LINK on — id=' + link.deckId + ' token=' + link.token + '\n');
+        broadcast({ type: 'link', event: 'on', deckId: link.deckId, token: link.token });
+        link.broadcastState();
+    });
+
+    sock.on('message', (buf) => {
+        try {
+            const msg = JSON.parse(buf.toString());
+            if (!msg || msg.token !== link.token) return;
+            if (msg.deckId === link.deckId) return;   // own echo
+
+            if (msg.type === 'link_state') {
+                link.decks[msg.deckId] = { ...msg, lastSeen: Date.now() };
+                // Layer 2: send remote deck arc to TUI
+                broadcast({ type: 'linkDeck', deck: msg.deckId,
+                            entropy: msg.entropy, stems: msg.stems,
+                            mode: msg.mode, ts: msg.ts });
+            } else if (msg.type === 'link_missile') {
+                handleLinkMissile(msg);
+            }
+        } catch(e) {}
+    });
+
+    sock.on('error', (e) => {
+        Max.post('ws_server: LINK socket error — ' + e.message + '\n');
+    });
+
+    // Broadcast own state every 2 s (Layer 2 heartbeat)
+    link.broadcastState = () => {
+        if (!link.active || !link.socket) return;
+        const msg = JSON.stringify({
+            type:    'link_state',
+            token:   link.token,
+            deckId:  link.deckId,
+            entropy: state.entropy,
+            stems:   state.stems,
+            mode:    link.mode,
+            ts:      Date.now(),
+        });
+        const buf = Buffer.from(msg);
+        link.socket.send(buf, LINK_PORT, LINK_MULTICAST, () => {});
+    };
+    link.timer      = setInterval(link.broadcastState, 2000);
+
+    // Evict stale decks (no heartbeat for 10 s)
+    link.cleanTimer = setInterval(() => {
+        const now = Date.now();
+        for (const id of Object.keys(link.decks)) {
+            if (now - link.decks[id].lastSeen > 10000) {
+                delete link.decks[id];
+                link.armed.delete(id);
+                broadcast({ type: 'linkDeck', deck: id, event: 'disconnected' });
+                Max.post('ws_server: LINK deck timed out — ' + id + '\n');
+            }
+        }
+    }, 5000);
+}
+
+function linkDeactivate() {
+    if (!link.active) return;
+    clearInterval(link.timer);
+    clearInterval(link.cleanTimer);
+    try { link.socket.dropMembership(LINK_MULTICAST); link.socket.close(); } catch(e) {}
+    link.socket = null;
+    link.active = false;
+    link.decks  = {};
+    link.armed.clear();
+    link.broadcastState = () => {};
+    broadcast({ type: 'link', event: 'off' });
+    Max.post('ws_server: LINK off\n');
+}
+
+function sendLinkMissile(event, syncParam) {
+    if (!link.active || !link.socket) return;
+    const msg = JSON.stringify({
+        type:      'link_missile',
+        token:     link.token,
+        deckId:    link.deckId,
+        event,
+        syncParam: syncParam || null,   // atoms array of last touched param
+        ts:        Date.now(),
+    });
+    const buf = Buffer.from(msg);
+    link.socket.send(buf, LINK_PORT, LINK_MULTICAST, () => {});
+}
+
+function applyMissileParam(param) {
+    if (!param || !param.length) return;
+    // Re-enter the command through the normal outlet path so all local state
+    // is updated correctly (eq_router, spat_fx_router, slicer, etc.)
+    Max.outlet(...param);
+    broadcast({ type: 'linkMissile', event: 'fire_executed', syncParam: param });
+    Max.post('ws_server: LINK missile fired — ' + param.join(' ') + '\n');
+}
+
+function handleLinkMissile(msg) {
+    if (msg.event === 'arm') {
+        link.armed.add(msg.deckId);
+        broadcast({ type: 'linkMissile', event: 'arm',
+                    deck: msg.deckId, armed: [...link.armed] });
+        Max.post('ws_server: LINK arm — ' + msg.deckId + '\n');
+
+    } else if (msg.event === 'abort') {
+        link.armed.clear();
+        broadcast({ type: 'linkMissile', event: 'abort' });
+        Max.post('ws_server: LINK abort\n');
+
+    } else if (msg.event === 'fire') {
+        // No arm required — just fire: apply the sender's last touched param immediately
+        link.armed.clear();
+        applyMissileParam(msg.syncParam);
+    }
+}
+
 // ── VU metering ───────────────────────────────────────────────────────────────
 // Format: meter <name> <level>   where name = vocals|melody|bass|drums|master
 //                                      level = 0–1 linear peak amplitude (from peakamp~)
@@ -978,15 +1381,15 @@ Max.addHandler('index_empty', () => {
 });
 
 // stemMS — slicer.js emits this after each selectSegment() with analysis-driven
-// pan/width for the chosen slice.  Forward to ms_router via outlet 0, and
+// pan/width for the chosen slice.  Forward to spat_fx_router via outlet 0, and
 // broadcast to TUI so it can show live pan/width per stem.
 Max.addHandler('stemMS', (track, pan, width) => {
     const t = String(track);
     const p = parseFloat(pan)   || 0;
     const w = parseFloat(width) || 0;
-    // Forward to ms_router — it receives all ws_server outlet 0 messages.
+    // Forward to spat_fx_router — it receives all ws_server outlet 0 messages.
     // Message format: stemMS <track> <pan> <width>
-    // ms_router.stemMS(track, pan, width) → applyPan + applyWidth
+    // spat_fx_router.stemMS(track, pan, width) → applyPan + applyWidth
     Max.outlet('stemMS', t, p, w);
     broadcast({ type: 'param', key: 'stemMS', track: t, pan: p, width: w });
 });

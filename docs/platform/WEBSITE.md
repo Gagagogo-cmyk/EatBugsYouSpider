@@ -1,6 +1,6 @@
 # EBYS Website
 
-The public face of the platform — radio, events, community, and the buy link for cricket powder.
+The public face of the platform — radio, events, community.
 
 ---
 
@@ -22,7 +22,7 @@ Past events link to archived session replays.
 
 ### /artists
 
-A directory of artists in the EBYS ecosystem. Search by genre, city, tag. Artist pages show their submitted tracks, their presence in past sessions (how often their music played), and their public CRKT earning status (opt-in).
+A directory of artists in the EBYS ecosystem. Search by genre, city, tag. Artist pages show their submitted tracks and their presence in past sessions (how often their music played).
 
 ### /dj
 
@@ -39,12 +39,6 @@ Currently under construction. Auth exists (JWT). The session opening flow works.
 The tip page for a specific session. Accessible from the radio page during live sets, and from session archives for replays. Shows the DJ name, set duration, contributing artists. Payment via Stripe Checkout.
 
 The current tip.html is live and functional.
-
-### /buy
-
-The cricket protein powder store. Simple product page — one SKU to start. White-label product, branded packaging. Add to cart → Stripe Checkout → shipped.
-
-The CRKT connection: the buy page explains that a portion of every purchase distributes to CRKT holders (artists and DJs who earned through the protocol). Buying powder = supporting the community.
 
 ---
 

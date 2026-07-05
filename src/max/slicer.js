@@ -1166,8 +1166,8 @@ function selectSegment(track) {
     outlet(1, "desc",      track, startSlice.C, startSlice.S, startSlice.E, startSlice.F, startSlice.P, startSlice.H, startSlice.T,
            startSlice.tension_C, startSlice.tension_E, startSlice.tension_F,
            startSlice.tension_P, startSlice.tension_H, startSlice.tension_T);
-    // Analysis-driven M/S: emit pan and width for this slice so ms_router can apply them.
-    // stemMS <track> <pan> <width> — received by ws_server → forwarded to ms_router.
+    // Analysis-driven M/S: emit pan and width for this slice so spat_fx_router can apply them.
+    // stemMS <track> <pan> <width> — received by ws_server → forwarded to spat_fx_router.
     outlet(1, "stemMS", track, startSlice.pan, startSlice.width);
     outlet(1, "slice_ms",  track, sliceMs);
     outlet(1, "stemTrack", track, startSlice.sourceTrack);

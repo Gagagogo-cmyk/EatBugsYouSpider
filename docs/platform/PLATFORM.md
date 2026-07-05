@@ -78,5 +78,3 @@ Where δT = today's temperature − historical average (same calendar date, 10-y
 At entropy 0.5 (normal conditions), the engine is balanced — spectral continuity drives choices but variety is preserved. At entropy 1.0 (extreme heat), the engine is maximally experimental — it prioritizes variety over continuity, increasing the probability of surprising combinations.
 
 This is displayed on the radio page as a live climate indicator. Listeners see the temperature differential and understand why tonight's mix sounds the way it does.
-
-The climate indicator is also the honest marketing moment: the instrument performs differently because of climate. The powder you can buy from the same page reduces your contribution to that differential. The connection is structural, not rhetorical.
