@@ -1,4 +1,4 @@
-# Ⓒ Eat Bugs You Spider! Docs
+# Ⓒ Eat Bugs You Spider!
 
 Four categories. Root files are stubs pointing here.
 
