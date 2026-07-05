@@ -1,4 +1,4 @@
-# EBYS Docs
+# Ⓒ Eat Bugs You Spider! Docs
 
 Four categories. Root files are stubs pointing here.
 
