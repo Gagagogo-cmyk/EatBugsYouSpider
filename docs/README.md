@@ -10,23 +10,23 @@ The EBYS platform — what it is, how all the pieces fit, what's been built and 
 
 | File | What it covers |
 |------|----------------|
-| `OVERVIEW.md` | Everything in one page — instrument, radio, protocol, CRKT, file map |
+| `OVERVIEW.md` | Everything in one page — instrument, radio, protocol, file map |
 | `PLATFORM.md` | Platform description, radio modes, what's built, what's next |
 | `EBYS_SYSTEM.md` | Website + radio architecture (French), temperature trigger, UI skin system |
-| `WEBSITE.md` | Website: event calendar, radio, artist opt-in, mixer console, spider |
+| `WEBSITE.md` | Website: event calendar, radio, artist directory, mixer console, spider |
 | `STATEMENT.md` | Brand statement |
 
 ---
 
 ## protocol/
 
-The tipping protocol, split equation, and CRKT mechanics.
+The tipping protocol and split equation.
 
 | File | What it covers |
 |------|----------------|
 | `TIPPING_PROTOCOL.md` | Three precision levels (web, venue+EBYS, venue-only) |
 | `SPLIT_EQUATION.md` | L0–L4 split levels, follow graph, influence score, ▲⬢▼ mechanic |
-| `TOKEN.md` | CRKT: earned only, two tip contexts, distribution, escrow |
+| `TOKEN.md` | Stub — see business/SPECULATIVE.md for the CRKT concept |
 
 ---
 
@@ -52,11 +52,9 @@ The EBYS instrument — architecture, engine, AI, training, hardware.
 
 ## business/
 
-The Cricket Protein Powder company, cooperative structure, and partnerships.
+Revenue models and a speculative future layer.
 
 | File | What it covers |
 |------|----------------|
-| `MONETISATION_MODELS.md` | All revenue models: nag screen, hardware, powder, CRKT, on-chain |
-| `CRICKET_POWD_LAB_MEAT.md` | Cooperative structure, climate loop, lab meat comparison |
-| `CRICKET_PROTEIN_POWDER_CIE.md` | Company mechanics, CRKT distribution, escrow |
-| `EMAILS/ENTOMO_FARMS_WHITE_LABEL.md` | Draft: Entomo Farms white-label inquiry |
+| `MONETISATION_MODELS.md` | Active revenue models: hardware, merch, nag screen, Stripe Connect |
+| `SPECULATIVE.md` | Exploratory concept: cricket protein powder company, CRKT token economy |
