@@ -1,4 +1,4 @@
-# (ɔ) Eat Bugs You Spider!
+# © Eat Bugs You Spider!
 
 Four categories. Root files are stubs pointing here.
 
