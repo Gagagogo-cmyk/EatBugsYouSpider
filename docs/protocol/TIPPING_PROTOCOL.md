@@ -2,7 +2,7 @@
 
 An open protocol for tipping DJ sets and live music performances. The protocol is the same everywhere — what changes is the precision of the information available behind it.
 
-Listeners tip in dollars. No crypto required. Artists and DJs choose what to do with what they receive.
+Listeners tip in dollars. No account required. No crypto.
 
 ---
 
@@ -20,8 +20,6 @@ Split equation runs over the full session log
     ↓
 DJ receives curator share
 Each contributing artist receives their proportional share
-    ↓
-Each recipient independently chooses: dollars or CRKT
 ```
 
 ### Level 2 — Venue (EBYS + Card Reader)
@@ -36,9 +34,7 @@ Protocol retrieves the full session log up to that moment
     ↓
 Split equation runs over the whole set
     ↓
-DJ and artists split automatically
-    ↓
-Each recipient chooses: dollars or CRKT
+DJ and artists receive their shares automatically
 ```
 
 The listener sees nothing of the machinery. They tap, they're done.
@@ -50,8 +46,6 @@ Minimal precision. The card reader knows which DJ is performing. Nothing else. T
 Listener taps card
     ↓
 Full tip goes to the DJ
-    ↓
-DJ chooses: dollars or CRKT
 Artists: not visible, not included
 ```
 
@@ -89,8 +83,7 @@ After a tipped set, each recipient receives a notification:
 
 ```
 You received $X.XX from a tip on [set name / date]
-→ Cash out to bank
-→ Convert to CRKT (cricket protein powder revenue share)
+→ Cash out to bank account
 ```
 
 Set a default once, never think about it again. Or decide per payout. If they never respond, earnings accumulate in escrow tied to their audio fingerprint — no expiry, no fees.
@@ -100,7 +93,6 @@ Set a default once, never think about it again. Or decide per payout. If they ne
 ## Protocol Principles
 
 - **Listeners pay in dollars** — no crypto required, ever
-- **Artists opt into crypto** — CRKT conversion is a choice, not a default
 - **Precision scales with setup** — EBYS gives full split, anything else gives what it can
 - **Physical and digital are the same protocol** — card reader and web interface feed the same system
 - **Open standard** — any platform or venue can implement the card reader or web interface
