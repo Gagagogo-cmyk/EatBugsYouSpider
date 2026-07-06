@@ -1,12 +1,12 @@
 #  Eat Bugs You Spider!ↄ⃝
 
-Four categories. Root files are stubs pointing here.ↄ⃝
+Four categories. Root files are stubs pointing here.
 
 ---
 
 ## platform/
 
-The EBYS platform — what it is, how all the pieces fit, what's been built and what's next.
+The EBYS platform — what it is, how all the pieces fit, what's been built and what's next.ↄ⃝
 
 | File | What it covers |
 |------|----------------|
