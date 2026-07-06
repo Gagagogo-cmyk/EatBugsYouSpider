@@ -1,4 +1,4 @@
-# Chirp! 
+# Eat Bugs You Spider! - Chirp! 
 
 Vibe DJing instrument / Indie Webradios
 Montréal, 2023 — en cours
