@@ -16,7 +16,7 @@ The EBYS platform — what it is, how all the pieces fit, what's been built and 
 | `PLATFORM.md` | Platform description, radio modes, what's built, what's next |
 | `EBYS_SYSTEM.md` | Website + radio architecture (French), temperature trigger, UI skin system |
 | `WEBSITE.md` | Website: event calendar, radio, artist directory, mixer console, spider |
-| `STATEMENT.md` | Brand statement |
+| `STATEMENT.md` | Chirp! |
 
 ---
 
