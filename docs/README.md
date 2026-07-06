@@ -1,4 +1,4 @@
-# EBYS Docs
+# Eat Bugs You Spider! ↄ⃝
 
 Four categories. Root files are stubs pointing here.
 

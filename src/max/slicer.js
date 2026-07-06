@@ -72,16 +72,13 @@
 //        segmentBars track N                            — segment length updated
 //        stayProb track N                               — stay probability updated
 //        quantize 0|1                                   — bar-snap on/off
-//        umapDone                                       — umap_coords.json written (Node t-SNE)
 //   2  descriptor dump (from dumpDescriptors)
 //        → list: track  id  n  C  P  E  F  startTime  dur
 //   3  query result count (from selectRange)  → int: N matching slices
-//   4  → fluid.dataset~ ebys.descriptors      — sends "read <fname>" to load per-stem descriptor data
-//   5  → fluid.umap~                           — sends "fit ebys.descriptors ebys.umap" to run UMAP
 
 autowatch = 1;
-inlets    = 3;   // 0 = commands, 1 = fluid.dataset~ ebys.umap dump, 2 = fluid.dataset~ ebys.descriptors read-done
-outlets   = 6;   // outlet 4 = fluid.dataset~ ebys.descriptors, outlet 5 = fluid.umap~
+inlets    = 1;   // 0 = commands
+outlets   = 4;   // 0=playback trigger, 1=status/metadata, 2=descriptor dump, 3=selectRange result
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 var TRACKS                 = ["vocals", "melody", "bass", "drums"];
@@ -1864,133 +1861,6 @@ function info() {
     post("  lastSlice: " + (lastSlice
          ? lastSlice.track + " @" + lastSlice.time.toFixed(0) + "ms"
          : "none") + "\n");
-}
-
-// ── UMAP — per-stem 2D embedding via fluid.umap~ ─────────────────────────────
-//
-// After buildIndex() the descriptor data lives in slicer.js memory (byTrack).
-// We push it into fluid.dataset~ ebys.descriptors, run fluid.umap~, then
-// collect the 2D output from fluid.dataset~ ebys.umap into umap_coords.json.
-//
-// Max patch wiring required (do this once in ebys-analyze.maxpat):
-//   1. Rename objects:
-//        fluid.dataset~ ebys.descriptors
-//        fluid.dataset~ ebys.umap
-//        fluid.umap~ @components 2 @mindist 0.1 @numneighbours 15
-//   2. Wire:
-//        [js slicer.js] outlet 4  →  [fluid.dataset~ ebys.descriptors]
-//        [js slicer.js] outlet 4  →  [fluid.umap~]
-//        [fluid.umap~] outlet 0   →  [prepend dump]  →  [fluid.dataset~ ebys.umap]
-//        [fluid.dataset~ ebys.umap] outlet 0  →  [js slicer.js] inlet 1
-//
-// Outlets:
-//   outlet 4 → fluid.dataset~ ebys.descriptors   (read, clear)
-//   outlet 5 → fluid.umap~                        (fitTransform)
-// Do NOT wire outlet 4 to fluid.umap~ — they must be on separate outlets.
-
-var umapBuffer      = [];   // collects [id, x, y] during dump for current stem
-var umapCurrentStem = null;
-var umapStemQueue   = [];   // stems still waiting to be processed
-var umapResults     = {};   // { vocals: { slice_0001: [x,y], ... }, ... }
-var UMAP_FILE       = "umap_coords.json";
-var MIN_UMAP_SLICES = 5;    // fluid.umap~ needs at least a few points
-
-function feedUMAP() {
-    // t-SNE is now computed in ws_server.js (Node) immediately after buildIndex.
-    // No fluid.umap~ wiring needed — umapDone will broadcast when umap_coords.json is ready.
-    post("EBYS UMAP: delegated to ws_server.js (Node t-SNE) — no fluid objects needed\n");
-}
-
-function feedNextUmapStem() {
-    if (umapStemQueue.length === 0) {
-        writeUmapCoords();
-        return;
-    }
-    umapCurrentStem = umapStemQueue.shift();
-    umapBuffer      = [];
-    var arr = byTrack[umapCurrentStem];
-    post("EBYS UMAP [" + umapCurrentStem + "]: writing " + arr.length + " slices…\n");
-
-    // Write descriptor data in FluCoMa dataset JSON format so fluid.dataset~ can
-    // load it with "read".  This avoids addpoint (which needs a buffer~ per point).
-    // Format: {"version":1,"cols":6,"data":{"slice_0001":[C,E,F,P,H,T], ...}}
-    var fname = "ebys_feed_" + umapCurrentStem + ".json";
-    var f = new File(fname, "write");
-    f.open();
-    f.writestring('{"version":1,"cols":6,"data":{');
-    for (var i = 0; i < arr.length; i++) {
-        var s = arr[i];
-        if (i > 0) f.writestring(",");
-        f.writestring('"' + s.id + '":[' +
-            s.C.toFixed(6) + "," + s.E.toFixed(6) + "," +
-            s.F.toFixed(6) + "," + s.P.toFixed(6) + "," +
-            s.H.toFixed(6) + "," + s.T.toFixed(6) + "]");
-    }
-    f.writestring("}}");
-    f.close();
-
-    // Tell fluid.dataset~ ebys.descriptors to load this file (outlet 4).
-    // fluid.dataset~ read is asynchronous; wait 2 s before triggering fit.
-    // (If [js slicer.js] inlet 2 is wired to fluid.dataset~ ebys.descriptors outlet 0,
-    //  the bang() inlet-2 handler fires fit immediately and the timer becomes a no-op.)
-    outlet(4, "read", fname);
-
-    var t = new Task(function() {
-        if (!umapCurrentStem) return;          // inlet-2 bang already fired fit — skip
-        post("EBYS UMAP [" + umapCurrentStem + "]: fit ebys.descriptors → ebys.umap (timer)…\n");
-        outlet(5, "fit", "ebys.descriptors", "ebys.umap");
-    });
-    t.schedule(2000);
-}
-
-// Receive dump stream from fluid.dataset~ ebys.umap via inlet 1.
-// Each point arrives as:  messagename = slice_id,  arguments = [x, y]
-function anything() {
-    if (inlet !== 1) return;
-    var id = String(messagename);
-    var x  = parseFloat(arguments[0]);
-    var y  = parseFloat(arguments[1]);
-    if (id && !isNaN(x) && !isNaN(y)) {
-        umapBuffer.push([id, x, y]);
-    }
-}
-
-// Bang on inlet 2 = fluid.dataset~ ebys.descriptors finished reading — now safe to fit.
-// Bang on inlet 1 = fluid.dataset~ ebys.umap dump is complete for this stem.
-function bang() {
-    if (inlet === 2) {
-        // Descriptors dataset finished loading — trigger fit immediately (beats the 2 s timer).
-        if (!umapCurrentStem) return;
-        var stem = umapCurrentStem;
-        umapCurrentStem = null;   // signal timer that fit was already sent
-        post("EBYS UMAP [" + stem + "]: fit ebys.descriptors → ebys.umap (bang)…\n");
-        outlet(5, "fit", "ebys.descriptors", "ebys.umap");
-        umapCurrentStem = stem;   // restore so bang() inlet-1 can still collect results
-        return;
-    }
-    if (inlet !== 1) return;
-    if (umapCurrentStem) {
-        var coords = {};
-        for (var i = 0; i < umapBuffer.length; i++) {
-            coords[umapBuffer[i][0]] = [umapBuffer[i][1], umapBuffer[i][2]];
-        }
-        umapResults[umapCurrentStem] = coords;
-        post("EBYS UMAP [" + umapCurrentStem + "]: " + umapBuffer.length + " 2D coords collected\n");
-    }
-    feedNextUmapStem();  // move on to next stem (or finish)
-}
-
-function writeUmapCoords() {
-    try {
-        var f = new File(UMAP_FILE, "write", "TEXT");
-        f.open();
-        f.writestring(JSON.stringify(umapResults));
-        f.close();
-        post("EBYS UMAP: coords written to " + UMAP_FILE + "\n");
-        outlet(1, "umapDone");   // notifies ws_server → TUI to reload
-    } catch (e) {
-        post("EBYS UMAP: write failed — " + e + "\n");
-    }
 }
 
 // ── RESET ─────────────────────────────────────────────────────────────────────
