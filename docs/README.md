@@ -1,6 +1,6 @@
 # Eat Bugs You Spider! 
 
-Vibe DJing instrument / Indie Webradio
+Vibe DJing instrument / Indie Webradios
 Montréal, 2023 — en cours
 Licence : AGPL-3.0
 
