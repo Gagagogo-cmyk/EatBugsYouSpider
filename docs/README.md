@@ -1,4 +1,4 @@
-# © Eat Bugs You Spider! 
+# Eat Bugs You Spider! 
 
 Vibe DJing instrument / Indie Webradio
 Montréal, 2023 — en cours
