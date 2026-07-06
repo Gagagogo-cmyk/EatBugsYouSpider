@@ -1,6 +1,8 @@
 # Eat Bugs You Spider! ↄ⃝
 
-Four categories. Root files are stubs pointing here.
+An open-source project that started as a graphic novel and evolved into a neural-network-based remixing engine: a DJ deck that separates, analyzes, and resequences recorded mixes in real time, driven by a machine-learning language model that learns and shapes its own probabilistic network of commands.
+
+*This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.*
 
 ---
 
