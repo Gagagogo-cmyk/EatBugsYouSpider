@@ -1,8 +1,8 @@
-# Eat Bugs You Spider! ↄ⃝
+# © Eat Bugs You Spider! 
 
-An open-source project that started as a graphic novel and evolved into a neural-network-based remixing engine: a DJ deck that separates, analyzes, and resequences recorded mixes in real time, driven by a machine-learning language model that learns and shapes its own probabilistic network of commands.
-
-*This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.*
+Vibe DJing instrument / Indie Webradio
+Montréal, 2023 — en cours
+Licence : AGPL-3.0
 
 ---
 
@@ -59,3 +59,16 @@ Revenue models and a speculative future layer.
 |------|----------------|
 | `MONETISATION_MODELS.md` | Active revenue models: hardware, merch, nag screen, Stripe Connect |
 | `SPECULATIVE.md` | Exploratory concept: cricket protein powder company, CRKT token economy |
+
+---
+
+## Licence
+
+Copyleft © 2026 Eat Bugs You Spider!
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+See <https://www.gnu.org/licenses/> for details.
