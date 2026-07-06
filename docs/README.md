@@ -1,4 +1,4 @@
-#  Eat Bugs You Spider! ↄ⃝
+# Eat Bugs You Spider! 🄯
 
 Four categories. Root files are stubs pointing here.
 
@@ -25,8 +25,7 @@ The tipping protocol and split equation.
 | File | What it covers |
 |------|----------------|
 | `TIPPING_PROTOCOL.md` | Three precision levels (web, venue+EBYS, venue-only) |
-| `SPLIT_EQUATION.md` | L0–L4 split levels, follow graph, influence score, ▲⬢▼ mechanic |
-| `TOKEN.md` | Stub — see business/SPECULATIVE.md for the CRKT concept |
+| `SPLIT_EQUATION.md` | L0–L4 split levels |
 
 ---
 
