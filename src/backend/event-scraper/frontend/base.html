@@ -1,0 +1,343 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} -- mtl-shows</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <style>
+        #map { height: 350px; margin-bottom: 12px; border: 1px solid #ccc; }
+        body {
+            font-family: Verdana, Geneva, sans-serif;
+            font-size: 12px;
+            max-width: 1100px;
+            margin: 10px auto 10px 200px;
+            background: #fff;
+            color: #333;
+        }
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 8px;
+        }
+        h1 {
+            font-size: 16px;
+            border-bottom: 1px solid #999;
+            padding-bottom: 4px;
+        }
+        h2 {
+            font-size: 13px;
+            color: #555;
+        }
+        .sidebar {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 170px;
+            overflow-y: auto;
+            max-height: calc(100vh - 20px);
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .filter-group-title {
+            font-size: 10px;
+            font-weight: bold;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .filter-group a {
+            color: #0000EE;
+            font-size: 12px;
+            text-decoration: none;
+            line-height: 1.6;
+            padding: 0 4px;
+            border-left: 2px solid transparent;
+        }
+        .filter-group a:hover {
+            text-decoration: underline;
+        }
+        .filter-group a.active {
+            font-weight: bold;
+            color: #000;
+            background: #f0f0f0;
+            border-left-color: #d33;
+        }
+        .filter-group select {
+            font-family: Verdana, Geneva, sans-serif;
+            font-size: 12px;
+            color: #0000EE;
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 1px 2px;
+        }
+        .updated {
+            font-size: 10px;
+            color: #888;
+        }
+        .event {
+            border: 1px solid #ddd;
+            border-left: 4px solid #ccc;
+            padding: 10px;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+        }
+        .event-today {
+            border-left-color: #d33;
+            background: #fff5f5;
+        }
+        .event-week {
+            border-left-color: #e88a00;
+            background: #fffaf0;
+        }
+        .event img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        .event h3 {
+            font-size: 13px;
+            margin: 6px 0 2px 0;
+        }
+        .event p {
+            margin: 2px 0;
+            color: #555;
+        }
+        .event .event-when {
+            font-weight: bold;
+            color: #222;
+            font-size: 12px;
+            margin: 4px 0;
+        }
+        .event a {
+            font-size: 11px;
+            color: #0000EE;
+            margin-top: auto;
+            padding-top: 4px;
+        }
+        .filter-toggle > summary {
+            display: none;
+        }
+        @media (max-width: 1200px) {
+            .events-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 800px) {
+            body {
+                margin: 10px;
+                max-width: none;
+            }
+            .sidebar {
+                position: static;
+                width: auto;
+                max-height: none;
+                margin-bottom: 16px;
+            }
+            .events-grid {
+                grid-template-columns: 1fr;
+            }
+            .filter-toggle > summary {
+                display: block;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 12px;
+                background: #f0f0f0;
+                border: 1px solid #ccc;
+                list-style: none;
+            }
+            .filter-toggle > summary::-webkit-details-marker {
+                display: none;
+            }
+            .filter-toggle > summary::after {
+                content: " ▸";
+                float: right;
+            }
+            .filter-toggle[open] > summary::after {
+                content: " ▾";
+            }
+            .filter-group a {
+                padding: 12px 8px;
+                line-height: 1.2;
+            }
+            .event a {
+                font-size: 13px;
+                padding: 12px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="sidebar">
+    <details class="filter-toggle" open>
+        <summary>Filters</summary>
+        <div class="filter-group">
+            <span class="filter-group-title">When</span>
+            <a href="/">All</a>
+            <br>
+            <a href="/right-now">Right Now</a>
+            <a href="/tonight">Tonight</a>
+            <a href="/tomorrow">Tomorrow</a>
+            <a href="/this-week">This Week</a>
+        </div>
+        <div class="filter-group">
+            <span class="filter-group-title">This Weekend</span>
+            <select class="weekend-select" onchange="if (this.value) window.location.href = this.value;">
+                <option value="/this-weekend">All weekend</option>
+                <option value="/this-weekend/friday">Friday</option>
+                <option value="/this-weekend/saturday">Saturday</option>
+                <option value="/this-weekend/sunday">Sunday</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-group-title">Venue</span>
+            <a href="?venue=bar-le-ritz">Bar Le Ritz</a>
+            <a href="?venue=cafe-campus">Cafe Campus</a>
+            <a href="?venue=casa-del-popolo">Casa del Popolo</a>
+            <a href="?venue=club-soda">Club Soda</a>
+            <a href="?venue=fairmount-theatre">Fairmount Theatre</a>
+            <a href="?venue=hemisphere-gauche">L'Hemisphere Gauche</a>
+            <a href="?venue=le-ministere">Le Ministere</a>
+            <a href="?venue=mtelus">MTelus</a>
+            <a href="?venue=olympia">L'Olympia</a>
+            <a href="?venue=piranha-bar">Piranha Bar</a>
+            <a href="?venue=ptit-ours">P'tit Ours</a>
+            <a href="?venue=quai-des-brumes">Quai des Brumes</a>
+            <a href="?venue=la-sala-rossa">La Sala Rossa</a>
+            <a href="?venue=la-sotterenea">La Sotterenea</a>
+            <a href="?venue=la-toscadura">La Toscadura</a>
+            <a href="?venue=turbo-haus">Turbo Haus</a>
+            <a href="?venue=verre-bouteille">Le Verre Bouteille</a>
+        </div>
+    </details>
+</nav>
+
+<h1>mtl-shows</h1>
+
+<h2>{{.Title}} ({{.EventCount}})</h2>
+<p class="updated">
+    {{if .LastScrapedAt}}Last updated: {{.LastScrapedAt}}{{else}}Scraping…{{end}}
+</p>
+
+{{if .Events}}
+<div class="events-grid">
+    {{range .Events}}
+    <div class="event{{if .IsToday}} event-today{{else if .IsThisWeek}} event-week{{end}}">
+        {{if .EventImage}}<img src="{{.EventImage}}" alt="{{.Name}}">{{end}}
+        <h3>{{.Name}}</h3>
+        <p>{{.Venue}} — {{.Address}}</p>
+        <p class="event-when">{{.Date}} · {{.Time}}</p>
+        <p>{{.Price}}</p>
+        {{if .TicketURL}}<a href="{{.TicketURL}}">Link to event</a>{{end}}
+    </div>
+    {{end}}
+</div>
+{{else}}
+<p>No events found.</p>
+{{end}}
+
+<details id="map-details">
+    <summary><h2 style="display:inline">Map</h2></summary>
+    <div id="map"></div>
+</details>
+
+<script>
+    (function() {
+        let sel = document.querySelector('.weekend-select');
+        if (sel) {
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === window.location.pathname) {
+                    sel.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (window.innerWidth <= 800) {
+            const toggle = document.querySelector('.filter-toggle');
+            if (toggle) toggle.open = false;
+        }
+
+        const path = window.location.pathname;
+        const search = window.location.search;
+        const links = document.querySelectorAll('.filter-group a');
+        for (var j = 0; j < links.length; j++) {
+            var href = links[j].getAttribute('href');
+            if (href.indexOf('?') === 0) {
+                if (href === search) links[j].classList.add('active');
+            } else if (href === path || (href === '/' && path === '/' && !search)) {
+                if (href === '/' && (path !== '/' || search)) continue;
+                links[j].classList.add('active');
+            }
+        }
+    })();
+
+    var map = L.map('map').setView([45.5236, -73.5985], 13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    document.getElementById('map-details').addEventListener('toggle', function(e) {
+        if (e.target.open) map.invalidateSize();
+    });
+
+    function markerColor(v) {
+        if (!v.events || v.events.length === 0) return 'grey';
+        for (var i = 0; i < v.events.length; i++) {
+            if (v.events[i].is_today) return 'red';
+        }
+        for (var i = 0; i < v.events.length; i++) {
+            if (v.events[i].is_this_week) return 'orange';
+        }
+        return 'blue';
+    }
+
+    function coloredIcon(color) {
+        return new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-' + color + '.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+    }
+
+    var venues = {{.VenuesJSON}};
+
+    venues.forEach(function(v) {
+        if (!v.lat || !v.lng) return;
+
+        var color = markerColor(v);
+        var popupHTML = '<b>' + v.name + '</b>';
+        popupHTML += '<br><a href="?venue=' + v.key + '" style="font-size:10px;">Show events</a>';
+
+        if (v.events && v.events.length > 0) {
+            popupHTML += '<br>';
+            v.events.forEach(function(e) {
+                popupHTML += '<br>' + e.name + '<br><small>' + e.date + ' · ' + e.time + '</small>';
+            });
+        } else {
+            popupHTML += '<br><small>No upcoming events</small>';
+        }
+
+        L.marker([v.lat, v.lng], {icon: coloredIcon(color)}).addTo(map).bindPopup(popupHTML);
+    });
+</script>
+</body>
+</html>
+{{end}}
