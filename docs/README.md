@@ -21,7 +21,6 @@ The EBYS instrument — architecture, engine, AI, training, hardware.
 | `BAKE.md` | Training loop — :bake start/end, trajectory learning, snapshot lock |
 | `MOMENTUM.md` | add_tension.py — tension field computation, bar-level slopes |
 | `STRETCH_WIRING.md` | Time-stretch wiring guide for Max patch |
-| `ILM.md` | EBYS as an Intonation Language Model |
 | `CHANGELOG.md` | Version history: 0.1.0 → 0.1.7 |
 
 ---
