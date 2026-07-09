@@ -15,7 +15,6 @@ const addr = ":6969"
 
 var (
 	scrapeSchedule = 1 * time.Hour // scrape every hour
-	sequential     = flag.Bool("seq", false, "sequential scraping")
 	concurrent     = flag.Bool("conc", false, "concurrent scraping")
 	serve          = flag.Bool("serve", false,
 		"scrape concurrently at startup, then runs API server with 1 hour scrape scheduler")
@@ -25,11 +24,6 @@ func main() {
 	start := time.Now()
 	flag.Parse()
 
-	if *sequential {
-		runSequential()
-		fmt.Println("\nruntime duration: ", time.Since(start))
-		return
-	}
 	if *concurrent {
 		runConcurrent()
 		fmt.Println("\nruntime duration: ", time.Since(start))
@@ -136,29 +130,4 @@ func runConcurrent() {
 
 	fmt.Println("\nScraping of all venues complete.")
 	fmt.Printf("Scraping took %v\n", time.Since(now))
-}
-
-func runSequential() {
-	fmt.Println("running scraper in sequential mode...")
-	allEvents := make(map[string]EventList)
-
-	for key, venue := range allVenues {
-		fmt.Printf("Scraping %s...\n", venue.Name)
-
-		var events EventList
-		switch key {
-		case "turbo-haus":
-			events = scrapeTurboHausJSON()
-		case "bar-le-ritz":
-			events = scrapeBarLeRitzJSON()
-		case "mtelus":
-			events = scrapeMTelusJSON()
-		case "olympia":
-			events = scrapeOlympiaAJAX()
-		default:
-			events = scrapeVenue(key, venue)
-		}
-		allEvents[key] = events
-	}
-	saveAllEvents(allEvents)
 }
