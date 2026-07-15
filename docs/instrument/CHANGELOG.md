@@ -5,6 +5,18 @@ Generative audio collage engine. Separates songs into stems, analyzes every tran
 
 ---
 
+## 0.1.19 — 2026-07-15
+
+### TUI header layout + per-stem bracket/waveform correctness
+
+- **Header right-hand block right-flushed per row, not to a shared column** — `last touched` / `weight` / `dir` / `dirWgt` used to all start at one column derived from whichever row was longest (`dir`, which had 7 fields including `dirWgt`). That left every shorter row visibly short of the actual right edge of the terminal. `atCol()` in `app.js` now computes each row's own start column from its own text length, so every row ends flush at the true right edge; `weight`'s and `dir`'s `M:`/`E:`/`F:`/`P:`/`H:`/`T:` columns still line up with each other as a side effect, now that `dirWgt` no longer makes `dir` longer than `weight`.
+- **`dirWgt` moved to its own line under `dir`** — previously trailed inline at the end of the `dir` row. Paired with `genreBeatsLine` (the `genre:`/`beats:`/`quant:` row) as that row's left-hand content instead of leaving it blank, so `win:` and `genre:` sit on consecutive rows — a blank-left row in between had been reading as a gap splitting them into two visually separate blocks.
+- **AGPL header glyph** — replaced `🄯` (COPYLEFT SYMBOL, U+1F12F) with `▼?` next to `AGPL-3.0` in both `app.js` and `sdj-tui.js`'s login header (`[▼? AGPL-3.0]`). The copyleft glyph isn't covered by most terminal fonts and was rendering as a tofu box.
+- **Lock indicator kept as `⚿`** (SQUARED KEY, U+26BF) rather than reverting to the earlier `»` fallback — confirmed via a live screenshot that it renders as a real (if unsupported-glyph/fallback) 2-column-wide glyph on this system's terminal font, so `LOCK_SLOT_W` is set to 7 (not 6) to match its true on-screen width; locked and unlocked stems' `bars:`/`stay:`/`match:` tails now land on the same column either way.
+- **Root-caused a stem showing frozen defaults with a wrong-looking waveform/bracket (vocals, specifically)** — traced to zero analyzed slices for that stem on the loaded track (confirmed via `analysis_library.json`: vocals had 0 slices vs. drums 182 / melody 66 / bass 2 for the same track), which means `slicer.js` can never select or push a segment for it, so it never receives a single `seg`/`desc`/`stemTrack` message all session — `state.stems.<name>` stays at its untouched init object (`id: '--'`, `track: ''`, everything else 0). Two follow-on symptoms fixed in `sliceBar()`:
+  - **Waveform envelope lookup** now falls back to `state.track` (the main loaded track) when a stem's own `s.track` is still empty, instead of only ever looking up `waveforms[s.track]` — a stem that's never received its own `stemTrack` broadcast can still draw that track's precomputed envelope for its stem name.
+  - **Bracket geometry** — a stem whose `id` is still the untouched `'--'` sentinel now draws a full-width bracket (0→1) instead of running the normal position math against defaults, which previously produced a small, arbitrary, wrong-looking `[...]` window (computed from a bars-based duration fallback ÷ an unrelated hardcoded constant) with no relation to any real slice.
+
 ## 0.1.18 — 2026-07-10
 
 ### Multi-session support (login screen + per-session data isolation)

@@ -45,7 +45,7 @@ const title = blessed.text({
 const version = blessed.text({
   parent: root, top: 0, left: 'center', height: 1,
   tags: true,
-  content: '{grey-fg}[EBYS 0.1.18]{/grey-fg}  {grey-fg}[{bold}▼{/bold}? AGPL-3.0]{/grey-fg}',
+  content: '{grey-fg}[EBYS 0.1.19]{/grey-fg}  {grey-fg}[{bold}▼{/bold}? AGPL-3.0]{/grey-fg}',
 });
 
 const list = blessed.list({

@@ -708,7 +708,7 @@ const screen = blessed.screen({
   // entire bug class instead of patching individual symptoms.
   smartCSR:    false,
   fullUnicode: true,
-  title:       'EBYS 0.1.18 — ' + ((ACTIVE_SESSION && ACTIVE_SESSION.name) || 'default'),
+  title:       'EBYS 0.1.19 — ' + ((ACTIVE_SESSION && ACTIVE_SESSION.name) || 'default'),
   mouse:       true,
 });
 
@@ -1774,7 +1774,7 @@ function render() {
   // independently (see atCol) — no shared column to compute up front
   // anymore.
   const sLines = [
-    withLCR(stateChips, `{grey-fg}[EBYS 0.1.18]{/grey-fg}   {grey-fg}[{bold}▼{/bold}? AGPL-3.0]{/grey-fg}`, iconCluster),
+    withLCR(stateChips, `{grey-fg}[EBYS 0.1.19]{/grey-fg}   {grey-fg}[{bold}▼{/bold}? AGPL-3.0]{/grey-fg}`, iconCluster),
     // "last touched" sits directly under the TIP/LINK cluster (it IS the param
     // LINK's missile switch would fire) — right-flushed to the same true
     // right edge as weight/dir/dirWgt below it, even though its own text is
