@@ -42,7 +42,7 @@ The EBYS instrument — architecture, engine, AI, training, hardware.
 | `CRICKET.md` | Cricket AI: descriptors, all commands, vocabulary translations, :bake |
 | `DEFAULTS.md` | Factory defaults — all parameters, commands, notes |
 | `PLAYBACK.md` | Playback engine — buffers, slot/track architecture, M/S, FX, VU |
-| `LINK.md` | EBYS LINK protocol — multi-unit sync, missile switch, ▲⬢▼ |
+| `LINK.md` | EBYS LINK protocol — multi-unit sync |
 | `BAKE.md` | Training loop — :bake start/end, trajectory learning, snapshot lock |
 | `MOMENTUM.md` | add_tension.py — tension field computation, bar-level slopes |
 | `STRETCH_WIRING.md` | Time-stretch wiring guide for Max patch |
