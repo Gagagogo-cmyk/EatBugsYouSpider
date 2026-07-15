@@ -1303,10 +1303,26 @@ function sliceBar(s, name, bpm, width) {
   // Fall back to BPM-derived estimate only when not yet received.
   const segDurMs = (s.segDurMs > 0) ? s.segDurMs : (bars * 4 * 60000 / safeBpm);
 
+  // A stem that has NEVER received a real "seg"/"desc" message (id still at
+  // its untouched init default, '--' — e.g. a stem with zero analyzed
+  // slices for the loaded track, like a near-silent vocal take slicer.js
+  // can never select anything for) has no real durMs/bars/segDurMs to build
+  // a bracket from — every value below is still whatever the initial state
+  // object was created with. The math further down used to run anyway,
+  // producing a small bogus bracket (segDurMs's bars-based fallback ÷ an
+  // arbitrary 300000ms constant) sized off numbers that were never actually
+  // measured — a bracket in the wrong place/width next to siblings with
+  // real geometry, which read as "glitching". Full-width, no-selection is
+  // the honest picture: this stem hasn't picked anything, so there's no
+  // real window to draw.
+  const neverStarted = s.id === '--' || s.id === undefined;
+
   // Bracket position in the full stem buffer.
   // Use real fracs when available; fall back to startPos estimate.
   let startPos;
-  if (s.sliceStart !== undefined) {
+  if (neverStarted) {
+    startPos = 0;
+  } else if (s.sliceStart !== undefined) {
     startPos = s.sliceStart;
   } else {
     startPos = stemSliceStartPos[name] !== undefined ? stemSliceStartPos[name] : (s.pos || 0);
@@ -1315,7 +1331,9 @@ function sliceBar(s, name, bpm, width) {
   // This is the ground truth: it's totalFrac accumulated directly from slice durations.
   // Fallback: derive from segDurMs / durMs (less accurate, used before first seg message).
   let endPos;
-  if (s.sliceEnd !== undefined && s.sliceEnd > startPos) {
+  if (neverStarted) {
+    endPos = 1;
+  } else if (s.sliceEnd !== undefined && s.sliceEnd > startPos) {
     endPos = Math.min(1, s.sliceEnd);
   } else {
     const sliceFrac = durMs > 0 ? segDurMs / durMs : segDurMs / 300000;
