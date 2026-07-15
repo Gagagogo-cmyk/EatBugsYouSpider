@@ -6,6 +6,31 @@ Licence : AGPL-3.0
 
 ---
 
+## platform/
+
+The EBYS platform — what it is, how all the pieces fit, what's been built and what's next.
+
+| File | What it covers |
+|------|----------------|
+| `OVERVIEW.md` | Everything in one page — instrument, radio, protocol, file map |
+| `PLATFORM.md` | Platform description, radio modes, what's built, what's next |
+| `EBYS_SYSTEM.md` | Website + radio architecture (French), temperature trigger, UI skin system |
+| `WEBSITE.md` | Website: event calendar, radio, artist directory, mixer console, spider |
+| `STATEMENT.md` | Chirp! |
+
+---
+
+## protocol/
+
+The tipping protocol and split equation.
+
+| File | What it covers |
+|------|----------------|
+| `TIPPING_PROTOCOL.md` | Three precision levels (web, venue+EBYS, venue-only) |
+| `SPLIT_EQUATION.md` | L0–L4 split levels |
+
+---
+
 ## instrument/
 
 The EBYS instrument — architecture, engine, AI, training, hardware.
@@ -21,32 +46,8 @@ The EBYS instrument — architecture, engine, AI, training, hardware.
 | `BAKE.md` | Training loop — :bake start/end, trajectory learning, snapshot lock |
 | `MOMENTUM.md` | add_tension.py — tension field computation, bar-level slopes |
 | `STRETCH_WIRING.md` | Time-stretch wiring guide for Max patch |
-| `CHANGELOG.md` | Version history: 0.1.0 → 0.1.7 |
-
----
-
-## protocol/
-
-The tipping protocol and split equation.
-
-| File | What it covers |
-|------|----------------|
-| `TIPPING_PROTOCOL.md` | Three precision levels (web, venue+EBYS, venue-only) |
-| `SPLIT_EQUATION.md` | L0–L4 split levels |
-
----
-
-## platform/
-
-The EBYS platform — what it is, how all the pieces fit, what's been built and what's next.
-
-| File | What it covers |
-|------|----------------|
-| `OVERVIEW.md` | Everything in one page — instrument, radio, protocol, file map |
-| `PLATFORM.md` | Platform description, radio modes, what's built, what's next |
-| `EBYS_SYSTEM.md` | Website + radio architecture (French), temperature trigger, UI skin system |
-| `WEBSITE.md` | Website: event calendar, radio, artist directory, mixer console, spider |
-| `STATEMENT.md` | Chirp! |
+| `ILM.md` | EBYS as an Intonation Language Model |
+| `CHANGELOG.md` | Version history: 0.1.0 → 0.1.19 |
 
 ---
 

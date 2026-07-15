@@ -108,9 +108,12 @@ def find_original_mix(stems_folder):
     search_dirs = [
         # Prefer WAV in temp/ — madmom/soundfile cannot read MP4/AAC.
         # ffmpeg converts MP4 → WAV in temp/ before Demucs runs, so it's always there.
-        os.path.join(parent, '..', '..', 'temp'),    # data/temp  (ffmpeg WAV)
+        os.path.join(parent, '..', '..', 'temp'),    # data/sessions/<id>/temp (ffmpeg WAV, session-scoped)
         os.path.join(parent, '..', 'temp'),          # stems/temp  (alternate)
-        os.path.join(parent, '..', '..', 'raw_uploads'),  # data/raw_uploads (MP4 fallback)
+        # raw_uploads/ is PER-SESSION now (data/sessions/<id>/raw_uploads/), which
+        # from stems/htdemucs/<track> is two levels up — the PRIMARY location.
+        os.path.join(parent, '..', '..', 'raw_uploads'),  # data/sessions/<id>/raw_uploads (per-session, primary)
+        os.path.join(parent, '..', '..', '..', '..', 'raw_uploads'),  # data/raw_uploads (legacy global, harmless fallback)
         os.path.join(parent, '..', 'raw_uploads'),
         parent,
         os.path.join(parent, '..'),

@@ -49,7 +49,10 @@ function getDataDir() {
     p = p.replace(/[^\/]+\/$/, ''); // strip src/      → .../EBYS/
     return p + 'data/';
 }
-var HT_PATH = getDataDir() + "stems/htdemucs";
+// Session-scoped via the data/current symlink (see buffer_manager.js) — the
+// stems moved under data/sessions/<id>/ in the multi-session migration and this
+// enumerator was still scanning the old global data/stems/htdemucs (now gone).
+var HT_PATH = getDataDir() + "current/stems/htdemucs";
 
 // htdemucs stem suffixes in stem order: vocals, drums, bass, melo/other.
 // The outlet offset within each slot: 0=voc, 1=drm, 2=bss, 3=mel.

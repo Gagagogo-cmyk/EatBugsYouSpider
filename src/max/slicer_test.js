@@ -11,8 +11,8 @@ const path = require('path');
 const vm   = require('vm');
 
 const DIR       = __dirname;
-const LIB_PATH  = path.join(DIR, 'analysis_library.json');
-const DB_PATH   = path.join(DIR, '..', 'downbeats.json');
+const LIB_PATH  = path.join(DIR, '..', '..', 'data', 'analysis_library.json');
+const DB_PATH   = path.join(DIR, '..', '..', 'data', 'downbeats.json');
 
 // ── Colours ───────────────────────────────────────────────────────────────────
 const RED   = '\x1b[31m';

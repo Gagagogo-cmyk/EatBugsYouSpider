@@ -23,7 +23,7 @@
 //   {track}::slices::slice_NNNN::S     spectral spread (Hz)        — display: S
 //   {track}::slices::slice_NNNN::P     pitch (Hz)                  — display: P  (no drums)
 //   {track}::slices::slice_NNNN::E     loudness (LUFS)             — display: E
-//   {track}::slices::slice_NNNN::F     spectral flatness (0–1)     — display: F
+//   {track}::slices::slice_NNNN::F     spectral flatness (dB, ≤0)  — display: F
 //   {track}::slices::slice_NNNN::H     dominant chroma bin (0–1)   — display: H
 //   {track}::slices::slice_NNNN::M0    MFCC coeff 0                — display: T
 //   {track}::slices::slice_NNNN::M1    MFCC coeff 1
@@ -92,8 +92,38 @@ function getPatcherDir() {
     return fp;
 }
 
+// getDataRoot — resolves EBYS/data/ from patch location (src/max/ → strip 2 levels → data/)
+function getDataRoot() {
+    var p = getPatcherDir();
+    p = p.replace(/[^\/]+\/$/, '');  // strip max/  → .../src/
+    p = p.replace(/[^\/]+\/$/, '');  // strip src/  → .../EBYS/
+    return p + 'data/';
+}
+
+// getSessionId — reads data/current_session.txt (written by the TUI's
+// session_manager.js / sdj-tui.js login screen), falling back to "default"
+// if the pointer file is missing/empty — same fallback session_manager.js
+// itself uses. Re-read fresh every call (not cached), same reasoning as
+// everywhere else this pattern appears: Max keeps running across TUI
+// session switches, so this can't be resolved once and cached.
+function getSessionId() {
+    var f = new File(getDataRoot() + "current_session.txt", "read", "TEXT");
+    if (!f || !f.isopen) return "default";
+    var id = f.readline();
+    f.close();
+    id = (id || "").replace(/^\s+|\s+$/g, "");
+    return id || "default";
+}
+
+// getDataDir — the active session's data dir, data/sessions/<id>/.
+// Named getDataDir() (not getSessionDataDir()) to match every existing call
+// site below (getLibraryPath(), etc.) without having to touch each of them.
+function getDataDir() {
+    return getDataRoot() + "sessions/" + getSessionId() + "/";
+}
+
 function getLibraryPath() {
-    var path = getPatcherDir() + "analysis_library.json";
+    var path = getDataDir() + "analysis_library.json";
     post("EBYS SliceWriter: library path = " + path + "\n");
     return path;
 }
@@ -138,7 +168,7 @@ function resetMemory() {
     outlet(0, "clear");                 // clears dict analysisLib
     try {
         var f = new File(getLibraryPath(), "write", "TEXT");
-        f.open(); f.writestring("{}"); f.close();
+        f.open(); f.writestring("{}"); f.eof = f.position; f.close();
     } catch(e) {}
     post("EBYS SliceWriter: memory cleared — library wiped\n");
 }
@@ -156,6 +186,7 @@ function saveLibrary() {
         f.open();
         var str = JSON.stringify(nested);
         for (var i = 0; i < str.length; i += CHUNK) f.writestring(str.slice(i, i + CHUNK));
+        f.eof = f.position;  // truncate any stale bytes left over from a longer prior write
         f.close();
         post("EBYS SliceWriter: saved " + str.length + " chars to library\n");
     } catch(e) {

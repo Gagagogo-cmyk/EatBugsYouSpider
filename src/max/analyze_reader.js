@@ -77,25 +77,14 @@ function readStreamTxt() {
     currentBatch   = 0;
     allStemPaths   = [];
 
-    var dir = getPatcherDir();
-    var candidates = [
-        dir.replace(/\/MAX\/$/, "/") + "stream.txt",
-        dir.replace(/\/MAX$/,   "/") + "stream.txt",
-        dir + "../stream.txt",
-        dir + "stream.txt",
-    ];
-
-    var f = null, usedPath = "";
-    for (var i = 0; i < candidates.length; i++) {
-        f = new File(candidates[i], "read", "TEXT");
-        if (f && f.isopen) { usedPath = candidates[i]; break; }
-    }
+    var STREAM_PATH = streamPath();
+    var f = new File(STREAM_PATH, "read", "TEXT");
     if (!f || !f.isopen) {
-        post("analyze_reader: ERROR — stream.txt not found\n");
+        post("analyze_reader: ERROR — stream.txt not found at " + STREAM_PATH + "\n");
         analysisActive = false;
         return;
     }
-    post("analyze_reader: reading " + usedPath + "\n");
+    post("analyze_reader: reading " + STREAM_PATH + "\n");
 
     // Read ALL lines — format: "label /full/path/stem.wav"
     while (true) {
@@ -159,6 +148,13 @@ function startStem(n) {
     outlet(0, "set_track_name", currentTrackName);
 
     post("analyze_reader: [batch " + currentBatch + "] startStem " + n + " [" + stemName + "] -> " + path + "\n");
+    // Explicit "clear" before "read" — forces Max's buffer~ to treat this as
+    // a genuinely fresh load even when the exact same file was already
+    // loaded earlier in this Max session (e.g. re-running analysis via
+    // :resetMemory, which reuses existing stem files instead of regenerating
+    // them like :resetAll does). Cheap and safe: "clear" just zeroes the
+    // buffer, "read" immediately repopulates it from disk.
+    outlet(outIdx, "clear");
     outlet(outIdx, "read", path);
 }
 
@@ -174,7 +170,7 @@ function getPatcherDir() {
 
 // ── Persistent library (same JSON file as slice_writer) ───────────────────────
 function getLibraryPath() {
-    return getPatcherDir() + "analysis_library.json";
+    return getDataDir() + "analysis_library.json";
 }
 var analysisRegistry = {};
 
@@ -240,7 +236,7 @@ function loadRegistry() {
 // If found: writes stream.txt for it and returns true (caller should restart loop).
 // If all done: returns false.
 // Compute data/ dir relative to this patch — works on any machine.
-function getDataDir() {
+function getDataRoot() {
     var p = patcher.filepath;
     var slash = p.indexOf('/');
     if (slash > 0) p = p.slice(slash);
@@ -250,8 +246,30 @@ function getDataDir() {
     return p + 'data/';
 }
 
-var HT_PATH      = getDataDir() + "stems/htdemucs";
-var STREAM_PATH  = getDataDir() + "stream.txt";
+// getSessionId — reads data/current_session.txt (written by the TUI's
+// session_manager.js / sdj-tui.js login screen), falling back to "default"
+// if the pointer file is missing/empty. Read fresh every call — Max keeps
+// running across TUI session switches, so this can't be cached at load.
+function getSessionId() {
+    var f = new File(getDataRoot() + "current_session.txt", "read", "TEXT");
+    if (!f || !f.isopen) return "default";
+    var id = f.readline();
+    f.close();
+    id = (id || "").replace(/^\s+|\s+$/g, "");
+    return id || "default";
+}
+
+// getDataDir — the active session's data dir, data/sessions/<id>/.
+function getDataDir() {
+    return getDataRoot() + "sessions/" + getSessionId() + "/";
+}
+
+// htPath()/streamPath() — resolved fresh on every call (NOT cached in a
+// module-level var like the old HT_PATH/STREAM_PATH were) so a mid-run
+// :switchSession is picked up on the next prepareNextTrack()/readStreamTxt()
+// call instead of requiring the patch to be reloaded.
+function htPath()     { return getDataDir() + "stems/htdemucs"; }
+function streamPath() { return getDataDir() + "stream.txt"; }
 var NEXT_SUFFIXES = ['_vocals.wav', '_drums.wav', '_bass.wav', '_other.wav'];
 var NEXT_LABELS   = ['vocals',     'drums',      'bass',      'melody'    ];
 
@@ -259,6 +277,7 @@ function prepareNextTrack() {
     readRegistryFile();
     var regKeys = Object.keys(analysisRegistry);
 
+    var HT_PATH = htPath();
     var htFolder = new Folder(HT_PATH);
     if (!htFolder || htFolder.end) {
         post("prepareNextTrack: cannot open " + HT_PATH + "\n");
@@ -310,6 +329,7 @@ function prepareNextTrack() {
     }
 
     // Write stream.txt for the next track
+    var STREAM_PATH = streamPath();
     var f = new File(STREAM_PATH, "write", "TEXT");
     if (!f || !f.isopen) {
         post("prepareNextTrack: cannot write " + STREAM_PATH + "\n");
@@ -323,11 +343,30 @@ function prepareNextTrack() {
 }
 
 // resetMemory — clears the in-memory registry and resets counter to 1
+//
+// BUG (found + fixed here): this never touched analysisActive/pendingRestart/
+// stemsThisRun/currentBatch/allStemPaths — the run-state guard startAnalysis()
+// uses to avoid double-starting. If ANY prior run ever got stuck mid-way
+// (crashed, hung, or was interrupted by a patch reload before advanceCounter()
+// reached the completion branch that resets analysisActive to false — see its
+// comment), analysisActive stayed permanently true. Every future
+// startAnalysis() call — from :analyzeAll, from the stemsReady→startAnalysis
+// relay, from anywhere — would then just silently hit the "already running,
+// queuing re-run" branch and return, forever, since nothing was actually
+// running to ever finish and consume the queued restart. :resetAll and
+// :resetMemory both call this function specifically to get back to a clean
+// slate, so a stuck run surviving a reset defeated the entire point of
+// resetting — this is the "why isn't FluCoMa starting anymore" symptom.
 function resetMemory() {
     analysisRegistry = {};
+    analysisActive   = false;
+    pendingRestart   = false;
+    stemsThisRun     = 0;
+    currentBatch     = 0;
+    allStemPaths     = [];
     // Re-run loadRegistry with empty registry → reports 0 done, sets counter to 1
     loadRegistry();
-    post("analyze_reader: memory cleared\n");
+    post("analyze_reader: memory cleared (run-state guard also reset)\n");
 }
 
 function setHopSize(n) {
@@ -394,7 +433,9 @@ function set_track_name() {
 // Descriptor letter codes (display):
 //   M = Centroid (Hz)        C field internally
 //   E = Loudness (LUFS)      E field
-//   F = Flatness (0–1)       F field
+//   F = Flatness (dB, ≤0)    F field  — FluCoMa reports flatness in decibels
+//                                       (10·log10 of the 0–1 ratio), so values
+//                                       are ≤0: very negative = tonal, ~0 = noisy
 //   P = Pitch (Hz)           P field
 //   H = Chroma (dominant)    H field  — peak bin of chroma vector
 //   T = Timbre (MFCC)        M0–M5 fields  — 6 MFCC coefficients
@@ -476,9 +517,9 @@ function estimateBPM(onsetBuf, nOnsets, totalSamples) {
 
     // Collect IOIs in seconds, accepting anything in 0.1s–4.0s range
     var iois = [];
-    var prev = onsetBuf.peek(0, 0) / SAMPLE_RATE;
+    var prev = onsetBuf.peek(1, 0) / SAMPLE_RATE;  // peek() channel arg is 1-based
     for (var i = 1; i < nOnsets; i++) {
-        var curr = onsetBuf.peek(0, i) / SAMPLE_RATE;
+        var curr = onsetBuf.peek(1, i) / SAMPLE_RATE;
         var ioi  = curr - prev;
         if (ioi >= 0.1 && ioi <= 4.0) iois.push(ioi);
         prev = curr;
@@ -557,12 +598,27 @@ _initTask.schedule(2000);
 // ── Chroma helpers ────────────────────────────────────────────────────────────
 // fluid.bufchroma~ outputs 12 channels (one per pitch class) × nFrames frames.
 // H = normalised peak chroma bin value (0.0–1.0): which pitch class dominates.
+//
+// NOTE: Max's JS Buffer.peek() takes a 1-BASED channel argument — confirmed
+// via https://docs.cycling74.com/legacy/max8/vignettes/jsbuffer: "Return an
+// array with count samples from channel (1-based counting) starting at
+// frame (zero-based counting)." This was the root cause of the C==S and
+// M0==M1 duplicate-descriptor bug found earlier: every peek() call in this
+// file used a 0-based channel index, so "channel 0" silently aliased to
+// real channel 1's data (identical to an explicit "channel 1" request),
+// and every higher index ended up reading one real channel too early —
+// e.g. what was assumed to be "flatness" (index 5) was actually reading
+// "rolloff" (the true 5th channel), and the real LAST channel of every
+// multi-channel feature buffer (crest, MFCC coeff 12, chroma pitch-class
+// 12) was never read at all. Loop below now runs pc = 1..12 (1-based) and
+// stores (pc - 1) as the reported pitch-class index so H's external 0–1
+// normalisation is unaffected.
 function chromaPeak(chromaBuf, descFrame) {
     var peak = 0;
     var peakVal = -1;
-    for (var pc = 0; pc < 12; pc++) {
+    for (var pc = 1; pc <= 12; pc++) {
         var v = chromaBuf.peek(pc, descFrame);
-        if (v > peakVal) { peakVal = v; peak = pc; }
+        if (v > peakVal) { peakVal = v; peak = pc - 1; }
     }
     // Normalise bin index to 0–1 range
     return peak / 11.0;
@@ -678,33 +734,37 @@ function readStem(name) {
     // ── Write slices ─────────────────────────────────────────────────────────
     var written = 0;
     for (var i = 0; i < nOnsets; i++) {
-        var onsetSample = onsetBuf.peek(0, i);
+        var onsetSample = onsetBuf.peek(1, i);  // peek() channel arg is 1-based
         if (onsetSample < 0 || onsetSample >= totalSamples) continue;
 
         var fraction  = onsetSample / totalSamples;
         var descFrame = Math.min(Math.floor(onsetSample / HOP_SIZE), nDescFrames - 1);
 
-        var C    = shapeBuf.peek(0, descFrame);  // spectral centroid (Hz)
-        var S    = shapeBuf.peek(1, descFrame);  // spectral spread (Hz)
-        var F    = shapeBuf.peek(5, descFrame);  // spectral flatness
-        var E    = loudBuf.peek(0, descFrame);   // loudness (LUFS)
-        var P    = pitchBuf.peek(0, descFrame);  // pitch (Hz)
-        var conf = pitchBuf.peek(1, descFrame);  // pitch confidence
+        // Channel args below are 1-based (Max JS Buffer.peek() convention —
+        // see the note above chromaPeak()). shapeBuf's real channel order is
+        // [centroid, spread, skewness, kurtosis, rolloff, flatness, crest] =
+        // channels 1-7; flatness is channel 6, not 5.
+        var C    = shapeBuf.peek(1, descFrame);  // spectral centroid (Hz)
+        var S    = shapeBuf.peek(2, descFrame);  // spectral spread (Hz)
+        var F    = shapeBuf.peek(6, descFrame);  // spectral flatness
+        var E    = loudBuf.peek(1, descFrame);   // loudness (LUFS)
+        var P    = pitchBuf.peek(1, descFrame);  // pitch (Hz)
+        var conf = pitchBuf.peek(2, descFrame);  // pitch confidence
 
         if (conf < 0.5) P = 0;
 
         // H = normalised dominant chroma bin (0–1); 0 if buffer not ready
         var H = hasChroma ? chromaPeak(chromaBuf, descFrame) : 0;
 
-        // M0–M5 = first 6 MFCC coefficients; 0 if buffer not ready
+        // M0–M5 = first 6 MFCC coefficients (real channels 1-6); 0 if buffer not ready
         var M0 = 0, M1 = 0, M2 = 0, M3 = 0, M4 = 0, M5 = 0;
         if (hasMfcc) {
-            M0 = mfccBuf.peek(0, descFrame);
-            M1 = mfccBuf.peek(1, descFrame);
-            M2 = mfccBuf.peek(2, descFrame);
-            M3 = mfccBuf.peek(3, descFrame);
-            M4 = mfccBuf.peek(4, descFrame);
-            M5 = mfccBuf.peek(5, descFrame);
+            M0 = mfccBuf.peek(1, descFrame);
+            M1 = mfccBuf.peek(2, descFrame);
+            M2 = mfccBuf.peek(3, descFrame);
+            M3 = mfccBuf.peek(4, descFrame);
+            M4 = mfccBuf.peek(5, descFrame);
+            M5 = mfccBuf.peek(6, descFrame);
         }
 
         outlet(0, s.tMsg, fraction);
