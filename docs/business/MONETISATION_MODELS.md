@@ -16,15 +16,13 @@ A physical instrument built for DJs. The AI deck as a hardware device.
 
 ---
 
-## 2. Merch
+## 2. Stripe Connect — Tipping (In Progress)
 
-The EBYS brand is strong enough to wear. The spider, the visual language of the deck — these have an identity that translates to objects.
+The tipping protocol uses Stripe Connect to send dollars to DJs and artists. The split equation runs, the amounts are calculated, and a Stripe transfer is initiated to each connected account.
 
-**Who buys it:** early community members, DJs, fans of the Montreal scene, people who want to signal something about their relationship to AI and music.
+**Current blocker:** DJs and artists don't have connected Stripe accounts yet. The split calculates correctly, but transfers fail at the Stripe step for missing account IDs.
 
-**Economics:** low overhead, high margin. Drop-ship on demand. No inventory risk.
-
-**Status:** brand exists. Store not yet built.
+**Next step:** build the DJ profile page with Stripe Connect onboarding flow. When a DJ connects their Stripe account, transfers start working immediately for all future (and queued) payouts.
 
 ---
 
@@ -40,26 +38,30 @@ The software is free. The nag screen is a soft monetisation layer for solo users
 
 ---
 
-## 4. Stripe Connect — Tipping (In Progress)
+## 4. Merch
 
-The tipping protocol uses Stripe Connect to send dollars to DJs and artists. The split equation runs, the amounts are calculated, and a Stripe transfer is initiated to each connected account.
+The EBYS brand is strong enough to wear. The spider, the visual language of the deck — these have an identity that translates to objects.
 
-**Current blocker:** DJs and artists don't have connected Stripe accounts yet. The split calculates correctly, but transfers fail at the Stripe step for missing account IDs.
+**Who buys it:** early community members, DJs, fans of the Montreal scene, people who want to signal something about their relationship to AI and music.
 
-**Next step:** build the DJ profile page with Stripe Connect onboarding flow. When a DJ connects their Stripe account, transfers start working immediately for all future (and queued) payouts.
+**Economics:** low overhead, high margin. Drop-ship on demand. No inventory risk.
+
+**Status:** brand exists. Store not yet built.
 
 ---
 
 ## The Revenue Stack View
 
 ```
-Low friction, high margin, scales with brand:
-→ Hardware (A1)
-→ Merch
-→ Nag screen removal
-
 Foundation (enables everything else):
 → Tipping protocol + Stripe Connect
+
+Scales with usage:
+→ Hardware (A1)
+→ Nag screen removal
+
+Scales with brand:
+→ Merch
 ```
 
 None of these require the user to think about money at the moment of use. The listener tips a set. The artist receives a notification. The rest is automatic.

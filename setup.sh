@@ -74,7 +74,17 @@ fi
 # ── 5. LaunchAgent (watch_demucs daemon) ────────────────────────────────────
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 PLIST_DEST="$LAUNCH_AGENTS/com.ebys.watchdemucs.plist"
-DEMUCS_PY="$DEMUCS_SRC/demucs_env/bin/python3"
+
+# Use system Python3 to RUN the watcher — it only needs `watchdog`, not the
+# full demucs stack. The watcher spawns demucs_env/python3 as a subprocess.
+WATCHER_PY="$(which python3 2>/dev/null || echo /opt/homebrew/bin/python3)"
+
+# Ensure watchdog is installed in whichever Python will run the watcher
+echo "▸ Ensuring watchdog is installed for watcher Python ($WATCHER_PY)..."
+"$WATCHER_PY" -m pip install watchdog --quiet --break-system-packages 2>/dev/null || \
+  "$WATCHER_PY" -m pip install watchdog --quiet
+echo "  ✓ watchdog ready"
+
 SCRIPT="$DEMUCS_SRC/watch_demucs.py"
 LOG="$DATA_DIR/logs/watchdemucs.log"
 
@@ -91,8 +101,9 @@ cat > "$PLIST_DEST" << PLIST
 
     <key>ProgramArguments</key>
     <array>
-        <string>$DEMUCS_PY</string>
-        <string>$SCRIPT</string>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>exec $WATCHER_PY -u $SCRIPT</string>
     </array>
 
     <key>RunAtLoad</key>
@@ -115,11 +126,15 @@ PLIST
 
 echo "  ✓ plist written to $PLIST_DEST"
 
-# Unload existing (ignore error if not loaded)
-launchctl unload "$PLIST_DEST" 2>/dev/null || true
+# Unload any running instance (works on both old and new macOS)
+launchctl bootout "gui/$(id -u)/com.ebys.watchdemucs" 2>/dev/null || \
+  launchctl unload "$PLIST_DEST" 2>/dev/null || true
 
-# Load the new one
-launchctl load "$PLIST_DEST"
+sleep 1  # let the old process die
+
+# Load the new plist
+launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST" 2>/dev/null || \
+  launchctl load "$PLIST_DEST"
 echo "  ✓ LaunchAgent loaded (daemon will auto-start on login)"
 
 # ── 6. Backend .env reminder ──────────────────────────────────────────────────

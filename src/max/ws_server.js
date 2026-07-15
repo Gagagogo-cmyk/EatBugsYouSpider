@@ -8,8 +8,24 @@ const fs     = require('fs');
 const path   = require('path');
 const { spawn } = require('child_process');
 const dgram      = require('dgram');
+const sessionMgr = require('../tui/session_manager');
 
 const PORT = 8080;
+
+// ── SESSION-SCOPED DATA DIR ───────────────────────────────────────────────────
+// Unlike the TUI (a short-lived process that's relaunched by sdj-tui.js on
+// every session switch), ws_server.js is a long-running Node process spawned
+// once by Max's node.script and never restarted just because the user ran
+// :switchSession. So sessionDataDir() re-reads data/current_session.txt fresh
+// on every call — see session_manager.js's header comment — instead of
+// caching the path once at load time, keeping every read/write below scoped
+// to whichever session is active *right now*, not whichever was active when
+// this process started. (Named sessionDataDir, not dataDir, to avoid
+// colliding with the local `const dataDir` already used inside the
+// :resetAll handler further down.)
+function sessionDataDir() {
+    return sessionMgr.getActiveSessionDataDir();
+}
 
 // ── State cache ───────────────────────────────────────────────────────────────
 const state = {
@@ -22,16 +38,16 @@ const state = {
     analysisDone: false,   // set true when analysisDone arrives (or library already exists)
     ms: {
         width:    { vocals: 0, melody: 0, bass: 0, drums: 0, live1: 0, live2: 0 },
-        joy:      { vocals: {x:0,y:0}, melody: {x:0,y:0},   // 2D joystick per stem
-                    bass:   {x:0,y:0}, drums:  {x:0,y:0},
-                    live1:  {x:0,y:0}, live2:  {x:0,y:0} },
+        joy:      { vocals: {x:0,y:1}, melody: {x:0,y:1},   // 2D joystick per stem
+                    bass:   {x:0,y:1}, drums:  {x:0,y:1},   // y:1 matches ms_router.js's
+                    live1:  {x:0,y:1}, live2:  {x:0,y:1} }, // real boot default (front-only)
         fx: { vocals: 0, drums: 0, bass: 0, melody: 0, live1: 0, live2: 0 },
         fxSwitch: { 1: 0, 2: 0 },
         boothGain: 0.7,
         recGain:   1.0,
         masterL: 1,
         masterR: 1,
-        masterJoy: { x: 0, y: 0 },
+        masterJoy: { x: 0, y: 1 }, // matches ms_router.js's real boot default (front-only)
     },
     recording:     false,
     recordingFile: null,
@@ -59,13 +75,23 @@ const state = {
 // Called after every performative TUI command.  Missile fires this.
 const TOUCH_COMMANDS = new Set([
     'eqLow','eqMid','eqHigh','eqMidFreq',
-    'trim','fader','width','joystick','masterJoystick',
+    'trim','fader','mute','solo','width','joystick','masterJoystick',
     'entropy','pitchShift','boothGain','recGain','fx','fxSwitch',
     'followStem','master',
+    // Structural/compositional performative commands — narrowly scoped to
+    // pure live-mixing gestures before, so ":setSegmentBars 4" (and its
+    // usual companions) never showed up in "last touched" even though
+    // they're just as much a live performance move as a fader touch.
+    'setSegmentBars','setStayProb','setGlobalBPM','setFallbackBPM',
 ]);
 function touch(atoms) {
     if (!TOUCH_COMMANDS.has(atoms[0])) return;
     state.lastTouchedParam = atoms.slice();   // snapshot
+    // Broadcast so the TUI can show a live "last command touched" readout —
+    // this is exactly what LINK's missile switch would fire if armed right
+    // now, so surfacing it in the header lets the user see what they're
+    // about to send before they commit to firing.
+    broadcast({ type: 'lastTouchedParam', atoms: state.lastTouchedParam });
 }
 
 // ── Tipping backend ──────────────────────────────────────────────────────────
@@ -119,7 +145,7 @@ function updatePingTimer() {
 // Pre-check: if analysis_library.json already has entries, mark analysisDone now so
 // new TUI clients that connect after the patch loads get the flag immediately.
 try {
-    const lib = parseMaxDictJSON(fs.readFileSync(path.join(__dirname, '..', '..', 'data', 'analysis_library.json'), 'utf8'));
+    const lib = parseMaxDictJSON(fs.readFileSync(path.join(sessionDataDir(), 'analysis_library.json'), 'utf8'));
     if (Object.keys(lib).length > 0) {
         state.analysisDone = true;
         Max.post('ws_server: library present — analysisDone pre-set\n');
@@ -143,6 +169,31 @@ function sendChunked(label, str, chunkSize) {
 }
 
 // ── WebSocket frame helpers ───────────────────────────────────────────────────
+
+// FIN + pong (0x8A), mirroring back whatever payload the ping carried — per
+// the WS spec a pong should echo the ping's payload exactly. Small, unmasked
+// server→client frame, same header-length branches as encodeFrame below.
+function encodePongFrame(payload) {
+    payload = payload || Buffer.alloc(0);
+    const len = payload.length;
+    let header;
+    if (len < 126) {
+        header = Buffer.alloc(2);
+        header[0] = 0x8a;
+        header[1] = len;
+    } else if (len < 65536) {
+        header = Buffer.alloc(4);
+        header[0] = 0x8a;
+        header[1] = 126;
+        header.writeUInt16BE(len, 2);
+    } else {
+        header = Buffer.alloc(10);
+        header[0] = 0x8a;
+        header[1] = 127;
+        header.writeBigUInt64BE(BigInt(len), 2);
+    }
+    return Buffer.concat([header, payload]);
+}
 
 function encodeFrame(data) {
     const payload = Buffer.from(data, 'utf8');
@@ -168,6 +219,14 @@ function encodeFrame(data) {
 
 function decodeFrames(buf) {
     const messages = [];
+    // Client-sent WS pings (opcode 0x9) used to just be skipped over — never
+    // answered. Per spec a server should reply with a pong carrying the same
+    // payload; not doing so isn't fatal (browsers/ws-library clients don't
+    // depend on it to stay connected) but it's a real, previously-missing
+    // piece of connection-liveness signaling this server was skipping.
+    // Collected here so the caller (which has the actual socket) can write
+    // pong replies.
+    const pings = [];
     let offset = 0;
     while (offset < buf.length) {
         if (offset + 2 > buf.length) break;
@@ -190,23 +249,25 @@ function decodeFrames(buf) {
         const dataOffset = maskOffset + (masked ? 4 : 0);
         if (dataOffset + payloadLen > buf.length) break;
         if (opcode === 8) { messages.push(null); offset = dataOffset + payloadLen; break; } // close
-        if (opcode === 0x9) { // ping
-            offset = dataOffset + payloadLen; continue;
-        }
-        const raw = buf.slice(dataOffset, dataOffset + payloadLen);
+        const rawFrame = buf.slice(dataOffset, dataOffset + payloadLen);
         let payload;
         if (masked) {
             const mask = buf.slice(maskOffset, maskOffset + 4);
             payload = Buffer.alloc(payloadLen);
-            for (let i = 0; i < payloadLen; i++) payload[i] = raw[i] ^ mask[i % 4];
+            for (let i = 0; i < payloadLen; i++) payload[i] = rawFrame[i] ^ mask[i % 4];
         } else {
-            payload = raw;
+            payload = rawFrame;
+        }
+        if (opcode === 0x9) { // ping — unmask it (client frames are always masked) and queue a pong reply
+            pings.push(payload);
+            offset = dataOffset + payloadLen; continue;
         }
         messages.push(payload.toString('utf8'));
         offset = dataOffset + payloadLen;
     }
-    // Return both messages and how many bytes were consumed so the caller can trim the buffer
-    return { messages, consumed: offset };
+    // Return messages, how many bytes were consumed (so the caller can trim
+    // the buffer), and any pings seen (so the caller can pong them back).
+    return { messages, consumed: offset, pings };
 }
 
 // ── HTTP server + WebSocket upgrade ──────────────────────────────────────────
@@ -220,9 +281,27 @@ const server = http.createServer((req, res) => {
             try {
                 const msg = JSON.parse(body);
                 broadcast(msg);
-                // stemsReady → tell Max to re-read stream.txt and load buffers
+                // stemsReady → watch_demucs.py just finished separating a track and
+                // wrote stream.txt for it; tell Max to read it and start the FluCoMa
+                // analysis pass (onset detection, spectral shape, MFCC, etc).
+                //
+                // BUG (found + fixed here): this used to send Max.outlet('stemsReady')
+                // — but no route token, no JS function, nothing anywhere in the Max
+                // patch or codebase is named "stemsReady". That message went into the
+                // void every single time, silently. Genre (Essentia) and beat
+                // (madmom) analysis both ran fine because watch_demucs.py runs those
+                // itself in Python, entirely independent of Max — only the FluCoMa
+                // pass (which genuinely needs Max/MSP running) was ever silently
+                // skipped, which is exactly the "analysis ran, but not the FluCoMa
+                // one" symptom this was root-caused from.
+                //
+                // Fix: reuse startAnalysis — the exact same trigger :analyzeAll
+                // already sends successfully (see runFullAnalysis() in sdj-tui.js and
+                // analyze_reader.js's startAnalysis(), whose own doc comment lists
+                // this as one of three valid entry points). It reads stream.txt
+                // (already written above) and kicks off the real analysis pass.
                 if (msg.type === 'stemsReady') {
-                    Max.outlet('stemsReady');
+                    Max.outlet('startAnalysis');
                 }
             } catch(e) {}
             res.writeHead(200); res.end('ok');
@@ -258,15 +337,40 @@ server.on('upgrade', (req, socket) => {
         key:     state.key,
         slices:  state.slices,
     })));
+    // Status-icon state (tipping session, recording) — sent separately so a
+    // reconnecting TUI shows the right icons immediately instead of assuming
+    // "nothing active" until the next state-changing command happens to fire.
+    socket.write(encodeFrame(JSON.stringify({
+        type: 'session', active: !!state.sessionId, sessionId: state.sessionId, deck: state.sessionDeck,
+    })));
+    socket.write(encodeFrame(JSON.stringify({ type: 'param', key: 'recording', value: state.recording })));
     // NOTE: do NOT send analysisDone here. analysisDone means "a fresh analysis just
     // completed this session" — it triggers add_tension.py + buildIndex in the TUI.
     // Sending it on every reconnect caused a second buildIndex on every boot.
+    //
+    // BUG (found + fixed here): the flip side of that fix was never handled —
+    // if ws_server.js's node.script itself restarts (or the TUI reconnects)
+    // WHILE or shortly after a real analysis run finishes in Max, the live
+    // 'analysisDone' broadcast fires into a socket that isn't open yet (or
+    // fires on the old, since-replaced socket) and is lost forever. The TUI's
+    // spinner has no way to know the work already completed, so it just sits
+    // at 95% until its own 5-minute safety timeout gives up — even though
+    // analysis genuinely succeeded. state.analysisDone is already correctly
+    // pre-set from disk above, so use it: send a distinct, side-effect-free
+    // 'analysisAlreadyDone' notice (NOT the real 'analysisDone' message) so
+    // the TUI can stop a spinner that's actively waiting, without also
+    // re-triggering add_tension.py / buildIndex like a fresh 'analysisDone'
+    // would.
+    if (state.analysisDone) {
+        socket.write(encodeFrame(JSON.stringify({ type: 'analysisAlreadyDone' })));
+    }
 
     let buf = Buffer.alloc(0);
     socket.on('data', async chunk => {
         buf = Buffer.concat([buf, chunk]);
-        const { messages, consumed } = decodeFrames(buf);
+        const { messages, consumed, pings } = decodeFrames(buf);
         buf = buf.slice(consumed); // trim processed bytes so old frames aren't replayed
+        for (const p of pings) { try { socket.write(encodePongFrame(p)); } catch (e) {} }
         for (const msg of messages) {
             if (msg === null) { socket.destroy(); break; }
             try {
@@ -284,10 +388,23 @@ server.on('upgrade', (req, socket) => {
                         bpm:              state.bpm,
                         stems:            JSON.parse(JSON.stringify(state.stems)),
                     };
-                    const logPath = path.join(__dirname, '..', '..', 'data', 'training_log.jsonl');
+                    const logPath = path.join(sessionDataDir(), 'training_log.jsonl');
                     fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
                     Max.post('ws_server: 🫳 baked\n');
                     broadcast({ type: 'sys', msg: '🫳 baked' });
+                    continue;
+                }
+
+                // queryAnalysisDone — the TUI polls this while it's waiting on a
+                // fresh :analyzeAll, in case the one-shot 'analysisDone' broadcast
+                // was lost (socket reconnecting, or this node.script restarted the
+                // instant Max fired it). state.analysisDone is authoritative (set
+                // when analyze_reader finishes, and pre-set from disk on boot), so
+                // reply — side-effect-free, to just this socket — when it's true.
+                if (m.type === 'queryAnalysisDone') {
+                    if (state.analysisDone) {
+                        try { socket.write(encodeFrame(JSON.stringify({ type: 'analysisAlreadyDone' }))); } catch (e) {}
+                    }
                     continue;
                 }
 
@@ -295,8 +412,10 @@ server.on('upgrade', (req, socket) => {
                     const parts = m.text.trim().split(/\s+/);
                     const atoms = parts.map(p => isNaN(p) ? p : parseFloat(p));
                     touch(atoms);   // record last touched performative param for LINK missile
-                    if (atoms[0] === 'sessionOpen') {
-                        // :sessionOpen <djId> <venue> <mode: web|venue> [deck: ebys|direct]
+                    if (atoms[0] === 'tipOpen' || atoms[0] === 'sessionOpen') {
+                        // :tipOpen <djId> <venue> <mode: web|venue> [deck: ebys|direct]
+                        // (alias: :sessionOpen — the TIPPING/payout session, NOT the
+                        //  login/workspace session, which is :switchSession/:logout)
                         const djId  = String(atoms[1] || '1');
                         const venue = String(atoms[2] || 'unknown');
                         const mode  = String(atoms[3] || 'venue');
@@ -312,29 +431,44 @@ server.on('upgrade', (req, socket) => {
                             state.sessionDeck = deck;
                             const deckLabel = deck === 'direct' ? ' [direct]' : ' [ebys]';
                             broadcast({ type: 'sys', msg: '✓ session ' + state.sessionId + ' open (' + mode + ')' + deckLabel });
+                            broadcast({ type: 'session', active: true, sessionId: state.sessionId, deck });
                             Max.post('ws_server: session opened — id=' + state.sessionId + ' deck=' + deck + '\n');
                             updatePingTimer();  // no-op in direct mode
                         } catch(e) {
                             broadcast({ type: 'sys', msg: '✗ sessionOpen failed — ' + e.message });
                         }
                         continue;
-                    } else if (atoms[0] === 'sessionClose') {
-                        // :sessionClose
-                        if (!state.sessionId) { broadcast({ type: 'sys', msg: '✗ no active session' }); continue; }
+                    } else if (atoms[0] === 'tipClose' || atoms[0] === 'sessionClose') {
+                        // :tipClose  (alias: :sessionClose) — closes the TIPPING session
+                        if (!state.sessionId) { broadcast({ type: 'sys', msg: '✗ no active tipping session' }); continue; }
+                        const closingId = state.sessionId;
+                        // Notify the tipping backend (best-effort) — but the LOCAL
+                        // teardown below runs no matter what. Previously the state
+                        // reset lived inside this try, so if the backend was down or
+                        // unreachable (fetch throws / times out) the deck stayed stuck
+                        // "open" with no way to close it — which read as ":sessionClose
+                        // doesn't work". A short AbortController timeout also stops a
+                        // black-holed host from hanging the close.
                         try {
+                            const ctl = new AbortController();
+                            const to  = setTimeout(() => ctl.abort(), 3000);
                             await fetch(`${TIPPING_URL}/slices/session/close`, {
                                 method:  'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body:    JSON.stringify({ sessionId: state.sessionId }),
+                                body:    JSON.stringify({ sessionId: closingId }),
+                                signal:  ctl.signal,
                             });
-                            broadcast({ type: 'sys', msg: '✓ session ' + state.sessionId + ' closed' });
-                            Max.post('ws_server: session closed — id=' + state.sessionId + '\n');
-                            state.sessionId   = null;
-                            state.sessionDeck = 'ebys';
-                            if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
-                        } catch(e) {
-                            broadcast({ type: 'sys', msg: '✗ sessionClose failed — ' + e.message });
+                            clearTimeout(to);
+                            Max.post('ws_server: session closed (backend acked) — id=' + closingId + '\n');
+                        } catch (e) {
+                            Max.post('ws_server: sessionClose backend unreachable (' + e.message + ') — closing locally\n');
                         }
+                        // Local teardown — always.
+                        state.sessionId   = null;
+                        state.sessionDeck = 'ebys';
+                        if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+                        broadcast({ type: 'session', active: false, sessionId: null, deck: null });
+                        broadcast({ type: 'sys', msg: '✓ session ' + closingId + ' closed' });
                         continue;
                     } else if (atoms[0] === 'pitchShift') {
                         // :pitchShift <stem> <semitones>
@@ -346,8 +480,16 @@ server.on('upgrade', (req, socket) => {
                         Max.outlet('pitchShift', stem, semitones);
                     } else if (atoms[0] === 'width') {
                         // :width <stem> <0–1>  — M/S stereo width (0=mono, 1=full wide)
-                        // stem = vocals | melody | bass | drums | all
-                        const stem  = String(atoms[1] || 'all');
+                        // stem = vocals | melody | bass | drums | all | master
+                        // 'master' has no literal DSP width parameter of its own —
+                        // there's no summed-master M/S stage, width is only ever
+                        // computed per-stem — so it's normalized to 'all' right here,
+                        // same meaning the TUI already gives :width all. Doing this
+                        // server-side (not just client-side) means it's correct
+                        // regardless of what sent the raw command (TUI optimistic
+                        // expansion, :bake replay, another client, etc).
+                        const rawStem = String(atoms[1] || 'all');
+                        const stem    = rawStem.toLowerCase() === 'master' ? 'all' : rawStem;
                         const value = Math.max(0, Math.min(1, parseFloat(atoms[2]) || 0));
                         const targets = stem === 'all' ? ['vocals','melody','bass','drums','live1','live2'] : [stem];
                         targets.forEach(s => { if (state.ms.width.hasOwnProperty(s)) state.ms.width[s] = value; });
@@ -395,11 +537,34 @@ server.on('upgrade', (req, socket) => {
                         broadcast({ type: 'param', key: 'masterJoystick', x, y });
                         Max.outlet('masterJoystick', x, y);
                     } else if (atoms[0] === 'joystick') {
-                        // :joystick <stem> <x> <y>
+                        // :joystick <stem> <x> <y>  — per-stem position
+                        // :joystick <x> <y>         — stem omitted → targets the MASTER mix
                         //   stem: vocals | drums | bass | melody | all
                         //   x: -1 (full left)  to +1 (full right)
                         //   y: -1 (full rear)  to +1 (full front)
-                        const stem    = String(atoms[1] || 'all');
+                        //
+                        // BUG FIX (was: const stem = String(atoms[1] || 'all')): when the
+                        // stem arg is omitted, atoms[1] is actually the user's X value. If
+                        // that X happened to be 0, `0 || 'all'` fell through to 'all' (0 is
+                        // falsy) and silently ate the arg; for any other X, String(atoms[1])
+                        // became a bogus stem name. Either way atoms[2] (the user's real Y)
+                        // got read into the x slot, and atoms[3] (undefined) became y=0 — a
+                        // one-column shift, exactly the "y ends up in x" symptom reported.
+                        // Fix: only treat atoms[1] as a stem if it's actually a valid stem
+                        // name; otherwise shift the args down by one and route to master.
+                        const validStems = ['vocals','melody','bass','drums','all','live1','live2'];
+                        const stemArg   = atoms[1];
+                        const stemGiven = typeof stemArg === 'string' && validStems.includes(stemArg.toLowerCase());
+                        if (!stemGiven) {
+                            // No valid stem given — behave like :masterJoystick <x> <y>.
+                            const x = Math.max(-1, Math.min(1, parseFloat(atoms[1]) || 0));
+                            const y = Math.max(-1, Math.min(1, parseFloat(atoms[2]) || 0));
+                            state.ms.masterJoy = { x, y };
+                            broadcast({ type: 'param', key: 'masterJoystick', x, y });
+                            Max.outlet('masterJoystick', x, y);
+                            break;
+                        }
+                        const stem    = stemArg.toLowerCase();
                         const x       = Math.max(-1, Math.min(1, parseFloat(atoms[2]) || 0));
                         const y       = Math.max(-1, Math.min(1, parseFloat(atoms[3]) || 0));
                         const targets = stem === 'all'
@@ -461,6 +626,24 @@ server.on('upgrade', (req, socket) => {
                         const db    = parseFloat(atoms[2]) || 0;
                         broadcast({ type: 'param', key: 'eqHigh', stem, value: db });
                         Max.outlet('eqHigh', stem, db);
+                    } else if (atoms[0] === 'eqMidFreq') {
+                        // :eqMidFreq <stem|all> <hz>  — mid bell center frequency (200–8000 Hz)
+                        const stem = String(atoms[1] || 'all');
+                        const hz   = parseFloat(atoms[2]) || 1000;
+                        broadcast({ type: 'param', key: 'eqMidFreq', stem, value: hz });
+                        Max.outlet('eqMidFreq', stem, hz);
+                    } else if (atoms[0] === 'mute') {
+                        // :mute <stem|all> <0|1>  — mute (1=mute, 0=unmute)
+                        const stem = String(atoms[1] || 'all');
+                        const val  = parseInt(atoms[2]) ? 1 : 0;
+                        broadcast({ type: 'param', key: 'mute', stem, value: val });
+                        Max.outlet('setStemMute', stem, val);
+                    } else if (atoms[0] === 'solo') {
+                        // :solo <stem|all> <0|1>  — solo (1=on, 0=off); multiple solos stack
+                        const stem = String(atoms[1] || 'all');
+                        const val  = parseInt(atoms[2]) ? 1 : 0;
+                        broadcast({ type: 'param', key: 'solo', stem, value: val });
+                        Max.outlet('setStemSolo', stem, val);
                     } else if (atoms[0] === 'trim') {
                         // :trim <stem|all> <dB>    — input gain before EQ (-12 to +12 dB)
                         const stem  = String(atoms[1] || 'all');
@@ -497,7 +680,7 @@ server.on('upgrade', (req, socket) => {
                             const pad  = n => String(n).padStart(2, '0');
                             const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
                             const fname = customName ? `${customName}.wav` : `EBYS_${stamp}.wav`;
-                            const recDir  = path.join(__dirname, '..', '..', 'data', 'recordings');
+                            const recDir  = path.join(sessionDataDir(), 'recordings');
                             const recPath = path.join(recDir, fname);
                             try { fs.mkdirSync(recDir, { recursive: true }); } catch(e) {}
                             Max.outlet('record_cmd', 'open', recPath);
@@ -513,26 +696,45 @@ server.on('upgrade', (req, socket) => {
                             return;
                         }
                         buildIndexInProgress = true;
+                        // Safety backstop: a hung/failed t-SNE (e.g. a single-track
+                        // library) used to leave this gate stuck `true` forever,
+                        // silently skipping EVERY future buildIndex — the "analyzed
+                        // on disk but 0 tracks, :start does nothing" wedge. Force-
+                        // clear after 15s no matter what happens below.
+                        const bipGuard = setTimeout(() => {
+                            if (buildIndexInProgress) {
+                                buildIndexInProgress = false;
+                                Max.post('ws_server: buildIndex guard timeout — cleared stuck flag\n');
+                            }
+                        }, 15000);
                         // Pre-populate the named dict from Node before triggering slicer.js,
                         // then run t-SNE in the background (no patch wiring needed).
                         prepareLibraryDict()
                             .then(() => {
-                                Max.outlet(...atoms);
+                                Max.outlet(...atoms);   // → slicer.js builds its live index
+                                // A successful rebuild from a NON-EMPTY library means any
+                                // leftover post-reset "block saves" state is stale (the
+                                // analysis likely finished while the TUI was disconnected,
+                                // so completeAnalysis never cleared it). Clear it so the
+                                // index can persist and reload cleanly.
+                                clearResetPendingIfPopulated();
+                                // The gate only exists to prevent CONCURRENT rebuilds; that
+                                // job is done the instant slicer.js has the buildIndex.
+                                // Clear it now so the fire-and-forget t-SNE below can never
+                                // strand it again.
+                                clearTimeout(bipGuard);
+                                buildIndexInProgress = false;
                                 Max.post('ws_server: scheduling t-SNE in 500ms…\n');
                                 setTimeout(() => {
                                     Max.post('ws_server: t-SNE timer fired\n');
                                     try { computeAndWriteUMAP(); }
-                                    catch(e) {
-                                        Max.post('ws_server: UMAP error: ' + String(e) + '\n');
-                                        buildIndexInProgress = false;
-                                    }
-                                    // On success, buildIndexInProgress is reset inside
-                                    // computeAndWriteUMAP's setImmediate, after umapDone broadcast.
+                                    catch(e) { Max.post('ws_server: UMAP error: ' + String(e) + '\n'); }
                                 }, 500);
                             })
                             .catch(e => {
                                 Max.post('ws_server: library prep failed: ' + String(e) + '\n');
                                 Max.outlet(...atoms);
+                                clearTimeout(bipGuard);
                                 buildIndexInProgress = false;
                             });
                     } else if (atoms[0] === 'mode') {
@@ -569,9 +771,15 @@ server.on('upgrade', (req, socket) => {
                         state.trackMode[stem] = newMode;
                         broadcast({ type: 'mode', track: stem, mode: newMode });
 
-                    } else if (atoms[0] === 'entropy') {
-                        // :entropy <0–1>  — ORDER (0) ↔ CHAOS (1) macro
+                    } else if (atoms[0] === 'entropy' || atoms[0] === 'setEntropy') {
+                        // :entropy <0–1> / :setEntropy <0–1>  — ORDER (0) ↔ CHAOS (1) macro
                         // Drives matchProb, stayProb, dirWeight simultaneously in slicer.js
+                        // Both spellings handled here — the TUI's COMMANDS set (and slicer.js's
+                        // own function name) use "setEntropy", but this handler used to only
+                        // match the shorter "entropy". Typing :setEntropy as documented fell
+                        // through to the generic passthrough, which reached slicer.js fine but
+                        // silently skipped state tracking, the broadcast to other clients, and
+                        // LINK sync below — a real, undetectable bug since nothing errored.
                         const val = Math.min(1, Math.max(0, parseFloat(atoms[1]) || 0));
                         state.entropy = val;
                         broadcast({ type: 'param', key: 'entropy', value: val });
@@ -601,6 +809,275 @@ server.on('upgrade', (req, socket) => {
                             }
                         }
                         Max.outlet(...atoms);   // forward all args to slicer.js
+
+                    } else if (atoms[0] === 'setGenreFilter') {
+                        // :setGenreFilter <genre>  — restrict slice selection to tracks matching genre
+                        // Uses case-insensitive substring match against Essentia genre tags
+                        // Run :listGenres first to see what tags are available
+                        Max.outlet(...atoms);
+
+                    } else if (atoms[0] === 'lockSource') {
+                        // :lockSource <leader> <follower>  — follower always draws from leader's source track
+                        // :lockSource <stem>               — clear lock on stem
+                        // No optimistic broadcast here — slicer.js's own outlet(1, "lockSource"/
+                        // "unlockSource", ...) (see Max.addHandler('lockSource'/'unlockSource')
+                        // below) is the confirmed state and arrives within the same tick; a
+                        // separate echo here just risked showing "locked" in the TUI for a
+                        // command slicer.js actually rejected (unknown stem, cycle guard, etc.).
+                        const leader   = String(atoms[1] || '');
+                        const follower = atoms[2] ? String(atoms[2]) : null;
+                        if (follower) {
+                            Max.outlet('lockSource', leader, follower);
+                        } else {
+                            Max.outlet('unlockSource', leader);
+                        }
+
+                    } else if (atoms[0] === 'unlockSource') {
+                        // :unlockSource <stem>  — clear source lock (confirmed via slicer.js's
+                        // own outlet(1, "unlockSource", ...), same as above)
+                        Max.outlet('unlockSource', String(atoms[1] || 'all'));
+
+                    } else if (atoms[0] === 'score') {
+                        // :score <-1..1> [overallSection]  — "vertical" training signal:
+                        // scores the CURRENT layered combination (which source track each
+                        // stem is drawing from, right now, plus how they're mixed
+                        // together) as opposed to :bake's "horizontal" signal (was the
+                        // right SEQUENCE of moves made over time) or :scoreTransition's
+                        // "horizontal" signal (did THIS cut, specifically, flow well).
+                        // Named "score" rather than "rate" — "rate" reads like a
+                        // speed/tempo parameter next to all the audio-rate terminology
+                        // elsewhere in this system. No bracket/session needed — the
+                        // window being scored is implicitly whatever's live this instant,
+                        // bounded by each stem's own current SEGMENT_BARS. Logged only
+                        // for now, same as :bake — this file is what a future offline
+                        // training pass reads to nudge live selection scoring once a
+                        // model exists.
+                        //
+                        // Per-stem `section` below is looked up automatically from
+                        // song_structure.json (whatever a prior :tag stored for that
+                        // stem's current position) — "when signaling a layering of slice
+                        // is good, also signal what section it corresponds to" without
+                        // making the user retype it. The optional trailing arg lets the
+                        // user additionally label the OVERALL combined moment (e.g. the
+                        // mix as a whole reads as a "build" even if individual stems'
+                        // own tagged sections differ) — freeform, not required to match
+                        // an existing :tag'd section.
+                        const score = Math.max(-1, Math.min(1, parseFloat(atoms[1])));
+                        const overallSection = atoms[2] ? String(atoms[2]) : null;
+                        if (isNaN(score)) {
+                            broadcast({ type: 'sys', msg: 'usage: :score <-1..1> [overallSection]' });
+                        } else {
+                            const stemKeys  = ['vocals', 'melody', 'bass', 'drums'];
+                            const structure = loadSongStructure();
+                            const snapshot = {
+                                timestamp: new Date().toISOString(),
+                                type:      'vertical',
+                                rating:    score,
+                                overallSection,
+                                track:     state.track,
+                                bpm:       state.bpm,
+                                globalBPM: state.globalBPM,
+                                key:       state.key,
+                                stems: Object.fromEntries(stemKeys.map(s => {
+                                    const st  = state.stems[s];
+                                    const mid = (st.sliceStart !== undefined && st.sliceEnd !== undefined)
+                                                ? (st.sliceStart + st.sliceEnd) / 2 : null;
+                                    const sec = (st.track && mid !== null) ? findSection(structure, st.track, mid) : null;
+                                    return [s, {
+                                        sourceTrack: st.track,
+                                        slot:        st.slot,
+                                        descriptors: {
+                                            C: st.C, E: st.E, F: st.F, P: st.P, H: st.H, T: st.T,
+                                        },
+                                        segmentBars:     state.segBars[s],
+                                        pan:             state.ms.joy[s],
+                                        width:           state.ms.width[s],
+                                        section:          sec ? sec.tag : null,
+                                        sectionIntensity: sec ? sec.intensity : null,
+                                    }];
+                                })),
+                                master: {
+                                    joy:       state.ms.masterJoy,
+                                    boothGain: state.ms.boothGain,
+                                    recGain:   state.ms.recGain,
+                                },
+                            };
+                            const logPath = path.join(sessionDataDir(), 'training_log_vertical.jsonl');
+                            fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
+                            Max.post('ws_server: ⭐ scored ' + score.toFixed(2) + '\n');
+                            broadcast({ type: 'sys', msg: '⭐ scored ' + score.toFixed(2) + ' — layered combo logged' });
+                        }
+
+                    } else if (atoms[0] === 'tag') {
+                        // :tag <label> [stem]  — tag the bar-range CURRENTLY PLAYING on
+                        // `stem` (default melody) with a structural label (verse/chorus/
+                        // build/drop/intro/bridge/etc — see STRUCTURE_TAGS; any label is
+                        // accepted, that list is just a soft nudge toward consistency).
+                        // Stored in song_structure.json keyed by SOURCE TRACK, not by
+                        // stem — structure is a property of the song. `stem` is only
+                        // used to identify which bar range is currently playing;
+                        // computeIntensity() then pools descriptors from all 4 stems'
+                        // slices in that range, not just the one that was on-screen.
+                        const label = atoms[1] ? String(atoms[1]) : '';
+                        const stem  = atoms[2] ? String(atoms[2]) : 'melody';
+                        if (!label) {
+                            broadcast({ type: 'sys', msg: 'usage: :tag <label> [stem]  (stems: vocals/melody/bass/drums, default melody)' });
+                        } else if (!state.stems[stem]) {
+                            broadcast({ type: 'sys', msg: 'usage: :tag <label> [stem] — unknown stem "' + stem + '"' });
+                        } else {
+                            const st = state.stems[stem];
+                            const sourceTrack = st.track;
+                            if (!sourceTrack || st.sliceStart === undefined || st.sliceEnd === undefined) {
+                                broadcast({ type: 'sys', msg: ':tag — ' + stem + ' has no active segment yet' });
+                            } else {
+                                if (!STRUCTURE_TAGS.includes(label)) {
+                                    broadcast({ type: 'sys', msg: 'note: "' + label + '" isn\'t in the standard tag vocabulary (' + STRUCTURE_TAGS.join(', ') + ') — stored anyway' });
+                                }
+                                const startFrac = st.sliceStart, endFrac = st.sliceEnd;
+                                const result    = computeIntensity(sourceTrack, startFrac, endFrac);
+
+                                const structure = loadSongStructure();
+                                if (!structure[sourceTrack]) structure[sourceTrack] = { sections: [] };
+                                const sections = structure[sourceTrack].sections;
+
+                                // Update an existing section instead of duplicating it if
+                                // this tag clearly re-covers one already stored (>50%
+                                // overlap of the shorter of the two ranges) — keeps the
+                                // store clean when re-tagging the same passage rather than
+                                // piling up near-duplicate entries every time.
+                                const overlapMs = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+                                let existing = null;
+                                for (const sec of sections) {
+                                    const ov      = overlapMs(startFrac, endFrac, sec.startFrac, sec.endFrac);
+                                    const shorter = Math.min(endFrac - startFrac, sec.endFrac - sec.startFrac);
+                                    if (shorter > 0 && ov / shorter > 0.5) { existing = sec; break; }
+                                }
+
+                                const entry = {
+                                    startFrac, endFrac, tag: label,
+                                    intensity:           result.intensity,
+                                    intensityBreakdown:  result.breakdown,
+                                    taggedAt:            new Date().toISOString(),
+                                    taggedByStem:        stem,
+                                };
+                                if (existing) {
+                                    Object.assign(existing, entry);
+                                } else {
+                                    sections.push(entry);
+                                    sections.sort((a, b) => a.startFrac - b.startFrac);
+                                }
+                                saveSongStructure(structure);
+
+                                const intensityStr = (result.intensity !== null)
+                                    ? result.intensity.toFixed(3) : 'n/a (' + result.error + ')';
+                                Max.post('ws_server: 🏷️ tagged ' + sourceTrack + ' [' + startFrac.toFixed(3) + '-'
+                                         + endFrac.toFixed(3) + '] as "' + label + '"  intensity=' + intensityStr + '\n');
+                                broadcast({ type: 'sys', msg: '🏷️ tagged "' + label + '"  intensity=' + intensityStr
+                                         + (existing ? ' (updated existing section)' : '') });
+                            }
+                        }
+
+                    } else if (atoms[0] === 'listSections') {
+                        // :listSections [track]  — print stored structure tags for a
+                        // source track. No track arg = whatever's currently loaded on
+                        // melody (falling back to vocals/bass/drums if melody is empty).
+                        const structure = loadSongStructure();
+                        let track = atoms[1] ? String(atoms[1]) : null;
+                        if (!track) {
+                            for (const s of ['melody', 'vocals', 'bass', 'drums']) {
+                                if (state.stems[s] && state.stems[s].track) { track = state.stems[s].track; break; }
+                            }
+                        }
+                        if (!track || !structure[track] || !structure[track].sections.length) {
+                            broadcast({ type: 'sys', msg: ':listSections — no tagged sections for "' + (track || '?') + '"' });
+                        } else {
+                            const lines = structure[track].sections.map(sec =>
+                                sec.startFrac.toFixed(3) + '-' + sec.endFrac.toFixed(3) + '  ' + sec.tag
+                                + '  intensity=' + (sec.intensity !== null && sec.intensity !== undefined ? sec.intensity.toFixed(2) : 'n/a'));
+                            Max.post('ws_server: sections for ' + track + ':\n  ' + lines.join('\n  ') + '\n');
+                            broadcast({ type: 'sys', msg: structure[track].sections.length + ' section(s) for ' + track + ' — see console' });
+                        }
+
+                    } else if (atoms[0] === 'scoreTransition') {
+                        // :scoreTransition <-1..1> [stem]  — "horizontal" signal, but a
+                        // different one than :bake's: :bake asks "was the right SEQUENCE
+                        // of Cricket commands issued" (a command-level training signal).
+                        // This asks "did the AUDIO itself flow well crossing from the
+                        // previous segment into the current one" (a signal about the cut
+                        // itself) — on one stem, or all 4 at once if no stem is given,
+                        // mirroring :score's whole-mix-by-default shape. Needs both sides
+                        // of the boundary, which the 'desc' handler above snapshots into
+                        // state.stems[s].prevSegment right before it's overwritten by the
+                        // incoming segment's own descriptors.
+                        const score      = Math.max(-1, Math.min(1, parseFloat(atoms[1])));
+                        const stemFilter = atoms[2] ? String(atoms[2]) : null;
+                        if (isNaN(score)) {
+                            broadcast({ type: 'sys', msg: 'usage: :scoreTransition <-1..1> [stem]' });
+                        } else if (stemFilter && !state.stems[stemFilter]) {
+                            broadcast({ type: 'sys', msg: 'usage: :scoreTransition <-1..1> [stem] — unknown stem "' + stemFilter + '"' });
+                        } else {
+                            const stemKeys  = stemFilter ? [stemFilter] : ['vocals', 'melody', 'bass', 'drums'];
+                            const structure = loadSongStructure();
+                            const stemsOut  = {};
+                            let any = false;
+                            for (const s of stemKeys) {
+                                const st = state.stems[s];
+                                if (!st || !st.prevSegment) continue;
+                                any = true;
+                                const fromMid = (st.prevSegment.sliceStart + st.prevSegment.sliceEnd) / 2;
+                                const toMid   = (st.sliceStart !== undefined && st.sliceEnd !== undefined)
+                                                ? (st.sliceStart + st.sliceEnd) / 2 : null;
+                                const fromSec = findSection(structure, st.prevSegment.sourceTrack, fromMid);
+                                const toSec   = (st.track && toMid !== null) ? findSection(structure, st.track, toMid) : null;
+                                stemsOut[s] = {
+                                    from: {
+                                        sourceTrack: st.prevSegment.sourceTrack, id: st.prevSegment.id,
+                                        descriptors: st.prevSegment.descriptors, section: fromSec ? fromSec.tag : null,
+                                    },
+                                    to: {
+                                        sourceTrack: st.track, id: st.id,
+                                        descriptors: { C: st.C, E: st.E, F: st.F, P: st.P, H: st.H, T: st.T },
+                                        section: toSec ? toSec.tag : null,
+                                    },
+                                };
+                            }
+                            if (!any) {
+                                broadcast({ type: 'sys', msg: ':scoreTransition — no transition recorded yet' + (stemFilter ? ' for ' + stemFilter : '') });
+                            } else {
+                                const snapshot = {
+                                    timestamp: new Date().toISOString(),
+                                    type:      'horizontal_transition',
+                                    rating:    score,
+                                    stems:     stemsOut,
+                                };
+                                const logPath = path.join(sessionDataDir(), 'training_log_transition.jsonl');
+                                fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
+                                Max.post('ws_server: ⭐ transition scored ' + score.toFixed(2) + '\n');
+                                broadcast({ type: 'sys', msg: '⭐ transition scored ' + score.toFixed(2) + ' — logged' });
+                            }
+                        }
+
+                    } else if (atoms[0] === 'clearGenreFilter') {
+                        // :clearGenreFilter  — remove genre restriction
+                        Max.outlet('clearGenreFilter');
+
+                    } else if (atoms[0] === 'listGenres') {
+                        // :listGenres  — print available genre tags to Max console
+                        Max.outlet('listGenres');
+
+                    } else if (atoms[0] === 'setKeyFilter') {
+                        // :setKeyFilter <key>  — restrict to tracks in this key (e.g. Am, C#, G)
+                        Max.outlet(...atoms);
+
+                    } else if (atoms[0] === 'clearKeyFilter') {
+                        // :clearKeyFilter  — remove key restriction
+                        Max.outlet('clearKeyFilter');
+
+                    } else if (atoms[0] === 'setSrcWeights') {
+                        // :setSrcWeights <bpm_weight> <cohesion_weight>
+                        // Tune probabilistic source-track selection at runtime.
+                        // Values are renormalised inside slicer.js so they sum to 1.0.
+                        Max.outlet(...atoms);
 
                     } else if (atoms[0] === 'link') {
                         // :link on | off | status | mode <m> | arm [entropy] | fire | abort | token <hex>
@@ -649,6 +1126,97 @@ server.on('upgrade', (req, socket) => {
                             }
                         }
 
+                    } else if (atoms[0] === 'resetAll') {
+                        // :resetAll — wipe ALL analysis data, index, and library.
+                        // Keeps source audio (mp4/wav in data/) and stem audio (data/stems/).
+                        // Run the analysis pipeline again after this to rebuild from scratch.
+                        // All three of these used to point at different legacy locations
+                        // (data/, src/max/, src/) — now that migrateLegacyDataIfNeeded()
+                        // has consolidated everything into the active session's dir, all
+                        // three collapse to the same sessionDataDir() so :resetAll wipes
+                        // the CURRENTLY active session, not a stale default location.
+                        const dataDir = sessionDataDir();
+                        const maxDir  = sessionDataDir();
+                        const srcDir  = sessionDataDir();
+
+                        const wipe = (p, empty) => {
+                            try { fs.writeFileSync(p, empty, 'utf8'); } catch(e) {}
+                        };
+                        const del = (p) => {
+                            try { fs.unlinkSync(p); } catch(e) {}
+                        };
+                        const delGlob = (dir, prefix) => {
+                            try {
+                                fs.readdirSync(dir)
+                                  .filter(f => f.startsWith(prefix))
+                                  .forEach(f => del(path.join(dir, f)));
+                            } catch(e) {}
+                        };
+
+                        // ── data/ ─────────────────────────────────────────
+                        wipe(path.join(dataDir, 'downbeats.json'),        '{}');
+                        wipe(path.join(dataDir, 'analysis_library.json'), '{}');
+                        wipe(path.join(dataDir, 'genres.json'),           '{}');
+                        wipe(path.join(dataDir, 'stream.txt'),            '');
+                        del( path.join(dataDir, 'ebys.db'));
+
+                        // ── src/max/ ──────────────────────────────────────
+                        // Delete ebys_index.json; if locked, wipe to {} as fallback.
+                        (() => {
+                            const p = path.join(maxDir, 'ebys_index.json');
+                            try { fs.unlinkSync(p); Max.post('ws_server: ebys_index.json deleted\n'); }
+                            catch(e) {
+                                Max.post('ws_server: ebys_index.json delete failed (' + e.code + ') — wiping to {}\n');
+                                try { fs.writeFileSync(p, '{}', 'utf8'); } catch(e2) {}
+                            }
+                        })();
+                        del( path.join(maxDir,  'stem_ranges.json'));
+                        del( path.join(maxDir,  'umap_coords.json'));
+                        wipe(path.join(maxDir,  'dict_analysis.json'),    '{}');
+                        wipe(path.join(maxDir,  'analysis_library.json'), '{}');
+                        delGlob(maxDir, 'ebys_feed_');
+
+                        // ── src/ duplicates ───────────────────────────────
+                        wipe(path.join(srcDir, 'downbeats.json'), '{}');
+                        wipe(path.join(srcDir, 'genres.json'),    '{}');
+
+                        // ── notify ────────────────────────────────────────
+                        // Write sentinel so resetAllPending survives a patch reload.
+                        try { fs.writeFileSync(path.join(maxDir, 'ebys_reset.flag'), '1', 'utf8'); } catch(e) {}
+                        resetAllPending = true;   // block stale index saves until new analysis
+                        Max.outlet('resetAll');
+                        broadcast({ type: 'resetAll' });
+                        Max.post('ws_server: resetAll — all data wiped\n');
+
+                    } else if (atoms[0] === 'triggerMode') {
+                        // :triggerMode <stem|all> <0|1>
+                        // 0 = continuous auto-play, 1 = stem pauses at slice end waiting for trigger
+                        const stem = String(atoms[1] || 'all');
+                        const val  = parseInt(atoms[2]) ? 1 : 0;
+                        broadcast({ type: 'triggerMode', track: stem, value: val });
+                        Max.outlet('setTriggerMode', stem, val);
+
+                    } else if (atoms[0] === 'trigger') {
+                        // :trigger [stem]  — fire next slice for a paused stem (or all paused stems)
+                        const stem = atoms[1] ? String(atoms[1]) : '';
+                        if (stem) Max.outlet('trigger', stem);
+                        else      Max.outlet('trigger');
+
+                    } else if (atoms[0] === 'next') {
+                        // :next [stem]  — force-pick the next slice right now, per stem or all.
+                        // Deliberately renamed to 'forceNext' on the way to slicer.js rather
+                        // than forwarded as a plain 'next' — that literal message is also what
+                        // every stem's own auto-advance delay timer sends when a segment
+                        // naturally finishes playing, and slicer.js's next() has a guard (see
+                        // its Q2 self-pull fix) that silently no-ops a locked follower already
+                        // synced to its leader's current cycle. Correct for the automatic
+                        // timer case, wrong for a manual command — the user asking for bass's
+                        // next slice should always get a fresh one. forceNext() in slicer.js is
+                        // the separate, non-guarded path for that (locked followers advance
+                        // their leader instead, keeping the lock intact).
+                        const stem = atoms[1] ? String(atoms[1]) : 'all';
+                        Max.outlet('forceNext', stem);
+
                     } else {
                         Max.outlet(...atoms);
                     }
@@ -665,31 +1233,90 @@ server.on('upgrade', (req, socket) => {
     socket.on('error', () => { clients.delete(socket); });
 });
 
+// Toggling DSP or closing/reopening the patch in quick succession kills the
+// previous node.script child process and immediately spawns a new one — but
+// the OS doesn't always release a just-closed TCP port instantly (TIME_WAIT/
+// lingering close), so the new process used to hit EADDRINUSE and just give
+// up, leaving the TUI permanently disconnected until a manual reload. That
+// dead WebSocket bridge is one concrete, fixable piece of "the patch is
+// fragile on open/close/open" — retry with backoff instead of giving up
+// immediately; the port is almost always free within a second or two.
+const LISTEN_RETRY_DELAYS_MS = [300, 600, 1200, 2000, 3000]; // ~7s total before giving up
+let listenAttempt = 0;
+
+function startServer() {
+    server.listen(PORT);
+}
+
 server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-        Max.post('ws_server: port ' + PORT + ' already in use — close other Max sessions and reload\n');
+        if (listenAttempt < LISTEN_RETRY_DELAYS_MS.length) {
+            const delay = LISTEN_RETRY_DELAYS_MS[listenAttempt++];
+            Max.post('ws_server: port ' + PORT + ' still held by a previous session — retrying in '
+                     + delay + 'ms (' + listenAttempt + '/' + LISTEN_RETRY_DELAYS_MS.length + ')\n');
+            setTimeout(startServer, delay);
+        } else {
+            Max.post('ws_server: port ' + PORT + ' still in use after retrying — close other Max '
+                     + 'sessions (check Activity Monitor for stray "node" processes) and reload\n');
+        }
     } else {
         Max.post('ws_server: server error — ' + err.message + '\n');
     }
 });
 
-server.listen(PORT, () => {
+// Best-effort graceful shutdown — close the HTTP/WS server and drop any open
+// sockets immediately instead of letting them linger in the OS's TIME_WAIT
+// state, so the *next* node.script instance (patch reopen / DSP retoggle)
+// finds the port free right away instead of needing the retry loop above.
+function shutdown() {
+    try { for (const c of clients) { try { c.destroy(); } catch(e) {} } } catch(e) {}
+    try { clients.clear(); } catch(e) {}
+    try { server.close(); } catch(e) {}
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT',  shutdown);
+process.on('exit',    shutdown);
+
+startServer();
+
+server.on('listening', () => {
+    listenAttempt = 0;
     Max.post('ws_server: ready on port ' + PORT + '\n');
     Max.outlet('ws_ready');   // signals the patch to start the meter metro
+
+    // Restore resetAllPending across patch reloads via sentinel file.
+    const flagPath = path.join(sessionDataDir(), 'ebys_reset.flag');
+    if (fs.existsSync(flagPath)) {
+        resetAllPending = true;
+        try { fs.unlinkSync(flagPath); } catch(e) {}
+        Max.post('ws_server: resetAll flag found — index saves blocked until new analysis\n');
+    }
 
     // Send downbeats.json before the cached index so loadDownbeats() finds data ready.
     // downbeatchunk goes out outlet 0 → route else [24] → slicer.js inlet 0.
     try {
-        const dbStr = fs.readFileSync(path.join(__dirname, '..', '..', 'data', 'downbeats.json'), 'utf8');
+        const dbStr = fs.readFileSync(path.join(sessionDataDir(), 'downbeats.json'), 'utf8');
         const { sid, total } = sendChunked('downbeatchunk', dbStr);
         Max.post('ws_server: downbeats sent (stream ' + sid + ', ' + total + ' chunks)\n');
     } catch(e) {
         Max.post('ws_server: downbeats error — ' + e + '\n');
     }
 
+    // Send learned_bias.json (if train_bias.py has ever produced one) the same
+    // way — biaschunk goes out outlet 0 → route else [24] → slicer.js inlet 0.
+    // Fine if it doesn't exist yet: loadLearnedBias() treats "never arrived"
+    // as "no learned bias yet" and behaves exactly as before.
+    try {
+        const lbStr = fs.readFileSync(path.join(sessionDataDir(), 'learned_bias.json'), 'utf8');
+        const { sid, total } = sendChunked('biaschunk', lbStr);
+        Max.post('ws_server: learned_bias sent (stream ' + sid + ', ' + total + ' chunks)\n');
+    } catch(e) {
+        Max.post('ws_server: no learned_bias.json yet — skipping\n');
+    }
+
     // Send cached index to slicer immediately so it's ready before TUI connects.
     // idxchunk goes out outlet 0 → route else [24] → slicer.js inlet 0.
-    const idxPath = path.join(__dirname, 'ebys_index.json');
+    const idxPath = path.join(sessionDataDir(), 'ebys_index.json');
     try {
         const idxStr = fs.readFileSync(idxPath, 'utf8');
         JSON.parse(idxStr); // validate before sending — skip if file is corrupted/truncated
@@ -700,6 +1327,124 @@ server.listen(PORT, () => {
         Max.post('ws_server: no cached index — will build on first connect\n');
     }
 });
+
+// ── Song structure tagging ──────────────────────────────────────────────────
+// Lets a human tag a bar-range of a source track with a structural label
+// (intro/verse/chorus/build/drop/bridge/outro/etc) live, while listening, via
+// :tag — so the engine eventually has real song-structure data to work with,
+// not just spectral distance between adjacent slices. Storage is
+// data/song_structure.json, keyed by source track name, same convention as
+// downbeats.json/analysis_library.json (canonical current state, overwritten
+// in place) — NOT an append-only training log like :bake/:score/
+// :scoreTransition use, since a structure tag describes a fact about the
+// song rather than a training example about a decision made.
+//
+// Intensity is computed automatically rather than rated by hand (that was
+// the explicit scoping decision) — see computeIntensity() below.
+// Resolved fresh on every load/save (not cached) — same reasoning as
+// sessionDataDir() above: this process outlives any single session.
+function songStructurePath() {
+    return path.join(sessionDataDir(), 'song_structure.json');
+}
+
+// Not enforced — :tag accepts any label — but Cricket and :listSections both
+// treat this as the canonical vocabulary; anything else gets a soft warning.
+const STRUCTURE_TAGS = [
+    'intro', 'verse', 'pre-chorus', 'chorus', 'build', 'drop',
+    'breakdown', 'bridge', 'outro', 'hook', 'interlude',
+];
+
+function loadSongStructure() {
+    try {
+        return JSON.parse(fs.readFileSync(songStructurePath(), 'utf8'));
+    } catch (e) {
+        return {}; // no file yet (first :tag ever) or unreadable — start fresh
+    }
+}
+
+function saveSongStructure(data) {
+    fs.writeFileSync(songStructurePath(), JSON.stringify(data, null, 2));
+}
+
+// findSection — the stored section (if any) covering `frac` (0..1) of
+// sourceTrack. Shared by :score (attach a tag to a vertical rating) and
+// :scoreTransition (attach tags to both sides of a transition) so both
+// mechanisms read the same canonical structure data instead of duplicating
+// the lookup.
+function findSection(structure, sourceTrack, frac) {
+    const entry = structure[sourceTrack];
+    if (!entry || !entry.sections) return null;
+    for (const sec of entry.sections) {
+        if (frac >= sec.startFrac && frac < sec.endFrac) return sec;
+    }
+    return null;
+}
+
+// computeIntensity — averages normalized density + centroid (C) + spread (S)
+// across every analyzed slice, on ALL FOUR stems, that falls within
+// [startFrac, endFrac) of sourceTrack. Structure is a property of the SONG,
+// not of whichever one stem happened to be playing when :tag fired — that
+// stem is only used to identify WHICH bar range to tag, not which
+// descriptors to average.
+//
+// C and S are normalized per-source-track (min/max across every slice of
+// that track, all 4 stems pooled together) so "the brightest/loudest moment
+// of THIS song" anchors 1.0 consistently regardless of which section is
+// being tagged — same convention add_stereo_features.py already uses for
+// per-stem width normalization. density is already a 0-1 field, used as-is.
+//
+// NOTE on S: as of this session, S (spectral spread) is a known-broken exact
+// duplicate of C for every slice in the library — a buffer~ channel-count
+// bug in ebys-analyze.maxpat's spectral-shape feature extraction, not a bug
+// in this formula (see the follow-up task tracking that fix). Included here
+// anyway per explicit instruction — this improves automatically once the
+// analysis pipeline is fixed and re-run; no formula change needed then.
+function computeIntensity(sourceTrack, startFrac, endFrac) {
+    let lib;
+    try {
+        lib = JSON.parse(fs.readFileSync(
+            path.join(sessionDataDir(), 'analysis_library.json'), 'utf8'));
+    } catch (e) {
+        return { intensity: null, breakdown: null, error: 'analysis_library.json unreadable: ' + e.message };
+    }
+
+    const stemSuffixes = { vocals: '_vocals.wav', melody: '_other.wav', bass: '_bass.wav', drums: '_drums.wav' };
+    let cMin = Infinity, cMax = -Infinity, sMin = Infinity, sMax = -Infinity;
+    const inRange = [];
+
+    for (const stemName in stemSuffixes) {
+        const fileKey  = sourceTrack + stemSuffixes[stemName];
+        const stemData = lib[fileKey] && lib[fileKey][stemName];
+        if (!stemData || !stemData.slices) continue;
+        for (const sid in stemData.slices) {
+            const s = stemData.slices[sid];
+            if (typeof s.C !== 'number' || typeof s.S !== 'number' || typeof s.time !== 'number') continue;
+            if (s.C < cMin) cMin = s.C;
+            if (s.C > cMax) cMax = s.C;
+            if (s.S < sMin) sMin = s.S;
+            if (s.S > sMax) sMax = s.S;
+            if (s.time >= startFrac && s.time < endFrac) inRange.push(s);
+        }
+    }
+
+    if (inRange.length === 0) {
+        return { intensity: null, breakdown: null, error: 'no analyzed slices found in that range for ' + sourceTrack };
+    }
+
+    const norm = (v, lo, hi) => (hi > lo) ? Math.max(0, Math.min(1, (v - lo) / (hi - lo))) : 0.5;
+
+    let dSum = 0, cSum = 0, sSum = 0, n = 0;
+    for (const s of inRange) {
+        dSum += (typeof s.density === 'number') ? s.density : 0.5;
+        cSum += norm(s.C, cMin, cMax);
+        sSum += norm(s.S, sMin, sMax);
+        n++;
+    }
+
+    const breakdown = { density: dSum / n, centroid: cSum / n, spread: sSum / n };
+    const intensity = (breakdown.density + breakdown.centroid + breakdown.spread) / 3;
+    return { intensity, breakdown, sliceCount: n };
+}
 
 // ── Library dict pre-loader ───────────────────────────────────────────────────
 // Max's JS Dict.readfromfile() is unavailable; instead we read the JSON in Node
@@ -718,7 +1463,7 @@ function parseMaxDictJSON(raw) {
 }
 
 function prepareLibraryDict() {
-    const libPath = path.join(__dirname, '..', '..', 'data', 'analysis_library.json');
+    const libPath = path.join(sessionDataDir(), 'analysis_library.json');
     const raw  = fs.readFileSync(libPath, 'utf8');
     cachedLibraryData = parseMaxDictJSON(raw);
 
@@ -732,7 +1477,7 @@ function prepareLibraryDict() {
 
     // Send genres.json the same way — slicer.js uses it to tag slices for genre filtering.
     try {
-        const genresPath = path.join(__dirname, '..', '..', 'data', 'genres.json');
+        const genresPath = path.join(sessionDataDir(), 'genres.json');
         const genresStr  = fs.readFileSync(genresPath, 'utf8');
         const { sid: gSid, total: gTotal } = sendChunked('genrechunk', genresStr);
         Max.post('ws_server: genres sent (stream ' + gSid + ', ' + gTotal + ' chunks)\n');
@@ -932,7 +1677,7 @@ function computeAndWriteUMAP() {
     }
 
     // Write stem_ranges.json immediately (no t-SNE needed).
-    const rangesPath = path.join(__dirname, 'stem_ranges.json');
+    const rangesPath = path.join(sessionDataDir(), 'stem_ranges.json');
     fs.writeFileSync(rangesPath, JSON.stringify(stemRanges));
     Max.post('ws_server: stem_ranges.json written\n');
 
@@ -956,7 +1701,7 @@ function computeAndWriteUMAP() {
                 umapResults[stem] = coords;
                 Max.post('ws_server: t-SNE [' + stem + ']: done in ' + ms + 'ms\n');
             }
-            const outPath = path.join(__dirname, 'umap_coords.json');
+            const outPath = path.join(sessionDataDir(), 'umap_coords.json');
             fs.writeFileSync(outPath, JSON.stringify(umapResults));
             Max.post('ws_server: umap_coords.json written\n');
             broadcast({ type: 'umapDone' });
@@ -966,6 +1711,8 @@ function computeAndWriteUMAP() {
             Max.post('ws_server: t-SNE result parse error — ' + e + '\n');
         }
         buildIndexInProgress = false;
+        resetAllPending = false;   // new analysis complete — allow index saves again
+        try { fs.unlinkSync(path.join(sessionDataDir(), 'ebys_reset.flag')); } catch(e) {} // clean up sentinel
     });
 
     child.stderr.on('data', d => {
@@ -985,11 +1732,29 @@ function broadcast(obj) {
 }
 
 // ── Slicer outlet 1 — status messages ────────────────────────────────────────
-Max.addHandler('desc', (track, C, E, F, P, H, T, tC, tE, tF, tP, tH, tT) => {
+Max.addHandler('desc', (track, C, S, E, F, P, H, T, tC, tE, tF, tP, tH, tT) => {
     if (!state.stems[track]) return;
+    // Snapshot the OUTGOING segment before it's overwritten below — this is
+    // the one point where "what was just playing" and "what's about to play"
+    // are both still distinguishable, since slicer.js always emits desc
+    // before seg for a new segment (established ordering — see the loop-
+    // branch comment history). :scoreTransition reads prevSegment to score a
+    // transition without needing its own separate before/after tracking.
+    if (state.stems[track].id && state.stems[track].id !== '--') {
+        state.stems[track].prevSegment = {
+            id:          state.stems[track].id,
+            sourceTrack: state.stems[track].track,
+            sliceStart:  state.stems[track].sliceStart,
+            sliceEnd:    state.stems[track].sliceEnd,
+            descriptors: {
+                C: state.stems[track].C, E: state.stems[track].E, F: state.stems[track].F,
+                P: state.stems[track].P, H: state.stems[track].H, T: state.stems[track].T,
+            },
+        };
+    }
     const tension = (v) => (v === undefined || v === null || v === '') ? null : parseFloat(v);
     Object.assign(state.stems[track], {
-        C: parseFloat(C)||0, E: parseFloat(E)||0,
+        C: parseFloat(C)||0, S: parseFloat(S)||0, E: parseFloat(E)||0,
         F: parseFloat(F)||0, P: parseFloat(P)||0,
         H: parseFloat(H)||0, T: parseFloat(T)||0,
         tC: tension(tC), tE: tension(tE), tF: tension(tF),
@@ -1044,12 +1809,72 @@ Max.addHandler('globalBPM', (n) => {
     updatePingTimer();  // BPM changed — restart ping interval
 });
 
+// slicer.js emits "need_downbeats" from loadbang() every time it loads/reloads,
+// and now also from a manual :reloadDownbeats. Re-send downbeats.json chunks
+// so trackDownbeats is repopulated. Broadcast to the TUI too — previously
+// this only ever posted to the Max console, which is invisible from the TUI,
+// so a manual reload had no visible confirmation it did anything at all.
+Max.addHandler('need_downbeats', () => {
+    try {
+        const dbPath = path.join(sessionDataDir(), 'downbeats.json');
+        const dbStr  = fs.readFileSync(dbPath, 'utf8');
+        const { sid, total } = sendChunked('downbeatchunk', dbStr);
+        Max.post('ws_server: downbeats re-sent on request (stream ' + sid + ', ' + total + ' chunks)\n');
+        broadcast({ type: 'sys', msg: '↻ downbeats.json re-read from disk (' + total + ' chunk(s) sent to slicer.js)' });
+    } catch(e) {
+        Max.post('ws_server: need_downbeats — ' + e + '\n');
+        broadcast({ type: 'sys', msg: '✗ downbeats reload failed — ' + e.message });
+    }
+});
+
+// slicer.js emits "need_learnedBias" from loadbang() every reload, and again
+// from a manual :reloadBias (e.g. after :trainBias finishes). Same round trip
+// as need_downbeats above — real Node fs read, re-sent as biaschunk.
+Max.addHandler('need_learnedBias', () => {
+    try {
+        const lbPath = path.join(sessionDataDir(), 'learned_bias.json');
+        const lbStr  = fs.readFileSync(lbPath, 'utf8');
+        const { sid, total } = sendChunked('biaschunk', lbStr);
+        Max.post('ws_server: learned_bias re-sent on request (stream ' + sid + ', ' + total + ' chunks)\n');
+        broadcast({ type: 'sys', msg: '↻ learned_bias.json re-read from disk (' + total + ' chunk(s) sent to slicer.js)' });
+    } catch(e) {
+        Max.post('ws_server: need_learnedBias — ' + e + '\n');
+        broadcast({ type: 'sys', msg: '✗ learned_bias.json not found yet — run :trainBias first' });
+    }
+});
+
+// slicer.js's loadDownbeats() reports what it actually found (or didn't) via
+// outlet(1, "sysMsg", "..."). Generic passthrough to the TUI's log pane —
+// see msg.type === 'sys' in app.js.
+Max.addHandler('sysMsg', (...parts) => {
+    broadcast({ type: 'sys', msg: parts.join(' ') });
+});
+
+
+// slicer.js emits: outlet(1, "playFullFile", track|"all", 0|1) — from an
+// explicit :chunkMode, or implicitly whenever :setSegmentBars is used
+// (that command always clears it for the affected stem(s)). Drives the TUI's
+// [CHUNK MODE ON/OFF] header indicator.
+Max.addHandler('playFullFile', (track, v) => {
+    broadcast({ type: 'playFullFile', track: String(track), value: parseInt(v) ? 1 : 0 });
+});
+
+// slicer.js emits: outlet(1, "setWindow", normalizedType) — after :setWindow
+// forwards through buffer_manager.js/slot_router.js to the actual pfft~/gizmo~
+// pitch shifter. Broadcasting as a generic 'param' with key 'window' reuses
+// the TUI's existing param-handling (see app.js's keyMap: window → envelope),
+// so the header's "win:" readout picks this up with no extra wiring needed.
+Max.addHandler('setWindow', (type) => {
+    broadcast({ type: 'param', key: 'window', value: String(type) });
+});
+
 // slicer.js emits: outlet(1, "segmentBars", track, N)
 Max.addHandler('segmentBars', (track, n) => {
     const t    = String(track);
-    const bars = parseFloat(n) || 4;
+    const bars = parseFloat(n) || 8;
     if (state.segBars.hasOwnProperty(t)) state.segBars[t] = bars;
-    broadcast({ type: 'param', key: 'bars', track: t, value: bars });
+    // TUI listens for type:'segmentBars', not type:'param' — must match exactly.
+    broadcast({ type: 'segmentBars', track: t, value: bars });
 });
 
 Max.addHandler('stemTrack', (stem, trackName) => {
@@ -1058,8 +1883,24 @@ Max.addHandler('stemTrack', (stem, trackName) => {
     broadcast({ type: 'stemTrack', name: String(stem), track: String(trackName || '') });
 });
 
+// Emitted by slicer.js's setStemSource() whenever a stem is pinned/unpinned
+// to a specific source track (outlet(1, "stemSource", track, name)). "any"
+// means unpinned. Stored so the TUI can show a pin indicator per stem, and so
+// a reconnecting client picks up the current pin state instead of assuming
+// nothing is pinned.
+Max.addHandler('stemSource', (stem, name) => {
+    if (!state.stems[stem]) return;
+    const pinned = String(name || 'any');
+    state.stems[stem].pinnedSource = (pinned.toLowerCase() === 'any') ? null : pinned;
+    broadcast({ type: 'stemSource', name: String(stem), pinnedSource: state.stems[stem].pinnedSource });
+});
+
 Max.addHandler('stemDurMs', (track, ms) => {
-    broadcast({ type: 'stemDurMs', track: String(track), ms: parseFloat(ms) });
+    const m = parseFloat(ms) || 0;
+    // Store in server state so it survives being spread into future seg broadcasts.
+    // Without this, every seg broadcast would clobber the TUI's durMs with 0.
+    if (state.stems[track]) state.stems[track].durMs = m;
+    broadcast({ type: 'stemDurMs', track: String(track), ms: m });
 });
 
 Max.addHandler('slice_ms', (track, ms) => {
@@ -1079,29 +1920,85 @@ Max.addHandler('stopped', () => {
                 key: state.key, slices: state.slices });
 });
 
+// slicer.js emits "started" after all selectSegment calls in start().
+// Lets TUI reset its stopped flag and restart the progress-bar render loop.
+Max.addHandler('started', () => {
+    state.running = true;
+    broadcast({ type: 'started' });
+});
+
+// slicer.js fires segmentEnd from next(track) the instant the Max delay expires.
+// That is the exact moment karma~ finishes — ground truth for the TUI bar.
+Max.addHandler('segmentEnd', (track) => {
+    broadcast({ type: 'segmentEnd', name: String(track) });
+});
+
+// slicer.js fires segPlayMs (outlet 1) with the actual playback duration:
+//   actualPlayMs = totalFrac × durMs × stretchRatio
+// This is what karma~ physically plays and what the TUI bar should match.
+// Overwrites the coarser snapSegDurMs stored by handlePlayback.
+Max.addHandler('segPlayMs', (track, ms) => {
+    const m = parseFloat(ms) || 0;
+    if (state.stems[track] && m > 0) state.stems[track].segDurMs = m;
+    broadcast({ type: 'segPlayMs', name: String(track), ms: m });
+});
+
+// slicer.js fires segRetime (outlet 1) from applyGlobalBPMLive() whenever a
+// live :setGlobalBPM/:setFallbackBPM change retimes whatever's CURRENTLY
+// playing for this stem. Deliberately not folded into state.stems[track]
+// here — remainingMs is "time left from now," not a segDurMs the progress-
+// bar math can use directly; the TUI has to rebase its own elapsed-since-
+// start reference against it to keep the fill continuous instead of
+// snapping. Just relay it.
+Max.addHandler('segRetime', (track, remainingMs) => {
+    const m = parseFloat(remainingMs) || 0;
+    if (m > 0) broadcast({ type: 'segRetime', name: String(track), remainingMs: m });
+});
+
 // ── Slicer outlet 0 — playback triggers ──────────────────────────────────────
 // New format (v2 multi-track): track  slot  startFrac  endFrac  stretchRatio  segDurMs
 // After Max routes by stem name, args here are: slot startFrac endFrac stretchRatio segDurMs
-function handlePlayback(track, slot, startFrac, segDurMs) {
+function handlePlayback(track, slot, startFrac, stretchRatio, segDurMs) {
     if (!state.stems[track]) return;
     // slot = source track index (int); startFrac = 0–1 position in source buffer
     state.stems[track].pos  = parseFloat(startFrac) || 0;
     state.stems[track].slot = parseInt(slot) || 0;
-    if (segDurMs !== undefined) state.stems[track].segDurMs = parseFloat(segDurMs) || 0;
-    broadcast({ type: 'stem', name: track, ...state.stems[track] });
-}
-Max.addHandler('vocals', (slot, startFrac, endFrac, stretchRatio, segDurMs) => {
+    // NOTE: deliberately NOT storing segDurMs here anymore (see below) — this
+    // is the raw, UNSTRETCHED pre-stretch value (segDurMsForOutlet in
+    // slicer.js), not the real wall-clock segment duration. The accurate
+    // stretched value arrives moments later via segPlayMs (outlet 1).
+    //
+    // Set running on first playback from ANY stem — not just vocals.
+    // Vocals may have few bar-aligned slices and not fire reliably.
     if (!state.running) {
         state.running = true;
         broadcast({ type: 'state', running: true,
                     track: state.track, bpm: state.bpm,
                     key: state.key, slices: state.slices });
     }
-    handlePlayback('vocals', slot, startFrac, segDurMs);
-});
-Max.addHandler('melody', (slot, startFrac, endFrac, stretchRatio, segDurMs) => { handlePlayback('melody', slot, startFrac, segDurMs); });
-Max.addHandler('bass',   (slot, startFrac, endFrac, stretchRatio, segDurMs) => { handlePlayback('bass',   slot, startFrac, segDurMs); });
-Max.addHandler('drums',  (slot, startFrac, endFrac, stretchRatio, segDurMs) => { handlePlayback('drums',  slot, startFrac, segDurMs); });
+    // Deliberately NOT broadcasting a 'stem' message here. The TUI treats
+    // EVERY 'stem' broadcast as ground truth that a brand new segment just
+    // started and resets that stem's progress-bar timer unconditionally (see
+    // sdj-tui.js's 'stem' handler comment). outlet 0 (here) and outlet 1's
+    // "seg" message (handled below, Max.addHandler('seg', ...)) both fire for
+    // every single segment, moments apart — broadcasting 'stem' from BOTH
+    // meant the TUI reset the timer TWICE per segment: once here, using the
+    // rough/unstretched segDurMs above (before it's corrected), and once more
+    // a beat later when "seg" arrives with the accurate segPlayMs already
+    // applied. Two competing "this just started" signals per segment, one of
+    // them carrying transiently-wrong duration data, is exactly the kind of
+    // race that can leave the bar showing a stale fill against the real
+    // (differently-timed) audio. "seg" is the single, authoritative signal
+    // that a new segment started — outlet 0 firing first is just a routing
+    // step (buffer_manager.js's compose→play handoff), not a musically
+    // meaningful event on its own. pos/slot/segDurMs are still written to
+    // state.stems[track] above/via segPlayMs below; the next "seg" broadcast
+    // picks up all of it via its own full-state spread.
+}
+Max.addHandler('vocals', (slot, startFrac, endFrac, stretchRatio, segDurMs) => { handlePlayback('vocals', slot, startFrac, stretchRatio, segDurMs); });
+Max.addHandler('melody', (slot, startFrac, endFrac, stretchRatio, segDurMs) => { handlePlayback('melody', slot, startFrac, stretchRatio, segDurMs); });
+Max.addHandler('bass',   (slot, startFrac, endFrac, stretchRatio, segDurMs) => { handlePlayback('bass',   slot, startFrac, stretchRatio, segDurMs); });
+Max.addHandler('drums',  (slot, startFrac, endFrac, stretchRatio, segDurMs) => { handlePlayback('drums',  slot, startFrac, stretchRatio, segDurMs); });
 
 // ── State / meta ──────────────────────────────────────────────────────────────
 Max.addHandler('state', (running) => {
@@ -1149,12 +2046,15 @@ Max.addHandler('entropy', (e, mp, sp, dw) => {
 
 // stayProb feedback (slicer emits when individual stem stayProb changes)
 Max.addHandler('stayProb', (track, val) => {
-    broadcast({ type: 'param', key: 'stayProb', track: String(track), value: parseFloat(val) || 0 });
+    // TUI listens for type:'stayProb', not type:'param' — must match exactly.
+    broadcast({ type: 'stayProb', track: String(track), value: parseFloat(val) || 0 });
 });
 
-// matchProb feedback
-Max.addHandler('matchProb', (val) => {
-    broadcast({ type: 'param', key: 'matchProb', value: parseFloat(val) || 0 });
+// matchProb feedback — slicer.js now emits outlet(1, "matchProb", stem, value)
+// (per-stem, was a single global value before). Broadcast under a per-stem
+// key (matchProb_<stem>) so the TUI's :wmdScope switcher can tell them apart.
+Max.addHandler('matchProb', (stem, val) => {
+    broadcast({ type: 'param', key: 'matchProb_' + stem, value: parseFloat(val) || 0 });
 });
 
 // ── LINK protocol ─────────────────────────────────────────────────────────────
@@ -1310,17 +2210,40 @@ function handleLinkMissile(msg) {
 }
 
 // ── VU metering ───────────────────────────────────────────────────────────────
-// Format: meter <name> <level>   where name = vocals|melody|bass|drums|master
-//                                      level = 0–1 linear peak amplitude (from peakamp~)
-// When called with no args (beat-tick from metro) — silently ignore.
-// This handler also silences the "can't handle message meter" flood on startup.
+// Patch sends: meter <stem>_<channel> <level>
+//   stem    = vocals | melo | bass | drums | master | live1 | live2
+//   channel = FL | FR | RL | RR  (4 spatial channels per stem)
+//   level   = 0–1 linear peak amplitude (from peakamp~ 4096)
+// We aggregate the 4 channels into one peak per stem and broadcast to TUI.
+// "melo" is remapped to "melody" to match TUI vuLevels keys.
+const VU_CHANNELS = { FL: true, FR: true, RL: true, RR: true };
+const VU_REMAP    = { melo: 'melody' };
+const vuAccum     = {};  // { stemName: { FL: level, FR: level, ... } }
+
 Max.addHandler('meter', (...args) => {
-    if (args.length >= 2) {
-        const name  = String(args[0]);
-        const level = parseFloat(args[1]) || 0;
+    if (args.length < 2) return;  // metro beat tick — discard
+
+    const rawName = String(args[0]);
+    const level   = parseFloat(args[1]) || 0;
+
+    // Split "vocals_FL" → stem="vocals", channel="FL"
+    const u = rawName.lastIndexOf('_');
+    if (u > 0 && VU_CHANNELS[rawName.slice(u + 1)]) {
+        let stem    = rawName.slice(0, u);
+        stem        = VU_REMAP[stem] || stem;
+        const chan  = rawName.slice(u + 1);
+        if (!vuAccum[stem]) vuAccum[stem] = {};
+        vuAccum[stem][chan] = level;
+        // Broadcast all 4 channels so TUI can show per-channel meters
+        const acc = vuAccum[stem];
+        broadcast({ type: 'vu', name: stem,
+            FL: acc.FL || 0, FR: acc.FR || 0,
+            RL: acc.RL || 0, RR: acc.RR || 0 });
+    } else {
+        // No spatial suffix — pass through with name remapping
+        const name = VU_REMAP[rawName] || rawName;
         broadcast({ type: 'vu', name, level });
     }
-    // 0 args = metro beat tick — silently discard
 });
 
 // ── LUFS metering ─────────────────────────────────────────────────────────────
@@ -1334,10 +2257,45 @@ Max.addHandler('lufs', (short, integrated) => {
     broadcast({ type: 'lufs', short: parseFloat(short) || -Infinity, integrated: parseFloat(integrated) || -Infinity });
 });
 
+// ── Waveform taps ────────────────────────────────────────────────────────────
+// The patch taps each mono-summed source (master + the 4 stems) and emits its
+// signed peak pair per frame: `wavePos <name> <+peak>` and `waveNeg <name>
+// <|-peak|>`. They arrive as a pair each frame; we cache the +peak and, on the
+// matching -peak, broadcast one {type:'wave', name, pos, neg} to the TUI, which
+// draws the asymmetric waveform. name = master | vocals | melody | bass | drums.
+const _wavePos = {};
+Max.addHandler('wavePos', (name, v) => { _wavePos[String(name)] = parseFloat(v) || 0; });
+Max.addHandler('waveNeg', (name, v) => {
+    const n = String(name);
+    broadcast({ type: 'wave', name: n, pos: _wavePos[n] || 0, neg: parseFloat(v) || 0 });
+});
+
 // ── Index cache save (from slicer.js outlet 1) ───────────────────────────────
 // slicer sends saveIdxChunk messages after each buildIndex; Node writes to disk.
 // Format: saveIdxChunk  streamId  chunkIndex  total  data
+// resetAllPending blocks saves until a genuine new buildIndex completes.
 let saveIdxBuf = null, saveIdxTotal = 0, saveIdxReceived = 0, saveIdxSid = -1;
+let resetAllPending = false;
+
+// Recovery for the post-:resetAll wedge: resetAll sets resetAllPending (and
+// drops ebys_reset.flag) to block stale index saves until a fresh analysis
+// finishes. Normally the TUI's completeAnalysis clears it — but if the analysis
+// completes while the TUI is disconnected, it never clears, and the index stays
+// permanently un-saveable ("analyzed on disk but 0 tracks"). Any successful
+// buildIndex from a NON-EMPTY library is proof the system has real content
+// again, so we clear the block here regardless of who saw the analysis finish.
+function clearResetPendingIfPopulated() {
+    if (!resetAllPending) return;
+    try {
+        const lib = parseMaxDictJSON(fs.readFileSync(
+            path.join(sessionDataDir(), 'analysis_library.json'), 'utf8'));
+        if (lib && Object.keys(lib).length > 0) {
+            resetAllPending = false;
+            try { fs.unlinkSync(path.join(sessionDataDir(), 'ebys_reset.flag')); } catch(e) {}
+            Max.post('ws_server: resetAll block cleared — library populated, index saves re-enabled\n');
+        }
+    } catch(e) {}
+}
 Max.addHandler('saveIdxChunk', (streamId, i, total, ...dataParts) => {
     const data = dataParts.join(' ');
     const sid  = parseInt(streamId);
@@ -1357,8 +2315,12 @@ Max.addHandler('saveIdxChunk', (streamId, i, total, ...dataParts) => {
     if (saveIdxReceived === saveIdxTotal) {
         const jsonStr = saveIdxBuf.join('');
         saveIdxBuf = null;
+        if (resetAllPending) {
+            Max.post('ws_server: ebys_index.json save blocked — resetAll pending (run analysis to rebuild)\n');
+            return;
+        }
         try {
-            fs.writeFileSync(path.join(__dirname, 'ebys_index.json'), jsonStr);
+            fs.writeFileSync(path.join(sessionDataDir(), 'ebys_index.json'), jsonStr);
             Max.post('ws_server: ebys_index.json saved (stream ' + sid + ', ' + jsonStr.length + ' chars)\n');
         } catch(e) {
             Max.post('ws_server: index save failed — ' + e + '\n');
@@ -1371,6 +2333,20 @@ Max.addHandler('sourceTrack', (slot, ...nameParts) => {
     // is loaded into each slot so it can display track names per stem.
     const name = nameParts.join(' ');
     broadcast({ type: 'sourceTrack', slot: parseInt(slot), name });
+});
+
+// slicer.js outlet(1, "lockSource", follower, leader) / outlet(1, "unlockSource", stem|"all")
+// — the AUTHORITATIVE lock state, confirmed by slicer.js itself (not just an
+// optimistic echo of the command as it was sent). Previously nothing listened
+// for these at all, so the TUI never actually knew whether a lock had taken —
+// it only showed what was requested, not what was applied. Both the default
+// bass→melody lock (announced at :start) and any manual :lockSource/:unlockSource
+// now reach the TUI through this single confirmed path.
+Max.addHandler('lockSource', (follower, leader) => {
+    broadcast({ type: 'param', key: 'sourceLock', follower: String(follower), leader: String(leader) });
+});
+Max.addHandler('unlockSource', (stem) => {
+    broadcast({ type: 'param', key: 'sourceLock', follower: String(stem), leader: null });
 });
 
 // Silence unhandled-message log — slicer.js emits this when it needs stem durations
@@ -1414,6 +2390,12 @@ Max.addHandler('umapDone', () => {
 
 // resetMemory: TUI → ws_server → Max patch → slice_writer.js + analyze_reader.js
 Max.addHandler('resetMemory', () => {
+    // Clear the done-flag too: the library is being wiped, so a later
+    // queryAnalysisDone poll (or a reconnect) must NOT report the pre-reset
+    // analysis as still complete — that would make the TUI's next :analyzeAll
+    // spinner stop instantly at ~0% before the new run actually finishes.
+    // The real 'analysisDone' from the fresh run sets it true again.
+    state.analysisDone = false;
     Max.outlet('resetMemory');
 });
 

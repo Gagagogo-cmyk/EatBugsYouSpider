@@ -11,7 +11,9 @@ function getDataDir() {
     p = p.replace(/[^\/]+\/$/, ''); // strip src/      → .../EBYS/
     return p + 'data/';
 }
-var folderPath = getDataDir() + "stems";
+// Session-scoped via the data/current symlink — stems live under the active
+// session now, not the old global data/stems (so :resetAll cleared nothing).
+var folderPath = getDataDir() + "current/stems";
 
 function clear() {
     var f = new Folder(folderPath);

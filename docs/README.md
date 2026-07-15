@@ -1,6 +1,8 @@
-# Eat Bugs You Spider! ↄ⃝
+# Eat Bugs You Spider! - Chirp! 
 
-Four categories. Root files are stubs pointing here.
+Vibe DJing instrument / Indie Webradios
+Montréal, 2023 — en cours
+Licence : AGPL-3.0
 
 ---
 
@@ -14,7 +16,7 @@ The EBYS platform — what it is, how all the pieces fit, what's been built and 
 | `PLATFORM.md` | Platform description, radio modes, what's built, what's next |
 | `EBYS_SYSTEM.md` | Website + radio architecture (French), temperature trigger, UI skin system |
 | `WEBSITE.md` | Website: event calendar, radio, artist directory, mixer console, spider |
-| `STATEMENT.md` | Brand statement |
+| `STATEMENT.md` | Chirp! |
 
 ---
 
@@ -25,8 +27,7 @@ The tipping protocol and split equation.
 | File | What it covers |
 |------|----------------|
 | `TIPPING_PROTOCOL.md` | Three precision levels (web, venue+EBYS, venue-only) |
-| `SPLIT_EQUATION.md` | L0–L4 split levels, follow graph, influence score, ▲⬢▼ mechanic |
-| `TOKEN.md` | Stub — see business/SPECULATIVE.md for the CRKT concept |
+| `SPLIT_EQUATION.md` | L0–L4 split levels |
 
 ---
 
@@ -58,3 +59,16 @@ Revenue models and a speculative future layer.
 |------|----------------|
 | `MONETISATION_MODELS.md` | Active revenue models: hardware, merch, nag screen, Stripe Connect |
 | `SPECULATIVE.md` | Exploratory concept: cricket protein powder company, CRKT token economy |
+
+---
+
+## Licence
+
+Copyleft © 2026 Eat Bugs You Spider!
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+See <https://www.gnu.org/licenses/> for details.

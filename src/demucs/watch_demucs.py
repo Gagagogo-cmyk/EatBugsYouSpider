@@ -3,10 +3,38 @@ import time
 import os
 import re
 import json
+import shutil
 import urllib.request
+import queue
+import threading
 from pathlib import Path
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
+
+# Serial processing queue — prevents concurrent Demucs/FluCoMa runs
+_work_queue: queue.Queue = queue.Queue()
+_queued_stems: set = set()  # track stems already queued to avoid duplicates
+
+def _enqueue(filepath: Path):
+    stem = filepath.stem
+    if stem in _queued_stems:
+        print(f"Skipping duplicate: {filepath.name}")
+        return
+    _queued_stems.add(stem)
+    _work_queue.put(filepath)
+
+def _worker():
+    while True:
+        filepath = _work_queue.get()
+        try:
+            AudioHandler().process_file(filepath)
+        except Exception as e:
+            print(f"Worker error on {filepath.name}: {e}")
+        finally:
+            _queued_stems.discard(filepath.stem)
+            _work_queue.task_done()
+
+threading.Thread(target=_worker, daemon=True).start()
 
 
 # =========================
@@ -32,15 +60,70 @@ def post_progress(data):
 # =========================
 SRC_DIR  = Path(__file__).parent          # EBYS/src/demucs/
 ROOT_DIR = SRC_DIR.parent.parent          # EBYS/ (repo root)
-DATA_DIR = ROOT_DIR / "data"
+DATA_ROOT = ROOT_DIR / "data"
 
-RAW_UPLOADS = DATA_DIR / "raw_uploads"
-STEMS_DIR   = DATA_DIR / "stems"
-TEMP_DIR    = DATA_DIR / "temp"
+# raw_uploads/ is PER-SESSION (data/sessions/<id>/raw_uploads/) — each session
+# keeps its own dropped source files, so :resetAll (which wipes the active
+# session dir) removes them and switching sessions never mixes uploads. Defined
+# below via raw_uploads_dir(), once session_data_dir() exists. watchdog needs a
+# concrete path to watch, so it watches the CURRENT session's folder and the
+# main loop re-points the observer whenever the active session changes.
 
-RAW_UPLOADS.mkdir(parents=True, exist_ok=True)
+# session_data_dir()/current_session_id() — mirrors session_manager.js /
+# the Max js objects' getSessionId()+getDataDir() pattern (see that file's
+# header comment for the full multi-session design). Re-read fresh every
+# call — this process is a long-running watchdog that outlives any single
+# TUI session, so process_file() re-resolves these at the top of each run
+# rather than caching them once at module load, letting a mid-run
+# :switchSession in the TUI redirect the *next* file that lands in
+# raw_uploads/ into the newly active session without needing a restart.
+def current_session_id() -> str:
+    p = DATA_ROOT / "current_session.txt"
+    try:
+        sid = p.read_text().strip()
+        return sid or "default"
+    except Exception:
+        return "default"
+
+def session_data_dir() -> Path:
+    d = DATA_ROOT / "sessions" / current_session_id()
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+# Module-load-time snapshot — good enough for the one-shot startup scan
+# below (analyze_missing_tracks/pending files), which only ever runs once
+# right as this process starts.
+DATA_DIR  = session_data_dir()
+STEMS_DIR = DATA_DIR / "stems"
+TEMP_DIR  = DATA_DIR / "temp"
+
 STEMS_DIR.mkdir(parents=True, exist_ok=True)
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+def raw_uploads_dir() -> Path:
+    """Current session's raw_uploads/ (re-resolved each call, like session_data_dir)."""
+    d = session_data_dir() / "raw_uploads"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+# Concrete drop-zone for the session active at boot. The main loop re-points the
+# observer at raw_uploads_dir() again whenever current_session.txt changes.
+RAW_UPLOADS = raw_uploads_dir()
+
+# One-time migration: relocate anything still sitting in the OLD global
+# data/raw_uploads/ into the current session, so files dropped before this
+# change aren't orphaned (the watcher no longer watches the global path).
+_LEGACY_GLOBAL_UPLOADS = DATA_ROOT / "raw_uploads"
+if _LEGACY_GLOBAL_UPLOADS.is_dir() and _LEGACY_GLOBAL_UPLOADS.resolve() != RAW_UPLOADS.resolve():
+    for _f in list(_LEGACY_GLOBAL_UPLOADS.iterdir()):
+        if _f.is_file() and not _f.name.startswith('.'):
+            _dest = RAW_UPLOADS / _f.name
+            if not _dest.exists():
+                try:
+                    shutil.move(str(_f), str(_dest))
+                    print(f"raw_uploads migration: moved {_f.name} → session '{current_session_id()}'")
+                except Exception as _e:
+                    print(f"raw_uploads migration: could not move {_f.name}: {_e}")
 
 
 # =========================
@@ -173,8 +256,20 @@ class AudioHandler(FileSystemEventHandler):
 
     def process_file(self, filepath: Path):
 
+        # Re-resolve per-session paths fresh for THIS file — shadows the
+        # module-level DATA_DIR/STEMS_DIR/TEMP_DIR (set once at process
+        # start) for the rest of this method, so a :switchSession in the
+        # TUI since this watcher last started redirects this file into the
+        # session that's active right now. See session_data_dir() above.
+        DATA_DIR  = session_data_dir()
+        STEMS_DIR = DATA_DIR / "stems"
+        TEMP_DIR  = DATA_DIR / "temp"
+        STEMS_DIR.mkdir(parents=True, exist_ok=True)
+        TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
         print("\n========================")
         print("NEW FILE:", filepath)
+        print(f"  → session: {current_session_id()}  (stems → {STEMS_DIR})")
         print("========================")
 
         ext = filepath.suffix.lower()
@@ -182,22 +277,20 @@ class AudioHandler(FileSystemEventHandler):
         # -------------------------
         # INPUT HANDLING
         # -------------------------
-        if ext == ".mp4":
+        if ext in (".mp4", ".m4a", ".mp3", ".flac", ".aif", ".aiff", ".3gp"):
             wav_path = TEMP_DIR / f"{filepath.stem}.wav"
-
             subprocess.run([
                 "/opt/homebrew/bin/ffmpeg", "-y",
                 "-i", str(filepath),
                 str(wav_path)
             ])
-
             target_audio = wav_path
 
         elif ext == ".wav":
             target_audio = filepath
 
         else:
-            print("Unsupported file type")
+            print("Unsupported file type:", ext)
             return
 
         print("Processing:", target_audio.name)
@@ -345,49 +438,29 @@ class AudioHandler(FileSystemEventHandler):
                                'status': 'done', 'track': original_name})
 
         # -------------------------
-        # UPDATE stream.txt  (all tracks, 4 lines per track, fixed order per batch)
-        # Written AFTER genre+madmom so FluCoMa has all data ready immediately.
-        # Max counter cycles 1-4 per track: 1=vocals 2=drums 3=bass 4=melody
-        # -------------------------
-        STEM_ORDER = [
-            ('vocals', 'vocals'),
-            ('drums',  'drums'),
-            ('bass',   'bass'),
-            ('other',  'melody'),
-        ]
-
-        ht_root = STEMS_DIR / "htdemucs"
+        # Write stream.txt — Max reads this to get file paths and load audio buffers.
+        STEM_ORDER = [('vocals','vocals'), ('drums','drums'), ('bass','bass'), ('other','melody')]
+        ht_root   = STEMS_DIR / "htdemucs"
         all_lines = []
         if ht_root.exists():
             for track_folder in sorted(ht_root.iterdir()):
                 if not track_folder.is_dir():
                     continue
                 track_base = track_folder.name
-                batch = []
                 for demucs_stem, label in STEM_ORDER:
-                    matches = list(track_folder.glob(f"*_{demucs_stem}.wav"))
                     exact = track_folder / f"{track_base}_{demucs_stem}.wav"
+                    matches = list(track_folder.glob(f"*_{demucs_stem}.wav"))
                     stem_file = exact if exact.exists() else (matches[0] if matches else None)
                     if stem_file:
-                        batch.append(f"{label} {stem_file}")
-                    else:
-                        print(f"  ⚠  missing {demucs_stem} for '{track_base}'")
-                if batch:
-                    all_lines.extend(batch)
-
+                        all_lines.append(f"{label} {stem_file}")
         if all_lines:
             stream_path = DATA_DIR / "stream.txt"
-            with open(stream_path, 'w') as f:
-                f.write('\n'.join(all_lines) + '\n')
-            n_tracks = len(all_lines) // 4
-            print(f"stream.txt → {len(all_lines)} stems ({n_tracks} tracks)")
+            stream_path.write_text('\n'.join(all_lines) + '\n')
+            print(f"stream.txt → {len(all_lines)} stems")
 
-            # Notify TUI + Max that stems are written and FluCoMa can start.
-            # ws_server.js receives this via /stems-ready and emits stemsReady to Max.
-            post_progress({'type': 'stemsReady', 'track': original_name,
-                           'n_tracks': n_tracks})
-        else:
-            print("⚠  no stems found to write to stream.txt")
+        # Notify TUI + Max that stems are ready.
+        # ws_server broadcasts to TUI and outlets 'stemsReady' so Max bangs the read object.
+        post_progress({'type': 'stemsReady', 'track': original_name})
 
         # Import updated genres + downbeats into SQLite.
         # Slice rows are imported after FluCoMa analysis completes (ws_server analysisDone).
@@ -404,27 +477,84 @@ class AudioHandler(FileSystemEventHandler):
 
         filepath = Path(event.src_path)
         filename = filepath.name
+
+        # Skip hidden/system files
+        if filename.startswith('.'):
+            return
+
+        AUDIO_EXTS = {'.wav', '.mp4', '.m4a', '.mp3', '.flac', '.aif', '.aiff', '.3gp'}
+        if filepath.suffix.lower() not in AUDIO_EXTS:
+            return
+
         print("🔥 WATCHER TRIGGERED:", event.src_path)
 
         # Notify TUI immediately — before any processing
         post_progress({'type': 'fileDetected', 'filename': filename})
 
-        time.sleep(2)
-        self.process_file(filepath)
+        time.sleep(2)  # let copy finish
+        _enqueue(filepath)
 
+
+# =========================
+# STARTUP SCAN
+# =========================
+# Process any audio files already sitting in raw_uploads/ that haven't been
+# separated yet (no corresponding htdemucs folder with wav stems).
+AUDIO_EXTS = {'.wav', '.mp4', '.m4a', '.mp3', '.flac', '.aif', '.aiff', '.3gp'}
+
+def already_processed(filepath: Path) -> bool:
+    """Return True if htdemucs stems already exist for this file in the ACTIVE
+    session (re-resolved each call so this stays correct after a session switch)."""
+    stem_dir = session_data_dir() / "stems" / 'htdemucs' / filepath.stem
+    return stem_dir.is_dir() and any(stem_dir.glob('*.wav'))
+
+handler = AudioHandler()
+
+def scan_pending(folder: Path):
+    """Queue any un-separated audio already sitting in `folder`. Run at startup
+    and again each time the watcher re-points to a new session's raw_uploads/."""
+    pending = [
+        f for f in folder.iterdir()
+        if f.is_file() and not f.name.startswith('.') and f.suffix.lower() in AUDIO_EXTS
+        and not already_processed(f)
+    ]
+    if pending:
+        print(f"Scan: {len(pending)} unprocessed file(s) in {folder} — queuing")
+        for f in pending:
+            post_progress({'type': 'fileDetected', 'filename': f.name})
+            _enqueue(f)
+    else:
+        print(f"Scan: nothing pending in {folder}")
+
+scan_pending(RAW_UPLOADS)
 
 # =========================
 # START WATCHER
 # =========================
 observer = Observer()
-observer.schedule(AudioHandler(), str(RAW_UPLOADS), recursive=False)
+watch = observer.schedule(handler, str(RAW_UPLOADS), recursive=False)
 observer.start()
 
-print("Watching raw_uploads...")
+_watched_session = current_session_id()
+print(f"Watching {RAW_UPLOADS} (session '{_watched_session}')...")
 
 try:
     while True:
         time.sleep(1)
+        # Re-point the watcher when the active session changes so the drop-zone
+        # always follows the current session (raw_uploads is per-session now).
+        sid = current_session_id()
+        if sid != _watched_session:
+            _watched_session = sid
+            new_dir = raw_uploads_dir()
+            print(f"Session changed → '{sid}'. Re-pointing watcher to {new_dir}")
+            try:
+                observer.unschedule(watch)
+            except Exception:
+                observer.unschedule_all()
+            watch = observer.schedule(handler, str(new_dir), recursive=False)
+            globals()['RAW_UPLOADS'] = new_dir
+            scan_pending(new_dir)
 
 except KeyboardInterrupt:
     observer.stop()

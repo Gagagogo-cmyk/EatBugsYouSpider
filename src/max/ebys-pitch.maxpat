@@ -19,7 +19,7 @@
                     "numoutlets": 3,
                     "outlettype": [ "signal", "signal", "signal" ],
                     "patching_rect": [ 50.0, 50.0, 85.0, 22.0 ],
-                    "text": "fftin~ 1 square"
+                    "text": "fftin~ 1 hanning"
                 }
             },
             {
@@ -40,7 +40,7 @@
                     "numinlets": 2,
                     "numoutlets": 0,
                     "patching_rect": [ 50.0, 200.0, 105.0, 22.0 ],
-                    "text": "fftout~ 1 hamming"
+                    "text": "fftout~ 1 hanning"
                 }
             },
             {
@@ -56,6 +56,18 @@
                         "c": ""
                     },
                     "text": "in 2"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-5",
+                    "maxclass": "newobj",
+                    "numinlets": 0,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 250.0, 50.0, 140.0, 22.0 ],
+                    "comment": "broadcasts to all 4 stems' pfft~ copies at once — see slot_router.js's setWindow()",
+                    "text": "receive ebys_pitchWindow"
                 }
             }
         ],
@@ -88,6 +100,18 @@
                 "patchline": {
                     "destination": [ "obj-2", 2 ],
                     "source": [ "obj-4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-1", 0 ],
+                    "source": [ "obj-5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-3", 0 ],
+                    "source": [ "obj-5", 0 ]
                 }
             }
         ]

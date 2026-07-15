@@ -25,10 +25,34 @@ Usage:
 import json, math, os, sys, wave, struct
 import numpy as np
 
-BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
-ANALYSIS_PATH = os.path.join(BASE_DIR, 'MAX', 'analysis_library.json')
-STEMS_DIR    = os.path.join(BASE_DIR, 'stems', 'htdemucs')
-TEMP_DIR     = os.path.join(BASE_DIR, 'temp')
+BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
+_DATA_ROOT    = os.path.join(BASE_DIR, '..', '..', 'data')
+
+def _current_session_id():
+    """Active session id — mirrors session_manager.js / watch_demucs.py's
+    current_session_id(). Reads data/current_session.txt (written by the TUI
+    login), defaulting to 'default' when absent/empty like the rest of the
+    stack."""
+    try:
+        with open(os.path.join(_DATA_ROOT, 'current_session.txt')) as f:
+            sid = f.read().strip()
+        return sid or 'default'
+    except Exception:
+        return 'default'
+
+_DATA_DIR     = os.path.join(_DATA_ROOT, 'sessions', _current_session_id())
+ANALYSIS_PATH = os.path.join(_DATA_DIR, 'analysis_library.json')
+STEMS_DIR     = os.path.join(_DATA_DIR, 'stems', 'htdemucs')
+TEMP_DIR      = os.path.join(_DATA_DIR, 'temp')
+
+def load_max_json(path):
+    """Read a JSON file that may have a Max Dict '{}' preamble or trailing garbage."""
+    with open(path) as f:
+        raw = f.read()
+    if raw.startswith('{}') and len(raw) > 2:
+        raw = '{"' + raw[2:]
+    obj, _ = json.JSONDecoder().raw_decode(raw)
+    return obj
 
 # How far outside the [-1,+1] range pan values are allowed after normalization.
 # 1.0 means full range; 0.6 is gentler (keeps panning subtle).
@@ -218,8 +242,7 @@ def main():
         elif not a.startswith('--'):
             filter_name = a.lower()
 
-    with open(ANALYSIS_PATH) as f:
-        lib = json.load(f)
+    lib = load_max_json(ANALYSIS_PATH)
 
     keys = list(lib.keys())
     if filter_name:

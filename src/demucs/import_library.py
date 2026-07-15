@@ -24,14 +24,38 @@ import json, sqlite3, math, os, sys, argparse
 from collections import defaultdict
 
 # Relative to this file: src/demucs/ → src/ → EBYS/ (repo root)
-_src_dir  = os.path.dirname(os.path.abspath(__file__))
-_root_dir = os.path.dirname(os.path.dirname(_src_dir))
-_data_dir = os.path.join(_root_dir, 'data')
+_src_dir   = os.path.dirname(os.path.abspath(__file__))
+_root_dir  = os.path.dirname(os.path.dirname(_src_dir))
+_data_root = os.path.join(_root_dir, 'data')
+
+def _current_session_id():
+    """Active session id — mirrors session_manager.js / watch_demucs.py's
+    current_session_id(). All per-session data lives under
+    data/sessions/<id>/; reads data/current_session.txt (written by the TUI
+    login), defaulting to 'default' when absent/empty like the rest of the
+    stack."""
+    try:
+        with open(os.path.join(_data_root, 'current_session.txt')) as f:
+            sid = f.read().strip()
+        return sid or 'default'
+    except Exception:
+        return 'default'
+
+_data_dir = os.path.join(_data_root, 'sessions', _current_session_id())
 
 DB_PATH        = os.path.join(_data_dir, 'ebys.db')
-LIB_PATH       = os.path.join(_root_dir, 'src', 'max', 'analysis_library.json')
+LIB_PATH       = os.path.join(_data_dir, 'analysis_library.json')  # per-session primary copy
 GENRES_PATH    = os.path.join(_data_dir, 'genres.json')
 DOWNBEATS_PATH = os.path.join(_data_dir, 'downbeats.json')
+
+def load_max_json(path):
+    """Read a JSON file that may have a Max Dict '{}' preamble or trailing garbage."""
+    with open(path) as f:
+        raw = f.read()
+    if raw.startswith('{}') and len(raw) > 2:
+        raw = '{"' + raw[2:]
+    obj, _ = json.JSONDecoder().raw_decode(raw)
+    return obj
 
 STEM_SUFFIXES = [
     '_vocals.wav', '_melody.wav', '_bass.wav', '_drums.wav', '_other.wav',
@@ -327,12 +351,28 @@ def sync_tension(conn, lib):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def open_db():
+def _connect(journal):
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute(f"PRAGMA journal_mode = {journal}")
     conn.execute("PRAGMA foreign_keys = ON")
-    create_schema(conn)
+    create_schema(conn)   # first write — WAL-on-mount fails here, not at the PRAGMA
     return conn
+
+def open_db():
+    """Open (creating + migrating) the session ebys.db. Prefers WAL, but WAL
+    needs a shared-memory mmap that some filesystems (network / FUSE / certain
+    cloud-synced mounts) reject with 'disk I/O error' on the first write. If
+    that happens, fall back to a plain rollback journal, which works
+    everywhere — a little slower, but correct. Local disks keep using WAL."""
+    try:
+        return _connect("WAL")
+    except sqlite3.OperationalError:
+        try:
+            return _connect("DELETE")
+        except sqlite3.OperationalError:
+            # Last resort: no on-disk journal at all. Still fully functional
+            # for our single-writer, one-shot import.
+            return _connect("MEMORY")
 
 
 def main():
@@ -356,8 +396,7 @@ def main():
     # 1. Analysis library → slices table
     if os.path.exists(LIB_PATH):
         print('Importing analysis library...')
-        with open(LIB_PATH) as f:
-            lib = json.load(f)
+        lib = load_max_json(LIB_PATH)
         n = import_library(conn, lib, filter_track=args.track)
         print(f'  → {n} slice rows upserted')
     else:
@@ -366,16 +405,14 @@ def main():
     # 2. Genres (always full refresh unless --track filter)
     if os.path.exists(GENRES_PATH) and not args.track:
         print('Importing genres...')
-        with open(GENRES_PATH) as f:
-            genres_db = json.load(f)
+        genres_db = load_max_json(GENRES_PATH)
         import_genres(conn, genres_db)
         print(f'  → {len(genres_db)} track(s) genre data imported')
 
     # 3. Downbeats (always full refresh unless --track filter)
     if os.path.exists(DOWNBEATS_PATH) and not args.track:
         print('Importing downbeats...')
-        with open(DOWNBEATS_PATH) as f:
-            beats_db = json.load(f)
+        beats_db = load_max_json(DOWNBEATS_PATH)
         import_downbeats(conn, beats_db)
         print(f'  → {len(beats_db)} track(s) downbeat data imported')
 

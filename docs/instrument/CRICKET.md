@@ -45,7 +45,7 @@ Each slice has 7 descriptors extracted by FluCoMa:
 | Symbol | FluCoMa Descriptor | Musical Meaning |
 |--------|-------------------|-----------------|
 | **C** | Spectral Centroid (Hz) | Brightness / harshness. High C = lots of high-frequency content (sibilance, cymbals, distortion). Low C = warm, dark, muffled. |
-| **S** | Spectral Spread (Hz²) | Width of the spectrum around the centroid. High S = energy spread across a wide frequency band (full-bodied, noisy, complex). Low S = energy concentrated near one frequency (pure tones, narrow sounds). |
+| **S** | Spectral Spread (Hz²) | Width of the spectrum around the centroid. High S = energy spread across a wide frequency band (full-bodied, noisy, complex). Low S = energy concentrated near one frequency (pure tones, narrow sounds). ⚠ Known issue: as of this writing S is an exact duplicate of C for every slice in the library (a buffer channel-count bug in the analysis pipeline, not a musical fact) — treat S-based reasoning as unreliable until this is fixed and the library is re-analyzed. |
 | **E** | Loudness (LUFS) | Energy / intensity. High E (closer to 0) = loud, powerful. Low E (more negative) = quiet, delicate. |
 | **F** | Spectral Flatness | Noise vs. tone. High F = noisy, unpitched (breaths, cymbals, distortion). Low F = tonal, pitched, clean. |
 | **P** | Pitch (Hz) | Fundamental frequency. 0 = unpitched (below confidence threshold). High P = high notes. Low P = low notes or silence. |
@@ -287,6 +287,22 @@ When the user speaks in musical language, translate into the commands above.
 | pull back drums | `setTrackWeight drums 0.4` |
 | melody forward | `setTrackWeight melody 1.6`, `setTrackWeight vocals 0.7` |
 
+### Song Structure & Training Signals
+
+These aren't sound-shaping commands — they record judgments (this section is the chorus, this layering works, that cut was rough) for later training. See "Song Structure Tagging & Training Signals" below for full mechanics.
+
+| User says | Translation |
+|-----------|------------|
+| tag this as the chorus / this is the chorus | `tag chorus` |
+| this is the drop / verse / intro / bridge / build / outro | `tag drop` / `tag verse` / `tag intro` / `tag bridge` / `tag build` / `tag outro` |
+| tag the bassline / tag what bass is doing | `tag <label> bass` (stem arg — default is melody) |
+| what sections have you tagged / show me the sections | `listSections` |
+| this layering sounds great / this combo works | `score 0.8` |
+| this mix isn't working / this combo is bad | `score -0.6` |
+| great transition / that cut flowed well | `scoreTransition 0.7` |
+| that transition was rough / jarring cut | `scoreTransition -0.6` |
+| bad transition on the bass specifically | `scoreTransition -0.6 bass` |
+
 ---
 
 ## Combined Examples
@@ -513,6 +529,9 @@ Examples:
 - **genres.json** — Essentia genre tags per track (top 5 genres with confidence scores).
 - **downbeats.json** — madmom output: BPM, meter, downbeat positions, confidence per track.
 - **training_log.jsonl** — Cricket's taste memory. One line per `:bake`. Grows over sessions.
+- **training_log_vertical.jsonl** — one line per `:score`. Was the current layered combo good.
+- **training_log_transition.jsonl** — one line per `:scoreTransition`. Did this specific cut flow well.
+- **song_structure.json** — canonical (not append-only) store of `:tag`'d sections per source track: bar range, structural label, computed intensity.
 - **CRICKET.md** — this file. Cricket's knowledge base, loaded at startup.
 
 ---
@@ -537,3 +556,45 @@ Cricket learns from how you correct it. The loop works like this:
 The correction delta is the training signal. Cricket doesn't just learn "darker = these commands" — it learns "when I tried X and you corrected it to Y, Y was closer to what darker means in this context."
 
 After enough bakes (200–500), the `training_log.jsonl` becomes the dataset for fine-tuning a local model that knows this instrument and your taste specifically. The conversion from raw snapshots to fine-tuning format is a separate script run once, not during sessions.
+
+---
+
+## Song Structure Tagging & Training Signals
+
+Three related but distinct signals exist beyond `:bake`, split along two axes: what's being judged (structure vs. a decision), and which direction in time (a single instant vs. a cut between two instants).
+
+### `:tag <label> [stem]` — labeling structure
+
+Marks the bar-range **currently playing** on `stem` (default `melody`) with a structural label — `intro`, `verse`, `pre-chorus`, `chorus`, `build`, `drop`, `breakdown`, `bridge`, `outro`, `hook`, `interlude`, or any other freeform word (the list above is a soft convention, not a hard restriction).
+
+This is a statement about the **song**, not about the current remix — the stem argument only identifies which bar-range to grab (source track + start/end position), it isn't "which stem gets tagged." Once tagged, the same section applies regardless of which stem or lock configuration is playing that track later.
+
+Stored in `song_structure.json`, keyed by source track, e.g.:
+```json
+{ "startFrac": 0.12, "endFrac": 0.31, "tag": "chorus", "intensity": 0.72, ... }
+```
+Re-tagging a range that already overlaps a stored section (>50%) updates it in place rather than creating a duplicate.
+
+**Intensity** is computed automatically — never ask the user for a number. It averages three normalized descriptors across every analyzed slice in that range, pooled across all 4 stems (structure is a property of the whole song):
+- **density** — how transient-rich/busy the section is (already 0–1)
+- **C** (spectral centroid) — brightness, normalized against this track's own min/max
+- **S** (spectral spread) — spectral width, same normalization (currently unreliable — see the descriptor table note above)
+
+### `:listSections [track]` — reviewing what's tagged
+
+Prints the stored sections for a source track (defaults to whatever's currently loaded). Use this if the user asks what's been tagged so far, or wants to sanity-check before scoring something against a section.
+
+### `:score <-1..1> [overallSection]` — vertical: is this layering good
+
+Rates the CURRENT combination across all 4 stems — which source track each is drawing from and how they're mixed — right now, as a snapshot. No session, no bracket. Each stem's entry in the logged snapshot automatically includes whatever `:tag` has already labeled for its current position (if any) — that's "when a layering is good, also record what section it corresponds to," done by lookup rather than by asking the user to repeat themselves. The optional trailing word lets the user additionally label the *overall* combined moment if it reads differently from any one stem's own tagged section (e.g. "this combo feels like a build" even though the individual stems are mid-verse).
+
+### `:scoreTransition <-1..1> [stem]` — horizontal: did this cut flow
+
+Rates whether the audio itself flowed well going from the *previous* segment into the *current* one — the moment of the cut, on one stem (or all 4 at once, default). This is a different "horizontal" than `:bake`'s: `:bake` judges whether the right *sequence of commands* was issued over a loop; `:scoreTransition` judges the *audio* of one specific cut, tagged with both the outgoing and incoming section if known. Needs at least one segment change to have happened on the target stem(s) before it has anything to score — it'll say so if not.
+
+### Choosing which one applies
+
+- Judging one instant, across stems → `:score`
+- Judging a cut, on one stem or all → `:scoreTransition`
+- Labeling what a passage of the song *is*, independent of the current remix → `:tag`
+- Judging whether a whole *sequence of your corrections* got Cricket to the right place → `:bake`

@@ -102,8 +102,11 @@ def find_original_mix(stems_folder):
     # needing ffmpeg in its subprocess PATH. mp4/m4a require ffmpeg which may
     # not be visible to essentia's internal loader even when it's in PATH.
     search_roots = [
-        os.path.join(stems_folder, '..', '..', '..', 'temp'),        # data/temp (wav)
-        os.path.join(stems_folder, '..', '..', '..', 'raw_uploads'), # data/raw_uploads
+        os.path.join(stems_folder, '..', '..', '..', 'temp'),        # data/sessions/<id>/temp (wav, session-scoped)
+        # raw_uploads/ is PER-SESSION now (data/sessions/<id>/raw_uploads/) —
+        # three levels up from stems/htdemucs/<track>, the PRIMARY location.
+        os.path.join(stems_folder, '..', '..', '..', 'raw_uploads'), # data/sessions/<id>/raw_uploads (per-session, primary)
+        os.path.join(stems_folder, '..', '..', '..', '..', '..', 'raw_uploads'), # data/raw_uploads (legacy global, harmless fallback)
         os.path.join(stems_folder, '..', '..', '..'),
         os.path.join(stems_folder, '..', '..', '..', 'originals'),
         os.path.join(stems_folder, '..', '..', '..', 'tracks'),

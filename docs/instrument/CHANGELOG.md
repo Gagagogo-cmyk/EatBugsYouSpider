@@ -5,6 +5,95 @@ Generative audio collage engine. Separates songs into stems, analyzes every tran
 
 ---
 
+## 0.1.18 — 2026-07-10
+
+### Multi-session support (login screen + per-session data isolation)
+
+- **New: session picker / login screen.** `node sdj-tui.js` now launches a blessed-based login screen first — list existing sessions, create new ones (name + optional password), unlock password-protected ones, delete a session from the list (data is kept on disk, only the registry entry is removed). Once a session is chosen it hands off to the real TUI (moved to `src/tui/app.js`) via `require('./app.js')`, which re-derives every data path from the chosen session. Sessions can be open (no password) or password-protected (Node's built-in `crypto.scryptSync` with a random per-session salt — no plaintext storage, no extra dependencies).
+- **New: `:switchSession` / `:logout` TUI command.** Destroys the running TUI's blessed screen (restoring the terminal) and respawns `sdj-tui.js` fresh in the same terminal, landing back on the login screen — avoids trying to hot-swap the dozens of paths/DBs/caches derived from the active session in-process, which would have been a much larger source of subtle bugs than a clean respawn.
+- **New: `src/tui/session_manager.js`.** Owns the session registry (`data/sessions.json`), the active-session pointer (`data/current_session.txt`, a single line read by every layer below), and one-time migration of a pre-session install's existing data into `data/sessions/default/` (including three files `ws_server.js` had always written to `src/max/` instead of `data/` — `ebys_index.json`, `stem_ranges.json`, `umap_coords.json` — folding a long-standing path leak into the same migration).
+- **Every layer now resolves its data directory from the active session:**
+  - `src/tui/app.js` (the TUI) — analysis library, genre/beats DBs, stems dir, stream.txt, umap/ranges caches, and `:resetAll`'s wipe target all scope to `data/sessions/<id>/`, resolved once at process start (a fresh process per login/switch, so this is safe to cache).
+  - `src/max/ws_server.js` — same set of paths, but resolved **fresh on every read/write** (`sessionDataDir()`), not cached, since this is a long-running process spawned once by Max's `node.script` that outlives any single TUI session.
+  - `src/max/analyze_reader.js`, `slice_writer.js`, `streamWatcher.js` — Max `js`-object equivalent: a new `getSessionId()` reads `data/current_session.txt` via Max's own `File` API (no Node `fs` available in this scripting context) and layers `sessions/<id>/` onto the existing patch-relative data-dir resolution. `streamWatcher.js` additionally resets its change-detection baseline when it notices the session id itself changed, so a same-content-by-coincidence stream.txt across two sessions still triggers a bang.
+  - `src/demucs/watch_demucs.py` — `raw_uploads/` stays a single **global** drop-zone (watchdog needs one stable folder to watch, and it's a reasonable model: whichever session is active when a file is picked up gets it); stems/temp output now resolves to `data/sessions/<id>/`, re-read at the start of every `process_file()` call so a session switch mid-run redirects the *next* file without restarting the watcher. `genre_tagger.py`/`madmom_tagger.py` didn't need code changes for their own I/O (both already take `--htdemucs-root`/`--out` as CLI args, which their callers now pass session-scoped) but their `find_original_mix()` fallback search paths were recalculated — they walk a fixed number of `..` levels up from the stems folder to find `raw_uploads/`/`temp/`, which shifted by one level now that stems live one directory deeper (`data/sessions/<id>/stems/...` vs. the old `data/stems/...`).
+- **Known limitation:** switching sessions in the TUI does not currently force Max to flush its in-memory registries (`dict analysisLib`, the loaded slicer state) — those are only populated at patch load / loadbang. All *disk* reads and writes correctly follow the newly active session immediately, but for Max's live in-memory state to fully catch up to a switched session, restart the Max patch (or run `:resetMemory` then re-run analysis) after `:switchSession`. A live in-Max reload-on-switch signal is a reasonable follow-up but wasn't built in this pass.
+
+## 0.1.17 — 2026-07-10
+
+### FluCoMa descriptor pipeline fixes
+
+- **Root cause of duplicated descriptors (C==S, M0==M1 in every slice) — Max's JS `Buffer.peek()` takes a 1-based channel argument, not 0-based.** `analyze_reader.js` read every FluCoMa feature buffer (spectral shape, MFCC, chroma, pitch, loudness, onsets) with 0-based channel indices. Channel `0` silently aliased to the real channel 1, so "channel 0" and "channel 1" requests returned identical data, and every higher index read one real channel early (e.g. what was assumed to be flatness was actually rolloff) — the true last channel of each buffer (crest, MFCC coeff 12, chroma pitch-class 12) was never read at all. Fixed every `peek()` call file-wide to use 1-based channel indices.
+- **`stemsReady` dead trigger** — `ws_server.js` sent `Max.outlet('stemsReady')` after Demucs/madmom finished, but nothing in the Max patch or codebase was named `stemsReady`; FluCoMa analysis never auto-started for fresh uploads. Rewired to reuse the working `startAnalysis` trigger.
+- **`streamWatcher.js` swallowed the trigger on Max restart** — its first poll after every patch load silently adopted whatever was already in `stream.txt` as a "baseline" without banging, so any track processed while Max was closed (or during a restart to pick up other fixes) never triggered FluCoMa. Now bangs on the first read too; safe, since `analyze_reader.js` already fast-skips already-analyzed stems.
+- **`:analyzeAll` dead-ended at `slicer.js`** — the WS command reused the same `startAnalysis` string but had no route into `analyze_reader.js`, only into `slicer.js`'s reject path (`no function startAnalysis [slicer.js]`). Added a dedicated `route startAnalysis` wire straight into `analyze_reader.js` — first attempt wired `route`'s matched outlet directly into `analyze_reader.js`, but `route` strips the matched selector and outputs a bare bang when there are no extra arguments, which `analyze_reader.js` has no handler for (`no function bang [analyze_reader.js]`). Fixed by inserting a `prepend startAnalysis` box in between (same pattern already used for `resetMemory` elsewhere in the patch) to reconstruct the message before it reaches `analyze_reader.js`.
+- **Vocals-only stereo-source bug** — `fluid.bufspectralshape~` for the vocals stem sourced from the raw (stereo) `stem_vocals` buffer instead of `stem_vocals.mono` like every other stem, doubling its feature buffer to 14 channels. Fixed to match.
+- **`resetMemory()` didn't clear the run-state guard** — a stuck analysis run left `analysisActive` permanently `true`, silently blocking all future analysis starts even after a reset. Now resets the guard too.
+- **`clear` before every `read`** — `analyze_reader.js`'s `startStem()` now sends `clear` to each stem's buffer before `read`, so re-analyzing the same on-disk file (e.g. via `:resetMemory`, which reuses existing stems unlike `:resetAll`) is guaranteed to be treated as a genuinely fresh load.
+- **`analysisDone` lost on TUI reconnect ("stuck at 95%" even after a fully successful analysis)** — if `ws_server.js` restarts or the TUI reconnects around the same time a real analysis finishes, the one-shot `analysisDone` broadcast fires into a socket that either isn't open yet or has already been replaced, and is lost forever — the TUI spinner then just sits until its 5-minute safety timeout, even though the backend genuinely completed (confirmed: all 4 stems analyzed, index built, in the same session). `ws_server.js` already pre-sets `state.analysisDone` from disk on startup but never told a (re)connecting client. Added a side-effect-free `analysisAlreadyDone` notice sent only on connect when `state.analysisDone` is already true, which stops a spinner that's actively waiting without re-triggering `add_tension.py`/`buildIndex` — deliberately kept separate from the real `analysisDone` message, which was intentionally suppressed on reconnect in the past to avoid a double-buildIndex bug.
+
+## 0.1.16 — 2026-07-09
+
+### Stereo audio signal path overhaul
+
+- **`buffer_manager.js` mono-load bug** — stems were being loaded into karma~ as mono, silently discarding one channel before any width/pan processing could act on it. Fixed the load call to pull both channels; added a `clip~` safety net downstream and corrected fader defaults.
+- **`spat_fx_router.js` was never live (major discovery)** — the spatial/FX router module existed but was never actually wired into the signal path, so every width/pan/FX command from the TUI was a no-op all along. Wired it in; added sane pass-through defaults for width and pan so audio is unaffected until a command changes them.
+- **Width remap** — width parameter renormalized so `0.5` = the source's original recorded stereo width, instead of an arbitrary internal scale.
+- **karma~ mono channel-count bug (the single biggest bug of the session)** — karma~ objects were configured for mono channel count, collapsing stereo content throughout playback regardless of upstream fixes. Corrected channel count end to end.
+- **Real M/S stereo** — replaced the old Haas-delay stereo-widening trick with true mid/side encode-widen-decode, giving artifact-free width control.
+- **FX sends now stereo + post-width** — sends had been tapped mono and pre-width; moved the tap point to stereo, after the width stage, so the FX return matches what's actually being heard.
+- **`monoSend` feature** — new option to force a mono downmix specifically for the FX send path, independent of the main stereo output.
+
+## 0.1.15 — 2026-07-09
+
+### Lock-sync / sync-barrier work
+
+- **Locked-follower desync (multiple rounds)** — `applyNow`, `setSegmentBars`, and `next()` were each able to advance a locked follower stem independently of its leader, drifting the two out of sync. Closed each path one at a time as they were found; `lockSource` was fixed to correctly cascade to *all* followers, not just the first.
+- **Absolute-time fraction mismatch** — leader and follower were computing their shared position fraction against different absolute-time bases, causing a subtle drift that only showed up over long sessions. Fixed the fraction math to share one clock; added a width-master alias and removed dead code left over from earlier lock-sync attempts.
+- **Progress-bar freeze under drift** — investigating the drift above surfaced a case where the progress bar could freeze entirely; added a watchdog that detects a stalled bar and force-refreshes it.
+- **Two-phase prepare/commit sync barrier (architectural centerpiece)** — replaced the ad-hoc "just fire both" advance logic with a proper two-phase barrier: all locked stems prepare their next segment first, then commit together on the same tick. This is the actual fix underneath all the desync symptoms above.
+- **STAY overshoot gap + self-pull duplicate dispatch** — two bugs found while hardening the barrier: STAY continuation could leave a small time gap at a segment boundary, and a locked stem could end up pulling from itself and double-dispatching identical audio. Both fixed.
+- **Barrier was silently a no-op** — a stale `cycleId` guard meant the two-phase barrier above was being skipped entirely without any error. Fixed the guard; also added a last-touched-stem whitelist so barrier commits only affect stems that actually need it.
+
+## 0.1.14 — 2026-07-09
+
+### Slicing / segment-selection correctness
+
+- **Stay-continuation and short-tail fixes + speculative preload** — the original STAY logic could pick a bad continuation point when a segment tail was very short; added short-tail handling and speculative preloading of the likely-next slice to hide load latency.
+- **Short-tail delay wrong time domain** — a follow-up fix: the short-tail delay timer had been computed in the wrong time domain (audio-content fraction instead of wall-clock ms), causing mistimed advances.
+- **`PLAY_FULL_FILE` default + `:skip` command** — added a default mode that plays full source files rather than always slicing, plus a manual `:skip` command; a fresh pick in full-file mode now correctly starts at file start rather than mid-file.
+- **Commands no longer cut off audio** — TUI commands were interrupting in-flight audio; fixed so commands apply cleanly at the next natural boundary instead of hard-cutting.
+- **STAY end-of-file wrap** — added diagnostic logging distinguishing normal forward continuation, wrap-to-start-of-track, and the rare fully-lost-track fallback.
+- **"At or after" permanent-skip bug (root cause + fix)** — STAY's search for the next slice used "start time at or after `lastEndFrac`," which let it silently skip forward past unindexed audio whenever `lastEndFrac` didn't land exactly on a real slice boundary — introduced when segment end-points were anchored to bar-exact math instead of actual consumed-slice length. Fixed at the source: `buildIndex()` now splits any slice that a measured downbeat falls inside, guaranteeing a real slice boundary exists on every downbeat, so "at or after" always resolves to an exact match. Also fixed `MAX_SLICES_PER_STEM` capping to preserve these new downbeat-synthesized slices instead of discarding them under the count cap.
+
+## 0.1.13 — 2026-07-09
+
+### Tempo control
+
+- **`setGlobalBPM 0` not broadcasting** — clearing the global BPM override wasn't notified to the TUI, leaving stale tempo state displayed.
+- **Live tempo retime instead of reroll** — changing tempo mid-playback used to reroll to a new segment; `applyGlobalBPMLive()` now retimes karma~'s speed in place, preserving the current segment.
+- **Progress bar tempo drift** — the retime above changed playback speed but never told the TUI, so the progress bar kept counting at the old rate. Added a `segRetime` message and a client-side affine rebase that keeps the bar's fill percentage continuous through the exact instant of a live tempo change, with no visual jump.
+
+## 0.1.12 — 2026-07-09
+
+### New feature: forceNext
+
+- Added `forceNext(stemOrAll)` — a manual "skip to next slice now" command, decoupled from the automatic per-stem advance timer. Locked follower stems redirect the force to their leader (cascading through the normal followers path) instead of pulling themselves, which would otherwise no-op or re-dispatch identical audio. `ws_server.js` renames the TUI's `next [stem]` command to `forceNext` on the way to Max to avoid colliding with the internal auto-advance message of the same name.
+
+## 0.1.11 — 2026-07-09
+
+### TUI layout & connection-reliability polish
+
+- **`:score` / `:rate` command** and spatial-widget column added to the TUI layout.
+- **Session defaults** tightened; progress bar restart bug fixed (bar could fail to reset on a fresh track load).
+- **WS reconnect-error spam** — rate-limited: first connection failure logs immediately, further repeats collapse to at most once per 15s.
+- **Header/icon layout** — record dot, `[TIP]`, and `[LINK]` indicators moved and restyled (symbols replaced with `[REC ON/OFF]` / `[TIP ON/OFF]` / `[LINK ON/OFF]` text, then `[REC]` reverted to a small colored dot next to the connection label); record dot sized down. Lock-source tag moved from the VU sidebar to under each stem's progress-bar timestamp, with a fixed-width slot so it aligns across all four stem rows regardless of lock state.
+- **Full-width header/progress-bar regression (introduced and fixed same session)** — an attempted fix mistakenly narrowed the header and progress-bar rows to the VU-sidebar-aware content width; a screenshot showed the resulting dead gap. Root-caused to `statusBox`/`playBox` actually being declared full-terminal-width with the VU sidebar sitting below them, not beside — reverted to full `screen.width`.
+- **Descriptor row adaptive width-fitting** — range-bar width and inter-field gaps now compute from available terminal width so the row never wraps to a second line; tail items (lock tag, bars/stay, sid, genre, track) are appended in priority order only if they fit.
+- **Descriptor row tail-item alignment** — the lock-tag slot is now always reserved (blank-padded when unlocked) so `bars:`/`stay:`/sid/genre start at the same column on every stem row.
+
+---
+
 ## 0.1.8 — 2026-07-02
 
 ### Repository restructure — portable, cloneable package

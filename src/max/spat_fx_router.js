@@ -6,7 +6,9 @@
 // appropriate Max `receive` objects in the patch.
 //
 // ── Commands (inlet 0) ────────────────────────────────────────────────────────
-//   width    <stem> <0–1>    — M/S stereo width per stem (0=mono, 1=full wide)
+//   width    <stem> <0–1>    — M/S stereo width per stem
+//                               0 = mono, 0.5 = original stereo (default, untouched),
+//                               1 = wider than the original stereo field
 //   joystick <stem> <x> <y> — 2D quad pan  x=-1(L)..+1(R)  y=-1(rear)..+1(front)
 //   fxSend   <0–1>           — send level from master mix to dac~ 3 4
 //   fxReturn <0–1>           — return level from adc~ 3 4 to main mix
@@ -30,24 +32,53 @@ var TRACKS       = ['vocals', 'melody', 'bass', 'drums'];
 var LIVE_TRACKS  = ['live1', 'live2'];
 var ALL_TRACKS   = TRACKS.concat(LIVE_TRACKS);
 
-// Current state (for info / recall)
+// *** THIS is the file Max actually loads (the object box in ebys-analyze.maxpat
+// is literally typed "js spat_fx_router.js" — that argument is what the js
+// object uses to load its script; a stray saved_object_attributes.filename
+// on the same box pointed at "ms_router.js", but per Max's own docs the box's
+// typed argument is authoritative, not that attribute. ms_router.js — which
+// received essentially all of this session's joystick/tilt debugging — was
+// never actually live. Its fixes are merged in here instead, onto the fuller
+// feature set (live1/live2, fxSwitch, boothGain/recGain, per-stem fxReturn)
+// this file already had. Treat ms_router.js as reference/historical from now
+// on, not a file that needs to stay in sync. ***
+
+// Defaults changed to a genuine "straight passthrough" baseline (see
+// applyJoystick/masterJoystick/applyWidth below for what each value actually
+// means at the DSP): x=0 + the tiltL/R split means hard-left/hard-right with
+// no cross-bleed; y=1 means full front pair, matching a plain stereo output;
+// width=0.5 means the M/S side channel is unscaled — the original stereo
+// image, untouched (see applyWidth's 0..1 -> 0..2 remap). Previously width
+// defaulted to 0 (full mono collapse under the OLD 0=mono/1=original mapping)
+// and was never even pushed to Max at patch load (no loadbang() existed in
+// this file at all) — on top of the mono-buffer read bug fixed separately,
+// stereo had no chance of surviving to the output before now.
 var state = {
-    width:       { vocals: 0, melody: 0, bass: 0, drums: 0, live1: 0, live2: 0 },
-    joy:         { vocals: {x:0, y:0}, melody: {x:0, y:0},
-                   bass:   {x:0, y:0}, drums:  {x:0, y:0},
-                   live1:  {x:0, y:0}, live2:  {x:0, y:0} },
-    masterJoy:   { x: 0, y: 0 },
+    width:       { vocals: 0.5, melody: 0.5, bass: 0.5, drums: 0.5, live1: 0.5, live2: 0.5 },
+    joy:         { vocals: {x:0, y:1}, melody: {x:0, y:1},
+                   bass:   {x:0, y:1}, drums:  {x:0, y:1},
+                   live1:  {x:0, y:1}, live2:  {x:0, y:1} },
+    masterJoy:   { x: 0, y: 1 },
     fxSend:      { vocals: 0, melody: 0, bass: 0, drums: 0, live1: 0, live2: 0 },
     fxReturn:    { vocals: 0, melody: 0, bass: 0, drums: 0, live1: 0, live2: 0 },
     fxSwitch:    { 1: 0, 2: 0 },   // 0=stem, 1=live
+    // Per-stem FX-send mono switch. 0=stereo (default, both dac~ outlets carry
+    // the real post-width L/R), 1=mono (both outlets carry the identical L+R
+    // sum, so a mono pedal patched into just the left output of that stem's
+    // hardware send/return pair gets the full mix, nothing missing). Only the
+    // 4 stems have FX-send taps at all — live1/live2 don't route through this.
+    monoSend:    { vocals: 0, melody: 0, bass: 0, drums: 0 },
     masterGain:  1.0,
     boothGain:   0.7,             // booth monitor level (0–1)
     recGain:     1.0,             // recording output level (0–1)
 };
 
-// Analysis mode: when true, stemMS messages from slicer drive width automatically.
-// Set to false via :analysisMode off to allow fully manual TUI control.
-var analysisDriven = true;
+// Analysis mode now defaults OFF: width should stay at its manual value (1.0
+// = untouched original stereo) unless the user explicitly runs a :width
+// command, not get silently redriven by per-slice analysis data every time a
+// new segment fires. :analysisMode on restores the old automatic behavior
+// for whoever wants it.
+var analysisDriven = false;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,17 +109,67 @@ function sendToMax(name, value) {
 function applyWidth(stem, w) {
     w = clamp(parseFloat(w) || 0, 0, 1);
     state.width[stem] = w;
-    sendToMax('width_' + stem, w);
+    // User-facing 0..1 remapped to the DSP's actual 0..2 M/S side-channel
+    // multiplier: 0 -> 0 (mono, side silenced), 0.5 -> 1.0 (unity — the
+    // side channel passes through completely unscaled, i.e. the original
+    // stereo file exactly as recorded), 1 -> 2.0 (side doubled — wider than
+    // the original field). Plain linear map, w*2, since 0.5 needing to land
+    // on 1.0 pins the scale exactly. The *~ width_<stem> multiplier in the
+    // patch has no clamp of its own, so a >1.0 multiplier genuinely widens
+    // rather than being silently capped — safe to send since the master bus
+    // now has a hard clip~ safety net (see CHANGELOG 0.1.14) regardless of
+    // how wide any stem gets pushed.
+    var sideMult = w * 2;
+    sendToMax('width_' + stem, sideMult);
     outlet(1, 'param', 'width_' + stem, w);
-    post('spat_fx_router: width[' + stem + '] = ' + w.toFixed(3) + '\n');
+    post('spat_fx_router: width[' + stem + '] = ' + w.toFixed(3)
+         + '  (side×' + sideMult.toFixed(2) + ')\n');
 }
+
+// Live channels (live1/live2) only ever got the OLD joyX_/joyY_ receive
+// pair in the patch — no joyTiltL_live*/joyTiltR_live* wiring exists for
+// them (confirmed via the patch's own receive-object list), so they can't
+// use the tiltL/R split below. Still fix the range bug for them though:
+// pan2 is confirmed -1..1 native (0=center), not 0..1, so the old (x+1)/2
+// rescale was wrong here too — send raw x/y straight through instead.
+// NOTE: the joyTiltL/R split below was coded here but the matching
+// `receive joyTiltL_<stem>` / router entries were NEVER added to the patch —
+// only `receive joyX_<stem>`/`joyY_<stem>` exist. So marking stems as tilt sent
+// the X-axis pan into the void (joyY still worked), which is why every stem was
+// stuck panned left. The stems are MONO (.mono buffers), so simple joyX/joyY
+// panning is exactly right anyway. Empty = every stem uses the joyX/joyY branch
+// the patch actually wires. (Re-enable per stem only if joyTiltL/R receives get
+// added to the patch.)
+var TILT_STEMS = {};
 
 function applyJoystick(stem, x, y) {
     x = clamp(parseFloat(x) || 0, -1, 1);
     y = clamp(parseFloat(y) || 0, -1, 1);
     state.joy[stem] = { x: x, y: y };
-    sendToMax('joyX_' + stem, x);
-    sendToMax('joyY_' + stem, y);
+    if (TILT_STEMS[stem]) {
+        // jp_LR_L_<stem>/jp_LR_R_<stem> each get their OWN value now
+        // (joyTiltL_<stem>/joyTiltR_<stem>) instead of both reading one
+        // shared joyX_<stem> — that old shared-value wiring sent both
+        // pan2s to the same position, splitting L-bus and R-bus content
+        // 50/50 EACH and collapsing every stem toward mono regardless of
+        // upstream content. Confirmed via Cycling'74 docs and direct
+        // message-box A/B testing this session that pan2's position inlet
+        // is -1 (hard left) to +1 (hard right), 0 = center — NOT 0..1 as
+        // this file assumed before. Keep the piecewise tilt SHAPE (flat at
+        // the home value, ramping toward the far extreme as the stem
+        // moves away from center — correct, avoids collapsing to mono at
+        // rest) but rescale its 0..1 output into -1..1 via *2-1 so x=0
+        // actually lands at hard-left/hard-right (pass-through) instead of
+        // pan2's true center.
+        var tiltL = clamp(x, 0, 1) * 2 - 1;
+        var tiltR = clamp(x + 1, 0, 1) * 2 - 1;
+        sendToMax('joyTiltL_' + stem, tiltL);
+        sendToMax('joyTiltR_' + stem, tiltR);
+        sendToMax('joyY_' + stem, y); // already -1..1 native, no rescale
+    } else {
+        sendToMax('joyX_' + stem, x);
+        sendToMax('joyY_' + stem, y);
+    }
     outlet(1, 'param', 'joyX_' + stem, x);
     outlet(1, 'param', 'joyY_' + stem, y);
     post('spat_fx_router: joystick[' + stem + '] x=' + x.toFixed(2) + ' y=' + y.toFixed(2) + '\n');
@@ -101,6 +182,27 @@ function width(stem, value) {
     var targets = (String(stem) === 'all') ? ALL_TRACKS : [String(stem)];
     for (var i = 0; i < targets.length; i++) {
         if (state.width.hasOwnProperty(targets[i])) applyWidth(targets[i], value);
+    }
+}
+
+// monoSend <stem> on|off|1|0 — collapse that stem's FX-send dac~ pair to a
+// shared mono sum (for mono pedals) or leave it as real post-width stereo
+// (default). Only exists for the 4 stems (vocals/melody/bass/drums) — the
+// FX-send taps this switches were built in 0.1.23; live1/live2 never had
+// FX-send taps to begin with.
+function applyMonoSend(stem, onOff) {
+    var v = (parseInt(onOff) === 1 || String(onOff).toLowerCase() === 'on') ? 1 : 0;
+    state.monoSend[stem] = v;
+    sendToMax('monoSend_' + stem, v);
+    outlet(1, 'param', 'monoSend_' + stem, v);
+    post('spat_fx_router: monoSend[' + stem + '] = ' + (v ? 'mono' : 'stereo') + '\n');
+}
+
+function monoSend(stem, value) {
+    if (!stem) return;
+    var targets = (String(stem) === 'all') ? TRACKS : [String(stem)];
+    for (var i = 0; i < targets.length; i++) {
+        if (state.monoSend.hasOwnProperty(targets[i])) applyMonoSend(targets[i], value);
     }
 }
 
@@ -133,16 +235,6 @@ function fxSend(stem, value) {
         outlet(1, 'param', 'fxSend_' + t, v);
         post('spat_fx_router: fxSend[' + t + '] = ' + v.toFixed(3) + '\n');
     }
-}
-
-// :fxStereo 0 | 1  (or off | on)
-// 0 = mono  — same mono sum on dac~ 3+4, return from adc~ 3 only (default, for mono pedals)
-// 1 = stereo — master L/R on dac~ 3/4 separately, return from adc~ 3 (L) and adc~ 4 (R)
-function fxStereo(val) {
-    var v = (String(val) === '1' || String(val).toLowerCase() === 'on') ? 1 : 0;
-    sendToMax('fxstereo', v);
-    outlet(1, 'param', 'fxStereo', v);
-    post('spat_fx_router: fxStereo = ' + (v ? 'stereo' : 'mono') + '\n');
 }
 
 // fxReturn <stem> <0–1>  — return level from adc~ hardware insert back into stem path
@@ -203,6 +295,11 @@ function masterJoystick(x, y) {
     x = clamp(parseFloat(x) || 0, -1, 1);
     y = clamp(parseFloat(y) || 0, -1, 1);
     state.masterJoy = { x: x, y: y };
+    // The master pan2 chain reads `masterJoyX`/`masterJoyY` — verified: receive
+    // masterJoyX → mj_LR_L / mj_LR_R (the master L/R pan2s), and there is NO
+    // receive masterTiltL/R in the patch. The old code sent masterTiltL/R (dead
+    // messages), so master X-axis panning never worked. pan2 position is native
+    // -1..+1 (0 = center), so send raw x/y straight through.
     sendToMax('masterJoyX', x);
     sendToMax('masterJoyY', y);
     outlet(1, 'param', 'masterJoyX', x);
@@ -229,7 +326,9 @@ function info() {
              + '  joy x=' + state.joy[t].x.toFixed(2)
              + ' y=' + state.joy[t].y.toFixed(2)
              + '  fxSend=' + state.fxSend[t].toFixed(2)
-             + '  fxReturn=' + state.fxReturn[t].toFixed(2) + '\n');
+             + '  fxReturn=' + state.fxReturn[t].toFixed(2)
+             + (state.monoSend.hasOwnProperty(t) ? '  monoSend=' + (state.monoSend[t] ? 'mono' : 'stereo') : '')
+             + '\n');
     }
     post('  fxSwitch: ch1=' + state.fxSwitch[1] + ' (live1↔vocals)'
          + '  ch2=' + state.fxSwitch[2] + ' (live2↔drums)\n');
@@ -238,13 +337,40 @@ function info() {
          + '  recGain=' + state.recGain.toFixed(2) + '\n');
 }
 
+// Push initial state to Max when the patch first loads. This function never
+// existed in this file before — meaning none of state's defaults (width,
+// joy, fxSend/Return, gains, etc.) were ever actually sent to Max at patch
+// open; every receive object just sat at whatever its own box default (or
+// nothing) was until the first matching command happened to touch it.
+function loadbang() { resend(); }
+
+// ws_ready — ws_server broadcasts this out its outlet (which fans to this
+// object) every time it starts listening, i.e. on every patch load AND every
+// node.script restart. loadbang() only fires on a full patch load, and Max's
+// `autowatch` reload of THIS file does NOT re-run loadbang — so after a hot
+// reload the pan/width/gain state was never re-pushed and receives like
+// joyX_<stem> sat empty (pan stuck). Re-applying on ws_ready makes the router
+// self-heal on any reload without needing a full patcher restart.
+function ws_ready() {
+    post('spat_fx_router: ws_ready — re-applying spatial state\n');
+    resend();
+}
+
 // ── Analysis-driven M/S ───────────────────────────────────────────────────────
 // Called by ws_server when slicer.js emits stemMS after each slice selection.
-// Only fires when analysisMode = true (default).
-// TUI :analysisMode off  → manual control  (width/pan commands still work either way)
-// TUI :analysisMode on   → restore automatic analysis-driven M/S
+// Only fires when analysisMode = true (opt-in — see default above).
+// TUI :analysisMode off  → manual control only (default; width/pan commands still work either way)
+// TUI :analysisMode on   → slicer drives width automatically from the original mix's own analysis
 //
 // NOTE: stemMS only drives WIDTH. Joystick position is always manual.
+// NOT reconciled with the 0.5=original width remap below: widthVal here
+// comes straight from add_stereo_features.py's own 0..1 "stem M/S ratio,
+// normalized within stem" measurement, which predates and doesn't know about
+// the 0=mono/0.5=original/1=wider convention applyWidth() now expects. Fine
+// while analysisDriven defaults off (opt-in only), but if :analysisMode on
+// ever gets real use again this mapping needs revisiting — flagging rather
+// than guessing at a fix without a real example of what the analysis values
+// look like in practice.
 function stemMS(track, panVal, widthVal) {
     if (!analysisDriven) return;
     var t = String(track);
@@ -256,8 +382,8 @@ function stemMS(track, panVal, widthVal) {
 }
 
 // :analysisMode on | off | 1 | 0
-// on  = slicer drives pan/width per slice automatically (default)
-// off = manual control via :width / :pan TUI commands only
+// on  = slicer drives width per slice automatically from the original mix's analysis
+// off = manual control via :width / :joystick TUI commands only (default)
 function analysisMode(val) {
     var v = String(val).toLowerCase();
     analysisDriven = (v === 'on' || v === '1' || v === 'true');
@@ -278,6 +404,9 @@ function resend() {
         applyJoystick(t, state.joy[t].x, state.joy[t].y);
         fxSend(t, state.fxSend[t]);
         fxReturn(t, state.fxReturn[t]);
+    }
+    for (var j = 0; j < TRACKS.length; j++) {
+        applyMonoSend(TRACKS[j], state.monoSend[TRACKS[j]]);
     }
     fxSwitch(1, state.fxSwitch[1]);
     fxSwitch(2, state.fxSwitch[2]);
