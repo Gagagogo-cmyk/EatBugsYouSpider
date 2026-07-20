@@ -33,37 +33,35 @@ screen.key(['C-c'], () => process.exit(0));
 const root = blessed.box({
   parent: screen,
   top: 0, left: 0, width: '100%', height: '100%',
-  style: { fg: 'white' },
+  style: { fg: 'bright-white' },
 });
 
 // Same row: "select a session" pinned left, version + license centered.
 const title = blessed.text({
   parent: root, top: 0, left: 1, height: 1,
-  tags: true, content: '{red-fg}select a session{/red-fg}',
+  tags: true, content: '{bright-white-fg}select a session{/bright-white-fg}',
 });
 
 const version = blessed.text({
   parent: root, top: 0, left: 'center', height: 1,
   tags: true,
-  content: '{grey-fg}[EBYS 0.1.19]{/grey-fg}  {grey-fg}[{bold}▼{/bold}? AGPL-3.0]{/grey-fg}',
+  content: '{grey-fg}[EBYS 0.1.19]{/grey-fg}  {grey-fg}[{bold}🄯{/bold} AGPL-3.0]{/grey-fg}',
 });
 
 const list = blessed.list({
   parent: root, top: 2, left: 1, right: 1, bottom: 2,
-  keys: true, vi: true, mouse: true,
+  keys: true, vi: true, mouse: true, tags: true,
   style: {
-    selected: { fg: 'black', bg: 'white' },
-    item: { fg: 'white' },
+    selected: { fg: 'black', bg: 'bright-white' },
+    item: { fg: 'bright-white' },
   },
 });
 
-// ── Command shortcut bar pinned to the very bottom — styled like nano's
-// footer: each entry is an inverse-highlighted key "chip" followed by a
-// plain label, all on a single row spread evenly across the full width.
-// No line borders (nano has none); the chip is just an inverse-video cell,
-// which renders reliably in blessed. Each cell is a single text element
-// containing the whole `{chip} Label` string, so there's nothing to paint
-// over the labels.
+// ── Command shortcut bar pinned to the very bottom — same style app.js's
+// TUI footer uses (see ZONE F there): each entry is an inverse-highlighted
+// key "chip" followed by a plain label, all grouped together left-anchored
+// instead of spread across the full width — one row, one text element, no
+// per-cell positioning to keep in sync as chips are added/removed.
 const footerHeight = 1;
 const footerBox = blessed.box({
   parent: root, bottom: 0, left: 0, right: 0, height: footerHeight,
@@ -73,21 +71,17 @@ const footerBox = blessed.box({
 // so `^N` looks like the light-background chips in nano.
 const chip = (key, label) => `{inverse} ${key} {/inverse} ${label}`;
 
-// Spread the shortcuts evenly across the whole screen width using
-// percentage offsets, so the bar scales with the terminal size.
-const cells = [
-  { left: '1%',  content: chip('^N', 'New')      },
-  { left: '21%', content: chip('^R', 'Rename')   },
-  { left: '41%', content: chip('^D', 'Delete')   },
-  { left: '61%', content: chip('^Q', 'Quit')     },
-  { left: '81%', content: chip('Enter', 'Select') },
+const footerCells = [
+  chip('^N', 'New'),
+  chip('^R', 'Rename'),
+  chip('^D', 'Delete'),
+  chip('^Q', 'Quit'),
+  chip('Enter', 'Select'),
 ];
-for (const c of cells) {
-  blessed.text({
-    parent: footerBox, bottom: 0, left: c.left,
-    tags: true, content: c.content,
-  });
-}
+blessed.text({
+  parent: footerBox, bottom: 0, left: 1,
+  tags: true, content: footerCells.join('   '),
+});
 
 // Status line sits just above the footer so a status message never paints
 // over the shortcut row.
@@ -131,13 +125,13 @@ function promptText(label, opts, cb) {
   opts = opts || {};
   const box = blessed.box({
     parent: root, top: 2, left: 1, right: 1, bottom: 2,
-    style: { fg: 'white' },
+    style: { fg: 'bright-white' },
   });
   blessed.text({ parent: box, top: 0, left: 0, tags: true, content: label });
   const input = blessed.textbox({
     parent: box, top: 2, left: 0, right: 0, height: 1,
     inputOnFocus: true, censor: !!opts.censor,
-    style: { fg: 'magenta' },
+    style: { fg: 'bright-white' },
   });
   const hint = blessed.text({
     parent: box, top: 4, left: 0, tags: true,
@@ -155,7 +149,7 @@ function openSession(session) {
     promptText(`password for "${session.name}":`, { censor: true }, pw => {
       if (pw === null) { setStatus('', null); return; }
       if (!sessionMgr.verifyPassword(session.id, pw)) {
-        setStatus('wrong password', 'red');
+        setStatus('wrong password', 'bright-white');
         return;
       }
       launch(session.id);
@@ -176,15 +170,15 @@ function launch(id) {
 
 function createSession() {
   promptText('new session name:', {}, name => {
-    if (name === null || !name.trim()) { setStatus(name === null ? '' : 'name required', name === null ? null : 'red'); return; }
+    if (name === null || !name.trim()) { setStatus(name === null ? '' : 'name required', name === null ? null : 'bright-white'); return; }
     promptText('password (optional — leave blank for none):', { censor: true }, pw => {
       if (pw === null) { setStatus('', null); return; }
       try {
         const s = sessionMgr.createSession(name.trim(), pw || null);
         refreshList(s.id);
-        setStatus(`created "${s.name}"`, 'green');
+        setStatus(`created "${s.name}"`, 'bright-white');
       } catch (e) {
-        setStatus('failed: ' + e.message, 'red');
+        setStatus('failed: ' + e.message, 'bright-white');
       }
     });
   });
@@ -195,13 +189,13 @@ function renameSelected() {
   if (!s) return;
   promptText(`rename "${s.name}" to:`, { value: s.name }, name => {
     if (name === null) { setStatus('', null); return; }
-    if (!name.trim()) { setStatus('name required', 'red'); return; }
+    if (!name.trim()) { setStatus('name required', 'bright-white'); return; }
     try {
       const updated = sessionMgr.renameSession(s.id, name.trim());
       refreshList(updated.id);
-      setStatus(`renamed to "${updated.name}"`, 'green');
+      setStatus(`renamed to "${updated.name}"`, 'bright-white');
     } catch (e) {
-      setStatus('failed: ' + e.message, 'red');
+      setStatus('failed: ' + e.message, 'bright-white');
     }
   });
 }
@@ -210,7 +204,7 @@ function deleteSelected() {
   const idx = list.selected;
   const s = sessions[idx];
   if (!s) return;
-  setStatus(`delete "${s.name}"? data is kept on disk — type y to confirm, any other key cancels`, 'red');
+  setStatus(`delete "${s.name}"? data is kept on disk — type y to confirm, any other key cancels`, 'bright-white');
   screen.once('keypress', (ch, key) => {
     const k = (key && key.name) || ch;
     if (k === 'y') {

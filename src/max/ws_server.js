@@ -27,6 +27,16 @@ function sessionDataDir() {
     return sessionMgr.getActiveSessionDataDir();
 }
 
+// followGraph dimension keys — mirrors slicer.js's FOLLOW_DIMS exactly (S
+// included: it's real, independent data now, not the analysis-pipeline
+// duplicate-of-C bug the docs used to warn about).
+const FOLLOW_DIMS = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
+function emptyFollowMap() {
+    const m = {};
+    FOLLOW_DIMS.forEach(d => { m[d] = null; });
+    return m;
+}
+
 // ── State cache ───────────────────────────────────────────────────────────────
 const state = {
     running:      false,
@@ -59,7 +69,13 @@ const state = {
     },
     // Engine macros
     entropy:     0.5,
-    followGraph: { vocals: null, drums: null, bass: null, melody: null },
+    // followGraph[stem][dim] = [{target, weight}, ...] or null — per-dimension
+    // now, not whole-stem (see the :followStem handler below and slicer.js's
+    // matching FOLLOW_STEM/followStem() for the full design).
+    followGraph: {
+        vocals: emptyFollowMap(), melody: emptyFollowMap(),
+        bass:   emptyFollowMap(), drums:  emptyFollowMap(),
+    },
     // Track mode: page (1=global, 2=per-stem) × subpage (a=lo range, b=hi range)
     // 'all' = no stem selected (global context, always page 1)
     trackMode:   { all: '1a', vocals: '1a', drums: '1a', bass: '1a', melody: '1a', live1: '1a', live2: '1a' },
@@ -68,7 +84,16 @@ const state = {
     // Tipping session
     segBars:     { vocals: 4, melody: 4, bass: 4, drums: 4 },
     sessionId:   null,
+    djId:        null,    // DJ's user id, set by :tipOpen <djId> ... — see the 'session'
+                           // broadcast's djId field
     sessionDeck: 'ebys',  // 'ebys' | 'direct' — direct = no pings, no slice logging
+    sessionMode: null,    // 'web' | 'venue' — set by :tipOpen, paired with sessionDeck to
+                           // pick the protocol's precision level (see TIPPING_PROTOCOL.md)
+    tipBackendUp: null,   // null = unknown (not checked yet), true/false = last known
+                           // reachability of the tipping backend (TIPPING_URL). This is
+                           // ws_server.js's own HTTP server reachability, NOT a live Stripe
+                           // API check — tips.js doesn't expose one, so this is the closest
+                           // available proxy for "is the tipping infrastructure up".
 };
 
 // ── Last touched param tracker ───────────────────────────────────────────────
@@ -76,7 +101,9 @@ const state = {
 const TOUCH_COMMANDS = new Set([
     'eqLow','eqMid','eqHigh','eqMidFreq',
     'trim','fader','mute','solo','width','joystick','masterJoystick',
-    'entropy','pitchShift','boothGain','recGain','fx','fxSwitch',
+    'entropy','pitchShift','formantShift',
+    'setShiftBand','setPitchBand','setFormantBand','clearPitchBand','clearFormantBand','clearShiftBand',
+    'boothGain','recGain','fx','fxSwitch',
     'followStem','master',
     // Structural/compositional performative commands — narrowly scoped to
     // pure live-mixing gestures before, so ":setSegmentBars 4" (and its
@@ -127,8 +154,20 @@ async function pingBackend() {
             body:    JSON.stringify({ sessionId: state.sessionId, simultaneousN, segVoc, segMel, segBas, segDrm, segVariance }),
         });
         if (!res.ok) Max.post('ws_server: ping failed — ' + res.status + '\n');
+        // Piggyback backend reachability on the ping that's already running
+        // every few bars while a session is open, rather than a separate
+        // health-check timer — only broadcasts when the status actually
+        // FLIPS, so this doesn't spam a message every ping.
+        if (state.tipBackendUp !== true) {
+            state.tipBackendUp = true;
+            broadcast({ type: 'tipBackend', up: true });
+        }
     } catch(e) {
         Max.post('ws_server: ping error — ' + e.message + '\n');
+        if (state.tipBackendUp !== false) {
+            state.tipBackendUp = false;
+            broadcast({ type: 'tipBackend', up: false });
+        }
     }
 }
 
@@ -340,9 +379,18 @@ server.on('upgrade', (req, socket) => {
     // Status-icon state (tipping session, recording) — sent separately so a
     // reconnecting TUI shows the right icons immediately instead of assuming
     // "nothing active" until the next state-changing command happens to fire.
-    socket.write(encodeFrame(JSON.stringify({
-        type: 'session', active: !!state.sessionId, sessionId: state.sessionId, deck: state.sessionDeck,
-    })));
+    // Only sent when a session is actually open — app.js's 'session' handler
+    // does a full replace of state.session (sid/up/djId/etc, not a merge),
+    // so broadcasting an empty snapshot here on every connect was wiping out
+    // the TUI's own state (including its fake preview data) even when
+    // nothing real had happened yet. No session open = say nothing, let the
+    // TUI keep whatever it already has.
+    if (state.sessionId) {
+        socket.write(encodeFrame(JSON.stringify({
+            type: 'session', active: true, sessionId: state.sessionId, deck: state.sessionDeck,
+            mode: state.sessionMode, djId: state.djId,
+        })));
+    }
     socket.write(encodeFrame(JSON.stringify({ type: 'param', key: 'recording', value: state.recording })));
     // NOTE: do NOT send analysisDone here. analysisDone means "a fresh analysis just
     // completed this session" — it triggers add_tension.py + buildIndex in the TUI.
@@ -380,18 +428,28 @@ server.on('upgrade', (req, socket) => {
                 if (m.type === 'bake') {
                     const snapshot = {
                         timestamp:        new Date().toISOString(),
+                        bakeSessionId:    m.bakeSessionId     || null,  // joins to :score entries
+                                                                         // from the same bracket in
+                                                                         // training_log_vertical.jsonl
                         intent:           m.intent           || '',
                         cricket_cmds:     m.cricket_cmds     || [],
                         user_corrections: m.user_corrections || [],
                         final_cmds:       m.final_cmds       || [],
+                        attempts:         m.attempts         || null,
+                        // Filename under recordings/, set by app.js's TRAINING REVIEW MODE
+                        // (bracket auto-records via the same :record start/stop path a
+                        // manual :record uses) — null if nothing was captured, e.g. a
+                        // full-set recording was already in progress. Lets review mode
+                        // play back what this bake actually sounded like.
+                        audioFile:        m.audioFile         || null,
                         track:            state.track,
                         bpm:              state.bpm,
                         stems:            JSON.parse(JSON.stringify(state.stems)),
                     };
                     const logPath = path.join(sessionDataDir(), 'training_log.jsonl');
                     fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
-                    Max.post('ws_server: 🫳 baked\n');
-                    broadcast({ type: 'sys', msg: '🫳 baked' });
+                    Max.post('ws_server: ✓ baked\n');
+                    broadcast({ type: 'sys', msg: '✓ baked' });
                     continue;
                 }
 
@@ -429,12 +487,28 @@ server.on('upgrade', (req, socket) => {
                             const data = await res.json();
                             state.sessionId   = data.sessionId;
                             state.sessionDeck = deck;
+                            state.sessionMode = mode;
+                            state.djId        = djId;
+                            state.tipBackendUp = true;
+                            broadcast({ type: 'tipBackend', up: true });
                             const deckLabel = deck === 'direct' ? ' [direct]' : ' [ebys]';
                             broadcast({ type: 'sys', msg: '✓ session ' + state.sessionId + ' open (' + mode + ')' + deckLabel });
-                            broadcast({ type: 'session', active: true, sessionId: state.sessionId, deck });
+                            // mode ('web'|'venue') + deck ('ebys'|'direct') together pick which of
+                            // the protocol's 3 precision levels this session is running at — see
+                            // docs/protocol/TIPPING_PROTOCOL.md. Broadcast so the TUI can show the
+                            // [LVL n/3] header chip without duplicating this logic client-side.
+                            // openedAt is a server timestamp (not the TUI's own Date.now() on
+                            // receipt) so it reflects the moment the backend actually opened the
+                            // session, not whenever this particular client happened to get the message.
+                            // djId is the DJ's user id (":tipOpen <djId> ...") — what the tipping
+                            // panel's "uid:" field shows, distinct from sessionId (an opaque
+                            // per-session token the backend generates, not a user identity).
+                            broadcast({ type: 'session', active: true, sessionId: state.sessionId, deck, mode, openedAt: Date.now(), djId });
                             Max.post('ws_server: session opened — id=' + state.sessionId + ' deck=' + deck + '\n');
                             updatePingTimer();  // no-op in direct mode
                         } catch(e) {
+                            state.tipBackendUp = false;
+                            broadcast({ type: 'tipBackend', up: false });
                             broadcast({ type: 'sys', msg: '✗ sessionOpen failed — ' + e.message });
                         }
                         continue;
@@ -465,9 +539,13 @@ server.on('upgrade', (req, socket) => {
                         }
                         // Local teardown — always.
                         state.sessionId   = null;
+                        state.djId        = null;
                         state.sessionDeck = 'ebys';
+                        state.sessionMode = null;
+                        state.tipBackendUp = null;  // unknown again — no session, no pings to judge it by
                         if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
-                        broadcast({ type: 'session', active: false, sessionId: null, deck: null });
+                        broadcast({ type: 'tipBackend', up: null });
+                        broadcast({ type: 'session', active: false, sessionId: null, deck: null, mode: null, openedAt: null, djId: null });
                         broadcast({ type: 'sys', msg: '✓ session ' + closingId + ' closed' });
                         continue;
                     } else if (atoms[0] === 'pitchShift') {
@@ -478,6 +556,76 @@ server.on('upgrade', (req, socket) => {
                         const semitones = parseFloat(atoms[2]) || 0;
                         broadcast({ type: 'param', key: 'pitchShift', stem, semitones });
                         Max.outlet('pitchShift', stem, semitones);
+                    } else if (atoms[0] === 'formantShift') {
+                        // :formantShift <stem> <semitones>
+                        // stem = vocals | melody | bass | drums | all
+                        // semitones = positive (up) or negative (down), e.g. 3 or -2
+                        // Independent of :pitchShift — see slot_router.js's setFormant()/
+                        // FORMANT_OUT for what this actually drives (the second gizmo~
+                        // inside ebys-pitch.maxpat, warping the spectral envelope rather
+                        // than the pitch-shifted excitation). 0 = formants untouched,
+                        // matching ReaPitch's formant slider at rest.
+                        const stem      = String(atoms[1] || 'all');
+                        const semitones = parseFloat(atoms[2]) || 0;
+                        broadcast({ type: 'param', key: 'formantShift', stem, semitones });
+                        Max.outlet('formantShift', stem, semitones);
+                    } else if (atoms[0] === 'setShiftBand') {
+                        // :setShiftBand <stem> <loHz> <hiHz>
+                        // stem = vocals | melody | bass | drums | all
+                        // Sets the SHARED frequency band both :pitchShift and :formantShift
+                        // are restricted to on this stem — everything outside [loHz,hiHz]
+                        // passes through unshifted. Clears any independent per-effect
+                        // override (see setPitchBand/setFormantBand) — this is the "go back
+                        // to one band for everything" call. See slot_router.js's
+                        // setShiftBand() for the actual bin-mask math.
+                        {
+                            const stem = String(atoms[1] || 'all');
+                            const loHz = parseFloat(atoms[2]) || 0;
+                            const hiHz = parseFloat(atoms[3]) || 0;
+                            broadcast({ type: 'param', key: 'setShiftBand', stem, loHz, hiHz });
+                            Max.outlet('setShiftBand', stem, loHz, hiHz);
+                        }
+                    } else if (atoms[0] === 'setPitchBand') {
+                        // :setPitchBand <stem> <loHz> <hiHz> — independent override,
+                        // pitch only. Formant keeps using the shared band (or its own override).
+                        {
+                            const stem = String(atoms[1] || 'all');
+                            const loHz = parseFloat(atoms[2]) || 0;
+                            const hiHz = parseFloat(atoms[3]) || 0;
+                            broadcast({ type: 'param', key: 'setPitchBand', stem, loHz, hiHz });
+                            Max.outlet('setPitchBand', stem, loHz, hiHz);
+                        }
+                    } else if (atoms[0] === 'setFormantBand') {
+                        // :setFormantBand <stem> <loHz> <hiHz> — independent override, formant only.
+                        {
+                            const stem = String(atoms[1] || 'all');
+                            const loHz = parseFloat(atoms[2]) || 0;
+                            const hiHz = parseFloat(atoms[3]) || 0;
+                            broadcast({ type: 'param', key: 'setFormantBand', stem, loHz, hiHz });
+                            Max.outlet('setFormantBand', stem, loHz, hiHz);
+                        }
+                    } else if (atoms[0] === 'clearPitchBand') {
+                        // :clearPitchBand <stem> — drop pitch's band override, back to shared.
+                        {
+                            const stem = String(atoms[1] || 'all');
+                            broadcast({ type: 'param', key: 'clearPitchBand', stem });
+                            Max.outlet('clearPitchBand', stem);
+                        }
+                    } else if (atoms[0] === 'clearFormantBand') {
+                        // :clearFormantBand <stem> — drop formant's band override, back to shared.
+                        {
+                            const stem = String(atoms[1] || 'all');
+                            broadcast({ type: 'param', key: 'clearFormantBand', stem });
+                            Max.outlet('clearFormantBand', stem);
+                        }
+                    } else if (atoms[0] === 'clearShiftBand') {
+                        // :clearShiftBand <stem> — full reset: shared band back to full
+                        // range (no restriction), both pitch/formant overrides cleared.
+                        {
+                            const stem = String(atoms[1] || 'all');
+                            broadcast({ type: 'param', key: 'clearShiftBand', stem });
+                            Max.outlet('clearShiftBand', stem);
+                        }
                     } else if (atoms[0] === 'width') {
                         // :width <stem> <0–1>  — M/S stereo width (0=mono, 1=full wide)
                         // stem = vocals | melody | bass | drums | all | master
@@ -787,25 +935,42 @@ server.on('upgrade', (req, socket) => {
                         if (link.active) link.broadcastState();
 
                     } else if (atoms[0] === 'followStem') {
-                        // :followStem <stem> [<target> <weight> ...]  — blend another stem's
-                        //   end descriptors when selecting next slice for <stem>
-                        // :followStem <stem> self  — reset to reading own descriptors
+                        // Per-dimension — mirrors slicer.js's followStem() grammar exactly,
+                        // this parser just needs to stay in sync for state.followGraph/broadcast:
+                        // :followStem <stem> self                          — reset every dimension
+                        // :followStem <stem> <dim> self                    — reset just that dimension
+                        // :followStem <stem> <dim> <target> <weight> ...   — that dimension follows
+                        //   a weighted blend of target(s)' SAME dimension end-descriptor
+                        // :followStem <stem> all <target> <weight> ...     — apply the same blend
+                        //   to every dimension at once
                         const stem = String(atoms[1] || '');
                         if (stem && state.followGraph.hasOwnProperty(stem)) {
-                            if (atoms.length <= 2 || String(atoms[2]) === 'self') {
-                                state.followGraph[stem] = null;
-                                broadcast({ type: 'param', key: 'followStem', stem, follows: null });
+                            const second = atoms[2] !== undefined ? String(atoms[2]) : null;
+                            if (second === null || second === 'self') {
+                                state.followGraph[stem] = emptyFollowMap();
+                                broadcast({ type: 'param', key: 'followStem', stem, dim: 'all', follows: null });
                             } else {
-                                const pairs = [];
-                                let totalW = 0;
-                                for (let i = 2; i + 1 < atoms.length; i += 2) {
-                                    const w = parseFloat(atoms[i + 1]) || 0;
-                                    pairs.push({ target: String(atoms[i]), weight: w });
-                                    totalW += w;
+                                const dims = second === 'all' ? FOLLOW_DIMS
+                                    : (FOLLOW_DIMS.includes(second) ? [second] : null);
+                                if (!dims) {
+                                    // Unknown dimension token — don't touch state/broadcast, but
+                                    // still forward below so slicer.js's own validation (and log
+                                    // message) fires too.
+                                } else if (String(atoms[3]) === 'self' && atoms.length === 4) {
+                                    dims.forEach(d => { state.followGraph[stem][d] = null; });
+                                    broadcast({ type: 'param', key: 'followStem', stem, dim: second, follows: null });
+                                } else {
+                                    const pairs = [];
+                                    let totalW = 0;
+                                    for (let i = 3; i + 1 < atoms.length; i += 2) {
+                                        const w = parseFloat(atoms[i + 1]) || 0;
+                                        pairs.push({ target: String(atoms[i]), weight: w });
+                                        totalW += w;
+                                    }
+                                    if (totalW > 0) pairs.forEach(p => p.weight /= totalW);
+                                    dims.forEach(d => { state.followGraph[stem][d] = pairs.map(p => ({ ...p })); });
+                                    broadcast({ type: 'param', key: 'followStem', stem, dim: second, follows: pairs });
                                 }
-                                if (totalW > 0) pairs.forEach(p => p.weight /= totalW);
-                                state.followGraph[stem] = pairs;
-                                broadcast({ type: 'param', key: 'followStem', stem, follows: pairs });
                             }
                         }
                         Max.outlet(...atoms);   // forward all args to slicer.js
@@ -869,11 +1034,21 @@ server.on('upgrade', (req, socket) => {
                         } else {
                             const stemKeys  = ['vocals', 'melody', 'bass', 'drums'];
                             const structure = loadSongStructure();
+                            // bakeSessionId/bakeAttempt/bakeIntent arrive only when this
+                            // :score was issued from inside an open :bake bracket (see
+                            // app.js's verb === 'score' handler) — they let a future pass
+                            // group vertical ratings by which bracket + which looped
+                            // attempt produced them, instead of a flat disconnected
+                            // stream. null/undefined for a bare :score outside a bracket,
+                            // same shape as before this field existed.
                             const snapshot = {
                                 timestamp: new Date().toISOString(),
                                 type:      'vertical',
                                 rating:    score,
                                 overallSection,
+                                bakeSessionId: m.bakeSessionId || null,
+                                bakeAttempt:   m.bakeAttempt   || null,
+                                bakeIntent:    m.bakeIntent    || null,
                                 track:     state.track,
                                 bpm:       state.bpm,
                                 globalBPM: state.globalBPM,
@@ -904,8 +1079,10 @@ server.on('upgrade', (req, socket) => {
                             };
                             const logPath = path.join(sessionDataDir(), 'training_log_vertical.jsonl');
                             fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
-                            Max.post('ws_server: ⭐ scored ' + score.toFixed(2) + '\n');
-                            broadcast({ type: 'sys', msg: '⭐ scored ' + score.toFixed(2) + ' — layered combo logged' });
+                            const bakeTag = snapshot.bakeSessionId
+                                ? ' [bake ' + snapshot.bakeSessionId + ' attempt ' + snapshot.bakeAttempt + ']' : '';
+                            Max.post('ws_server: ✓ scored ' + score.toFixed(2) + bakeTag + '\n');
+                            broadcast({ type: 'sys', msg: '✓ scored ' + score.toFixed(2) + ' — layered combo logged' + bakeTag });
                         }
 
                     } else if (atoms[0] === 'tag') {
@@ -970,9 +1147,9 @@ server.on('upgrade', (req, socket) => {
 
                                 const intensityStr = (result.intensity !== null)
                                     ? result.intensity.toFixed(3) : 'n/a (' + result.error + ')';
-                                Max.post('ws_server: 🏷️ tagged ' + sourceTrack + ' [' + startFrac.toFixed(3) + '-'
+                                Max.post('ws_server: # tagged ' + sourceTrack + ' [' + startFrac.toFixed(3) + '-'
                                          + endFrac.toFixed(3) + '] as "' + label + '"  intensity=' + intensityStr + '\n');
-                                broadcast({ type: 'sys', msg: '🏷️ tagged "' + label + '"  intensity=' + intensityStr
+                                broadcast({ type: 'sys', msg: '# tagged "' + label + '"  intensity=' + intensityStr
                                          + (existing ? ' (updated existing section)' : '') });
                             }
                         }
@@ -1048,12 +1225,19 @@ server.on('upgrade', (req, socket) => {
                                     timestamp: new Date().toISOString(),
                                     type:      'horizontal_transition',
                                     rating:    score,
+                                    // Same bake-bracket tagging as :score — see its handler's
+                                    // comment. Primary use: :bake sequence handoffs, so a
+                                    // transition rating can be traced back to which two named
+                                    // states it was rating the cut between.
+                                    bakeSessionId: m.bakeSessionId || null,
+                                    bakeAttempt:   m.bakeAttempt   || null,
+                                    bakeIntent:    m.bakeIntent    || null,
                                     stems:     stemsOut,
                                 };
                                 const logPath = path.join(sessionDataDir(), 'training_log_transition.jsonl');
                                 fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
-                                Max.post('ws_server: ⭐ transition scored ' + score.toFixed(2) + '\n');
-                                broadcast({ type: 'sys', msg: '⭐ transition scored ' + score.toFixed(2) + ' — logged' });
+                                Max.post('ws_server: ✓ transition scored ' + score.toFixed(2) + '\n');
+                                broadcast({ type: 'sys', msg: '✓ transition scored ' + score.toFixed(2) + ' — logged' });
                             }
                         }
 
@@ -1634,7 +1818,16 @@ function computeAndWriteUMAP() {
 
         const ids = [], features = [];
         const acc = {};
-        for (const d of ['C','E','F','P','H']) acc[d] = { min: Infinity, max: -Infinity };
+        // 'S' included here even though it isn't one of the t-SNE clustering
+        // dims below — this accumulator now doubles as the sole source for
+        // stem_ranges.json, so every descriptor the TUI's descriptor grid can
+        // display needs a real min/max, not just the ones t-SNE clusters on.
+        // (S was previously left out entirely, following a now-stale note in
+        // CRICKET.md claiming S duplicated C in the library — checked the
+        // current analysis_library.json directly and that's no longer true,
+        // every slice has independent C/S values, so there's no reason to
+        // withhold a range for it.)
+        for (const d of ['C','S','E','F','P','H']) acc[d] = { min: Infinity, max: -Infinity };
         acc['T'] = { min: Infinity, max: -Infinity };
 
         // Aggregate slices from ALL source tracks for this stem type.
@@ -1661,16 +1854,26 @@ function computeAndWriteUMAP() {
                     parseFloat(sd.H)||0,
                     T
                 ]);
-                for (const d of ['C','E','F','P','H']) {
+                for (const d of ['C','S','E','F','P','H']) {
                     const v = parseFloat(sd[d]);
                     if (isFinite(v)) { if (v < acc[d].min) acc[d].min=v; if (v > acc[d].max) acc[d].max=v; }
                 }
                 if (T < acc['T'].min) acc['T'].min=T; if (T > acc['T'].max) acc['T'].max=T;
             }
         }
+
+        // Range coverage no longer piggybacks on the t-SNE stability gate
+        // below (features.length < 5) — a min/max is meaningful from even a
+        // couple of real slices, it just doesn't need to be statistically
+        // robust the way a t-SNE embedding does. Previously a stem like bass
+        // with only 2 analyzed slices got skipped entirely here and showed
+        // as all-grey in the descriptor grid even though its 2 real values
+        // were perfectly good range endpoints. Write the range whenever
+        // there's at least one real slice; t-SNE coords remain gated below.
+        if (ids.length > 0) stemRanges[stem] = acc;
+
         if (features.length < 5) continue;
 
-        stemRanges[stem] = acc;
         const nIter = features.length > 400 ? 150 : features.length > 200 ? 200 : 250;
         Max.post('ws_server: t-SNE [' + stem + ']: ' + features.length + ' slices from ' + filenames.length + ' track(s) (' + nIter + ' iters)…\n');
         stems.push({ stem, ids, features, nIter });
@@ -1918,6 +2121,32 @@ Max.addHandler('stopped', () => {
     broadcast({ type: 'state', running: false,
                 track: state.track, bpm: state.bpm,
                 key: state.key, slices: state.slices });
+    // Separate 'stopped' broadcast so the TUI can arm its pause-duration
+    // rebase (see app.js's msg.type === 'stopped' handler). The 'state'
+    // broadcast above only flips state.running — it doesn't tell the TUI
+    // a real quantized freeze just landed.
+    broadcast({ type: 'stopped' });
+});
+
+// slicer.js fires outlet(1, "resumed") when :start resumes playback from a
+// paused/stopped position (as opposed to a fresh start). Previously this
+// Max message had no handler at all, so it was silently dropped — the TUI
+// never rebased its elapsed-time references by the real pause duration,
+// which is what made the on-screen playhead jump after a stop/start cycle
+// even though the audio itself resumed correctly.
+Max.addHandler('resumed', () => {
+    state.running = true;
+    broadcast({ type: 'resumed' });
+});
+
+// slicer.js's self-rescheduling downbeatPulseTask fires this on every real
+// downbeat while playing (see scheduleDownbeatPulse()) — phase-locked to
+// the actual music via lastSegment.dispatchedAtMs, not a free-running
+// client-side timer. The TUI uses this to reset anything meant to
+// represent "the current bar" (the descriptor grid's rolling window) in
+// sync with the music instead of an approximate bpm-only guess.
+Max.addHandler('downbeat', () => {
+    broadcast({ type: 'downbeat', ts: Date.now() });
 });
 
 // slicer.js emits "started" after all selectSegment calls in start().

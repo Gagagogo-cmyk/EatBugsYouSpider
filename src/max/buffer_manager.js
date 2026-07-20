@@ -435,6 +435,15 @@ function rescheduleLive(stem, speedFactor, remainingMs) {
     outlet(12, "rescheduleLive", stem, speedFactor, remainingMs);
 }
 
+// resumeSeek <stem> <frac> — pure passthrough to slot_router.js (outlet 12),
+// same pattern as rescheduleLive above. Called by slicer.js's start() right
+// after "resume", to explicitly re-seek this stem to the buffer position it
+// was actually paused at — see slot_router.js's resumeSeek() for why this
+// exists alongside (not instead of) resume()'s own bare "play".
+function resumeSeek(stem, frac) {
+    outlet(12, "resumeSeek", stem, frac);
+}
+
 // ── Stop ──────────────────────────────────────────────────────────────────────
 // Called when the TUI sends :stop.  Clears the playback gate so any
 // fluid.bufcompose~ copies that complete after this point are discarded

@@ -45,7 +45,7 @@ Each slice has 7 descriptors extracted by FluCoMa:
 | Symbol | FluCoMa Descriptor | Musical Meaning |
 |--------|-------------------|-----------------|
 | **C** | Spectral Centroid (Hz) | Brightness / harshness. High C = lots of high-frequency content (sibilance, cymbals, distortion). Low C = warm, dark, muffled. |
-| **S** | Spectral Spread (Hz²) | Width of the spectrum around the centroid. High S = energy spread across a wide frequency band (full-bodied, noisy, complex). Low S = energy concentrated near one frequency (pure tones, narrow sounds). ⚠ Known issue: as of this writing S is an exact duplicate of C for every slice in the library (a buffer channel-count bug in the analysis pipeline, not a musical fact) — treat S-based reasoning as unreliable until this is fixed and the library is re-analyzed. |
+| **S** | Spectral Spread (Hz²) | Width of the spectrum around the centroid. High S = energy spread across a wide frequency band (full-bodied, noisy, complex). Low S = energy concentrated near one frequency (pure tones, narrow sounds). |
 | **E** | Loudness (LUFS) | Energy / intensity. High E (closer to 0) = loud, powerful. Low E (more negative) = quiet, delicate. |
 | **F** | Spectral Flatness | Noise vs. tone. High F = noisy, unpitched (breaths, cymbals, distortion). Low F = tonal, pitched, clean. |
 | **P** | Pitch (Hz) | Fundamental frequency. 0 = unpitched (below confidence threshold). High P = high notes. Low P = low notes or silence. |
@@ -196,18 +196,28 @@ Not an audio parameter. Likely to be removed or folded into setStemGain.
 
 ### Follow Stem
 ```
-followStem <stem> <target1> <weight1> [<target2> <weight2> ...]
+followStem <stem> <dim> <target1> <weight1> [<target2> <weight2> ...]
+followStem <stem> all <target1> <weight1> [<target2> <weight2> ...]
+followStem <stem> <dim> self
 followStem <stem> self
 ```
-Rewires a stem's reference head to read another stem's end descriptors instead of its own.
-Weights are normalised to sum to 1.0 automatically.
+Per-dimension, not whole-stem: rewires one specific descriptor's reference (C, S, E, F, P, H,
+or T) to read a blend of another stem's SAME dimension end-descriptor, instead of its own.
+Every other dimension keeps reading its own descriptors unless it's also given a follow rule.
+`all` is a convenience that applies the same blend to all 7 dimensions at once. Weights are
+normalised to sum to 1.0 automatically, per dimension.
 
-`followStem vocals melody 0.8 bass 0.2` → vocals matches against 80% melody + 20% bass state.
-`followStem vocals melody 1.0` → vocals follows melody completely.
-`followStem vocals self` → reset vocals to read its own descriptors (default).
+`followStem vocals P melody 1.0` → vocals' P matches against melody's P completely; every
+other vocals dimension still reads its own descriptors.
+`followStem vocals P melody 0.8 bass 0.2` → vocals' P matches against an 80/20 blend of
+melody's P and bass' P.
+`followStem vocals all melody 0.8 bass 0.2` → the old whole-stem behavior — every dimension
+of vocals matches against the same 80/20 melody/bass blend.
+`followStem vocals P self` → reset just vocals' P back to its own descriptor.
+`followStem vocals self` → reset every dimension of vocals back to its own descriptors (default).
 
-This makes one stem chase another. The stem being followed is the leader. All existing
-`setMatchProb` and `setDirPref` settings apply relative to the blended reference state.
+This makes one stem's dimension chase another's. The stem being followed is the leader. All
+existing `setMatchProb` and `setDirPref` settings apply relative to the blended reference state.
 
 ### Fallback Tempo
 ```
@@ -578,7 +588,7 @@ Re-tagging a range that already overlaps a stored section (>50%) updates it in p
 **Intensity** is computed automatically — never ask the user for a number. It averages three normalized descriptors across every analyzed slice in that range, pooled across all 4 stems (structure is a property of the whole song):
 - **density** — how transient-rich/busy the section is (already 0–1)
 - **C** (spectral centroid) — brightness, normalized against this track's own min/max
-- **S** (spectral spread) — spectral width, same normalization (currently unreliable — see the descriptor table note above)
+- **S** (spectral spread) — spectral width, same normalization
 
 ### `:listSections [track]` — reviewing what's tagged
 

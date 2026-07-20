@@ -64,7 +64,6 @@ CREATE TABLE tips (
   session_id                INTEGER REFERENCES sessions(id),
   amount_cents              INTEGER,
   stripe_payment_intent_id  VARCHAR(255) UNIQUE,
-  tip_direction             VARCHAR(10) DEFAULT 'equal',  -- 'up' (▲), 'down' (▼), 'equal' (⬢)
   status                    VARCHAR(50) DEFAULT 'pending', -- 'pending', 'split', 'failed'
   mode                      VARCHAR(50),  -- 'web' or 'venue'
   created_at                TIMESTAMP DEFAULT NOW()

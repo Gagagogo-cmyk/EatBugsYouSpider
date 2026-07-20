@@ -89,22 +89,6 @@ For a tip of amount T:
 
 ---
 
-## The ▲⬢▼ Notation
-
-The deck displays the current transformation state as a triangle notation:
-
-```
-▲  Rising arc     — building toward higher transformation
-⬢  Plateau        — holding transformation level
-▼  Falling arc    — returning toward source material
-```
-
-This is not just cosmetic. When transformation arcs are tracked across the set, the "narrative shape" — how the transformation evolved — can become a second-order input to split calculation. A set that starts at L0, rises to L3, and returns to L0 demonstrates deliberate curation arc, and the DJ's curator share reflects that.
-
-*(This part of the split is currently planned, not implemented.)*
-
----
-
 ## Worked Example
 
 **Scenario:** 40-minute set. Three artists (A, B, C) in the follow graph. One listener tips $10.

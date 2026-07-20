@@ -258,10 +258,6 @@ stripe.transfers → DJ + contributing artists
 
 **Key difference:** web tips are split at the moment of payment (using what played up to then). Venue tips are held until session close and then split over the full set.
 
-### tip_direction (▲⬢▼)
-
-Each tip has a `tip_direction` field (`'up'`, `'equal'`, `'down'`). Currently stored but not used in split calculation. Planned: direction modifies the curator's variable pool share within the level.
-
 ---
 
 ## 7. The Split Equation

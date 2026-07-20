@@ -79,6 +79,14 @@ def convert(log_path, output_path, stats_only=False):
         final_cmds = s.get('final_cmds') or []
         corrections = s.get('user_corrections') or []
 
+        # Skip bakes flagged bad in the TUI's Training Review mode (:review
+        # exclude) — the DJ listened back (or re-read the commands) and
+        # decided this one shouldn't shape Cricket. See app.js's
+        # TRAINING REVIEW MODE section / reviewExclude().
+        if s.get('excluded'):
+            skipped += 1
+            continue
+
         # Skip bakes with no intent or no commands
         if not intent:
             skipped += 1
@@ -125,9 +133,11 @@ def convert(log_path, output_path, stats_only=False):
 
     if stats_only:
         intents_with_corrections = sum(1 for s in snapshots if s.get('user_corrections'))
+        excluded_count = sum(1 for s in snapshots if s.get('excluded'))
         print(f"\n── Stats ───────────────────────────────────────────────────────")
         print(f"  Total bakes:             {len(snapshots)}")
         print(f"  Usable examples:         {len(examples)}")
+        print(f"  Excluded in review:      {excluded_count}")
         print(f"  Bakes with corrections:  {intents_with_corrections}")
         print(f"  Bakes without:           {len(snapshots) - intents_with_corrections}")
         return

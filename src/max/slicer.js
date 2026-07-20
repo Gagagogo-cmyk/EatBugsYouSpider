@@ -77,7 +77,15 @@
 //   3  query result count (from selectRange)  → int: N matching slices
 
 autowatch = 1;
-inlets    = 1;   // 0 = commands
+// 0 = commands (unchanged). 1-4 = raw karma~ data-outlet feeds for
+// vocals/melody/bass/drums respectively — see the "Real-time karma~
+// position feed" block below and list() for what arrives here. Requires 4
+// new patch cords (karma~ ring_0_voc/mel/bss/drm's second/right outlet →
+// this object's inlets 1/2/3/4) — these do NOT exist yet in the saved
+// .maxpat as of this change and must be wired by hand in the Max GUI; the
+// resume-position logic falls back to its previous wall-clock estimate
+// whenever no live reading has arrived for a stem, so this is purely additive.
+inlets    = 5;
 outlets   = 4;   // 0=playback trigger, 1=status/metadata, 2=descriptor dump, 3=selectRange result
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
@@ -90,6 +98,12 @@ var LAST_SLICE_DEFAULT_DUR = 0.005; // fraction — fallback dur for the last sl
 //           setStayProb P     (all tracks)  or  setStayProb drums P      (one track)
 var SEGMENT_BARS  = { vocals: 32, melody: 32, bass: 32, drums: 32 };
 var QUANTIZE_BARS = true;   // snap start to bar grid  (setQuantize 0|1)
+// QUANTIZE_STOP — when true (default), :stop doesn't freeze playback the
+// instant it's received: it waits for the next downbeat (see stop()'s own
+// comment + msUntilNextDownbeat()) so the eventual :start always lands back
+// on a clean beat instead of wherever the raw command happened to arrive.
+// Toggle via `quantizeStop 0|1`.
+var QUANTIZE_STOP = true;
 // SEAM_DEBUG — log per loop-cycle: intended timer period vs measured wall-clock
 // period, and the drift. drift≈0 → timer is fine, the skip is loop-point/zero-
 // crossing alignment; drift large → the re-trigger timer/stretch is mistimed.
@@ -696,6 +710,62 @@ var running   = false;
 var everStarted = false;
 var lastSlice = null;
 
+// Per-stem wall-clock time remaining on the auto-advance countdown at the
+// moment :stop froze it — null when nothing was pending (or already
+// consumed). See stop()/start()'s resume branch for how this is used to
+// genuinely pause/resume the countdown instead of letting it keep counting
+// through the stopped period. Also the hold time stop() reschedules the
+// Max `delay` object to while paused — long enough that it can never fire
+// before a real resume re-arms it with the true remaining time.
+var pausedRemainingMs = { vocals: null, melody: null, bass: null, drums: null };
+var PAUSED_DELAY_HOLD_MS = 24 * 60 * 60 * 1000;
+
+// Per-stem buffer position (0..1 fraction) at the exact moment :stop froze
+// it — null when nothing was playing. Belt-and-suspenders alongside
+// karma~'s own "stop"/"play" pause memory: in practice, real testing showed
+// :stop→:start still audibly restarting each stem at 0:00 of the file
+// despite every message firing exactly as the "play" resume path was
+// designed to (confirmed via Max console + patch-wiring inspection — see
+// start()'s resume branch). Rather than keep trusting karma~'s internal
+// pause-state retention, explicitly re-seek to this computed fraction via
+// the same "jump <frac>" message loopjump() already uses successfully
+// elsewhere in this file (there, jumping to 0; here, wherever :stop
+// actually caught this stem) — see resumeSeek() calls in start().
+var pausedPosFrac = { vocals: null, melody: null, bass: null, drums: null };
+
+// ── Real-time karma~ position feed (inlets 1-4) ──────────────────────────────
+// karma~'s own data outlet (its second/right outlet, Max-typed "list") emits
+// a recurring report — by default every ~50ms, whenever DSP is on — of
+// [position(float 0..1), playFlag(int), recordFlag(int), loopStartMs(float),
+//  loopEndMs(float), windowSizeMs(float), stateFlag(int 0=stop 1=play
+//  2=record 3=overdub 4=append 5=initial)]. Wired directly into this
+// object's inlets 1-4 (one per stem — see inlets comment above) rather than
+// through slot_router.js, which is a one-way pipe down to karma~ with no
+// return path back up. This gives performStopNow() (see stop()) a REAL,
+// DSP-measured position to seek back to on resume instead of only ever
+// estimating one from wall-clock elapsed time.
+var KARMA_INLET_STEM   = { 1: 'vocals', 2: 'melody', 3: 'bass', 4: 'drums' };
+var karmaPos            = { vocals: null, melody: null, bass: null, drums: null }; // last reported 0..1 position
+var karmaState          = { vocals: null, melody: null, bass: null, drums: null }; // last reported state flag
+var karmaPosAtMs        = { vocals: null, melody: null, bass: null, drums: null }; // Date.now() this reading arrived
+var KARMA_POS_MAX_AGE_MS = 250; // ignore a reading older than this — treat as stale, fall back to the wall-clock estimate
+
+// Max js convention: an incoming message whose first atom is a number (no
+// leading symbol/tag) — exactly karma~'s data-outlet shape above — invokes
+// a function literally named list(), with the special `inlet` global set to
+// whichever inlet it arrived on. Inlet 0 never reaches here since every
+// command sent to it is tagged with a leading word (matched to its own
+// same-named function instead).
+function list() {
+    var stem = KARMA_INLET_STEM[inlet];
+    if (!stem) return; // shouldn't happen — only inlets 1-4 carry raw karma~ lists
+    var a = arrayfromargs(arguments);
+    if (a.length < 7) return;
+    karmaPos[stem]     = parseFloat(a[0]);
+    karmaState[stem]   = parseInt(a[6]);
+    karmaPosAtMs[stem] = Date.now();
+}
+
 // ── TRANSITION MATCHING ───────────────────────────────────────────────────────
 // MATCH_PROB[track] — 0 = ignore transition, 1 = strict match, PER STEM.
 //   How tightly the START of the next slice must match the END of the current one.
@@ -956,27 +1026,38 @@ function applyLearnedRefusal(pool, arr, track, endDesc) {
 }
 
 // ── FOLLOW STEM ───────────────────────────────────────────────────────────────
-// followStem vocals melody 0.8 bass 0.2
-// Instead of matching against its own last slice, a stem reads a weighted blend
-// of other stems' end descriptors. Weights must sum to 1.0.
-// followStem vocals self  → reset to default (read own descriptors)
-// FOLLOW_STEM[track] = [ {stem: "melody", weight: 0.8}, {stem: "bass", weight: 0.2} ]
-//                   or null = use self
-var FOLLOW_STEM = { vocals: null, melody: null, bass: null, drums: null };
+// Per-dimension now, not whole-stem: each of a stem's 7 descriptors can
+// independently read its own end-descriptors, or a weighted blend of the
+// SAME dimension from other stems. See followStem() below for the full
+// command grammar.
+// FOLLOW_STEM[track][dim] = [ {stem: "melody", weight: 0.8}, {stem: "bass", weight: 0.2} ]
+//                        or null = that dimension reads its own descriptors
+var FOLLOW_DIMS = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
+function emptyFollowMap() {
+    var m = {};
+    for (var i = 0; i < FOLLOW_DIMS.length; i++) m[FOLLOW_DIMS[i]] = null;
+    return m;
+}
+var FOLLOW_STEM = { vocals: emptyFollowMap(), melody: emptyFollowMap(), bass: emptyFollowMap(), drums: emptyFollowMap() };
 
 function getBlendedEndDesc(track) {
-    var follows = FOLLOW_STEM[track];
-    if (!follows || follows.length === 0) return lastEndDesc[track];
-    var dims   = ['C', 'E', 'F', 'P', 'H', 'T'];
-    var result = {};
-    for (var i = 0; i < dims.length; i++) result[dims[i]] = 0;
-    for (var j = 0; j < follows.length; j++) {
-        var src = lastEndDesc[follows[j].stem];
-        if (!src) continue;
-        var w = follows[j].weight;
-        for (var i = 0; i < dims.length; i++) {
-            result[dims[i]] += (src[dims[i]] || 0) * w;
+    var own      = lastEndDesc[track] || {};
+    var followMap = FOLLOW_STEM[track];
+    var result   = {};
+    for (var i = 0; i < FOLLOW_DIMS.length; i++) {
+        var dim     = FOLLOW_DIMS[i];
+        var follows = followMap && followMap[dim];
+        if (!follows || follows.length === 0) {
+            result[dim] = own[dim];
+            continue;
         }
+        var v = 0;
+        for (var j = 0; j < follows.length; j++) {
+            var src = lastEndDesc[follows[j].stem];
+            if (!src) continue;
+            v += (src[dim] || 0) * follows[j].weight;
+        }
+        result[dim] = v;
     }
     return result;
 }
@@ -2337,7 +2418,7 @@ function selectSegment(track) {
 
     // Store end-descriptors so next selection can match against them
     lastEndDesc[track] = {
-        C: startSlice.endC, E: startSlice.endE,
+        C: startSlice.endC, S: startSlice.endS, E: startSlice.endE,
         F: startSlice.endF, P: startSlice.endP,
         H: startSlice.endH, T: startSlice.endT
     };
@@ -2750,7 +2831,21 @@ function pushSyncedSegment(leader, follower, cycleId, groupSize) {
 
 function start() {
     if (idx.length === 0) { outlet(1, "index_empty"); return; }
-    if (running) { post("EBYS Slicer: already running — ignoring duplicate start\n"); return; }
+    if (running) {
+        // A quantized :stop (see stop()/QUANTIZE_STOP) hasn't actually frozen
+        // anything yet — running is still true until it fires. Treat a
+        // :start that arrives during that window as "changed my mind, keep
+        // playing" instead of a no-op duplicate-start.
+        if (stopQuantizeTask) {
+            stopQuantizeTask.cancel();
+            stopQuantizeTask = null;
+            outlet(1, "sysMsg", "→ pending quantized stop cancelled — still playing");
+            post("EBYS Slicer: :start received while a quantized :stop was pending — cancelled, still running\n");
+            return;
+        }
+        post("EBYS Slicer: already running — ignoring duplicate start\n");
+        return;
+    }
 
     // Resume from a prior :stop, not a cold start — buffer_manager.stop()/
     // slot_router.stop() already froze every karma~ exactly where it was
@@ -2768,20 +2863,61 @@ function start() {
     // guaranteed to still be the exact layering that was actually heard —
     // not whatever's already moved on by the time the command is typed.
     //
-    // Caveat: each stem's auto-advance timer (the Max `delay` object slot_router
-    // schedules on commit) is NOT paused/resumed along with karma~ — it keeps
-    // counting wall-clock time in the background and, if it fires while
-    // stopped, no-ops via next()'s own `if (!running) return`. So after a
-    // long pause the resumed segment may not auto-advance at the originally
-    // intended musical moment — it'll just keep sounding until a manual
-    // :next/:selectSegment. Fine for a quick "pause, rate, resume" — a real
-    // fix would need to reschedule remaining time the way applyGlobalBPMLive's
-    // rescheduleLive() already does for tempo changes, not attempted here yet.
+    // Each stem's auto-advance timer (the Max `delay` object slot_router
+    // schedules on commit) does NOT pause itself just because karma~ did —
+    // stop() below freezes it (rescheduled far out) the moment :stop fires,
+    // and here on resume it's re-armed with the actual remaining time via
+    // the same rescheduleLive() mechanism applyGlobalBPMLive() already uses
+    // for live tempo changes. Without this, the countdown either fires
+    // silently while stopped (no-op via next()'s own `if (!running) return`,
+    // but then never fires again post-resume — the stem stops auto-advancing)
+    // or, worse, fires moments after resume because the paused duration ate
+    // into a countdown that was still ticking — an audible stop/set/seek0/play
+    // re-trigger that sounds exactly like the resumed segment restarting from
+    // the beginning.
     if (everStarted) {
         running = true;
+        var resumeNow = Date.now();
         outlet(0, "resume");   // → buffer_manager.resume() → slot_router.resume() → karma~ "play"
+        for (var rt = 0; rt < TRACKS.length; rt++) {
+            var rtrack    = TRACKS[rt];
+            var remaining = pausedRemainingMs[rtrack];
+            pausedRemainingMs[rtrack] = null;
+            var posFrac   = pausedPosFrac[rtrack];
+            pausedPosFrac[rtrack] = null;
+            var rseg      = lastSegment[rtrack];
+            var rstretchR = (rseg && rseg.stretchR) || 1.0;
+            // Explicit re-seek — see pausedPosFrac's own comment for why
+            // this fires right after "resume"'s bare "play" instead of
+            // trusting karma~'s pause/play alone to land back on the exact
+            // sample this stem was stopped at. performStopNow() only ever
+            // sets posFrac when its own confidence guard passed, so this is
+            // never the bogus near-end-of-file value that guard exists to
+            // prevent.
+            if (posFrac !== null && posFrac !== undefined) {
+                outlet(0, "resumeSeek", rtrack, posFrac);
+            }
+            if (remaining !== null && remaining !== undefined && remaining > 0) {
+                outlet(0, "rescheduleLive", rtrack, 1.0 / rstretchR, Math.round(remaining));
+                if (rseg) rseg.segDurMsForOutlet = rstretchR > 0 ? remaining / rstretchR : remaining;
+            }
+            // Rebase dispatchedAtMs to THIS resume instant unconditionally —
+            // even when `remaining` above was null (performStopNow's
+            // confidence guard didn't trust its own estimate that time).
+            // This used to only happen inside the `remaining > 0` branch:
+            // whenever one stop/resume cycle produced an untrustworthy
+            // estimate, dispatchedAtMs stayed stale, which made the NEXT
+            // cycle's elapsed-time math measure against an even older
+            // anchor — compounding until the estimate pinned itself at the
+            // very end of the file and resumeSeek jumped that stem into
+            // silence. Always resetting the anchor here, regardless of
+            // confidence, stops that from ever compounding past one bad
+            // cycle. Same reasoning as applyGlobalBPMLive's own rebase.
+            if (rseg) rseg.dispatchedAtMs = resumeNow;
+        }
         outlet(1, "resumed");
         post("EBYS Slicer: resumed — continuing from stopped position\n");
+        scheduleDownbeatPulse();
         return;
     }
 
@@ -2827,10 +2963,157 @@ function start() {
          + "  quantize=" + QUANTIZE_BARS
          + "  stay=" + JSON.stringify(STAY_PROB) + "\n");
     outlet(1, "started");
+    scheduleDownbeatPulse();
+}
+
+// stopQuantizeTask — the pending Task scheduled by a quantized stop() to
+// actually freeze playback at the next downbeat. null when no quantized
+// stop is currently pending.
+var stopQuantizeTask = null;
+
+// downbeatPulseTask — self-rescheduling Task that fires outlet(1,"downbeat")
+// on every real downbeat while playing, so the TUI can reset anything meant
+// to represent "this bar" (currently: the descriptor grid's rolling window)
+// exactly in phase with the music instead of guessing from a client-side
+// bpm-only timer. Armed on every transition into "actually playing" (fresh
+// start, resume, and after any live tempo change since that shifts the
+// downbeat grid) and disarmed on stop/reset — see scheduleDownbeatPulse().
+var downbeatPulseTask = null;
+function scheduleDownbeatPulse() {
+    if (downbeatPulseTask) { downbeatPulseTask.cancel(); downbeatPulseTask = null; }
+    if (!running) return;
+    var delayMs = msUntilNextDownbeat();
+    if (!(delayMs > 0)) return; // no tempo/anchor yet — nothing to phase-lock to
+    downbeatPulseTask = new Task(function() {
+        downbeatPulseTask = null;
+        outlet(1, "downbeat");
+        scheduleDownbeatPulse(); // re-arm for the next one
+    }, this);
+    downbeatPulseTask.schedule(delayMs);
 }
 
 function stop() {
+    if (!running) return; // already stopped, or a quantized stop is already pending
+
+    if (!QUANTIZE_STOP) {
+        performStopNow();
+        return;
+    }
+
+    // Quantized: don't freeze immediately — schedule the real freeze for
+    // the next downbeat (see msUntilNextDownbeat()) so the eventual :start
+    // always lands back on a clean beat, same idea as QUANTIZE_BARS but for
+    // the STOP edge instead of segment selection. running stays true until
+    // the scheduled Task actually fires — see start()'s own handling of a
+    // :start arriving during this window.
+    var delayMs = msUntilNextDownbeat();
+    if (delayMs <= 0) {
+        // No tempo/anchor known yet (e.g. nothing has really played) —
+        // nothing meaningful to quantize against, freeze immediately.
+        performStopNow();
+        return;
+    }
+    if (stopQuantizeTask) stopQuantizeTask.cancel();
+    stopQuantizeTask = new Task(performStopNow, this);
+    stopQuantizeTask.schedule(delayMs);
+    outlet(1, "sysMsg", "○ stop queued — freezing at next downbeat (" + Math.round(delayMs) + "ms)");
+    post("EBYS Slicer: :stop received — quantized, freezing in " + Math.round(delayMs) + "ms at next downbeat\n");
+}
+
+// msUntilNextDownbeat — real-time ms remaining until the next downbeat,
+// computed from the effective (target) BPM and whichever currently-playing
+// stem's lastSegment.dispatchedAtMs is available as a beat-grid anchor.
+// Every stem is stretched to the SAME effective BPM (that's the whole
+// stretchR mechanism — see slot_router.js/applyGlobalBPMLive), so even
+// though each stem's underlying source material may differ, they all share
+// one real-time bar grid; any one of them is a valid anchor. This assumes
+// that segment's own start (dispatchedAtMs) itself landed on a real
+// downbeat, which is exactly what QUANTIZE_BARS (on by default) already
+// guarantees for normal segment selection — see selectSegment()'s own
+// downbeat-alignment logic.
+function msUntilNextDownbeat() {
+    var effBPM = effectiveBPM();
+    if (!(effBPM > 0)) return 0;
+    var barMs = (60000.0 / effBPM) * 4.0; // 4/4 assumed — matches SEGMENT_BARS' own beat math elsewhere
+    var anchorMs = null;
+    for (var i = 0; i < TRACKS.length; i++) {
+        var seg = lastSegment[TRACKS[i]];
+        if (seg && seg.dispatchedAtMs) { anchorMs = seg.dispatchedAtMs; break; }
+    }
+    if (anchorMs === null) return 0;
+    var now       = Date.now();
+    var sinceAnchor = now - anchorMs;
+    var intoBar   = ((sinceAnchor % barMs) + barMs) % barMs; // guard against a negative modulo
+    var remaining = barMs - intoBar;
+    // Already basically on the downbeat — round up a full bar so a
+    // "quantized" stop is never indistinguishable from an immediate one.
+    if (remaining < 30) remaining += barMs;
+    return remaining;
+}
+
+// performStopNow — the actual freeze, previously the entire body of stop().
+// Called either immediately (QUANTIZE_STOP off, or no tempo/anchor to
+// quantize against) or by stopQuantizeTask at the next downbeat.
+function performStopNow() {
+    stopQuantizeTask = null;
+    if (downbeatPulseTask) { downbeatPulseTask.cancel(); downbeatPulseTask = null; }
     running = false;
+
+    // Freeze each stem's pending auto-advance countdown before anything else.
+    // Max's `delay` object counts real wall-clock time regardless of karma~'s
+    // own paused state, so left alone it either fires during the pause
+    // (harmless no-op, but the stem then never auto-advances again once
+    // resumed) or fires moments after resume because the pause ate into its
+    // remaining time — an audible restart. Compute how much wall time was
+    // actually left, stash it for start()'s resume branch, and disarm the
+    // live countdown by rescheduling it far out (rescheduleLive's existing
+    // set-time-then-bang mechanism, same one applyGlobalBPMLive() uses for
+    // tempo changes).
+    var stopNow = Date.now();
+    for (var t = 0; t < TRACKS.length; t++) {
+        var track = TRACKS[t];
+        var seg   = lastSegment[track];
+        pausedRemainingMs[track] = null;
+        pausedPosFrac[track]     = null;
+        if (!seg || !seg.dispatchedAtMs || !seg.segDurMsForOutlet) continue;
+        var stretchR       = seg.stretchR || 1.0;
+        var totalWallMs    = seg.segDurMsForOutlet * stretchR;
+        var elapsedWallMs  = Math.max(0, Math.min(totalWallMs, stopNow - seg.dispatchedAtMs));
+        var remainingWallMs = totalWallMs - elapsedWallMs;
+        if (remainingWallMs > 0) {
+            pausedRemainingMs[track] = remainingWallMs;
+            outlet(0, "rescheduleLive", track, 1.0 / stretchR, PAUSED_DELAY_HOLD_MS);
+        }
+        // Buffer position (0..1) this stem was actually paused at — see
+        // pausedPosFrac's own comment above for why this is sent explicitly
+        // on resume instead of trusting karma~ to remember it unprompted.
+        // Prefer karma~'s OWN reported position (karmaPos[track], fed live
+        // from its data outlet — see the "Real-time karma~ position feed"
+        // block near the top of this file) when a recent-enough reading is
+        // available: it's ground truth from the DSP object itself, immune
+        // to the wall-clock estimate's failure mode below.
+        var segStartFrac = (typeof seg.time === 'number') ? seg.time : 0;
+        var segEndFrac   = (typeof seg.endFrac === 'number') ? seg.endFrac : 1;
+        var freshKarmaPos = karmaPos[track] !== null && karmaPos[track] !== undefined
+            && karmaPosAtMs[track] !== null && (stopNow - karmaPosAtMs[track]) <= KARMA_POS_MAX_AGE_MS;
+        if (freshKarmaPos) {
+            pausedPosFrac[track] = Math.max(0, Math.min(1, karmaPos[track]));
+        } else if (remainingWallMs > 0) {
+            // Wall-clock estimate — only trustworthy in this branch, i.e.
+            // when the bookkeeping agrees this segment still had real time
+            // left. remainingWallMs<=0 means our own tracking thinks this
+            // segment should already be over — trusting that would clamp
+            // progressFrac to 1.0 and jump this stem to the very end of the
+            // buffer (silence), not somewhere still audible. Skip the
+            // explicit reseek entirely in that case (below) and fall back
+            // to karma~'s own pause memory for this one cycle instead.
+            var progressFrac = totalWallMs > 0 ? Math.max(0, Math.min(1, elapsedWallMs / totalWallMs)) : 0;
+            pausedPosFrac[track] = Math.max(0, Math.min(1, segStartFrac + (segEndFrac - segStartFrac) * progressFrac));
+        } else {
+            post("EBYS Slicer: [" + track + "] stop — wall-clock position estimate untrustworthy (no fresh karma~ reading either), skipping explicit reseek this cycle\n");
+        }
+    }
+
     // Explicitly forward to buffer_manager (→ slot_router → karma~ "stop")
     // rather than relying solely on the Max patch's own routing of the raw
     // :stop command to also reach buffer_manager.js directly — this keeps
@@ -3462,7 +3745,7 @@ function nextNearest(track, C, E, F, P) {
     var endFrac = Math.min(s.time + totalFrac, 1.0);
     lastSlice   = { track: track, time: s.time, dur: totalFrac };
 
-    lastEndDesc[track] = { C: s.endC, E: s.endE, F: s.endF, P: s.endP, H: s.endH, T: s.endT };
+    lastEndDesc[track] = { C: s.endC, S: s.endS, E: s.endE, F: s.endF, P: s.endP, H: s.endH, T: s.endT };
 
     var sliceMs = hasDur ? Math.round(s.time * durMs) : 0;
 
@@ -3532,6 +3815,16 @@ function setQuantize(v) {
     // No applyNow() — state-only change, per explicit request commands don't
     // cut off currently-playing audio. Applies the next time each stem
     // naturally reselects.
+}
+
+// setQuantizeStop 0|1 — toggles whether :stop freezes immediately or waits
+// for the next downbeat (see stop()/msUntilNextDownbeat()). Turning it off
+// while a quantized stop is already pending lets that pending one finish on
+// schedule rather than yanking it — only affects the NEXT :stop.
+function setQuantizeStop(v) {
+    QUANTIZE_STOP = (parseInt(v) !== 0);
+    post("EBYS Slicer: quantizeStop = " + QUANTIZE_STOP + " (takes effect next :stop)\n");
+    outlet(1, "quantizeStop", QUANTIZE_STOP ? 1 : 0);
 }
 
 // reloadDownbeats — hot-reload ../downbeats.json without re-running buildIndex.
@@ -3829,6 +4122,10 @@ function applyGlobalBPMLive() {
         post("EBYS Slicer: [" + track + "] LIVE retime — stretch " + oldStretchR.toFixed(3)
              + "→" + newStretchR.toFixed(3) + "  remaining=" + Math.round(remainingWallMsNew) + "ms\n");
     }
+    // A live tempo change shifts where the downbeat grid actually falls —
+    // re-arm the pulse against the new bar length rather than letting it
+    // fire at the stale old-tempo timing.
+    scheduleDownbeatPulse();
 }
 
 // Internal helper — BPM resolution without a specific source track context.
@@ -4208,25 +4505,60 @@ function setTrackWeight(track, w) {
 }
 
 // ── FOLLOW STEM COMMAND ───────────────────────────────────────────────────────
-// followStem vocals melody 0.8 bass 0.2
-//   → vocals reads a weighted blend of melody (80%) and bass (20%) end descriptors
-// followStem vocals self
-//   → reset vocals to read its own descriptors (default)
-// Weights are normalised to sum to 1.0.
+// Per-dimension: a stem's descriptors don't all have to follow the same
+// source anymore — e.g. vocals' P can chase melody while every other
+// dimension keeps reading vocals' own descriptors.
+//   followStem vocals self
+//     → reset EVERY dimension of vocals back to its own descriptors
+//   followStem vocals P self
+//     → reset just vocals' P back to its own descriptor
+//   followStem vocals P melody 1.0
+//     → vocals' P reads melody's P (100%)
+//   followStem vocals P melody 0.8 bass 0.2
+//     → vocals' P reads an 80/20 blend of melody's P and bass' P
+//   followStem vocals all melody 0.8 bass 0.2
+//     → apply that same blend to every dimension at once (the old
+//       whole-stem behavior, as a convenience)
+// Weights are normalised to sum to 1.0 per dimension.
 function followStem(track) {
     if (!FOLLOW_STEM.hasOwnProperty(track)) {
         post("EBYS Slicer: followStem — unknown stem '" + track + "'\n");
         return;
     }
-    // arguments[0] = track, then pairs of (stem, weight)
-    if (arguments.length < 2 || String(arguments[1]) === "self") {
-        FOLLOW_STEM[track] = null;
-        post("EBYS Slicer: followStem[" + track + "] = self\n");
+    if (arguments.length < 2) {
+        post("EBYS Slicer: followStem — missing arguments\n");
         return;
     }
+    var second = String(arguments[1]);
+
+    // followStem <stem> self  → reset every dimension
+    if (second === "self" && arguments.length === 2) {
+        FOLLOW_STEM[track] = emptyFollowMap();
+        post("EBYS Slicer: followStem[" + track + "] = self (all dimensions)\n");
+        return;
+    }
+
+    var targetDims;
+    if (second === "all") {
+        targetDims = FOLLOW_DIMS;
+    } else if (FOLLOW_DIMS.indexOf(second) !== -1) {
+        targetDims = [second];
+    } else {
+        post("EBYS Slicer: followStem — unknown dimension '" + second
+             + "' (expected one of " + FOLLOW_DIMS.join(",") + ", or 'all'/'self')\n");
+        return;
+    }
+
+    // followStem <stem> <dim|all> self  → reset just those dimension(s)
+    if (arguments.length === 3 && String(arguments[2]) === "self") {
+        for (var di = 0; di < targetDims.length; di++) FOLLOW_STEM[track][targetDims[di]] = null;
+        post("EBYS Slicer: followStem[" + track + "][" + targetDims.join(",") + "] = self\n");
+        return;
+    }
+
     var pairs = [];
     var totalWeight = 0;
-    for (var i = 1; i < arguments.length - 1; i += 2) {
+    for (var i = 2; i < arguments.length - 1; i += 2) {
         var s = String(arguments[i]);
         var w = parseFloat(arguments[i + 1]);
         if (!FOLLOW_STEM.hasOwnProperty(s)) {
@@ -4240,14 +4572,18 @@ function followStem(track) {
         pairs.push({ stem: s, weight: w });
         totalWeight += w;
     }
-    if (pairs.length === 0) { post("EBYS Slicer: followStem — no valid pairs\n"); return; }
+    if (pairs.length === 0) { post("EBYS Slicer: followStem — no valid target/weight pairs\n"); return; }
     // Normalise weights to sum to 1.0
     if (totalWeight > 0) {
         for (var j = 0; j < pairs.length; j++) pairs[j].weight /= totalWeight;
     }
-    FOLLOW_STEM[track] = pairs;
-    var msg = "EBYS Slicer: followStem[" + track + "] =";
-    for (var j = 0; j < pairs.length; j++) msg += " " + pairs[j].stem + "×" + pairs[j].weight.toFixed(2);
+    for (var dj = 0; dj < targetDims.length; dj++) {
+        // Clone per dimension so a later per-dim self-reset can't mutate a
+        // shared array reference out from under the other dimensions.
+        FOLLOW_STEM[track][targetDims[dj]] = pairs.map(function(p) { return { stem: p.stem, weight: p.weight }; });
+    }
+    var msg = "EBYS Slicer: followStem[" + track + "][" + targetDims.join(",") + "] =";
+    for (var j2 = 0; j2 < pairs.length; j2++) msg += " " + pairs[j2].stem + "×" + pairs[j2].weight.toFixed(2);
     post(msg + "\n");
 }
 
@@ -4276,11 +4612,15 @@ function info() {
                        + " bas=" + MATCH_PROB.bass + " drm=" + MATCH_PROB.drums + " (per-stem)\n");
     var followStr = "";
     for (var t = 0; t < TRACKS.length; t++) {
-        var f = FOLLOW_STEM[TRACKS[t]];
-        if (f) {
+        var fmap = FOLLOW_STEM[TRACKS[t]];
+        if (!fmap) continue;
+        for (var fd = 0; fd < FOLLOW_DIMS.length; fd++) {
+            var dim = FOLLOW_DIMS[fd];
+            var f   = fmap[dim];
+            if (!f) continue;
             var parts = [];
             for (var j = 0; j < f.length; j++) parts.push(f[j].stem + "×" + f[j].weight.toFixed(2));
-            followStr += TRACKS[t] + "→[" + parts.join(", ") + "] ";
+            followStr += TRACKS[t] + "." + dim + "→[" + parts.join(", ") + "] ";
         }
     }
     post("  followStem  : " + (followStr || "all self") + "\n");
@@ -4323,6 +4663,8 @@ function stemMS()    {}   // emitted by slicer on outlet 1; routed back via patc
 function reset() {
     running     = false;
     everStarted = false;   // next :start after a reset must cold-start, not "resume" stale state
+    if (stopQuantizeTask) { stopQuantizeTask.cancel(); stopQuantizeTask = null; }
+    if (downbeatPulseTask) { downbeatPulseTask.cancel(); downbeatPulseTask = null; }
     idx        = [];
     byTrack    = {};
     meta       = {};
@@ -4332,7 +4674,12 @@ function reset() {
     lastEndFrac     = { vocals: -1,   melody: -1,   bass: -1,   drums: -1   };
     lastSourceTrack = { vocals: null, melody: null, bass: null, drums: null };
     lastSegment     = { vocals: null, melody: null, bass: null, drums: null };
-    FOLLOW_STEM = { vocals: null, melody: null, bass: null, drums: null };
+    FOLLOW_STEM = { vocals: emptyFollowMap(), melody: emptyFollowMap(), bass: emptyFollowMap(), drums: emptyFollowMap() };
+    pausedRemainingMs = { vocals: null, melody: null, bass: null, drums: null };
+    pausedPosFrac     = { vocals: null, melody: null, bass: null, drums: null };
+    karmaPos          = { vocals: null, melody: null, bass: null, drums: null };
+    karmaState        = { vocals: null, melody: null, bass: null, drums: null };
+    karmaPosAtMs      = { vocals: null, melody: null, bass: null, drums: null };
     outlet(1, "reset");
     post("EBYS Slicer: reset\n");
 }

@@ -3,6 +3,27 @@
 // deps: npm install blessed ws
 
 const blessed   = require('blessed');
+// blessed 0.1.81's colors.js has a self-poisoning cache bug: at require()
+// time it builds its 8-color "ccolors" reduction table by temporarily
+// truncating its own 256-color palette (exports.vcolors) down to 8 entries,
+// then calling exports.match() on all 256 canonical hex strings to build
+// that table — but exports.match() memoizes every result into a
+// process-lifetime cache (exports._cache), keyed only by RGB value, with no
+// awareness that vcolors was artificially restricted at the time. Any hex
+// value that happens to exactly equal one of the 256 canonical colors (e.g.
+// pure grey #808080, which is canonical color 244) gets its cache entry
+// permanently poisoned by that restricted 8-color lookup — confirmed
+// directly: match('#808080') returns index 3 (yellow, [205,205,0]) instead
+// of the exact match at 244 ([128,128,128]), and stays wrong for the life
+// of the process because the cache is never invalidated afterward. This is
+// what was rendering as unexplained orange/yellow cells in the descriptor
+// grid (ZONE 6.7) wherever a gradient stop or interpolated value landed
+// exactly on a canonical 256-color entry. Wiping the cache here, right
+// after blessed finishes its own module-load-time self-poisoning and
+// before any of our own color tags get parsed, forces every future match()
+// call to run the real nearest-color search against the fully restored
+// 256-color table instead of returning a stale, wrongly-computed result.
+require('blessed/lib/colors')._cache = {};
 const WebSocket = require('ws');
 const http      = require('http');
 const fs        = require('fs');
@@ -37,15 +58,49 @@ function randCurse() {
 // Copy this block into a skin file and require() it, or edit in place.
 
 const SKIN = {
-  bg:         'default',    // terminal background (matches your terminal theme)
-  fg:         'white',      // all text
+  bg:         'color232',   // darker still (was 'color234', before that 'default') — user: "put the background a little darker", then "make the background a little more darker" — color232 is the darkest step in xterm's 232-255 greyscale ramp before true black
+  // 'bright-white', not 'brightwhite' — was 'white' (ANSI color 7, actually
+  // a dim light-grey), user: "make the whites whiter" — this is ANSI color
+  // 15, true #ffffff. Hyphenated form on purpose: style objects (fg:
+  // SKIN.fg) accept either (colors.convert() strips hyphens/spaces before
+  // looking the name up), but a few spots interpolate these SKIN colors
+  // straight into a blessed {tag} string too (see skinTag()'s own comment
+  // below), and THAT code path only accepts the hyphenated, space-joined
+  // form — so hyphenated is the one spelling that's safe in both places.
+  fg:         'bright-white',      // all text
   dim_fg:     'color7',     // medium white (between grey labels and bright bar fills)
-  user_fg:    'magenta',    // user input lines only
+  user_fg:    'bright-white',      // user input lines only
   bar_full:   '█',     // █  filled block
   bar_empty:  ' ',          // empty portion of bar
   border:     'line',       // 'line' | 'none'
-  border_fg:  'white',
+  border_fg:  'bright-white',
 };
+
+// SKIN's color names (and colors.js's colorNames map generally) use the
+// fused form ('brightwhite') — correct for style objects (style: { fg:
+// SKIN.fg }), which go through colors.convert(). blessed's {tag} markup is
+// a DIFFERENT code path (program._attr) that only recognizes multi-word
+// color names space-separated, via its own hyphen-to-space conversion on
+// the tag text — so a tag has to spell it '{bright-white-fg}', not
+// '{brightwhite-fg}' (which silently fails to match and prints literally,
+// the exact bug behind "still here" — the tag text showing up as raw text
+// instead of coloring anything). This converts a SKIN color name to that
+// tag-safe hyphenated form for the few spots that interpolate one into a
+// {tag} string dynamically instead of writing the tag out by hand.
+//
+// Separately, 256-color names like 'color7' (SKIN.dim_fg) hit a THIRD gap:
+// program._attr()'s tag path only recognizes bare numbers for indexed
+// color ('{7-fg}' -> '7 fg' -> matches /^(-?\d+) (fg|bg)$/), not the
+// 'colorN' form colors.convert() accepts for style objects. '{color7-fg}'
+// falls through every case in that switch and prints literally — same
+// symptom as the brightwhite bug above, different root cause (seen live:
+// "cricket: CHIRP!" rendering as raw '{color7-fg}...{/color7-fg}' text).
+// Strip the 'color' prefix so the tag gets the bare index instead.
+function skinTag(colorName) {
+  const m = /^color(\d+)$/.exec(colorName);
+  if (m) return m[1];
+  return colorName.replace(/^(bright|light)(?=[a-z])/, '$1-');
+}
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 
@@ -69,9 +124,7 @@ const state = {
   running:  false,
   connected: false,
   lufs:     null,   // mix loudness LUFS  (null = no signal yet)
-  dbfs:     null,   // mix true-peak dBFS
   lufsPeak: null,   // running session max of state.lufs — DAW-style peak-hold, cleared by :resetPeaks
-  dbfsPeak: null,   // running session max of state.dbfs (true peak) — same peak-hold behavior
   stems: {
     vocals: { id: '--', pos: 0.0, C: 0, S: 0, E: 0, F: 0, P: 0, H: 0, T: 0, tC: null, tE: null, tF: null, tP: null, tH: null, tT: null, durMs: 0, timeMs: 0, lastPosTime: Date.now(), bars: 32, stay: 0.0, genre: '', genreConf: 0, track: '', weight: 1.0, pinnedSource: null },
     melody: { id: '--', pos: 0.0, C: 0, S: 0, E: 0, F: 0, P: 0, H: 0, T: 0, tC: null, tE: null, tF: null, tP: null, tH: null, tT: null, durMs: 0, timeMs: 0, lastPosTime: Date.now(), bars: 32, stay: 0.0, genre: '', genreConf: 0, track: '', weight: 1.0, pinnedSource: null },
@@ -82,7 +135,14 @@ const state = {
   // Status-icon row (header) — tipping session, recording, and a live readout
   // of the last performative param touched (what LINK's missile switch would
   // fire right now).
-  session:   { active: false, sessionId: null, deck: null },
+  session:   {
+    active: false, sessionId: null, deck: null, mode: null,
+    openedAt: null, djId: null,
+  },
+  // Tipping backend (TIPPING_URL) reachability — null = unknown, set/reset
+  // by ws_server.js's 'tipBackend' WS message (see :tipOpen/pingBackend/
+  // :tipClose there). Server reachability only, not a live Stripe API check.
+  tipBackendUp: null,
   recording: false,
   lastCommandTouched: null,
   // Timestamp of the most recent LINK missile fire (local OR a remote deck —
@@ -94,8 +154,13 @@ const state = {
   linkFiredAt: 0,
   params: {
     quant: true, envelope: 'hann',
-    matchProb: 0.9,   // single global (collapsed from per-descriptor)
-    entropy:   0.0,   // macro 0=order 1=chaos
+    // Boot-time defaults simulate a plausible, already-dialed-in set rather
+    // than the engine's raw scaffold values (entropy 0/matchProb 0.9/
+    // stayProb 0/dirWeight 1 read as mechanical extremes — near-perfect
+    // matching, zero looping — not something a DJ would actually run).
+    // Real 'param' WS messages overwrite these the moment Max is live.
+    matchProb: 0.72,  // single global (collapsed from per-descriptor)
+    entropy:   0.35,  // macro 0=order 1=chaos
     matchC: 0.0, matchS: 0.0, matchE: 0.0, matchF: 0.0, matchP: 0.0, matchH: 0.0, matchT: 0.0, matchD: 0.0,
     dirC:   0.0, dirS:   0.0, dirE:   0.0, dirF:   0.0, dirP:   0.0, dirH:   0.0, dirT:   0.0, dirD:   0.0,
     // M columns (Centroid) shown in the header — default them so the display
@@ -109,6 +174,13 @@ const state = {
     // :wmdScope. Left in place only so anything still reading state.params.*
     // directly doesn't break; the header itself now reads paramsPerStem.
     weightM: 1.0, weightE: 1.0, weightF: 1.0, weightP: 1.0, weightH: 1.0, weightT: 1.0,
+    // stayProb/dirWeight — the other two params the entropy macro drives
+    // alongside matchProb above (see :setEntropy in the commands list).
+    // Global "as driven by the last entropy update" readouts, shown in the
+    // entropy meter's context line — not per-stem (paramsPerStem has the
+    // real per-stem values once :setStayProb/:setDirWeight target one
+    // stem directly instead of 'all').
+    stayProb: 0.40, dirWeight: 1.15,
   },
   // Real per-stem weight/match/dir values — backs the header's weight/match/dir
   // rows once :wmdScope switches away from 'all'. All four stems start
@@ -136,8 +208,14 @@ const state = {
   agentName: 'Cricket',  // localized — updates on language select
   mmtWindow: 4,          // momentum window size in bars (used by add_tension.py)
   log: [],
-  followGraph: {         // followGraph[from][to] = weight 0–1
-    vocals: {}, melody: {}, bass: {}, drums: {},
+  // followGraph[from][dim][to] = weight 0–1 — per-dimension now, not
+  // whole-stem (mirrors slicer.js's FOLLOW_STEM / ws_server.js's
+  // followGraph exactly). Each dim starts as an empty {} (no follows).
+  followGraph: {
+    vocals: { C: {}, S: {}, E: {}, F: {}, P: {}, H: {}, T: {} },
+    melody: { C: {}, S: {}, E: {}, F: {}, P: {}, H: {}, T: {} },
+    bass:   { C: {}, S: {}, E: {}, F: {}, P: {}, H: {}, T: {} },
+    drums:  { C: {}, S: {}, E: {}, F: {}, P: {}, H: {}, T: {} },
   },
   // Per-stem 2D spatial position — vocals/melody/bass/drums driven by
   // :joystick <stem> <x> <y>; master driven by :masterJoystick <x> <y>, or
@@ -327,7 +405,7 @@ function beatsHeaderLine() {
   const b = state.beats;
   if (!b.meter) return `{grey-fg}beats:{/grey-fg} --`;
   const confBar = Math.round(b.conf * 10);
-  const bar = '●'.repeat(confBar) + '○'.repeat(10 - confBar);
+  const bar = '●'.repeat(confBar) + '{grey-fg}' + '○'.repeat(10 - confBar) + '{/grey-fg}';
   // Show globalBPM (playback tempo) in beats line — not the analyzed source BPM
   const displayBpm = state.globalBPM > 0 ? state.globalBPM : b.bpm.toFixed(0);
   return `{grey-fg}beats:{/grey-fg} ${b.meter}/4 ${displayBpm}bpm ${bar}`;
@@ -356,7 +434,7 @@ function showBrowsedTrack() {
   const meter = beats.meter  || 4;
   const key   = (beats.key && beats.key !== '?') ? beats.key : '?';
   const conf  = beats.confidence || 0;
-  const confBar = '●'.repeat(Math.round(conf * 10)) + '○'.repeat(10 - Math.round(conf * 10));
+  const confBar = '●'.repeat(Math.round(conf * 10)) + '{grey-fg}' + '○'.repeat(10 - Math.round(conf * 10)) + '{/grey-fg}';
   const genreEntry = genreDb[name];
   const genreStr = (genreEntry && genreEntry.genres && genreEntry.genres.length)
     ? genreEntry.genres[0].genre : '';
@@ -411,8 +489,8 @@ function renderSpinner() {
   const agent   = `${state.agentName.toLowerCase()} — `;
   const frame   = SPIN_FRAMES[spinFrame];
   const content = spinProgress
-    ? `{cyan-fg}${agent}{/cyan-fg}{grey-fg}${spinLabel} ${spinProgress} ${frame}{/grey-fg}`
-    : `{cyan-fg}${agent}{/cyan-fg}{grey-fg}${spinLabel} ${frame}{/grey-fg}`;
+    ? `{bright-white-fg}${agent}{/bright-white-fg}{grey-fg}${spinLabel} ${spinProgress} ${frame}{/grey-fg}`
+    : `{bright-white-fg}${agent}{/bright-white-fg}{grey-fg}${spinLabel} ${frame}{/grey-fg}`;
   sepBox.setContent(content);
 }
 
@@ -434,7 +512,7 @@ function stopSpinner() {
   if (flucomaQueryTimer) { clearInterval(flucomaQueryTimer); flucomaQueryTimer = null; }
   spinLabel    = '';
   spinProgress = '';
-  sepBox.setContent(languageSelected ? '' : '{white-fg}' + randCurse() + '{/white-fg}');
+  sepBox.setContent(languageSelected ? chatTopRule() : '{bright-white-fg}' + randCurse() + '{/bright-white-fg}');
   scheduleRender();
 }
 
@@ -666,7 +744,7 @@ function genreHeaderLine() {
     ? weighted.reduce((a, x) => a + x.conf * x.dominance, 0) / totalDominance
     : 0;
   const confBar = Math.round(avgConf * 10);
-  const bar = '●'.repeat(confBar) + '○'.repeat(10 - confBar);
+  const bar = '●'.repeat(confBar) + '{grey-fg}' + '○'.repeat(10 - confBar) + '{/grey-fg}';
 
   // Group by parent; strip parent word from sub to get the modifier label
   const groups = {};   // parent → [modifier, ...]
@@ -739,6 +817,13 @@ const stemSliceEndTime    = {}; // wall-clock ms when segmentEnd arrived (exact 
 const stemLearnedExtra    = {}; // EMA of buffer_manager delay per stem (ms) — self-calibrating
 let   playbackStopped     = false; // true after :stop, cleared by :start
 let   playbackRenderTimer = null;  // drives progress-bar animation between WS events
+let   stoppedAtMs         = null;  // Date.now() when the server-confirmed 'stopped'
+                                    // message arrived — lets the 'resumed' handler
+                                    // rebase per-stem elapsed-time references by the
+                                    // real pause duration so position/progress
+                                    // readouts freeze through a pause instead of
+                                    // silently counting wall-clock time straight
+                                    // through it (see msg.type 'stopped'/'resumed').
 
 function ensurePlaybackRender() {
     // Always restart — clears any stale timer so stop→start always gets a fresh loop.
@@ -754,11 +839,13 @@ function stopPlaybackRender() {
 const VU_STEMS = ['vocals', 'melody', 'bass', 'drums', 'master'];
 const vuLevels = {};
 // Peak-hold per channel, in dB — genuinely the same ballistics as
-// state.lufsPeak/state.dbfsPeak: snapped up instantly to any new high
-// (see the WS 'vu' handler's snapVuPeak() call below), then released down
-// at PEAK_DECAY_DB_PER_SEC by peakDecayTick() — the exact same rate/
-// mechanism LUFSs/TP already use, not a separate VU-specific ballistics.
-// null = no signal seen yet ("--" via fmtMeterDb, same as lufsPeak/dbfsPeak).
+// state.lufsPeak: snapped up instantly to any new high (see the WS 'vu'
+// handler's snapVuPeak() call below), then released down at
+// PEAK_DECAY_DB_PER_SEC by peakDecayTick() — the exact same rate/mechanism
+// LUFSs already uses, not a separate VU-specific ballistics. This per-
+// channel peak-hold is also what makes a separate header-level true-peak
+// meter redundant — see the removed "TP" meter's comment near envLine.
+// null = no signal seen yet ("--" via fmtMeterDb, same as lufsPeak).
 const vuPeaks = {};
 VU_STEMS.forEach(s => {
   vuLevels[s] = { FL: 0, FR: 0, RL: 0, RR: 0 };
@@ -786,17 +873,64 @@ function vu4(stem) {
   return `${vuBar(ch.FL, pk.FL)}${vuBar(ch.FR, pk.FR)}{grey-fg}·{/grey-fg}${vuBar(ch.RL, pk.RL)}${vuBar(ch.RR, pk.RR)}`;
 }
 
-// ── VU SIDEBAR — vcl/mel/bas/drm/mst stacked on the right ────────────────────
-// Sits beside sep/lang/cmd/chatHeader/log (all narrowed to CONTENT_W so the
-// sidebar never overlaps them) — starts right under the header+playback rows
-// and runs down to just above the input line.
+// ── Per-stem row band ─────────────────────────────────────────────────────
+// Each stem's own waveform (the playback progress bar) spans the FULL
+// window width, full stop — nothing shares that row. Directly under it,
+// the descriptor line (C/S/E/F/P/H/T inline range bars) sits above this
+// stem's meters (VU meter, spatial ring, descriptor grid, momentum panel);
+// the meters' own first row is aligned with the "weight" row, not with
+// dirWgt — user: "align the first line of the visualizer with weight or
+// the weight/dir section". weight/dir/dirWgt keep printing on the LEFT
+// (in playBox, indented under the name column) on the same absolute rows
+// the meters occupy on the RIGHT (in their own boxes), so the two never
+// collide — different columns, same rows. Vertical order per stem:
+//   waveform + descriptor line (PRE_METERS_ROWS = 2 rows) — then meters
+//   start, overlapping rows with weight/dir/dirWgt (which keep printing on
+//   the left of playBox for those same rows):
+//   meters: VU | spatial | transitions | momentum (STEM_ROW_BAND_H = 7 rows)
+//   ...then the next stem's waveform starts right after.
+// STEM_ROW_BAND_H = 7 is the tallest of the four meter blocks (descriptor
+// grid / momentum: one row per DIMS entry — ['C','S','E','F','P','H','T']);
+// VU (5 rows) and spatial (5 rows) are simply shorter, not padded — see
+// their own box-array comments below. STEM_BAND_H (9) is the combined
+// height every per-stem column uses so stem N's band always starts at row
+// N * STEM_BAND_H: playBox is ONE box (real content in rows 0-4 — weight/
+// dir/dirWgt still need rows 2-4 even though the meters boxes now also
+// start at row 2 — blank in rows 5-8 where the meters keep going after
+// playBox's own text runs out), but the VU/spatial/descriptor-grid/
+// momentum panels are each an ARRAY of small boxes, one per stem,
+// individually positioned at playTop + i*STEM_BAND_H + PRE_METERS_ROWS
+// with height STEM_ROW_BAND_H — not one tall box with blank filler rows
+// standing in for that gap. A blessed box paints its own background across
+// its FULL declared rectangle regardless of content, so a blank row inside
+// a tall box still erases whatever playBox's full-width waveform drew
+// underneath it at that row — that was the actual bug behind the waveform
+// reading as "cut". A small box confined to just one stem's own row band
+// can't do that to any other stem's waveform.
+const PRE_METERS_ROWS = 2; // waveform, descriptor line — meters start at the weight row
+const STEM_ROW_BAND_H = 7; // meters sub-band height
+const STEM_BAND_H     = PRE_METERS_ROWS + STEM_ROW_BAND_H;
+
+// ── VU SIDEBAR — vcl/mel/bas/drm meters, one small box per real stem ────────
+// Each real stem gets its OWN box, exactly STEM_ROW_BAND_H tall, positioned
+// directly under that stem's own waveform block — not one tall box spanning
+// the whole per-stem zone with blank filler rows standing in for the gap. A
+// blessed box always paints its own background across its full declared
+// rectangle regardless of content, so a "blank" row inside a tall box still
+// erases whatever playBox's full-width waveform drew underneath it at that
+// same row — that was the actual cause of the waveform reading as visually
+// "cut". A small box confined to just its own stem's row band simply doesn't
+// exist over any OTHER stem's waveform rows, so nothing gets erased there.
+// master has no playback row to align with at all — its VU meter lives in
+// its own small box up in the header area instead (see masterVuBox below),
+// not in this per-stem array.
 const VU_SIDEBAR_STEMS = [
   { key: 'vocals', label: 'vcl' },
   { key: 'melody', label: 'mel' },
   { key: 'bass',   label: 'bas' },
   { key: 'drums',  label: 'drm' },
-  { key: 'master', label: 'mst' },
 ];
+const VU_MASTER = { key: 'master', label: 'mst' };
 // Fixed-width label column ("vcl " / "    ") guarantees FL/FR/RL/RR and their
 // bars start in the same column on every row, in every block — pad via code
 // rather than hand-counted literal spaces, so it can't drift out of alignment.
@@ -821,25 +955,31 @@ function vuSidebarBlock(label, stemKey) {
 }
 // Row under each block's FL/FR/RL/RR — was a blank gap row, now carries that
 // stem's pan x / pan y / width numbers (the spatial squares show shape, this
-// is the actual value). Every block gets one, including the last (mst), so
-// there's no dangling blank row and the count is uniform.
+// is the actual value). Every block gets one, so there's no dangling blank
+// row and the count is uniform.
 function vuSidebarInfoLine(stemKey) {
   const sp  = state.spatial[stemKey] || { x: 0, y: 0, width: 1 };
   const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(2);
   return `{grey-fg}${' '.repeat(VU_LABEL_W)}${fmt(sp.x)} ${fmt(sp.y)} ${sp.width.toFixed(2)}{/grey-fg}`;
 }
-// Fixed content height: 5 blocks × (4 VU rows + 1 info row) = 25. Never
-// recalculated — the box's position/size are constant, so nothing about
-// lang/cmd/chat resizing can ever touch it. Matches SPATIAL_ZONE_H (also 25)
-// so the VU and spatial-ring columns land on identical row offsets.
-const VU_ZONE_H = VU_SIDEBAR_STEMS.length * 5;
+// One real stem's VU block, padded to STEM_ROW_BAND_H — this is the FULL
+// content of that stem's own small vuStemBoxes[i], no leading gap needed
+// since the box itself is already positioned to start right under that
+// stem's waveform (see the box array's own top calc, below).
+function vuStemLines(label, stemKey) {
+  // No padding to STEM_ROW_BAND_H anymore — this box is independent of
+  // descGridStemBoxes/momentumStemBoxes now (each stem's meters are
+  // separate boxes, not one shared column), so it's sized to its own real
+  // 5-row content (4 VU rows + 1 info row) instead of match-padded to 7,
+  // which used to leave 2 blank rows of dead space under every VU block.
+  return [...vuSidebarBlock(label, stemKey), vuSidebarInfoLine(stemKey)];
+}
 function renderVuSidebar() {
-  const lines = [];
-  VU_SIDEBAR_STEMS.forEach(s => {
-    lines.push(...vuSidebarBlock(s.label, s.key));
-    lines.push(vuSidebarInfoLine(s.key));
+  VU_SIDEBAR_STEMS.forEach((s, i) => {
+    vuStemBoxes[i].setContent(vuStemLines(s.label, s.key).join('\n'));
   });
-  vuSidebarBox.setContent(lines.join('\n'));
+  masterVuBox.setContent(
+    [...vuSidebarBlock(VU_MASTER.label, VU_MASTER.key), vuSidebarInfoLine(VU_MASTER.key)].join('\n'));
 }
 
 function loadStemRanges() {
@@ -884,6 +1024,183 @@ loadUmapDb();
 
 const DIMS = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
 
+// Rolling descriptor window — the last DESC_ROLL_PAIRS real transitions per
+// stem, not the whole track. Distinct from state.stems[x].C etc. (the single
+// live cursor value) and from rangeBar/renderStemGraph (which only ever draw
+// that one live point): this is short-term history, one ring-buffer slot per
+// stem per ACTUAL transition — not a time-based sample.
+//
+// Each slot is a PAIR — { out, in } — the two descriptor readings that got
+// glued together at that cut: `out` is the OUTGOING segment's own end state,
+// `in` is the INCOMING segment's start state. ws_server.js already computes
+// this itself: its 'desc' handler snapshots state.stems[track] into
+// state.stems[track].prevSegment right before overwriting it with the new
+// segment's values ("the one point where 'what was just playing' and 'what's
+// about to play' are both still distinguishable" — see that handler's own
+// comment), and that prevSegment rides along on every subsequent broadcast,
+// including the 'stem' message this file's own handler reads. So `out` here
+// is msg.prevSegment.descriptors, not something this file has to derive.
+// `out` is null for a stem's very first transition of a session (no prior
+// segment to snapshot yet).
+//
+// A new pair appears exactly when, and only when, that stem really cuts —
+// slicer.js only ever sends one 'stem' broadcast per real segment start (see
+// the handler's own comment below). A fast-cutting stem (drums) fills and
+// scrolls quickly; a slow one (bass) barely moves — that difference IS the
+// transition-rate signal, not noise to smooth over. Reuses stemRanges for
+// min/max shading, same range the live cursor bars already use.
+const DESC_STEMS      = ['vocals', 'melody', 'bass', 'drums'];
+const DESC_ROLL_PAIRS = 6;   // 6 transitions × {out,in} = 12 columns of data
+const descRollBuffers = { vocals: [], melody: [], bass: [], drums: [] };
+
+// Push one transition's {out, in} pair onto a stem's rolling window,
+// dropping the oldest pair once it's full.
+function descRollPush(stemName, pair) {
+  const buf = descRollBuffers[stemName];
+  if (!buf) return;
+  buf.push(pair);
+  if (buf.length > DESC_ROLL_PAIRS) buf.shift();
+}
+
+// ── Momentum panel data — a continuously scrolling strip, not a per-bar one.
+// Width (the meter itself) always stays the same — MOM_MAX_SAMPLES columns,
+// matching the transition grid's own pairs+seams span exactly (see MOM_W
+// below) — user: "the momentum visualization meter should always keep the
+// same length". What's variable is the DISPLAYED length, i.e. how much real
+// playback time those fixed columns represent: user: "it should depend on
+// setSegmentBars [x]. if setSegmentBars 4, the length of the window is 4.
+// if it's chunkMode 0, the length of the window is the whole file." See
+// momentumBarTick()'s spanMs for exactly how that's derived per stem —
+// segDurMs already IS one setSegmentBars-sized segment's real duration (x
+// bars long) once chunked, and durMs is the whole stem's file duration for
+// the chunkMode-0 case, so no separate bars-count math is needed beyond
+// reading whichever of those two applies. Once the strip fills up, it
+// doesn't freeze — each new column shifts the oldest one out and keeps
+// going, so the window always shows roughly the last spanMs of real time.
+// No wipe-on-every-real-transition either (see the 'stemSlice' WS handler
+// above, which used to clear curBarBuffers on every single bar) — that's
+// what made this a "1 bar" window in the first place; removing it is what
+// lets the strip span more than one segment/bar now.
+// lastOutDesc[stem] is the snapshot of whatever was playing just before the
+// CURRENT bar (ws_server.js's prevSegment, same source descRollPush's `out`
+// uses) — kept around so momentumBarTick() below can ramp toward the
+// current bar's real descriptor value instead of jumping straight to it,
+// same reasoning the old per-pair interpolation used. Still updated on
+// every transition (just no longer paired with a buffer wipe) since the
+// ramp itself is still a real, useful smoothing within each new bar.
+const MOM_CHARS = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+// Same total column count as the grid's own pairs+seams span (DESC_ROLL_PAIRS
+// pairs of 2 cells, plus a seam between each) — not because this panel is
+// pair-structured (it isn't, this is one continuous strip), just so its
+// width matches the transition grid's exactly. See MOM_W below. This is the
+// FIXED meter length — see momentumBarTick() for the variable DISPLAYED
+// length it's stretched or compressed to fit.
+const MOM_MAX_SAMPLES = DESC_ROLL_PAIRS * 2 + (DESC_ROLL_PAIRS - 1);
+const lastOutDesc   = { vocals: null, melody: null, bass: null, drums: null };
+// Wall-clock time each stem's strip last advanced by one column — lets
+// momentumBarTick() (which itself still only ticks once/second, see the
+// setInterval near the bottom of this file) space actual column pushes
+// further apart than that when the current span (a long chunk, or a whole
+// file in chunkMode 0) is longer than MOM_MAX_SAMPLES seconds.
+const lastMomPush   = { vocals: 0, melody: 0, bass: 0, drums: 0 };
+const curBarBuffers = {};
+DESC_STEMS.forEach(stem => {
+  curBarBuffers[stem] = {};
+  DIMS.forEach(dim => { curBarBuffers[stem][dim] = []; });
+});
+
+// Ticks once a second (see setInterval near the bottom of this file), but
+// only actually PUSHES a new column for a stem once enough real time has
+// passed for that stem's current column interval — colMs below, sized so
+// MOM_MAX_SAMPLES columns together span spanMs of real playback time:
+//   - chunked (state.playFullFile[stem] false, i.e. :setSegmentBars is
+//     active) — spanMs = segDurMs, this stem's current segment's own real
+//     duration, which by construction already covers exactly however many
+//     bars :setSegmentBars was set to (see slicer.js's setSegmentBars()).
+//   - whole-file (state.playFullFile[stem] true, i.e. chunkMode 0) —
+//     spanMs = durMs, the stem's total file duration, so the strip
+//     represents the ENTIRE track rather than one slice of it.
+// Falls back to a fixed 1 column/second if neither is known yet (e.g.
+// before the first real segment/duration message arrives). At a fast
+// tempo or a short chunk this can compute an interval shorter than the
+// tick's own 1000ms floor — the strip is then capped at 1 column/second
+// (can't push more often than momentumBarTick() itself runs) and ends up
+// spanning a bit more real time than spanMs, which is the best this tick
+// rate can do rather than a hard requirement.
+// Ramps from lastOutDesc[stem][dim] toward the current bar's real value
+// (state.stems[stem][dim]) by how far through the bar's real duration
+// (segDurMs) playback actually is, same stemSliceStartTime the position
+// bars already track. No prior `out` (this bar has nothing to ramp from
+// yet, e.g. the stem's very first bar) just samples the flat current value.
+// Gated on state.running — the system being off (:stop, or before the first
+// :start) means no real playback position exists to sample against, so
+// nothing gets pushed; the 'stopped' handler above also leaves whatever was
+// already in progress in place (freezes, doesn't wipe), so the panel just
+// stops advancing rather than going blank while paused.
+function momentumBarTick() {
+  if (!state.running) return;
+  DESC_STEMS.forEach(stem => {
+    const s = state.stems[stem];
+    const out = lastOutDesc[stem];
+    const segDurMs  = s && s.segDurMs;
+    const startTime = stemSliceStartTime[stem];
+    const wholeFile = !!state.playFullFile[stem];
+    const spanMs = wholeFile
+      ? ((s && s.durMs > 0) ? s.durMs : null)
+      : ((segDurMs > 0) ? segDurMs : null);
+    const colMs = spanMs ? spanMs / MOM_MAX_SAMPLES : 1000;
+    const now = Date.now();
+    if (now - lastMomPush[stem] < colMs) return; // not time for this stem's next column yet
+    lastMomPush[stem] = now;
+    DIMS.forEach(dim => {
+      const buf = curBarBuffers[stem][dim];
+      // Window's already full — keep going by dropping the oldest column
+      // instead of holding/freezing, so the strip keeps showing roughly
+      // the last spanMs of real time instead of stalling once it first
+      // fills up.
+      if (buf.length >= MOM_MAX_SAMPLES) buf.shift();
+      let v = s ? s[dim] : null;
+      if (out && typeof out[dim] === 'number' && typeof v === 'number' && segDurMs > 0 && startTime) {
+        const elapsed  = Date.now() - startTime;
+        const progress = Math.max(0, Math.min(1, elapsed / segDurMs));
+        v = out[dim] + (v - out[dim]) * progress;
+      }
+      buf.push(v === null || v === undefined || isNaN(v) ? null : v);
+    });
+  });
+}
+
+// Same value→glyph mapping renderDescGrid()'s cellFor() uses (stemRanges
+// min/max, descIsMissing for "no info"), just picking a block-height glyph
+// instead of a density shade.
+function momGlyphFor(stem, dim, v) {
+  const rng = stemRanges[stem] || {};
+  const dimRange = rng[dim];
+  const rangeUsable = dimRange && isFinite(dimRange.min) && isFinite(dimRange.max)
+    && dimRange.max !== dimRange.min;
+  if (descIsMissing(v, dim) || !rangeUsable) return '{grey-fg}·{/grey-fg}';
+  const t = Math.max(0, Math.min(1, (v - dimRange.min) / (dimRange.max - dimRange.min)));
+  return MOM_CHARS[Math.round(t * (MOM_CHARS.length - 1))];
+}
+
+// One row = however much of the current bar's strip has filled in so far —
+// samples already taken render as glyphs, seconds still to come render as
+// blank space (the strip visibly growing), no '│' seams anywhere since this
+// is one continuous run, not discrete cut-marked pairs.
+function momSparkline(stem, dim) {
+  const buf = curBarBuffers[stem][dim];
+  let out = '';
+  for (let i = 0; i < MOM_MAX_SAMPLES; i++) {
+    // No sample at this slot yet (i >= buf.length) reads the same as a
+    // sample that came back null — both are "no data here", so both fill
+    // with the same grey · placeholder instead of one being a blank space.
+    if (i >= buf.length) { out += '{grey-fg}·{/grey-fg}'; continue; }
+    const v = buf[i];
+    out += v === null ? '{grey-fg}·{/grey-fg}' : momGlyphFor(stem, dim, v);
+  }
+  return out;
+}
+
 // Range bar: shows current value as a • cursor on a ━━━━ track within min-max range.
 // Cursor uses the small • (same glyph as the header record dot), not the larger ●.
 // width = number of inner characters (cursor included).
@@ -893,17 +1210,17 @@ function rangeBar(val, stemName, dim, width) {
   const r = stemRanges[stemName];
   const rng = r && r[dim];
   if (!rng || rng.max === rng.min) {
-    return `{white-fg}•{/white-fg}{grey-fg}${'─'.repeat(width - 1)}{/grey-fg}`;
+    return `{bright-white-fg}•{/bright-white-fg}{grey-fg}${'─'.repeat(width - 1)}{/grey-fg}`;
   }
   const lv  = Math.max(0, Math.min(1, ((parseFloat(val) || 0) - rng.min) / (rng.max - rng.min)));
   const pos = Math.round(lv * (width - 1));
-  return `{grey-fg}${'─'.repeat(pos)}{/grey-fg}{white-fg}•{/white-fg}{grey-fg}${'─'.repeat(width - 1 - pos)}{/grey-fg}`;
+  return `{grey-fg}${'─'.repeat(pos)}{/grey-fg}{bright-white-fg}•{/bright-white-fg}{grey-fg}${'─'.repeat(width - 1 - pos)}{/grey-fg}`;
 }
 
-// DAW-style block meter for a dB-scale reading (LUFS or true-peak dBFS),
-// with a peak-hold marker — a distinct cell flagging the loudest/highest
-// point hit so far this session (state.lufsPeak/dbfsPeak, never auto-decays,
-// cleared by :resetPeaks). floor/ceil are the dB range the bar spans (ceil is
+// DAW-style block meter for a dB-scale reading (LUFS, or a VU channel's own
+// level), with a peak-hold marker — a distinct cell flagging the loudest/
+// highest point hit so far this session (state.lufsPeak / vuPeaks, never
+// auto-decays, cleared by :resetPeaks). floor/ceil are the dB range the bar spans (ceil is
 // always 0 = full scale, both metrics' natural top). redAt colors the fill
 // and peak marker red once the CURRENT value crosses it (both metrics get
 // "hot" near 0 — true-peak because that's clipping, LUFS because a mix
@@ -928,9 +1245,9 @@ function dbMeter(value, peak, floor, redAt, width) {
   let out = '';
   for (let i = 0; i < width; i++) {
     if (i === peakCell) {
-      out += hot ? '{red-fg}▐{/red-fg}' : '{yellow-fg}▐{/yellow-fg}';
+      out += hot ? '{bright-white-fg}{bold}▐{/bold}{/bright-white-fg}' : '{bright-white-fg}▐{/bright-white-fg}';
     } else if (i < filled) {
-      out += hot ? '{red-fg}█{/red-fg}' : '{white-fg}█{/white-fg}';
+      out += hot ? '{bright-white-fg}{bold}█{/bold}{/bright-white-fg}' : '{bright-white-fg}█{/bright-white-fg}';
     } else {
       out += '{grey-fg}░{/grey-fg}';
     }
@@ -938,33 +1255,30 @@ function dbMeter(value, peak, floor, redAt, width) {
   return out;
 }
 
-// Below these floors, the raw number is meaningless noise, not signal — a
-// mix at genuine digital silence still produces a tiny nonzero float, and
+// Below this floor, the raw number is meaningless noise, not signal — a mix
+// at genuine digital silence still produces a tiny nonzero float, and
 // 20*log10() of that blows up into huge, nonsensical-looking readings like
 // -157.2 or -313.1 instead of the clean "-inf" a real console/DAW shows for
-// silence. Two different floors because the two metrics have different
-// grounding:
-//   LUFS_INF_FLOOR = -70 is not a guess — it's ITU-R BS.1770 / EBU R128's own
-//     "absolute gate," the spec's own definition of the point below which a
-//     signal doesn't count as programme content at all.
-//   TP_INF_FLOOR = -60 has no equivalent official spec for true peak — this
-//     is a practical floor (well below any audible programme material, well
-//     above the float-underflow noise that produced -313.1 in the first
-//     place), not a cited standard like the LUFS one.
+// silence. LUFS_INF_FLOOR = -70 is not a guess — it's ITU-R BS.1770 / EBU
+// R128's own "absolute gate," the spec's own definition of the point below
+// which a signal doesn't count as programme content at all. (There used to
+// be a separate TP_INF_FLOOR for a header-level true-peak meter — removed
+// along with that meter, since the VU sidebar's own per-channel peak-hold
+// already covers true peak, per-channel, more usefully than one global
+// number ever did.)
 // ASCII "-inf" rather than the ∞ glyph deliberately: this codebase has been
 // bitten twice already (U+00B7, "⚿") by non-ASCII glyphs quietly rendering
 // wider than their counted string length in this terminal and breaking
 // column alignment — "-inf" is also what most hardware/DAW meters literally
 // print for silence, so it's not a compromise, it's the actual convention.
 const LUFS_INF_FLOOR = -70;
-const TP_INF_FLOOR   = -60;
 function fmtMeterDb(value, floor) {
   if (value === null) return '--';
   return value <= floor ? '-inf' : value.toFixed(1);
 }
 
 // Peak-hold release — called every 100ms from the clock-tick interval below.
-// state.lufsPeak/dbfsPeak used to be a plain running session max (only ever
+// state.lufsPeak used to be a plain running session max (only ever
 // went up), which is wrong for a peak-hold readout: if the mix gets loud then
 // settles back down quiet, the number should follow it back down eventually,
 // not sit pinned at the old high forever with no way to tell "that was ages
@@ -984,9 +1298,6 @@ function peakDecayTick() {
   const step = PEAK_DECAY_DB_PER_SEC * dtSec;
   if (state.lufsPeak !== null && state.lufs !== null) {
     state.lufsPeak = Math.max(state.lufs, state.lufsPeak - step);
-  }
-  if (state.dbfsPeak !== null && state.dbfs !== null) {
-    state.dbfsPeak = Math.max(state.dbfs, state.dbfsPeak - step);
   }
   // Same release for every VU channel's peak-hold — 20 independent values
   // (5 stems × FL/FR/RL/RR), each floored at that channel's own current
@@ -1030,10 +1341,37 @@ const VU_SIDEBAR_W = VU_LABEL_W + 2 + 1 + VU_W + 1 + VU_NUM_W;
 // extra margin there, box width equals content width exactly; the breathing
 // room between the two columns is VU_SPATIAL_GAP alone.
 const SPATIAL_W      = 9;
-const VU_SPATIAL_GAP = 2;
+const VU_SPATIAL_GAP = 1;
 const SIDE_TOTAL_W  = VU_SIDEBAR_W + VU_SPATIAL_GAP + SPATIAL_W;
 const CONTENT_W    = '100%-' + SIDE_TOTAL_W;
 function contentW() { return Math.max(20, screen.width - SIDE_TOTAL_W); }
+
+// Header-row alignment anchors for the boxes docked in/under the header —
+// shared between render() (which needs them to size playTop) and reflow()
+// (which needs them to actually position the boxes), so both stay in sync.
+// Header row indices (see sLines in render()): 0 = state chips/version,
+// 1 = last touched, 2 = track/key, 3 = win/slices/LUFS/quant, 4 = genre/beats.
+// 2, not 1: row 1 ("last touched") flushes ITS OWN text to the true right
+// edge (atCol('', lastTouchLine)), the same column master's right-anchored
+// box paints into — starting master at row 1 painted straight over that
+// text. Row 2 (trackKey) only has LEFT-flushed content, empty on the
+// right, so master can safely start there instead — still right next to
+// "last touched", just one row lower, without covering it.
+const MASTER_VU_TOP = 3; // masterVuBox/masterSpatialBox — "closer to last touched" (without covering it)
+const TRAIN_TIP_TOP = 3; // bakeInfoBox/tipBox — "align prmpt: with the row of quant:beat"
+// Column where iconCluster (and therefore [REC •], its first element)
+// starts on the title row — recomputed every render() (see withLCR), read
+// by reflow() to line tipBox's own left edge up with it (user: "align the
+// tipping zone with the [REC] box").
+let recColStart = 0;
+// Column where the [AGPL-3.0] badge specifically starts within withLCR's
+// centered title block (the block also contains "[EBYS 0.1.19]" before it) —
+// read by reflow() to line bakeInfoBox's own left edge up with it (user:
+// "align prmpt section with [AGPL...]"). Set right after withLCR runs (see
+// sLines below), not inside withLCR itself, since it needs the version-label
+// prefix's own width, which withLCR only ever sees as part of one combined
+// `center` string.
+let agplColStart = 0;
 
 // ── ZONE 1 — Header (version + EBYS state) ───────────────────────────────────
 const statusBox = blessed.box({
@@ -1048,18 +1386,85 @@ const playBox = blessed.box({
   tags: true, wrap: true,
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
-let fixedTop = 11; // 3 (statusBox) + playBox height — recalculated in render
+// playTop — where the whole per-stem row-band section starts (playback rows
+// AND, beside them, the VU/spatial/descriptor-grid/momentum columns). Always
+// equal to playBox.top (statusH + 1); kept as its own variable so the side
+// columns can read it without depending on playBox's own mutable .top.
+let playTop  = 3;
+// fixedTop — where sep/menuHeader/lang/cmd/log start, i.e. BELOW the entire
+// per-stem section (playback rows AND the side columns beside them, not just
+// playback). = playTop + the tallest of those columns + 1 row of gap —
+// recalculated in render().
+let fixedTop = 11;
+// statusH — height of the plain header text block (title/last-touched/
+// track-key/env/genre rows). Recalculated in render(); kept module-level so
+// reflow() can position masterVuBox/masterSpatialBox right below the header
+// instead of overlapping it (see reflow()'s own comment).
+let statusH  = 5;
 
 // ── ZONE 2.5 — Separator (bars / chat) ───────────────────────────────────────
+// sepBox sits at mTop — the very first row of the chat overlay, directly over
+// whichever screen's header is underneath (playback's or the training
+// screen's — see reflow()'s chatMaximized block). It doubles as the tagger/
+// Cricket "thinking" spinner line (renderSpinner()/startChatSpinner()), so
+// its content is usually dynamic — but idle (no spinner running, language
+// already selected) it used to just go blank, which left nothing marking
+// where the underlying page's header ends and the chat box actually begins
+// (user: "find something to demarcate the chat box top, over the header of
+// the underlying page"). chatTopRule() is that idle-state content — a plain
+// labeled divider, same '── label ──' visual language as the command list's
+// own section headers — swapped in everywhere sepBox used to fall back to
+// '' once a language is picked (see stopSpinner()/stopChatSpinner()/
+// applyLanguage()).
+function chatTopRule() {
+  const w = Math.max(1, contentW());
+  const label = ' chat ';
+  const dashes = Math.max(0, w - label.length);
+  const left = Math.floor(dashes / 2);
+  const right = dashes - left;
+  return '{grey-fg}' + '─'.repeat(left) + label + '─'.repeat(right) + '{/grey-fg}';
+}
+
 const sepBox = blessed.box({
   top: fixedTop, left: 0, width: CONTENT_W, height: 1,
   tags: true,
   style: { fg: 'grey', bg: SKIN.bg },
 });
 
-// ── ZONE 3 — Language selector (expands on boot, collapses after selection) ───
+// ── ZONE 3 — Menu header row: :language / :commands / :chat ───────────────────
+// These three panels each used to show their own one-line "type to expand"
+// hint stacked on a separate row (language, then a dedicated chat-header row,
+// then commands) — three rows of near-empty space in the common idle state,
+// where all three are collapsed. Merged into one shared header row instead:
+// whichever of the three is currently collapsed contributes its hint here,
+// side by side. A panel that's expanded owns its own "type to collapse"
+// header + list content directly below (see langBox/cmdBox) — its hint drops
+// out of this shared row once expanded, so it isn't shown twice.
 let langCollapsed = false;
 let langContent   = '';
+let cmdCollapsed  = false;
+let cmdContent    = '';
+function buildMenuHeaderLine() {
+  const seg = (label, collapsed) =>
+    '{bright-white-fg}:' + label + ' — type to ' + (collapsed ? 'expand' : 'collapse') + '{/bright-white-fg}';
+  return [
+    seg('language', langCollapsed),
+    seg('commands', cmdCollapsed),
+    // Live saturation meter for Cricket's working memory (see CRICKET'S
+    // MEMORY, near chatHistory) — always visible, not a collapse toggle like
+    // the two segments above. ':memory' prints the same reading as a chat
+    // answer; ':memory clear' empties it.
+    memoryBar(8),
+  ].join('   ');
+}
+
+const menuHeaderBox = blessed.box({
+  top: fixedTop, left: 0, width: CONTENT_W, height: 1,
+  tags: true, wrap: true,
+  style: { fg: 'grey', bg: SKIN.bg },
+});
+
+// ── ZONE 3.5 — Language selector (expands on boot, collapses after selection) ─
 const langBox = blessed.box({
   top: fixedTop, left: 0, width: CONTENT_W, height: 1,
   tags: true, wrap: true,
@@ -1067,21 +1472,11 @@ const langBox = blessed.box({
 });
 
 // ── ZONE 4 — Command list (expands on boot, collapses to one-liner) ───────────
-let cmdCollapsed = false;
-let cmdContent   = '';
 const cmdBox = blessed.box({
   top: fixedTop + 1, left: 0, width: CONTENT_W, height: 1,
   tags: true, wrap: true,
   scrollable: true, alwaysScroll: true, mouse: true,
   style: { fg: 'grey', bg: SKIN.bg, scrollbar: { bg: 'grey' } },
-});
-
-// ── ZONE 4.5 — Chat header (collapsed placeholder) ───────────────────────────
-let chatCollapsed = false;
-const chatHeaderBox = blessed.box({
-  top: fixedTop + 2, left: 0, width: CONTENT_W, height: 1,
-  tags: true,
-  style: { fg: 'grey', bg: SKIN.bg },
 });
 
 // ── ZONE 5 — Chat with Cricket (scrollable) ───────────────────────────────────
@@ -1097,14 +1492,22 @@ const logBox = blessed.log({
   style:         { fg: SKIN.fg, bg: SKIN.bg },
 });
 
-// ── ZONE 6 — VU meters (vcl/mel/bas/drm/mst) ──────────────────────────────────
-// Top-right of its zone: same row as sepBox/langBox start (fixedTop), fixed
-// size (height:VU_ZONE_H, never stretches). top is re-set to fixedTop in
-// reflow() — it only moves when the header/playback height actually changes,
-// not on every language-panel keystroke, since its OWN height no longer
-// depends on langH/cmdH/chatHdrH at all.
-const vuSidebarBox = blessed.box({
-  top: fixedTop, right: SPATIAL_W + VU_SPATIAL_GAP, width: VU_SIDEBAR_W, height: VU_ZONE_H,
+// ── ZONE 6 — VU meters (vcl/mel/bas/drm), one small box per stem ────────────
+// Array, not one tall box: vuStemBoxes[i] is exactly STEM_ROW_BAND_H rows
+// tall and gets positioned (in reflow()) at top: playTop + i*STEM_BAND_H +
+// PRE_METERS_ROWS — directly under stem i's own waveform block in playBox, and
+// nowhere else. See the comment above VU_SIDEBAR_STEMS for why a single tall
+// box with blank filler rows doesn't work here (it erases the waveform).
+const vuStemBoxes = VU_SIDEBAR_STEMS.map(() => blessed.box({
+  top: playTop, right: SPATIAL_W + VU_SPATIAL_GAP, width: VU_SIDEBAR_W, height: 5,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+}));
+// master's own VU meter — fixed height (5: 4 VU rows + 1 info row, no
+// padding needed since nothing else has to line up under it), docked in the
+// header area (see reflow()) instead of threaded through the per-stem array.
+const masterVuBox = blessed.box({
+  top: 0, right: SPATIAL_W + VU_SPATIAL_GAP, width: VU_SIDEBAR_W, height: 5,
   tags: true, wrap: false,
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
@@ -1129,18 +1532,554 @@ const vuSidebarBox = blessed.box({
 // same interior-row structure (still 3 interior rows for full y-axis
 // resolution) just proportioned tighter to the same 5-row height.
 // Each frame is its own unit (content + 0 gap) sized so block START rows
-// still land on the same offsets as vuSidebarBox's blocks (5 rows here vs.
+// still land on the same offsets as vuStemBoxes' blocks (5 rows here vs.
 // VU's 4 content + 1 gap = 5) — the two columns stay row-aligned even though
 // SPATIAL_H no longer equals a VU block's raw content height.
 const XY_W      = 5;
 const SPATIAL_H = 5;
-const SPATIAL_ZONE_H = VU_SIDEBAR_STEMS.length * SPATIAL_H;
-
-const spatialBox = blessed.box({
-  top: fixedTop, right: 0, width: SPATIAL_W, height: SPATIAL_ZONE_H,
+// Array, not one tall box — same reasoning as vuStemBoxes above: each real
+// stem's ring gets its own STEM_ROW_BAND_H-tall box, positioned directly
+// under that stem's own waveform block, so it never paints over any OTHER
+// stem's waveform row.
+const spatialStemBoxes = VU_SIDEBAR_STEMS.map(() => blessed.box({
+  top: playTop, right: 0, width: SPATIAL_W, height: SPATIAL_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+}));
+// master's own ring — fixed height (SPATIAL_H, the raw 5-row frame, no
+// padding needed), docked in the header area alongside masterVuBox.
+const masterSpatialBox = blessed.box({
+  top: 0, right: 0, width: SPATIAL_W, height: SPATIAL_H,
   tags: true, wrap: false,
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
+
+// ── ZONE 6.6 — Bake training readout, docked in the header area directly
+// under master's own VU+spatial block (one row of gap below it — see
+// bakeInfoBox.top in reflow). Lives up here, near track/win/genre, rather
+// than below the whole per-stem waveform+meters zone, so it stays visible
+// without scrolling past four stems' worth of content first. [TRAINING
+// ON]/[TRAINING OFF] itself lives in the header icon cluster (next to
+// [CHUNK]) — this panel is the detail view. Redesigned as: prompt line,
+// one dense stat line (matches the header's own "bars:32 stay:0.0"
+// convention), then a single spec-sheet-style command table instead of
+// separate cricket/corrections lists — cricket_cmds and user_corrections
+// overlap by parameter identity far more often than not (a correction is
+// usually "the same param, a different value"), so showing both in full
+// mostly duplicated lines. bakeComportment is already the deduped result;
+// this just renders it as aligned name/value columns with a * marker on
+// whatever doesn't match what Cricket originally proposed for that
+// parameter. wrap:true (unlike the other zone 6 boxes) since command text
+// is variable-length prose, not a fixed-width meter.
+// Height now tracks actual content (see renderBakeInfo's return value used in
+// reflow) instead of always reserving the worst case — idle state is just
+// prmpt/stat/rcp (~4 rows), a full recipe table can still grow up to the
+// MAX. Was a flat 10 always reserved regardless of content, which combined
+// with the tipping panel below it was tall enough to push the entropy meter
+// off the bottom of shorter terminal windows.
+const BAKE_INFO_MIN_H = 3;
+const BAKE_INFO_MAX_H = 10;
+const bakeInfoBox = blessed.box({
+  top: 0, right: 0, width: SIDE_TOTAL_W, height: BAKE_INFO_MIN_H,
+  tags: true, wrap: true,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+
+// Indented to VU_LABEL_W so this panel's text starts in the same column as
+// "FL"/"FR"/"RL"/"RR" do in the VU meters directly above it. Table rows
+// step in one further level (+2), same convention as before.
+const BAKE_INFO_INDENT     = ' '.repeat(VU_LABEL_W);
+const BAKE_INFO_SUB_INDENT = ' '.repeat(VU_LABEL_W + 2);
+const RECIPE_NAME_W  = 13;
+const RECIPE_VALUE_W = 8;
+
+// "setStayProb all 0.35" → name "stayProb", value "+0.35" — drops the "set"
+// prefix and a bare "all" target (the common case) to fit the column
+// widths above; a specific stem/dim stays (e.g. "setDirPref all D 1" →
+// "dirPref D"). Numeric values get an explicit sign, matching the +/- style
+// used elsewhere in this file (see fmtDir).
+function formatRecipeLine(cmd) {
+  const tokens = cmd.trim().split(/\s+/);
+  let verb = tokens[0] || '';
+  if (verb.length > 3 && verb.slice(0, 3) === 'set') verb = verb[3].toLowerCase() + verb.slice(4);
+  const mid  = tokens.slice(1, -1).filter(t => t.toLowerCase() !== 'all');
+  const name = [verb, ...mid].join(' ');
+  let value  = tokens.length > 1 ? tokens[tokens.length - 1] : '';
+  if (/^-?\d+(\.\d+)?$/.test(value)) value = (parseFloat(value) >= 0 ? '+' : '') + value;
+  // padEnd is a no-op (not a truncation) once name/value already exceed
+  // their column width — force at least one separating space so a long
+  // name doesn't run straight into the value with nothing between them.
+  const nameCol = name.length >= RECIPE_NAME_W ? name + ' ' : name.padEnd(RECIPE_NAME_W);
+  return BAKE_INFO_SUB_INDENT + nameCol + value.padEnd(RECIPE_VALUE_W);
+}
+
+// lockSource rows carry a variable-length list of follower stem names in
+// their value slot (the verb "lockSource" also isn't stripped down the way
+// "set..." verbs are in formatRecipeLine above), so they're consistently the
+// longest/least predictable row in the table — pushed to the end so a long
+// lockSource row never throws off the name/value column alignment of the
+// shorter rows above it.
+function sortRecipeCmds(cmds) {
+  const isLock = c => (c.trim().split(/\s+/)[0] || '').toLowerCase() === 'locksource';
+  return cmds.filter(c => !isLock(c)).concat(cmds.filter(isLock));
+}
+
+// Packs stat tokens ("chk 3", "sc --", "end --", ...) onto as few rows as
+// fit within the zone's width, joined by " · ". Plain blessed wrap (the
+// box's own wrap:true) breaks at the raw character width and restarts
+// continuation lines at column 0 — that's what used to leave "end --"
+// dangling flush-left instead of lined up with the rows above it, so
+// callers now rely on THIS wrap instead and set wrap:false on their own
+// box so blessed's own (separately, less reliably measured — see the '·'
+// width-bug note on dbMeter above) wrapping never runs a second pass over
+// lines this function already finished wrapping. Only remaining caller is
+// tipBox now, which sits flush against tipBox.left (aligned with [REC] —
+// see reflow()) with no indent, so this no longer re-adds one either (used
+// to prepend BAKE_INFO_INDENT to every row).
+function wrapStatLine(tokens) {
+  const w = SIDE_TOTAL_W;
+  const rows = [];
+  let cur = [];
+  let curW = 0;
+  tokens.forEach(tok => {
+    const tokW = visWidth(tok.replace(/\{[^}]+\}/g, ''));
+    const addW = tokW + (cur.length ? 3 : 0); // ' · ' separator = 3 cols
+    if (cur.length && curW + addW > w) {
+      rows.push(cur.join(' · '));
+      cur = [tok];
+      curW = tokW;
+    } else {
+      cur.push(tok);
+      curW += addW;
+    }
+  });
+  if (cur.length) rows.push(cur.join(' · '));
+  return rows.join('\n');
+}
+
+// bakeInfoLines() — the actual line-building logic, split out of
+// renderBakeInfo() below so Learn mode's 'training' sub-view (see LEARN
+// MODE, and renderTrainingView()'s training branch) can show the exact same
+// live-bracket readout in reviewDetailBox without duplicating this logic —
+// bakeInfoBox itself is hidden while in Learn mode (PLAYBACK_HEADER_BOXES).
+function bakeInfoLines() {
+  const scoreShort = bakeScoreCount
+    ? bakeScoreCount + '(' + bakeLastScore.value.toFixed(2) + ')' : '--';
+  const tagShort = bakeSessionActive ? (bakeTag || '--') : '--';
+
+  // Every sub-item below is ALWAYS printed with its label — "--" fills in
+  // for whatever isn't there yet, nothing is omitted. Otherwise a bare "--"
+  // with no label (the previous version) reads as unexplained noise; you
+  // can't tell what's missing without already knowing the layout by heart.
+  // Fixed 2-per-row pairing now (not wrapStatLine's dynamic width-based
+  // wrap) — user-specified layout: prmpt on its own line, then two rows of
+  // two paired stats each, then rcp:. "end" (queued save name) dropped from
+  // this readout entirely to fit that exact 4-line shape.
+  const lines = [BAKE_INFO_INDENT + '{grey-fg}prmpt:{/grey-fg} '
+    + (bakeSessionActive ? (bakeSessionLabel || '--') : '--')];
+
+  if (bakeSessionActive && bakeSeqSteps) {
+    const step = bakeSeqSteps[bakeSeqIndex];
+    lines.push('{grey-fg}' + BAKE_INFO_INDENT
+      + step.name + ' ' + (bakeSeqIndex + 1) + '/' + bakeSeqSteps.length
+      + ' · chk ' + bakeAttempt + '{/grey-fg}');
+    lines.push('{grey-fg}' + BAKE_INFO_INDENT
+      + 'tag ' + tagShort + ' · scr ' + scoreShort + '{/grey-fg}');
+    // The currently-playing step's own saved recipe — no * marking here,
+    // sequence states aren't being corrected against a single Cricket
+    // attempt the way a single-comportment bracket is.
+    const stateCmds = sortRecipeCmds((loadBakeStates()[step.name] || {}).commands || []);
+    if (stateCmds.length) {
+      // rcp: is its own header row, table rows underneath — a separate "--"
+      // row can't sit "under" a single-word label in any way that reads as
+      // aligned, so the empty case folds onto the SAME line instead (same
+      // pattern as corrections: below).
+      lines.push('{grey-fg}' + BAKE_INFO_INDENT + 'rcp:{/grey-fg}');
+      lines.push(...stateCmds.map(formatRecipeLine));
+    } else {
+      lines.push('{grey-fg}' + BAKE_INFO_INDENT + 'rcp:{/grey-fg} --');
+    }
+    const corrCount = bakeUserCmds.length ? resolveComportment(bakeUserCmds).length : 0;
+    lines.push('{grey-fg}' + BAKE_INFO_INDENT + 'corrections:{/grey-fg} ' + (corrCount || '--'));
+  } else {
+    // "scr" (scores) is NOT gated on bakeSessionActive, unlike bars/chk —
+    // it's a running tally across the whole session, meant to stay visible
+    // after :bake end instead of dropping back to "--".
+    lines.push('{grey-fg}' + BAKE_INFO_INDENT
+      + 'bars ' + (bakeSessionActive ? bakeLoopBars : '--')
+      + ' · chk ' + (bakeSessionActive ? bakeAttempt : '--') + '{/grey-fg}');
+    lines.push('{grey-fg}' + BAKE_INFO_INDENT
+      + 'tag ' + tagShort + ' · scr ' + scoreShort + '{/grey-fg}');
+    if (bakeSessionActive && bakeComportment.length) {
+      lines.push('{grey-fg}' + BAKE_INFO_INDENT + 'rcp:{/grey-fg}');
+      const originals = new Map((bakeFirstCmds || bakeCricketCmds).map(c => [comportmentKey(c), c]));
+      lines.push(...sortRecipeCmds(bakeComportment).map(c =>
+        formatRecipeLine(c) + (originals.get(comportmentKey(c)) !== c ? ' {bright-white-fg}*{/bright-white-fg}' : '')));
+    } else {
+      lines.push('{grey-fg}' + BAKE_INFO_INDENT + 'rcp:{/grey-fg} --');
+    }
+  }
+  return lines;
+}
+
+function renderBakeInfo() {
+  const content = bakeInfoLines().join('\n');
+  bakeInfoBox.setContent(content);
+  return content.split('\n').length;
+}
+
+// ── ZONE 6.8 — Entropy meter, docked directly under the tipping panel.
+// Starting binding is state.params.entropy — the existing ORDER(0)↔CHAOS(1)
+// macro (:setEntropy 0–1, see the 'entropy' WS handler above), the only
+// thing already named "entropy" anywhere in the engine. This is a starting
+// point, not a final definition — the intent is to eventually drive this
+// off a bespoke combination of parameters the user defines for what "high
+// entropy" should mean in the bake/training context specifically, and
+// rewire renderEntropyMeter() to that once decided. Visually mirrors
+// rangeBar() (dash track + • cursor), but rangeBar() calibrates against a
+// specific stem's learned min/max (stemRanges), which doesn't apply to a
+// single global 0..1 macro — so this is a simpler fixed-range version
+// rather than reusing rangeBar() directly.
+// Two-column layout, fixed at 2 rows — user-specified: bar (row 1) and
+// floor readout (row 2) on the left, match/stay (row 1) and dirWgt/bpm
+// (row 2) on the right, no blank gap between them. Replaces the old
+// 4-row single-column stack (bar / floor / blank / info).
+const ENTROPY_MIN_H = 2;
+const ENTROPY_MAX_H = 2;
+// Right column sits ENTROPY_RIGHT_GAP cols past where the left (bar/floor)
+// column's own content ends — see ENTROPY_RIGHT_W below for its width.
+const ENTROPY_RIGHT_GAP = 3;
+const ENTROPY_RIGHT_W   = 26; // fits "match: 0.72 · stay: 0.40" / "dirWgt: 1.15 · bpm: 120"
+const entropyBox = blessed.box({
+  top: 0, right: 0, width: SIDE_TOTAL_W + ENTROPY_RIGHT_GAP + ENTROPY_RIGHT_W, height: ENTROPY_MIN_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+// Sized to fill the rest of the zone's width, not an arbitrary fixed length.
+// Shared with the dj/prod equation bar below (EQ_BAR_W) so the two read as
+// one consistent design element — both start at the same column ("X " is a
+// 2-col lead-in either way) and now END at the same column too. Computed
+// from whichever row's own label overhead is TIGHTER (the equation row's
+// "aᵢ"/"NN/NN" labels are wider than this row's "❄"/"0.00"), so both bars
+// are guaranteed to actually fit in SIDE_TOTAL_W instead of being copied
+// from one row's budget and silently overflowing on the other (caught by
+// testing with realistic fake tip data — see the width check that flagged
+// this).
+// TRAIL_MARK_W (defined below, next to the glyphs) is the widest trailing
+// marker on either row — "aᵢ" (2 cols) trails the split-equation row —
+// so ❄ (1 col) gets padded out to match and both bars END at the same
+// column, in addition to already starting at the same column (∫ and ✳
+// are both 1-col leading glyphs, no lead padding needed).
+const ENTROPY_ROW_OVERHEAD = 2 + 3 + 6; // "✳ " + " ❄ " (❄ padded to aᵢ's width) + "  0.00"
+const EQ_ROW_OVERHEAD      = 2 + 3 + 7; // "∫ " + " aᵢ" + "  40/60"
+const SHARED_BAR_W = SIDE_TOTAL_W - VU_LABEL_W - Math.max(ENTROPY_ROW_OVERHEAD, EQ_ROW_OVERHEAD);
+const ENTROPY_BAR_W = SHARED_BAR_W;
+// floorLo/floorHi (both optional, each 0..1) mark the actual travelable
+// range on the 0..1 scale — the cursor can only ever really sit between
+// them. That range renders in WHITE; anything the floor(s) rule out (below
+// floorLo, above floorHi) renders in GREY instead, so the floor is visible
+// IN the bar, not just as a separate number next to it. No floor on a side
+// (param omitted) means that side stays fully white all the way to its
+// end — e.g. the tip bar's artist side, which has no floor at all.
+function entropyBar(val, width, dotColor, floorLo, floorHi) {
+  width = width || 5;
+  // Cursor dot defaults to white, same as the travelable track itself —
+  // bolded so it still reads as a distinct marker rather than blending
+  // into a run of white dashes on either side of it. Hyphenated
+  // 'bright-white', not 'brightwhite' — this gets interpolated straight
+  // into a {tag} below, and blessed's tag parser needs multi-word color
+  // names space-separated (via its own hyphen-to-space conversion), unlike
+  // style-object color names (SKIN.fg etc.) which accept the fused form.
+  dotColor = dotColor || 'bright-white';
+  const lo  = (typeof floorLo === 'number') ? Math.max(0, Math.min(1, floorLo)) : 0;
+  const hi  = (typeof floorHi === 'number') ? Math.max(0, Math.min(1, floorHi)) : 1;
+  const lv  = Math.max(0, Math.min(1, parseFloat(val) || 0));
+  const pos   = Math.round(lv * (width - 1));
+  const loPos = Math.round(lo * (width - 1));
+  const hiPos = Math.round(hi * (width - 1));
+  let out = '';
+  for (let i = 0; i < width; i++) {
+    if (i === pos) { out += `{${dotColor}-fg}{bold}•{/bold}{/${dotColor}-fg}`; continue; }
+    out += (i < loPos || i > hiPos) ? '{grey-fg}─{/grey-fg}' : '{bright-white-fg}─{/bright-white-fg}';
+  }
+  return out;
+}
+// ✳ (U+2733 EIGHT SPOKED ASTERISK) over the plain "S" the header dims use —
+// 'S' is already a per-stem descriptor letter (see DIMS/rb('S',...) in the
+// stem rows above), so reusing it here for the unrelated global entropy
+// macro would read as the same dimension when it isn't. ✳ also just looks
+// more like entropy (radiating/scattered) than the flower-like ❋. Still a
+// BMP dingbat, not an astral-plane emoji, so it won't hit the blessed
+// column-width bug the earlier emoji cleanup fixed. Framed as endpoint
+// markers either side of the track itself — ✳ (scatter/chaos) on the left,
+// ❄ (crystalline/order) on the right — both plain BMP glyphs, same safety
+// reasoning as above.
+const ENTROPY_GLYPH_LEFT  = '✳';
+const ENTROPY_GLYPH_RIGHT = '❄';
+// Visible width of "aᵢ", the wider of the two right-side row markers (❄
+// is 1 col). Padding ❄ out to this width means the entropy row's "0.00"
+// and the split-equation row's "40/60" both start at the same column
+// instead of "0.00" sitting 1 column left of "40/60" (❄ vs aᵢ width).
+const TRAIL_MARK_W = 2;
+// User-overridable floors for the entropy macro, one per end of the bar —
+// same two-floor pattern as floorDj/floorArtist on the tip equation bar
+// (see below), just applied to the ✳(warm/chaos)↔❄(cold/order) range
+// instead of a DJ/artist split, and on BOTH ends instead of one (entropy
+// is bounded on both sides; the tip bar's artist side has no floor at
+// all). Both are direct positions on the same 0(order)..1(chaos) scale
+// entropy itself uses: floorWarm is the lower bound (val can't drop
+// below it — "max cold", i.e. never fully rigid/mechanical matching),
+// floorCold is the upper bound (val can't rise above it — "max heat",
+// i.e. never fully random/incoherent). Fed straight into entropyBar()'s
+// floorLo/floorHi below, which paints the blocked-off range grey and the
+// actually-travelable range white. null = not defined yet (per user:
+// "haven't defined max heat and max cold yet") — renders "--" and the
+// whole bar stays white. No :setEntropyFloor command wired up yet,
+// readout only.
+let floorWarm = null;
+let floorCold = null;
+// Pads `s` (blessed color tags stripped for width purposes) out to `width`
+// visible columns with trailing spaces, so a second column of text appended
+// right after it starts at a fixed, predictable position — same idea as the
+// header's atCol/withLCR, just a left-pad-then-append instead of a
+// right-flush.
+function padToCol(s, width) {
+  const vis = visWidth(s.replace(/\{[^}]+\}/g, ''));
+  return s + ' '.repeat(Math.max(1, width - vis));
+}
+
+function renderEntropyMeter() {
+  const val   = state.params.entropy;
+  const label = (typeof val === 'number') ? val.toFixed(2) : '--';
+  // No BAKE_INFO_INDENT prefix any more — entropy is stuck flush to the
+  // left edge of the window now (user: "really stick entropy to the side
+  // of the window"), so it starts at column 0 instead of the VU_LABEL_W
+  // indent that made sense when it lined up under the VU sidebar/training
+  // column.
+  const barLine = '{grey-fg}' + ENTROPY_GLYPH_LEFT + '{/grey-fg} '
+    + entropyBar(val, ENTROPY_BAR_W, undefined, floorWarm, floorCold)
+    + ' {grey-fg}' + ENTROPY_GLYPH_RIGHT + '{/grey-fg}'
+    + ' '.repeat(TRAIL_MARK_W - 1) + '  ' + label;
+
+  // Floor readout — directly under the bar, same left column.
+  const floorLine = '{grey-fg}floor (' + ENTROPY_GLYPH_LEFT + '):{/grey-fg} ' + (floorWarm !== null ? floorWarm.toFixed(2) : wht('--'))
+    + ' · '
+    + '{grey-fg}floor (' + ENTROPY_GLYPH_RIGHT + '):{/grey-fg} ' + (floorCold !== null ? floorCold.toFixed(2) : wht('--'));
+
+  // Right column — the raw params the entropy macro is actually turning
+  // (match/stay/dirWgt, see :setEntropy in the commands list: "order↔chaos
+  // macro"), plus bpm alongside them so it's clear tempo is part of the
+  // same live-playback picture, even though :setEntropy itself doesn't
+  // touch it. match/stay/dirWgt come from state.params.matchProb/
+  // stayProb/dirWeight, kept live by the 'param' key:'entropy' WS handler
+  // above whenever slicer.js's own entropy feedback fires (not just the
+  // plain :setEntropy echo). bpm mirrors the same globalBPM-or-analyzed-bpm
+  // fallback the header's beat line uses. Sits beside the bar/floor column
+  // now (row 1 next to the bar, row 2 next to the floor readout) instead of
+  // stacked below it — user-specified layout.
+  const bpmVal = state.globalBPM > 0 ? state.globalBPM : (state.bpm || 0);
+  const matchStayLine = '{grey-fg}match:{/grey-fg} ' + state.params.matchProb.toFixed(2)
+    + ' · ' + '{grey-fg}stay:{/grey-fg} ' + state.params.stayProb.toFixed(2);
+  const dirBpmLine = '{grey-fg}dirWgt:{/grey-fg} ' + state.params.dirWeight.toFixed(2)
+    + ' · ' + '{grey-fg}bpm:{/grey-fg} ' + (bpmVal > 0 ? bpmVal : wht('--'));
+
+  // - VU_LABEL_W: the left column's content shrank by that much once the
+  // BAKE_INFO_INDENT prefix was dropped (see barLine/floorLine above).
+  const rightColStart = SIDE_TOTAL_W - VU_LABEL_W + ENTROPY_RIGHT_GAP;
+  const row1 = padToCol(barLine, rightColStart) + matchStayLine;
+  const row2 = padToCol(floorLine, rightColStart) + dirBpmLine;
+
+  const content = [row1, row2].join('\n');
+  entropyBox.setContent(content);
+  return content.split('\n').length;
+}
+
+// ── ZONE 6.7 — Tipping readout, docked under the training panel (above the
+// entropy meter) ────────────────────────────────────────────────────────────
+// Session open/closed itself already shows in the header ([TIP OPEN/CLOSED]
+// on the icon cluster, [LVL n/3] on the title row next to [CONNECTED]) —
+// this panel is the detail view: which
+// session (id + when it opened, both real, from ws_server.js's :tipOpen/
+// :tipClose lifecycle) and the most recent tip (username/amount/split, which
+// is SIMULATED via ":tip <username> <amount>" — see lastTip above, there's
+// no live Stripe bridge yet).
+// Layout — user-specified order, no blank gap row: (1) sid/up/srv (2)
+// uid/txn (3) tip/ts (4) equation bar (5) floor readout. The first 3
+// groups each go through wrapStatLine (see renderTipInfo) and can wrap to
+// 2 rows on their own with realistic-length ids — confirmed with fake test
+// data ("sess_9f3a7c2e", "tx_..." etc. push sid/srv and uid/txn to 2 rows
+// each) — so MAX allows for all three wrapping at once (6) + the bar (1) +
+// the floor row (1).
+const TIP_MIN_H = 5;
+const TIP_MAX_H = 8;
+// wrap:false, not true — renderTipInfo() already does its own wrapping via
+// wrapStatLine (inserting real '\n' breaks at a width WE measure), so
+// leaving blessed's wrap:true on let blessed re-wrap those already-final
+// lines a second time using ITS OWN width measurement, which can disagree
+// with ours (see the '·' width-bug note on dbMeter above) — that mismatch
+// is what pushed "srv: --" onto its own line even though it fit within our
+// own width budget (user: "srv: -- doesn't get split on two lines").
+const tipBox = blessed.box({
+  top: 0, right: 0, width: SIDE_TOTAL_W, height: TIP_MIN_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+
+// DJ/producer split "equation" bar — shares SHARED_BAR_W with the entropy
+// meter above (see its comment) rather than its own independently-computed
+// width.
+const EQ_BAR_W = SHARED_BAR_W;
+
+const pad2 = n => String(n).padStart(2, '0');
+
+// Explicit white — used for "--" placeholders specifically, so a missing
+// value stays legible/white even inside a row whose labels are grey,
+// instead of quietly inheriting whatever color tag happens to still be
+// "open" around it (see the tip/ts row below, which used to wrap its
+// whole line — labels AND values — in one outer {grey-fg}).
+const wht = s => '{bright-white-fg}' + s + '{/bright-white-fg}';
+
+function fmtClock(ms) {
+  if (!ms) return wht('--:--:--');
+  const d = new Date(ms);
+  return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+}
+
+// Elapsed time since a timestamp, as HH:MM:SS — answers "how long has it
+// been running", which a bare open clock-time (fmtClock) doesn't without
+// the DJ doing the subtraction themselves. Same --:--:-- placeholder style
+// as fmtClock for the unknown case, rather than a bare "--".
+function fmtDuration(ms) {
+  if (ms == null) return wht('--:--:--');
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return pad2(h) + ':' + pad2(m) + ':' + pad2(s);
+}
+
+function renderTipInfo() {
+  const sidTxt = state.session.sessionId || wht('--');
+  // Backend reachability (see ws_server.js's tipBackendUp / pingBackend) —
+  // this reflects the tipping HTTP server's own reachability, not a live
+  // Stripe API check — tips.js doesn't expose Stripe's own connection state
+  // for the WS bridge to read, so server reachability is the closest
+  // available proxy for "is the tipping infrastructure up".
+  const srvTxt = state.tipBackendUp === true ? '{bright-white-fg}ok{/bright-white-fg}'
+    : state.tipBackendUp === false ? '{bright-white-fg}{bold}offline{/bold}{/bright-white-fg}' : wht('--');
+  // uid = the tipper's identity (lastTip.username) — the person the "tip"
+  // row's dollar amount came from, not the DJ. Pairs with txn (both are
+  // "who/what paid" identifiers), one row above tip/ts.
+  const uidTxt = lastTip ? lastTip.username : wht('--');
+  const upTxt  = fmtDuration(
+    (state.session.active && state.session.openedAt) ? Date.now() - state.session.openedAt : null);
+
+  // DJ/producer split "equation" — always visible, not gated on lastTip,
+  // since it's the standing split rule, not a per-tip result. Leads the
+  // panel (above the per-tip sid/uid/tip rows below) since it's the
+  // standing rule everything else is measured against, not a result of
+  // any one tip. The dot's position IS the split — same rangeBar-style
+  // dash-track-with-cursor as the entropy meter, reused via entropyBar()
+  // rather than duplicating it.
+  // ∫ (INTEGRAL SIGN, U+222B) for the DJ — plain Σ (summation) was
+  // rejected: the DJ doesn't just combine the artists' fragments, they
+  // transform them (EQ, pitch, width, pan, timing — the whole signal
+  // chain) while doing it. ∫ already carries both ideas in one glyph —
+  // it's literally an elongated Σ (from Latin "summa"), a sum stretched
+  // into its transformed, continuous form, rather than spelling "sum" +
+  // "transform" out as two separate characters (ΣT). aᵢ ("a" + LATIN
+  // SUBSCRIPT SMALL LETTER I, U+1D62) is still the artists/tracks/
+  // fragments being folded in — a single general term, "artist i", rather
+  // than spelling out literal indices 1/2/3 (which implied exactly three
+  // artists, not an arbitrary many). Both plain BMP characters, same
+  // safety class as ✳/❄ above (a spider web + insects pairing was
+  // considered first but those live in the astral-plane emoji range,
+  // U+1F577+ — exactly the glyph class that broke blessed's column-width
+  // math earlier in this file).
+  const eqPct = Math.round(CURATOR_FLOOR * 100) + '/' + Math.round((1 - CURATOR_FLOOR) * 100);
+
+  // sid/up/srv, uid/txn, and tip/ts each go through wrapStatLine too (not
+  // just as one row) — a real session id, username, or txn id can run long
+  // enough to overflow SIDE_TOTAL_W on its own (confirmed with realistic
+  // fake values), and plain string concatenation has no wrap-with-indent
+  // safety net the way wrapStatLine does. Labels are grey, values are left
+  // at the box's default white (or explicitly wht()'d when a placeholder)
+  // — no row is wrapped in one big outer {grey-fg} anymore, since blessed
+  // tags don't nest/revert cleanly (closing an inner {/bright-white-fg} drops
+  // back to "no color" rather than back to the outer grey), which is what
+  // made "--" placeholders read grey instead of white before.
+  // Order — user-specified layout: sid/up/srv, uid/txn, tip/ts lead the
+  // panel now, THEN the DJ/artist equation bar and its floor readout
+  // (previously the bar led, with a blank gap row before the per-tip
+  // lines) — and no blank row anywhere, everything flush.
+  // sid/up/srv specifically stays on ONE line, fixed — not wrapStatLine's
+  // dynamic width-based wrap, which could push "srv: --" onto its own line
+  // (user: "make sure the -- of srv: stays on the same line"). No
+  // BAKE_INFO_INDENT prefix any more either — tipBox sits flush against
+  // its own left edge now (aligned with [REC •], see reflow() — user:
+  // "align the tip section with REC"), not indented under the VU sidebar
+  // the way training still is.
+  const lines = [];
+  lines.push('{grey-fg}sid:{/grey-fg} ' + sidTxt + ' · '
+    + '{grey-fg}up{/grey-fg} ' + upTxt + ' · '
+    + '{grey-fg}srv:{/grey-fg} ' + srvTxt);
+
+  // uid + txn share one row, above tip/ts — who tipped, and the txn it
+  // came in on. tip itself is just the dollar amount.
+  lines.push(wrapStatLine([
+    '{grey-fg}uid:{/grey-fg} ' + uidTxt,
+    '{grey-fg}txn:{/grey-fg} ' + (lastTip ? lastTip.txnId : wht('--')),
+  ]));
+
+  // tip is just the dollar amount — who/how much they paid is already
+  // covered by uid/txn above; ts is when it landed.
+  lines.push(wrapStatLine([
+    '{grey-fg}tip{/grey-fg} ' + (lastTip ? '$' + lastTip.amount.toFixed(2) : wht('--')),
+    '{grey-fg}ts{/grey-fg} ' + fmtClock(lastTip ? lastTip.ts : null),
+  ]));
+
+  // DJ/producer split "equation" bar — always visible, not gated on
+  // lastTip, since it's the standing split rule, not a per-tip result. The
+  // dot's position IS the split — same rangeBar-style dash-track-with-
+  // cursor as the entropy meter, reused via entropyBar() rather than
+  // duplicating it.
+  // ∫ (INTEGRAL SIGN, U+222B) for the DJ — plain Σ (summation) was
+  // rejected: the DJ doesn't just combine the artists' fragments, they
+  // transform them (EQ, pitch, width, pan, timing — the whole signal
+  // chain) while doing it. ∫ already carries both ideas in one glyph —
+  // it's literally an elongated Σ (from Latin "summa"), a sum stretched
+  // into its transformed, continuous form, rather than spelling "sum" +
+  // "transform" out as two separate characters (ΣT). aᵢ ("a" + LATIN
+  // SUBSCRIPT SMALL LETTER I, U+1D62) is still the artists/tracks/
+  // fragments being folded in — a single general term, "artist i", rather
+  // than spelling out literal indices 1/2/3 (which implied exactly three
+  // artists, not an arbitrary many). Both plain BMP characters, same
+  // safety class as ✳/❄ above (a spider web + insects pairing was
+  // considered first but those live in the astral-plane emoji range,
+  // U+1F577+ — exactly the glyph class that broke blessed's column-width
+  // math earlier in this file).
+  // floorLo = CURATOR_FLOOR: the curator (∫) side is blocked (grey) below
+  // its floor, white from there to 100%. No floorHi passed — artists (aᵢ)
+  // have no floor of their own, so their side stays white all the way.
+  // Dot uses the default magenta (not 'brightwhite' anymore) since the
+  // travelable track itself is white now — a white dot on a white track
+  // would be invisible.
+  lines.push('{grey-fg}∫{/grey-fg} ' + entropyBar(CURATOR_FLOOR, EQ_BAR_W, undefined, CURATOR_FLOOR)
+    + ' {grey-fg}aᵢ{/grey-fg}  ' + eqPct);
+
+  // User-overridable floors, one row under the bar — "--" until set (see
+  // floorDj/floorArtist above; no :setFloor command wired up yet, this is
+  // just the readout). Separate from CURATOR_FLOOR, which is the actual
+  // value driving the bar/eqPct above until an override exists.
+  lines.push(wrapStatLine([
+    '{grey-fg}floor ∫:{/grey-fg} ' + (floorDj !== null ? (floorDj * 100).toFixed(0) + '%' : wht('--')),
+    '{grey-fg}floor aᵢ:{/grey-fg} ' + (floorArtist !== null ? (floorArtist * 100).toFixed(0) + '%' : wht('--')),
+  ]));
+
+  const content = lines.join('\n');
+  tipBox.setContent(content);
+  return content.split('\n').length;
+}
 
 // Perimeter cell order, clockwise from top-left — the path the width fill
 // creeps along. Computed once; length is constant (2*W + 2*H - 4 = 20 here).
@@ -1237,35 +2176,350 @@ function spatialFrameLines(x, y, width) {
 
   // Logical column c -> actual character column 2c (odd columns stay blank).
   SPATIAL_PERIM.forEach(([r, c], i) => {
-    grid[r][c * 2] = lit.has(i) ? '{green-fg}●{/green-fg}' : '{grey-fg}○{/grey-fg}';
+    grid[r][c * 2] = lit.has(i) ? '{bright-white-fg}●{/bright-white-fg}' : '{grey-fg}○{/grey-fg}';
   });
-  grid[row][col * 2] = '{bold}{white-fg}●{/white-fg}{/bold}';
+  grid[row][col * 2] = '{bold}{bright-white-fg}●{/bright-white-fg}{/bold}';
   return grid.map(rowArr => rowArr.join(''));
 }
+// Width fill is always sp.width directly — NOT derived from pan
+// position/radius. An earlier version computed master's ring fill as
+// "1 - joystick radius", which meant panning away from center always
+// drained the ring toward empty regardless of actual width — a real bug
+// (reported as "panning right loses width"), not a DSP issue. Master has no
+// DSP width parameter of its own (M/S width is only ever computed per-stem
+// — there's no summed-master M/S stage), so its ring is driven by :width
+// all instead — :width master is just an alias for :width all (see the
+// verb === 'width' handling below), both update this same sp.width.
+function spatialStemLines(stemKey) {
+  // No padding to STEM_ROW_BAND_H anymore — same reasoning as vuStemLines
+  // above: this box is independent now, sized to the ring's own real
+  // SPATIAL_H (5) rows instead of match-padded to 7.
+  const sp = state.spatial[stemKey] || { x: 0, y: 0, width: 1 };
+  return spatialFrameLines(sp.x, sp.y, sp.width);
+}
 function renderSpatial() {
-  const lines = [];
-  VU_SIDEBAR_STEMS.forEach(s => {
-    const sp = state.spatial[s.key] || { x: 0, y: 0, width: 1 };
-    // Width fill is always sp.width directly — NOT derived from pan
-    // position/radius. An earlier version computed master's ring fill as
-    // "1 - joystick radius", which meant panning away from center always
-    // drained the ring toward empty regardless of actual width — a real bug
-    // (reported as "panning right loses width"), not a DSP issue. Master
-    // has no DSP width parameter of its own (M/S width is only ever
-    // computed per-stem — there's no summed-master M/S stage), so its ring
-    // is driven by :width all instead — :width master is just an alias for
-    // :width all (see the verb === 'width' handling below), both update
-    // this same sp.width.
-    lines.push(...spatialFrameLines(sp.x, sp.y, sp.width));
+  VU_SIDEBAR_STEMS.forEach((s, i) => {
+    spatialStemBoxes[i].setContent(spatialStemLines(s.key).join('\n'));
   });
-  spatialBox.setContent(lines.join('\n'));
+  const sp = state.spatial[VU_MASTER.key] || { x: 0, y: 0, width: 1 };
+  masterSpatialBox.setContent(spatialFrameLines(sp.x, sp.y, sp.width).join('\n'));
 }
 
+// ── ZONE 6.7 — Descriptor grid: rolling window of real transitions ──────────
+// Middle column: docks its own right edge just left of the VU/spatial/bake/
+// tip/entropy sidebar (SIDE_TOTAL_W + gap from the screen's right edge), same
+// "right:"-anchored convention as vuStemBoxes/spatialStemBoxes above. One
+// small box per stem (descGridStemBoxes), each positioned directly under
+// that stem's own waveform+stats block in playBox — see the comment above
+// VU_SIDEBAR_STEMS for why this is an array of small boxes rather than one
+// tall box with blank filler rows.
+// One block per stem, no separate title row — the stem abbreviation (same
+// vcl/mel/bas/drm labels VU_SIDEBAR_STEMS already uses, same VU_LABEL_W
+// column width) sits on the FIRST dimension row's prefix, blank under it,
+// same convention vuSidebarBlock() uses. Each column is one real slice from
+// that stem's descRollBuffers ring (see its own comment above) — every
+// column boundary IS a transition by construction, so every seam gets the
+// same '│' divider. No grading by how big the jump was: the ask was "mark
+// it when the slice changes," not "mark how much it changed."
+// ░▒▓█ = low→high within that dimension's stemRanges min/max, via density
+// (ink coverage) rather than color — see DESC_SHADES. This replaced an
+// earlier color-lerp version (solid block, hue or lightness read off a
+// gradient): the black end of a lightness gradient is invisible against
+// this box's own black background, and a hex-color approach also turned
+// out to be hitting a real bug in blessed 0.1.81's color cache (see the
+// require('blessed/lib/colors')._cache = {} fix up near the top of this
+// file) — density sidesteps both problems at once, since every shade glyph
+// is legible in a single plain foreground color, nothing ever needs to
+// render as literal black, and there's no hex-to-terminal-color matching
+// involved at all. · (always grey) = no info, full stop — covers both
+// reasons a cell can't be graded: this specific slice has no usable value
+// (FluCoMa reports 0 for unpitched/below-confidence P, and drums has no P
+// at all — see CRICKET.md's descriptor table), or this stem+dimension has
+// no usable stemRanges min/max to grade against (missing entry, or a
+// degenerate/non-finite min===max) — see `rangeUsable` in renderDescGrid()
+// below. Both collapse to the same dot on purpose: which of the two reasons
+// applied doesn't matter. Blank = ring slot not filled yet (fewer than
+// DESC_ROLL_PAIRS real transitions have happened since the buffer was last
+// cleared) — the grid structure itself (labels, dims, '│' seams) is always
+// drawn regardless of whether any real data has arrived yet, see
+// renderDescGrid() below; there's no separate "waiting" placeholder state
+// anymore, an all-blank grid already reads as "nothing here yet."
+// Right-anchored the same distance from the VU sidebar regardless of width,
+// so this can never creep into the VU column.
+const DESC_GRID_GAP  = 1;
+const DESC_LABEL_W   = VU_LABEL_W;   // shares the vcl/mel/bas/drm column width
+const DESC_LABELS    = { vocals: 'vcl', melody: 'mel', bass: 'bas', drums: 'drm' };
+// Sized to the grid's actual printed width, not SIDE_TOTAL_W — the box used
+// to be forced as wide as the VU+spatial column, which left dead space
+// between the last colored cell and the VU meters (box background matches
+// the screen background, so that slack was invisible but still pushed the
+// grid visually far from the VU zone). Width = label(1 char, e.g. "C") +
+// its trailing space + DESC_ROLL_PAIRS pairs of 2 cells each, separated by
+// '│' between pairs, all sitting after the DESC_LABEL_W-wide stem-label gutter.
+const DESC_GRID_W = DESC_LABEL_W + 2 + (DESC_ROLL_PAIRS * 2 + (DESC_ROLL_PAIRS - 1));
+
+// Density, not color: 4 unicode shade glyphs, sparse to solid ink coverage,
+// same reading order as the old lightness gradient (low value = sparse,
+// high value = solid) but every glyph is legible in one plain foreground
+// color — nothing needs a special case for "would be invisible on black."
+const DESC_SHADES = ['░', '▒', '▓', '█'];
+function descShadeFor(t) {
+  t = Math.max(0, Math.min(1, t));
+  const i = Math.min(DESC_SHADES.length - 1, Math.floor(t * DESC_SHADES.length));
+  return DESC_SHADES[i];
+}
+
+// Array, not one tall box — same reasoning as vuStemBoxes/spatialStemBoxes:
+// each stem's 7-dim grid gets its own STEM_ROW_BAND_H-tall box, positioned
+// directly under that stem's own waveform block.
+const descGridStemBoxes = DESC_STEMS.map(() => blessed.box({
+  top: playTop, right: SIDE_TOTAL_W + DESC_GRID_GAP, width: DESC_GRID_W, height: STEM_ROW_BAND_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+}));
+
+// ── ZONE 6.9 — Momentum panel — docked directly left of the descriptor grid,
+// same array-of-small-boxes convention descGridStemBoxes itself uses, and
+// deliberately the SAME row layout: stem label on the first dim row only,
+// dim letter and its bar on one line (not stacked) so every row lines up
+// 1:1 with the grid's own rows sitting right next to it. No '│' seam against
+// the descriptor grid on purpose — that seam marks "discrete cut boundary"
+// over there; here it would just be visual noise against one continuous strip.
+// Width matches DESC_GRID_W exactly (MOM_MAX_SAMPLES is defined as that same
+// column count above) — same physical width as the transition grid sitting
+// next to it, even though this panel fills one column at a time rather
+// than one pair per real cut. User: "keep the previous width, it was good"
+// (a shorter, decoupled width was tried and reverted — see MOM_MAX_SAMPLES's
+// own comment; what actually changed instead is the strip's fill SPEED and
+// its behavior once full, not its width).
+const MOM_GAP = 1;
+const MOM_W   = DESC_GRID_W;
+// Array, same reasoning as descGridStemBoxes — one STEM_ROW_BAND_H-tall box
+// per stem, positioned directly under that stem's own waveform block.
+const momentumStemBoxes = DESC_STEMS.map(() => blessed.box({
+  top: playTop, right: SIDE_TOTAL_W + DESC_GRID_GAP + DESC_GRID_W + MOM_GAP,
+  width: MOM_W, height: STEM_ROW_BAND_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+}));
+
+function momentumStemLines(stem) {
+  const label = (DESC_LABELS[stem] || '').padEnd(DESC_LABEL_W, ' ');
+  const blank = ''.padEnd(DESC_LABEL_W, ' ');
+  return DIMS.map((dim, di) => (di === 0 ? label : blank) + dim + ' ' + momSparkline(stem, dim));
+}
+function renderMomentumPanel() {
+  DESC_STEMS.forEach((stem, i) => {
+    momentumStemBoxes[i].setContent(momentumStemLines(stem).join('\n'));
+  });
+}
+
+function descIsMissing(v, dim) {
+  if (v === null || v === undefined || (typeof v === 'number' && isNaN(v))) return true;
+  if (dim === 'P' && v === 0) return true;
+  return false;
+}
+
+// One stem's 7-dim grid — the FULL content of that stem's own small
+// descGridStemBoxes[i], no leading gap needed since the box itself is
+// already positioned to start right under that stem's own waveform.
+function descGridStemLines(stem) {
+  if (Object.keys(stemRanges).length === 0) loadStemRanges();
+
+  // No more "waiting for slice transitions…" placeholder state — the grid
+  // structure (stem labels, dimension rows, '│' seams) always renders, same
+  // shape whether it's full of real data or completely empty. An empty
+  // buffer just means every pair falls into the `i >= buf.length` blank
+  // branch below, so the row prints as its label/dims with nothing but
+  // blanks and seams — reads as "nothing here yet" on its own, no separate
+  // message needed.
+  const lines = [];
+  const buf   = descRollBuffers[stem];
+  const rng   = stemRanges[stem] || {};
+  const label = (DESC_LABELS[stem] || '').padEnd(DESC_LABEL_W, ' ');
+  const blank = ''.padEnd(DESC_LABEL_W, ' ');
+
+  DIMS.forEach((dim, di) => {
+    const dimRange = rng[dim];
+    // No info = no info, regardless of which of the two reasons caused it
+    // (this specific slice has no usable value, vs. this stem+dimension
+    // has no computed range to grade against) — both render as the same
+    // dot.
+    const rangeUsable = dimRange && isFinite(dimRange.min) && isFinite(dimRange.max)
+      && dimRange.max !== dimRange.min;
+    const cellFor = v => {
+      if (descIsMissing(v, dim) || !rangeUsable) return '{grey-fg}·{/grey-fg}';
+      const t = Math.max(0, Math.min(1, (v - dimRange.min) / (dimRange.max - dimRange.min)));
+      return descShadeFor(t);
+    };
+    // Each pair renders as OUT immediately followed by IN — no gap between
+    // them, since those two cells are the actual glue point of one real
+    // cut. The '│' only goes BETWEEN different transitions.
+    const pairs = [];
+    for (let i = 0; i < DESC_ROLL_PAIRS; i++) {
+      // No transition recorded at this slot yet — same "no data" dot as a
+      // recorded transition whose value is missing (see cellFor above),
+      // instead of a blank space.
+      if (i >= buf.length) { pairs.push('{grey-fg}··{/grey-fg}'); continue; }
+      const p = buf[i];
+      pairs.push((p.out ? cellFor(p.out[dim]) : ' ') + cellFor(p.in[dim]));
+    }
+    // followStem indicator — this dimension isn't reading its own
+    // descriptor, it's blended from another stem (see :followStem).
+    // Two things mark it, both reusing existing width rather than
+    // widening the box (which is tuned flush against the VU sidebar):
+    //   1. The separator between the dim letter and its cells swaps from
+    //      a plain space to a shade glyph, picked by descShadeFor() off
+    //      the SAME follow weight the audio engine actually blends by —
+    //      a 50% follow reads as a mid shade, 100% reads solid, so the
+    //      glyph itself communicates how strongly it's being pulled, not
+    //      just that it is.
+    //   2. The target's abbreviation (vcl/mel/bas/drm) fills the
+    //      left-hand label gutter on rows 2–7, which is otherwise always
+    //      blank there (row 1 keeps the stem's own label — the one
+    //      unavoidable collision is C specifically being followed, where
+    //      the shade-glyph separator is the only indicator since that
+    //      gutter slot is already the stem name).
+    const followMap = (state.followGraph[stem] && state.followGraph[stem][dim]) || {};
+    const followEntries = Object.entries(followMap);
+    let sep = ' ';
+    let leftGutter = di === 0 ? label : blank;
+    if (followEntries.length > 0) {
+      followEntries.sort((a, b) => b[1] - a[1]); // dominant target first
+      const [topTarget, topWeight] = followEntries[0];
+      sep = descShadeFor(topWeight);
+      if (di !== 0) {
+        leftGutter = ('→' + (DESC_LABELS[topTarget] || topTarget)).padEnd(DESC_LABEL_W, ' ');
+      }
+    }
+    const prefix = leftGutter + dim + sep;
+    lines.push(prefix + pairs.join('{grey-fg}│{/grey-fg}'));
+  });
+  return lines;
+}
+function renderDescGrid() {
+  DESC_STEMS.forEach((stem, i) => {
+    descGridStemBoxes[i].setContent(descGridStemLines(stem).join('\n'));
+  });
+}
+
+
+// ── ZONE R — the training screen (hidden until ^T / :train) ──────────────────
+// The training screen, the peer of playback (see the SCREEN MODEL comment
+// near PLAYBACK_HEADER_BOXES/CHAT_OVERLAY_BOXES) — this shows Learn mode's
+// two sub-views (learnView: 'training' | 'review' — see the LEARN MODE
+// section, right after stopBakeLoop, for the full picture). reviewListBox is
+// only used by the 'review' view (hidden in 'training', where
+// reviewDetailBox takes the full width) — see reflowLearn(). All three
+// start hidden — enterLearnMode()/exitLearnMode() toggle them directly.
+const reviewHeaderBox = blessed.box({
+  left: 0, width: '100%', height: 1,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+const reviewListBox = blessed.list({
+  left: 0, width: 40, height: 10,
+  tags: true, mouse: true,
+  // Never .focus()ed — inputBox stays the one focused/keyable widget the
+  // whole app relies on (see CURSOR-AWARE INPUT EDITING below). .select()
+  // just drives the highlight to match reviewIndex; every Learn-mode action
+  // is still a typed :train command, same as :bake/:link/everything else.
+  style: {
+    selected: { fg: 'black', bg: 'bright-white' },
+    item:     { fg: SKIN.fg },
+  },
+});
+const reviewDetailBox = blessed.box({
+  left: 41, width: '100%', height: 10,
+  tags: true, wrap: true,
+  scrollable: true, alwaysScroll: true, mouse: true,
+  style: { fg: SKIN.fg, bg: SKIN.bg, scrollbar: { bg: 'grey' } },
+});
+
+// Sits where playBox normally does, but ONLY while learnView === 'review' —
+// playBox shows the LIVE engine's current per-stem state, which has nothing
+// to do with whichever past bake you're browsing (still correct/wanted in
+// the 'training' sub-view, where a bracket really is live). render() toggles
+// which of the two is shown every tick (see playTop's own comment block) —
+// this box itself never needs positioning from reflowLearn(), same as
+// playBox is only ever positioned inside render().
+const reviewWaveformBox = blessed.box({
+  left: 0, width: '100%', height: 2,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+[reviewHeaderBox, reviewListBox, reviewDetailBox, reviewWaveformBox].forEach(b => b.hide());
+
+// ── ZONE F — Footer shortcut bar, pinned to the very bottom, both modes ──────
+// Mirrors sdj-tui.js's login-screen footer: inverse-video key "chip"
+// followed by a plain label, left-anchored. See the key bindings themselves
+// (bottom of this file, near "Mode toggles") for what each one actually
+// does and why they're all safe to fire while typing in inputBox.
+const FOOTER_H = 1;
+const footerBox = blessed.box({
+  bottom: 0, left: 0, width: '100%', height: FOOTER_H,
+  tags: true,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+// active=true adds a small dot after the label instead of relabeling the
+// chip — Chat/Learn are toggles ON a base playback state, not destinations
+// you navigate between, so the chip's own name never changes, just whether
+// it's currently on.
+function footerChip(key, label) {
+  return `{inverse} ${key} {/inverse} ${label}`;
+}
+// ^T switches between the two SCREENS (playback/Learn) — the label names
+// wherever it's about to take you, same "destination, not a dot" idea as
+// before. ^C is a pure overlay toggle now, independent of which screen is
+// active (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES) — closing
+// it doesn't land you on any one particular screen, it just returns to
+// whichever one was already underneath, so "Close" instead of naming a
+// destination that isn't always the same one.
+// ^R/^B — training-screen sub-navigation, right-flushed on the same footer
+// row as ^C/^T/^L (user: "put the training and review tabs at the bottom
+// just like the chat and playback tabs... but on the right side. same for
+// the bake switcher"). Only shown while appMode === 'learn' (user: "the
+// training/review sub tab should only appear when train tab is open") —
+// the keys themselves still work from Playback (switchLearnView() enters
+// Learn mode first), but the chips stay hidden until you're actually there.
+function renderFooter() {
+  const leftChips = [
+    footerChip('^C', chatMaximized ? 'Close' : 'Chat'),
+    footerChip('^T', appMode === 'learn' ? 'Playback' : 'Train'),
+    footerChip('^L', 'Log out'),
+  ];
+  const leftStr = '  ' + leftChips.join('   ');
+  const vis = s => s.replace(/\{[^}]+\}/g, '').length;
+
+  if (appMode !== 'learn') {
+    footerBox.setContent(leftStr);
+    return;
+  }
+
+  const rightChips = [
+    footerChip('^R', learnView === 'training' ? 'Review' : 'Training'),
+    footerChip('^B', 'Next Bake'),
+  ];
+  const rightStr = rightChips.join('   ') + '  ';
+  const gap = Math.max(1, screen.width - vis(leftStr) - vis(rightStr));
+  footerBox.setContent(leftStr + ' '.repeat(gap) + rightStr);
+}
 
 // ── INPUT ────────────────────────────────────────────────────────────────────
 let inputLines = 1;
+// One blank row between the input line and the footer chip row — the
+// cursor used to sit directly on top of the footer with nothing separating
+// them. Content boxes that stack up to the input (currently just logBox,
+// inside the chat overlay — see reflow()) subtract this too, so the gap is
+// actually reserved rather than eaten by whichever box sits above it.
+const INPUT_GAP = 1;
 const inputBox = blessed.textarea({
-  bottom: 0, left: 0, width: '100%', height: 1,
+  // width: CONTENT_W (not '100%') — stops before the VU sidebar column so
+  // that column stays free for other visualizers, same reasoning as
+  // sepBox/langBox/cmdBox/logBox above. bottom: FOOTER_H + INPUT_GAP (not
+  // just FOOTER_H) — leaves the footer chip row its own permanent line
+  // under the input, with a blank row between them.
+  bottom: FOOTER_H + INPUT_GAP, left: 0, width: CONTENT_W, height: 1,
   inputOnFocus: true, tags: false, wrap: true,
   style: { fg: SKIN.user_fg, bg: SKIN.bg },
 });
@@ -1283,14 +2537,81 @@ const spinnerBox = blessed.text({
 screen.append(statusBox);
 screen.append(playBox);
 screen.append(sepBox);
+screen.append(menuHeaderBox);
 screen.append(langBox);
 screen.append(cmdBox);
-screen.append(chatHeaderBox);
 screen.append(logBox);
-screen.append(vuSidebarBox);
-screen.append(spatialBox);
+vuStemBoxes.forEach(b => screen.append(b));
+screen.append(masterVuBox);
+spatialStemBoxes.forEach(b => screen.append(b));
+screen.append(masterSpatialBox);
+screen.append(bakeInfoBox);
+screen.append(entropyBox);
+screen.append(tipBox);
+descGridStemBoxes.forEach(b => screen.append(b));
+momentumStemBoxes.forEach(b => screen.append(b));
+screen.append(reviewHeaderBox);
+screen.append(reviewListBox);
+screen.append(reviewDetailBox);
+screen.append(reviewWaveformBox);
 screen.append(inputBox);
+screen.append(footerBox);
 screen.append(spinnerBox);
+
+// ── SCREEN MODEL ─────────────────────────────────────────────────────────────
+// There are exactly two main SCREENS — playback (appMode 'playback') and
+// training (appMode 'learn', ^T toggles between them) — plus exactly one
+// OVERLAY, chat (^C), which can toggle on top of whichever screen is
+// currently active without changing it. Nothing here is mutually exclusive
+// with anything else anymore: ^T keeps working while chat is open (the
+// overlay just follows you to the new screen), and ^C keeps working
+// regardless of which screen you're on. See the SCREEN VISIBILITY block in
+// render() for the one place that actually applies these rules — every box
+// group below is just data, not its own show()/hide() logic, specifically
+// so two different toggle functions never independently disagree about the
+// same box again (that pattern — enterLearnMode/exitLearnMode/
+// toggleChatMaximize each separately forcing overlapping box sets — was the
+// root cause of several rounds of "X bled into Y" bugs).
+
+// CHAT_OVERLAY_BOXES — the separator, the :language/:commands hint row, the
+// two panels themselves, and the actual chat log. All five exist ONLY
+// inside the overlay now — never part of either screen's own idle content
+// (reflow() only ever positions them while chatMaximized). ^C alone
+// controls all five, regardless of which screen is underneath.
+const CHAT_OVERLAY_BOXES = [sepBox, menuHeaderBox, langBox, cmdBox, logBox];
+
+// MASTER_METER_BOXES — master's own VU meter + spatial ring. Split out of
+// PLAYBACK_HEADER_BOXES (below) — user: "in the training page, dont forget
+// to show the VU/spat meters too." Unlike bake/tip/entropy (genuinely
+// playback-specific: live bracket state, current tip session, current
+// entropy setting), the master meters just reflect the audio actually
+// coming out of the engine, which stays meaningful while training/reviewing
+// too (`:train play` plays real audio) — so these two stay up on BOTH
+// screens instead of being hidden with the rest of the cluster. Reserved
+// screen space for them: reflowLearn() narrows the training panel's own
+// boxes to contentW() instead of the full width, same margin CONTENT_W
+// already carves out for the chat overlay boxes below.
+const MASTER_METER_BOXES = [masterVuBox, masterSpatialBox];
+
+// PLAYBACK_HEADER_BOXES — the REST of playback's own header-cluster readouts
+// (bake/tip/entropy). The direct analog of Learn's own header cluster
+// (reviewHeaderBox/reviewListBox/reviewDetailBox, see enterLearnMode()):
+// visible for as long as the playback screen is active, chat overlay or not
+// — it's what the overlay docks under (see headerClusterBottom in
+// reflow()). Hidden only when the OTHER screen (Learn) is active.
+const PLAYBACK_HEADER_BOXES = [bakeInfoBox, entropyBox, tipBox];
+
+// PLAYBACK_CHANNEL_BOXES — the per-stem VU/spatial/descriptor-grid/momentum
+// boxes, playback's "channel content" (playBox's own per-stem waveform rows
+// are the other half of this, handled directly in render() since they're
+// shared with Learn's training sub-view). Hidden whenever chat is maximized
+// OR the training screen is active — LIVE per-stem state, meaningless for
+// whatever bake you're reviewing.
+const PLAYBACK_CHANNEL_BOXES = [
+  ...vuStemBoxes,
+  ...spatialStemBoxes,
+  ...descGridStemBoxes, ...momentumStemBoxes,
+];
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
@@ -1391,14 +2712,14 @@ function sliceBar(s, name, bpm, width) {
     const playedEnd = startCh + 1 + filledW;            // white run end (exclusive)
     return (
       `{grey-fg}${waveGlyphs(env, 0, startCh, width)}[{/grey-fg}` +
-      `{white-fg}${waveGlyphs(env, startCh + 1, playedEnd, width)}{/white-fg}` +
+      `{bright-white-fg}${waveGlyphs(env, startCh + 1, playedEnd, width)}{/bright-white-fg}` +
       `{grey-fg}${waveGlyphs(env, playedEnd, endCh, width)}]${waveGlyphs(env, endCh + 1, width, width)}{/grey-fg}`
     );
   }
 
   return (
     `{grey-fg}${'─'.repeat(startCh)}[{/grey-fg}` +
-    `{white-fg}${'█'.repeat(filledW)}{/white-fg}` +
+    `{bright-white-fg}${'█'.repeat(filledW)}{/bright-white-fg}` +
     `{grey-fg}${'░'.repeat(emptyW)}]${'─'.repeat(afterLen)}{/grey-fg}`
   );
 }
@@ -1518,47 +2839,106 @@ const LOG_GAP   = 1; // blank row between the :commands line and the chat log
 
 function reflow() {
   const w = contentW();
-  const h = screen.height;
+  const h = screen.height - FOOTER_H; // footerBox always owns the very last row
 
+  // langHFull/cmdHFull are the EXPANDED content height only — while collapsed
+  // a panel takes 0 rows of its own, since its "type to expand" hint now
+  // lives in menuHeaderBox instead (see buildMenuHeaderLine).
   const langHFull = langCollapsed
-    ? 1
+    ? 0
     : (langContent || '').split('\n').reduce((s, l) => s + visLines(l, w), 0);
   const cmdHFull  = cmdCollapsed
-    ? 1
+    ? 0
     : (cmdContent  || '').split('\n').reduce((s, l) => s + visLines(l, w), 0);
 
-  // Layout order: sep → lang → chatHeader → cmd → log
-  // chatHeader is always right below lang so :language and :chat stay together
-  const chatHdrH = chatCollapsed ? 1 : 0;
+  // Layout order: sep → menuHeader → lang → cmd → log. lang/cmd only occupy a
+  // row while expanded; chat's old dedicated header row is gone the same
+  // way — its hint folded into menuHeaderBox too.
+  //
+  // langH/cmdH themselves are computed further down, inside the
+  // chatMaximized block, once mTop (where the overlay actually starts) is
+  // known — they used to be computed here instead, against `fixedTop` (a
+  // position near the TOP of zone 1) and a `Math.floor(h / 2)` cap that had
+  // nothing to do with mTop or with each other. Since the overlay actually
+  // docks under mTop — which can be well below fixedTop (under the master
+  // header cluster, under the Learn panel, under the review waveform box)
+  // — that budget was frequently just wrong: it let lang+cmd claim more
+  // rows than were genuinely left above the input line, which is exactly
+  // how the log (and cmdBox itself) ended up bleeding down onto the cursor
+  // line and the footer below it. See the real computation at `chromeBudget`
+  // below for the fix.
 
-  const available = h - fixedTop - 1 - langHFull - chatHdrH - (chatCollapsed ? 0 : MIN_LOG_H + LOG_GAP) - inputLines;
-  const langH = langCollapsed ? 1 : Math.min(langHFull, Math.max(1, available + (chatCollapsed ? 0 : MIN_LOG_H)));
-  const cmdH  = cmdCollapsed  ? 1 : Math.min(cmdHFull,  Math.max(1, Math.floor(h / 2)));
+  // The whole chat overlay (sep/menuHeader/lang/cmd/log — see
+  // CHAT_OVERLAY_BOXES) only ever gets positioned here while chatMaximized;
+  // when it's not, all five are hidden (see the SCREEN VISIBILITY block in
+  // render()) and nothing below matters. It always docks directly under
+  // whichever screen's own header cluster is currently active — playback's
+  // (statusBox + master VU/spatial + bake/tip/entropy) or Learn's own panel
+  // (learnPanelBottom()) — never a fixedTop-based position of its own,
+  // since it's never shown standalone in either base screen anymore. The
+  // playback boxes referenced below are positioned later in this same
+  // function, so that branch reads back whatever they were set to on the
+  // PREVIOUS reflow() tick (one frame stale at worst — same staleness
+  // statusH already accepts elsewhere in here); learnPanelBottom() has no
+  // such lag, it's derived from statusH/screen.height directly.
+  logBox.width = '100%';
+  if (chatMaximized) {
+    // Review sub-view keeps its own reviewWaveformBox (the recorded clip's
+    // waveform + playhead — the "playback of the recorded file" zone) on
+    // screen even with chat maximized (see the SCREEN VISIBILITY block
+    // below, where it's shown unconditionally while inReview instead of
+    // being hidden under chat like playBox). So chat has to dock one row
+    // further down here too — under the waveform (playTop + its fixed
+    // height of 2), not directly under the review header cluster — or the
+    // log would start drawing right on top of it.
+    const headerClusterBottom = appMode === 'learn'
+      ? (learnView === 'review' ? learnPanelBottom() + 1 + 2 : learnPanelBottom())
+      : Math.max(
+          statusH + 1,
+          masterVuBox.top      + masterVuBox.height,
+          masterSpatialBox.top + masterSpatialBox.height,
+          bakeInfoBox.top       + bakeInfoBox.height,
+          tipBox.top            + tipBox.height,
+          entropyBox.top        + entropyBox.height
+        );
+    const mTop = headerClusterBottom + 1; // one blank row of breathing room
+    sepBox.top = mTop;
 
-  sepBox.top = fixedTop;
+    menuHeaderBox.top    = mTop + 1;
+    menuHeaderBox.height = 1;
+    menuHeaderBox.setContent(buildMenuHeaderLine());
 
-  langBox.top    = fixedTop + 1;
-  langBox.height = langH;
+    // Hard budget for lang+cmd, derived from the REAL mTop (see the comment
+    // above `available` for why the old version — computed off `fixedTop`
+    // instead — could be wrong). Everything between menuHeaderBox (mTop + 2
+    // rows) and the reserved floor (MIN_LOG_H for the log + LOG_GAP +
+    // inputLines + INPUT_GAP for the input line) has to fit inside this. lang
+    // gets first claim on it, cmd gets whatever's left — and if content
+    // doesn't fit, it scrolls inside its own box (both are already
+    // scrollable — see ZONE 3.5/ZONE 4) instead of pushing the log further
+    // down than there's room for. This is the actual fix for the log/cmdBox
+    // bleeding onto the cursor line: nothing below this point can ever claim
+    // more vertical space than chromeBudget allows, so logTop can never land
+    // past where the input line starts.
+    const chromeBudget = Math.max(0, h - (mTop + 2) - LOG_GAP - MIN_LOG_H - inputLines - INPUT_GAP);
+    const langH = langCollapsed ? 0 : Math.min(langHFull, chromeBudget);
+    const cmdH  = cmdCollapsed  ? 0 : Math.min(cmdHFull,  Math.max(0, chromeBudget - langH));
 
-  // chatHeaderBox always sits immediately after langBox
-  chatHeaderBox.top    = fixedTop + 1 + langH;
-  chatHeaderBox.height = chatHdrH;
-  chatHeaderBox.setContent(chatCollapsed ? '{grey-fg}:chat — type to expand{/grey-fg}' : '');
+    langBox.top    = mTop + 2;
+    langBox.height = langH;
 
-  cmdBox.top    = fixedTop + 1 + langH + chatHdrH;
-  cmdBox.height = cmdH;
+    cmdBox.top    = mTop + 2 + langH;
+    cmdBox.height = cmdH;
 
-
-  const logTop = fixedTop + 1 + langH + chatHdrH + cmdH;
-  if (chatCollapsed) {
-    logBox.top    = logTop;
-    logBox.height = 0;
-    cachedLogH    = 0;
-  } else {
-    // Blank row between the :commands line and the chat log.
-    const logTopGapped = logTop + LOG_GAP;
-    logBox.top = logTopGapped;
-    const newLogH = Math.max(MIN_LOG_H, h - logTopGapped - inputLines);
+    logBox.left = 0;
+    const logTop = mTop + 2 + langH + cmdH + LOG_GAP;
+    logBox.top  = logTop;
+    // No MIN_LOG_H floor here on purpose — chromeBudget above already
+    // reserved room for it in the common case, but this is the last line of
+    // defense: if some other box shifted mTop further down than expected
+    // this tick, newLogH still can't exceed the real remaining space, so the
+    // log shrinks instead of overlapping the input line/footer.
+    const newLogH = Math.max(1, h - logTop - inputLines - INPUT_GAP);
     if (newLogH !== cachedLogH) {
       const wasBottom   = atBottom();
       const savedScroll = wasBottom ? -1 : logBox.getScroll();
@@ -1569,16 +2949,71 @@ function reflow() {
   }
 
 
-  // VU meters — top-right of its zone. height is fixed (VU_ZONE_H, set at
-  // creation); top tracks the ":language — type to expand" row (langBox.top =
-  // fixedTop + 1) so the meters line up with it rather than the separator.
-  vuSidebarBox.top = fixedTop + 1;
+  // VU meters / spatial rings / descriptor grid / momentum panel — one small
+  // box per real stem, each positioned directly under THAT stem's own
+  // waveform+descriptor-line+weight+dir+dirWgt block (top: playTop +
+  // i*STEM_BAND_H + PRE_METERS_ROWS, height STEM_ROW_BAND_H). See the
+  // comment above VU_SIDEBAR_STEMS for why these are arrays of small boxes
+  // rather than one tall box apiece.
+  VU_SIDEBAR_STEMS.forEach((s, i) => { vuStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS; });
   renderVuSidebar();
 
-  // Spatial ring — docked right of the VU sidebar, kept on the same row.
-  spatialBox.top = fixedTop + 1;
+  spatialStemBoxes.forEach((b, i) => { b.top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS; });
   renderSpatial();
 
+  DESC_STEMS.forEach((stem, i) => {
+    descGridStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS;
+    momentumStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS;
+  });
+  renderDescGrid();
+  renderMomentumPanel();
+
+  // master's own VU meter + spatial ring — docked right at "last touched"
+  // (header row MASTER_VU_TOP = 1), not all the way below the whole header
+  // any more — user: "put master VU meter closer to last touched". Not
+  // threaded through the per-stem arrays above since master has no
+  // waveform row of its own to align with. Right-anchored same as always;
+  // shares rows with trackKey/env/genre on the left (different columns,
+  // same rows — no collision, same reasoning as the per-stem meters/weight
+  // overlap elsewhere in this file).
+  masterVuBox.top      = MASTER_VU_TOP;
+  masterSpatialBox.top = MASTER_VU_TOP;
+
+  // Training + tips — both start at TRAIN_TIP_TOP (header row 3, "quant:
+  // beat"'s own row — user: "align the prmpt: with the row of quant:beat").
+  // tipBox's own LEFT edge anchors to recColStart, the same column [REC]
+  // starts at on the title row (user: "align the tipping zone with the
+  // [REC] box"). bakeInfoBox's LEFT edge anchors to agplColStart instead —
+  // the column [AGPL-3.0] starts at on that same title row (user: "align
+  // prmpt section with [AGPL...]") — no longer tipBox-relative, so the two
+  // don't necessarily sit right next to each other any more; each lines up
+  // with its own title-row landmark instead. left/right are reassigned
+  // every call since these boxes were originally created right-anchored.
+  tipBox.right = undefined;
+  tipBox.left  = recColStart;
+  tipBox.top   = TRAIN_TIP_TOP;
+  const tipRows = renderTipInfo();
+  tipBox.height = Math.min(TIP_MAX_H, Math.max(TIP_MIN_H, tipRows));
+
+  bakeInfoBox.right = undefined;
+  bakeInfoBox.left  = agplColStart;
+  bakeInfoBox.top   = TRAIN_TIP_TOP;
+  const bakeInfoRows = renderBakeInfo();
+  bakeInfoBox.height = Math.min(BAKE_INFO_MAX_H, Math.max(BAKE_INFO_MIN_H, bakeInfoRows));
+
+  // Entropy meter — below genre (header's last row), flush to the left
+  // edge of the window (user: "really stick entropy to the side of the
+  // window") and one row further down than statusH (user: "move entropy
+  // one space downward") — now that it hugs the left edge instead of
+  // centering, it no longer shares horizontal space with the training/tips
+  // cluster (which now hangs off recColStart, well to the right), so it
+  // doesn't need to clear that cluster's bottom, just the header's own
+  // last row plus the extra row of breathing room.
+  entropyBox.right = undefined;
+  entropyBox.left  = 0;
+  entropyBox.top   = statusH + 1;
+  const entropyRows = renderEntropyMeter();
+  entropyBox.height = Math.min(ENTROPY_MAX_H, Math.max(ENTROPY_MIN_H, entropyRows));
 }
 
 function setLangContent(text) {
@@ -1599,21 +3034,18 @@ function scheduleRender() {
 }
 
 function render() {
-  // statusBox and playBox (everything sized against `w` below) are both
-  // declared width: '100%' — the FULL terminal width, unlike sepBox/langBox/
-  // cmdBox/chatHeaderBox/logBox further down, which use the narrower
-  // CONTENT_W to leave room for the VU sidebar sitting beside THEM (the VU
-  // sidebar's own top is fixedTop = statusH + 1 + playHeight, i.e. it starts
-  // BELOW the header/playback rows, not beside them). A previous pass here
-  // switched this to contentW() on the mistaken assumption the sidebar sat
-  // beside these rows too — that under-budgeted every width calculation by
-  // SIDE_TOTAL_W (31) columns versus what the box can actually show, which
-  // is what produced the big dead gap on the right. screen.width is correct.
+  // statusBox and playBox are both declared width: '100%' — the FULL
+  // terminal width, unlike sepBox/menuHeaderBox/langBox/cmdBox/logBox
+  // further down, which use the narrower CONTENT_W. Both the header row and
+  // the per-stem playback rows (waveform, descriptor line, weight, dir,
+  // dirWgt) use `w` = screen.width — the VU/spatial/descriptor-grid/momentum
+  // columns dock UNDER each stem's own block (see STEM_BAND_H), not beside
+  // it, so nothing needs to narrow these rows anymore.
   const w = screen.width;
 
   // Status
-  const conn  = state.connected ? '{white-fg}[CONNECTED]{/white-fg}' : '{grey-fg}[DISCONNECTED]{/grey-fg}';
-  const run   = state.running   ? '{white-fg}[RUNNING]{/white-fg}' : '{grey-fg}[STOPPED]{/grey-fg}';
+  const conn  = state.connected ? '{bright-white-fg}[CONNECTED]{/bright-white-fg}' : '{grey-fg}[DISCONNECTED]{/grey-fg}';
+  const run   = state.running   ? '{bright-white-fg}[RUNNING]{/bright-white-fg}' : '{grey-fg}[STOPPED]{/grey-fg}';
   const sl    = state.slices.join('/');
   const p = state.params;
   const fmtDir = v => (v >= 0 ? '+' : '') + (parseFloat(v) || 0).toFixed(1);
@@ -1634,9 +3066,14 @@ function render() {
   // independently makes them line up as a side effect, without needing a
   // shared start column at all.
   const strip = s => s.replace(/\{[^}]+\}/g, '');
-  const atCol = (left, right) => {
+  // edge defaults to the true right edge (w-1) — pass a smaller edge to
+  // right-flush against an inner boundary instead (no longer needed for the
+  // header rows now that master's column docks below the header rather than
+  // beside it — see reflow() — but the param stays available for future use).
+  const atCol = (left, right, edge) => {
+    if (edge === undefined) edge = w - 1;
     const rightVis = strip(right).length;
-    const startCol = w - 1 - rightVis; // column `right` must start at to end exactly at w-1
+    const startCol = edge - rightVis; // column `right` must start at to end exactly at edge
     let leftOut = left;
     let leftVis = strip(left).length;
     if (leftVis > startCol - 1) {
@@ -1649,59 +3086,40 @@ function render() {
     return leftOut + ' '.repeat(pad) + right;
   };
 
-  // weight / match / dir — three right-aligned rows with the identical
-  // M/E/F/P/H/T column structure (labels padded to 7 chars so the columns line
-  // up across all three). weight = per-descriptor :setWeight values.
-  // Real per-stem values now (see state.paramsPerStem + :wmdScope). 'all'
-  // shows vocals' bucket as a representative view — all four stems start
-  // identical and only diverge once the user targets one specifically, so
-  // there's no single "all" truth once they've diverged; vocals is just the
-  // canonical stand-in, same as picking any one of four equal values.
-  const wmdStemKey = state.wmdScope === 'all' ? 'vocals' : state.wmdScope;
-  const wp = state.paramsPerStem[wmdStemKey] || state.paramsPerStem.vocals;
-  const wmdScope = `[${state.wmdScope}]`;
-  const weightStr = `{grey-fg}weight ${wmdScope}{/grey-fg} {grey-fg}M:{/grey-fg}${fmtM(wp.weightC)} {grey-fg}E:{/grey-fg}${fmtM(wp.weightE)} {grey-fg}F:{/grey-fg}${fmtM(wp.weightF)} {grey-fg}P:{/grey-fg}${fmtM(wp.weightP)} {grey-fg}H:{/grey-fg}${fmtM(wp.weightH)} {grey-fg}T:{/grey-fg}${fmtM(wp.weightT)}`;
-  // Match moved out of the header — it's now shown per-stem in the
-  // progression-bar tail, right after "stay" (see barsStay below), since
-  // matchProb is a genuinely per-stem value and the header's "match [all]"
-  // row could only ever show one stem's value as a stand-in anyway.
-  const dirStr   = `{grey-fg}dir    ${wmdScope}{/grey-fg} {grey-fg}M:{/grey-fg}${fmtDir(wp.dirC)} {grey-fg}E:{/grey-fg}${fmtDir(wp.dirE)} {grey-fg}F:{/grey-fg}${fmtDir(wp.dirF)} {grey-fg}P:{/grey-fg}${fmtDir(wp.dirP)} {grey-fg}H:{/grey-fg}${fmtDir(wp.dirH)} {grey-fg}T:{/grey-fg}${fmtDir(wp.dirT)}`;
-  // dirWgt = DIR_WEIGHT — a single per-stem multiplier on how much ALL the
-  // directional preferences above (M/E/F/P/H/T) affect scoring overall,
-  // separate from each individual descriptor's own preference value. Named
-  // "wgt" before, which read as unrelated to "dir" — spelled out for clarity.
-  // On its own line below "dir" (used to trail dirStr inline) — that also
-  // made dirStr longer than weightStr, which is what broke the M:/E:/F:/…
-  // column alignment between the weight and dir rows in the first place.
-  const dirWgtStr = `{grey-fg}dirWgt:{/grey-fg}${fmtM(wp.dirWeight)}`;
+  // The old global "weight [all]"/"dir [all]"/dirWgt header row (a single
+  // representative stem's values, standing in for all four) is gone —
+  // superseded by the real per-stem weight/dir/dirWgt rows in each stem's
+  // own playback block below (see spWp in the stems.forEach loop). Removing
+  // it frees this side of the header for master's own VU meter + spatial
+  // ring instead (see masterVuBox/masterSpatialBox, positioned in reflow()).
 
   // Entropy fader removed from the header for now — state.params.entropy is
   // still tracked (updated by the 'entropy' WS handler / :setEntropy), just not
   // displayed here, so it's ready to drop back in when we find its spot.
   // SegmentBars also stays out (it's shown per stem in the progression bars).
   // LUFS floors at -40 (quiet mix reads near-empty, nothing meaningful below
-  // that); true-peak floors at -24 (peaks live in a narrower band close to
-  // 0 dBFS — a -40 floor would leave the bar looking empty almost always).
-  // Both go "hot" (red) at -3, the conventional headroom line before
+  // that); goes "hot" (red) at -3, the conventional headroom line before
   // clipping/limiting starts doing real work.
+  // The header used to also show a global "TP" (true-peak) meter here —
+  // removed: the VU sidebar already gives true peak per channel, with its
+  // own peak-hold, which is strictly more useful than one global dBFS
+  // number duplicating what those meters already show.
   const lufsMeter = dbMeter(state.lufs, state.lufsPeak, -40, -3, 10);
-  const tpMeter   = dbMeter(state.dbfs, state.dbfsPeak, -24, -3, 10);
   // Numeric readout shows the PEAK (the yellow/red ▐ marker's value), not the
   // live instantaneous level — matches the hardware-meter convention of a
   // numeric peak readout next to a live bar. The bar's fill still shows the
   // current level; peakDecay() (below) keeps this number sliding back down
   // toward reality instead of sitting pinned at an old high forever.
   const envLine   = `{grey-fg}win:{/grey-fg} ${p.envelope}   {grey-fg}slices:{/grey-fg} ${sl}   ` +
-    `{grey-fg}LUFSs{/grey-fg} ${lufsMeter} ${fmtMeterDb(state.lufsPeak, LUFS_INF_FLOOR)}   ` +
-    `{grey-fg}TP{/grey-fg} ${tpMeter} ${fmtMeterDb(state.dbfsPeak, TP_INF_FLOOR)}`;
-  const genreBeatsLine = `${genreLine}   ${beatsHeaderLine()}   {grey-fg}quant:{/grey-fg} ${quantMode()}`;
+    `{grey-fg}LUFSs{/grey-fg} ${lufsMeter} ${fmtMeterDb(state.lufsPeak, LUFS_INF_FLOOR)}   {grey-fg}quant:{/grey-fg} ${quantMode()}`;
+  const genreBeatsLine = `${genreLine}   ${beatsHeaderLine()}`;
 
   // Header indicators — persistent LED-style, always visible (not
   // appearing/disappearing like the old statusIcons row) so they read like
   // hardware LEDs: dim grey when idle, lit when active.
   //   • record   — small dot, sits on the title row next to [CONNECTED]/
   //                [DISCONNECTED]. Red when state.recording, grey otherwise.
-  //   [TIP ON]/[TIP OFF]   — white when a tipping session is open, grey otherwise.
+  //   [TIP OPEN]/[TIP CLOSED] — white when a tipping session is open, grey otherwise.
   //   [LINK ON]/[LINK OFF] — briefly flips to cyan ("pale blue") when a LINK missile
   //                fires (this deck's own :link fire OR a remote deck's — ws_server.js
   //                broadcasts 'linkMissile'/'fire_executed' to everyone),
@@ -1711,20 +3129,32 @@ function render() {
   //   Both TIP/LINK sit right-aligned on their own row, directly above
   //   "last touched" (see sLines below).
   const LINK_FLASH_MS = 1500;
-  // [REC •] — red when recording (on), grey when idle (off). This is the
-  // inverse of the TIP/LINK convention (where off is the red/alarm state):
-  // for recording, lit-red means "we are capturing right now".
+  // [REC •] — white (bold) when recording (on), grey when idle (off). This is
+  // the inverse of the TIP/LINK convention (where off is the alarm state):
+  // for recording, lit means "we are capturing right now".
   const recLabel = state.recording
-    ? `{white-fg}[REC {/white-fg}{red-fg}•{/red-fg}{white-fg}]{/white-fg}` : `{grey-fg}[REC •]{/grey-fg}`;
+    ? `{bright-white-fg}[REC {bold}•{/bold}]{/bright-white-fg}` : `{grey-fg}[REC •]{/grey-fg}`;
   const tipOn        = state.session.active;
   const tipDirect     = tipOn && state.session.deck === 'direct' ? ' DIRECT' : '';
   const tipLabel     = tipOn
-    ? `{white-fg}[TIP ON${tipDirect}]{/white-fg}` : `{grey-fg}[TIP OFF]{/grey-fg}`;
+    ? `{bright-white-fg}[TIP OPEN${tipDirect}]{/bright-white-fg}` : `{grey-fg}[TIP CLOSED]{/grey-fg}`;
+  // [LVL n/3] — which of the tipping protocol's 3 precision levels this
+  // session is running at (see docs/protocol/TIPPING_PROTOCOL.md):
+  //   1 = Web Radio (EBYS)           — mode 'web'
+  //   2 = Venue (EBYS + Card Reader) — mode 'venue', deck 'ebys'
+  //   3 = Venue (Non-EBYS + Reader)  — mode 'venue', deck 'direct'
+  // '--' while no tipping session is open at all.
+  const tipLevel = !tipOn ? null
+    : state.session.mode === 'web' ? 1
+    : state.session.mode === 'venue' ? (state.session.deck === 'direct' ? 3 : 2)
+    : null;
+  const lvlLabel = tipLevel
+    ? `{bright-white-fg}[LVL ${tipLevel}/3]{/bright-white-fg}` : `{grey-fg}[LVL --]{/grey-fg}`;
   const linkFiring  = state.linkFiredAt > 0 && (Date.now() - state.linkFiredAt < LINK_FLASH_MS);
   // cyan reads as "pale blue" in this terminal palette — same convention
   // already used for the source-lock indicator.
   const linkLabel   = linkFiring
-    ? `{white-fg}[LINK ON]{/white-fg}` : `{grey-fg}[LINK OFF]{/grey-fg}`;
+    ? `{bright-white-fg}[LINK ON]{/bright-white-fg}` : `{grey-fg}[LINK OFF]{/grey-fg}`;
   // [CHUNK MODE ON]/[CHUNK MODE OFF] — mirrors slicer.js's PLAY_FULL_FILE per
   // stem (state.playFullFile, updated by the 'playFullFile' WS handler
   // above — still the same underlying broadcast, chunkMode() in slicer.js
@@ -1738,8 +3168,18 @@ function render() {
   // stems" so a single-stem chunk switch doesn't silently read as OFF.
   const chunkModeOn = Object.keys(state.playFullFile).some(t => !state.playFullFile[t]);
   const chunkLabel  = chunkModeOn
-    ? `{white-fg}[CHUNK MODE ON]{/white-fg}` : `{grey-fg}[CHUNK MODE OFF]{/grey-fg}`;
-  const iconCluster = `${recLabel}   ${tipLabel}   ${linkLabel}   ${chunkLabel}`;
+    ? `{bright-white-fg}[CHUNK MODE ON]{/bright-white-fg}` : `{grey-fg}[CHUNK MODE OFF]{/grey-fg}`;
+  // [TRAINING ON]/[TRAINING OFF] — mirrors bakeSessionActive (module-level,
+  // set by :bake start / cleared by :bake end / :bake abort — see the BAKE
+  // LOOP STATE section). Sits next to [CHUNK MODE] here in the header; the
+  // bars/prompt/cricket/corrections detail lives below in the training
+  // panel (see renderBakeInfo), reached from this chip.
+  const trainingLabel = bakeSessionActive
+    ? `{bright-white-fg}[TRAINING ON]{/bright-white-fg}` : `{grey-fg}[TRAINING OFF]{/grey-fg}`;
+  // Order: REC, TIP, TRAINING next to CHUNK, LINK rightmost in the group.
+  // LVL moved out of this cluster — sits on the title row next to
+  // [CONNECTED]/[DISCONNECTED] instead (see stateChips below).
+  const iconCluster = `${recLabel}   ${tipLabel}   ${trainingLabel}   ${chunkLabel}   ${linkLabel}`;
 
   // Last command touched — what LINK's missile switch would fire right now
   // if armed. Blank until the first performative command of the session.
@@ -1758,48 +3198,167 @@ function render() {
   // instead, next to [CONNECTED] — same 3-space gap style as between
   // run-state and connection-state.
   const sessionName = (ACTIVE_SESSION && ACTIVE_SESSION.name) || 'default';
-  const sessionLabel = `{red-fg}[SESSION: ${sessionName.toUpperCase()}]{/red-fg}`;
+  const sessionLabel = `{bright-white-fg}[SESSION: ${sessionName.toUpperCase()}]{/bright-white-fg}`;
   // Header row: state chips left ([SESSION] first, then run/conn/rec),
   // EBYS version centered on the screen, TIP/LINK cluster flush right.
-  const withLCR = (left, center, right) => {
+  // edge defaults to the true right edge, same override convention as atCol.
+  // Also records where `right` (iconCluster, which starts with [REC]) ends
+  // up starting — tipBox aligns its own left edge to that same column (see
+  // reflow() — user: "align the tipping zone with the [REC] box").
+  let centerColStart = 0; // where `center` itself begins — agplColStart below adds the version-label prefix width to this
+  const withLCR = (left, center, right, edge) => {
+    if (edge === undefined) edge = w - 1;
     const vis = s => s.replace(/\{[^}]+\}/g, '').length;
-    const total = w - 1;
+    const total = edge;
     const lV = vis(left), cV = vis(center), rV = vis(right);
     const gap1 = Math.max(1, Math.floor((total - cV) / 2) - lV);
     const gap2 = Math.max(1, total - rV - (lV + gap1 + cV));
+    centerColStart = lV + gap1;
+    recColStart = lV + gap1 + cV + gap2;
     return left + ' '.repeat(gap1) + center + ' '.repeat(gap2) + right;
   };
-  const stateChips = `${sessionLabel}   ${run}   ${conn}`;
-  // Each row below is flushed against the right edge of the window
-  // independently (see atCol) — no shared column to compute up front
-  // anymore.
-  const sLines = [
-    withLCR(stateChips, `{grey-fg}[EBYS 0.1.19]{/grey-fg}   {grey-fg}[{bold}▼{/bold}? AGPL-3.0]{/grey-fg}`, iconCluster),
-    // "last touched" sits directly under the TIP/LINK cluster (it IS the param
-    // LINK's missile switch would fire) — right-flushed to the same true
-    // right edge as weight/dir/dirWgt below it, even though its own text is
-    // shorter than theirs.
+  const stateChips = `${sessionLabel}   ${run}   ${conn}   ${lvlLabel}`;
+  // Split out of the old inline literal so agplColStart (below) can measure
+  // just the "[EBYS 0.1.19]   " prefix's own width instead of hardcoding it.
+  const versionLabel = `{grey-fg}[EBYS 0.1.19]{/grey-fg}   `;
+  const agplLabel    = `{grey-fg}[{bold}🄯{/bold} AGPL-3.0]{/grey-fg}`;
+  const titleCenter  = versionLabel + agplLabel;
+  // These five rows used to share their row-band with masterVuBox/
+  // masterSpatialBox (both docked at top:0 back then), so they flushed
+  // against an inner boundary short of the true right edge to leave room
+  // for that column. Master now docks BELOW the header instead (see
+  // reflow()), so nothing else occupies these rows on the right any more —
+  // flush straight to the true right edge (atCol's/withLCR's default edge,
+  // w-1) again.
+  // Learn mode: track/key/win/slices/LUFSs/quant/genre/beats all describe
+  // whatever's CURRENTLY loaded live — irrelevant noise while training or
+  // paging through PAST bake sessions (each one may even be a different
+  // track). Drop those rows entirely rather than blank them, so statusH
+  // shrinks and the Learn panel (see LEARN MODE / reflowLearn()) climbs up
+  // into the reclaimed space instead of sitting below a gap. The panel
+  // itself takes over that space — see renderTrainingView()/reflowLearn().
+  const sLines = appMode === 'learn' ? [
+    withLCR(stateChips, titleCenter, iconCluster),
     atCol('', lastTouchLine),
-    atCol(trackKeyLine, weightStr),
-    atCol(envLine, dirStr),
-    // dirWgt on its own line under "dir", right-flushed the same way. Paired
-    // with genreBeatsLine as the left-hand content (instead of leaving left
-    // blank) so "win:"/"genre:" stay on consecutive rows — a blank-left row
-    // in between read as a gap splitting them into two blocks even though
-    // no line was technically empty.
-    atCol(genreBeatsLine, dirWgtStr),
+  ] : [
+    withLCR(stateChips, titleCenter, iconCluster),
+    atCol('', lastTouchLine),
+    atCol(trackKeyLine, ''),
+    atCol(envLine, ''),
+    atCol(genreBeatsLine, ''),
   ];
-  const statusH = sLines.reduce((h, l) =>
+  // withLCR (just called, first element of sLines either way) set
+  // centerColStart to where titleCenter begins — AGPL sits right after the
+  // version-label prefix within it.
+  agplColStart = centerColStart + versionLabel.replace(/\{[^}]+\}/g, '').length;
+  statusH = sLines.reduce((h, l) =>
     h + Math.max(1, Math.ceil(visWidth(l.replace(/\{[^}]+\}/g,'')) / Math.max(1, w))), 0);
   statusBox.height = statusH;
   statusBox.setContent(sLines.join('\n'));
-  // One blank row between the header and the progression bars. fixedTop
-  // (= statusH + 1 + playHeight) already budgets this +1; placing it here,
-  // above playBox, puts the gap between header↔bars instead of bars↔sep.
-  playBox.top = statusH + 1;
 
-  // Playback bars — 2 lines per stem, graph merged inline as right column
+  // Below the header, several blocks now dock AT specific header rows
+  // rather than stacking below the header as one column (see reflow() for
+  // where each is actually positioned; MASTER_VU_TOP/TRAIN_TIP_TOP are the
+  // shared anchors both this and reflow() use): master's VU+spatial column
+  // starts at MASTER_VU_TOP ("closer to last touched"), training+tips start
+  // side by side at TRAIN_TIP_TOP ("align prmpt: with quant:beat"), and the
+  // entropy meter starts at statusH ("below genre", the header's last row).
+  // playTop (where playBox and every per-stem column start) has to clear
+  // the lowest bottom edge among all of these. Rendered here (not just left
+  // to reflow(), which runs later and re-renders these same boxes anyway)
+  // so playTop reserves only what each block ACTUALLY needs right now —
+  // idle state is prmpt/stat/rcp (~4 rows) + a short tip block, nowhere
+  // near BAKE_INFO_MAX_H/TIP_MAX_H's worst case (a full recipe table, a
+  // wrapped multi-tip readout, etc.) — using the real count instead of
+  // always the max is what keeps this gap tight instead of permanently
+  // reserving room for content that isn't there most of the time.
+  const bakeInfoH  = Math.min(BAKE_INFO_MAX_H, Math.max(BAKE_INFO_MIN_H, renderBakeInfo()));
+  const tipH       = Math.min(TIP_MAX_H,       Math.max(TIP_MIN_H,       renderTipInfo()));
+  const masterColBottom = MASTER_VU_TOP + 5; // master's own VU+spatial height
+  const trainBottom     = TRAIN_TIP_TOP + bakeInfoH;
+  const tipBottom       = TRAIN_TIP_TOP + tipH; // beside training, same top
+  // Entropy docks at statusH + 1 (left-edge column, no longer sharing
+  // horizontal space with the training/tips cluster — see reflow()'s own
+  // entropyBox.top) — mirrored here so playTop reserves the same real
+  // space instead of guessing independently.
+  const entropyH       = Math.min(ENTROPY_MAX_H, Math.max(ENTROPY_MIN_H, renderEntropyMeter()));
+  const entropyBottom  = statusH + 1 + entropyH;
+  // Learn mode: master/bake/tip/entropy are all hidden (PLAYBACK_HEADER_BOXES) —
+  // their bottoms above are still computed (harmless, cheap) but shouldn't
+  // reserve any space. The Learn panel occupies that space instead — see
+  // learnPanelHeight()'s own comment, right above reflowLearn() — so
+  // playBox starts below IT instead of below the (invisible) usual cluster.
+  // One blank row between whichever block is lowest and the progression bars.
+  playTop = appMode === 'learn'
+    ? learnPanelBottom() + 1
+    : Math.max(masterColBottom, trainBottom, tipBottom, entropyBottom, statusH) + 1;
+  playBox.top = playTop;
+
+  // ── SCREEN VISIBILITY ──────────────────────────────────────────────────
+  // Single place deciding which box groups are actually on screen, given
+  // appMode/learnView/chatMaximized — see the SCREEN MODEL comment above
+  // CHAT_OVERLAY_BOXES for why this lives in one spot instead of scattered
+  // across enterLearnMode()/exitLearnMode()/toggleChatMaximize(): those used
+  // to each independently force their own overlapping box sets, which is
+  // exactly what caused several rounds of "X bled into Y" bugs (chat
+  // bleeding into playback, commands not showing in chat, playBox bleeding
+  // under the maximized chat log, per-stem meters reappearing under Learn
+  // mode...). Re-evaluated every render() tick — cheap, and blessed's
+  // show()/hide() are no-ops when already in that state.
+  const inLearn  = appMode === 'learn';
+  const inReview = inLearn && learnView === 'review'; // training sub-view: everything below falls through to the playback-shaped rules, since a live bracket uses playBox the same way playback does
+
+  // The chat overlay — same 5 boxes regardless of which screen is underneath.
+  CHAT_OVERLAY_BOXES.forEach(b => chatMaximized ? b.show() : b.hide());
+
+  // Master VU/spatial — up on BOTH screens (see MASTER_METER_BOXES), so
+  // just always shown here regardless of inLearn/chatMaximized (mirrors how
+  // the chat overlay itself keeps running "regardless of which screen is
+  // underneath" per the SCREEN MODEL comment above).
+  MASTER_METER_BOXES.forEach(b => b.show());
+
+  // Playback's own remaining header cluster (bake/tip/entropy) — stays up
+  // for as long as the playback screen is active, chat overlay or not
+  // (mirrors the Learn panel's own always-up-in-Learn behavior). Per-stem
+  // "channel content" is stricter — hidden the moment chat is maximized on
+  // top of it too, same rule playBox itself follows below.
+  PLAYBACK_HEADER_BOXES.forEach(b => !inLearn ? b.show() : b.hide());
+  PLAYBACK_CHANNEL_BOXES.forEach(b => (!inLearn && !chatMaximized) ? b.show() : b.hide());
+
+  // playBox/reviewWaveformBox — the two screens' shared "channel content"
+  // slot. playBox serves playback AND Learn's training sub-view (a live
+  // bracket really is live); reviewWaveformBox (the recorded clip's
+  // waveform + playhead, see updateReviewWaveformBox()) replaces it only in
+  // the review sub-view, since playBox's LIVE engine state has nothing to
+  // do with whichever past bake you're browsing. playBox still hides under
+  // a maximized chat (its content is meaningless once you're mid-conversation
+  // — same as before), but reviewWaveformBox is the recorded-file playback
+  // zone and stays up regardless of chat, same treatment as reviewHeaderBox/
+  // reviewDetailBox get — the chat log docks below it instead (see
+  // headerClusterBottom in reflow()) rather than covering it.
+  if (inReview) {
+    playBox.hide();
+    reviewWaveformBox.top   = playTop;
+    reviewWaveformBox.width = w;
+    reviewWaveformBox.show();
+    updateReviewWaveformBox(w);
+  } else {
+    reviewWaveformBox.hide();
+    if (!chatMaximized) playBox.show(); else playBox.hide();
+  }
+
+  // Playback bars — full window width again. The VU/spatial/descriptor-grid/
+  // momentum columns dock UNDER each stem's own waveform+stats block now
+  // (see STEM_BAND_H), not beside it, so nothing needs to narrow the bar or
+  // the descriptor-line/weight/dir rows anymore — `w` (screen.width, same
+  // one the header above uses) is fine for all of them.
   const stems  = ['vocals', 'melody', 'bass', 'drums'];
+  // Row label text, distinct from the `stems` keys themselves (state.stems,
+  // triggerReady/triggerMode etc. all still key off the full 'vocals' etc.
+  // name — only the printed label changes) — user: "this section is
+  // important in the design. i want it to be written: vocs, mels, bass,
+  // drms".
+  const STEM_ROW_LABEL = { vocals: 'vocs', melody: 'mels', bass: 'bass', drums: 'drms' };
   const nameW  = 6;
   const TS_W   = 8;
   const barW   = Math.max(4, w - nameW - 4 - TS_W);   // VU moved to header — reclaim width
@@ -1840,21 +3399,25 @@ function render() {
 
     // Row 0 — progress bar + timestamp (VU meters moved to sidebar)
     // Trigger mode indicator replaces the space before ':':
-    //   ' ' = continuous  'T' = trigger mode (yellow)  '●' = ready to fire (red)
+    //   ' ' = continuous  'T' = trigger mode  '●' = ready to fire (bold)
     const tRdy  = state.triggerReady[name];
     const tMode = state.triggerMode[name];
-    const tMark = tRdy  ? `{red-fg}●{/red-fg}` :
-                  tMode ? `{yellow-fg}T{/yellow-fg}` : ' ';
+    const tMark = tRdy  ? `{bright-white-fg}{bold}●{/bold}{/bright-white-fg}` :
+                  tMode ? `{bright-white-fg}T{/bright-white-fg}` : ' ';
     // Pin indicator: set via :setStemSource, shows this stem is locked to one
     // named source track instead of picking freely. Plain single-width glyph
     // (not an emoji pin) — emoji/wide glyphs render as 2 columns in most
     // terminals and silently break every fixed-width alignment downstream of
     // it, the same class of bug already fought in the VU sidebar this session.
-    const pinMark = s.pinnedSource ? `{cyan-fg}•{/cyan-fg}` : ' ';
-    playLines.push(`${pad(name, nameW)}${pinMark}${tMark}: ${b} ${tsStr}`);
+    const pinMark = s.pinnedSource ? `{bright-white-fg}•{/bright-white-fg}` : ' ';
+    playLines.push(`${pad(STEM_ROW_LABEL[name] || name, nameW)}${pinMark}${tMark}: ${b} ${tsStr}`);
 
-    // Row 1 — M↑━━●━━ nnnnn   E↓━━━━●━ nnnnnn   …  aligned columns
-    // Arrow sits between the descriptor letter and its range bar (replaces the space).
+    // Descriptor line — M↑━━●━━ nnnnn   E↓━━━━●━ nnnnnn   …  aligned
+    // columns. Arrow sits between the descriptor letter and its range bar
+    // (replaces the space). This is the last row before the meters start
+    // (see PRE_METERS_ROWS) — weight/dir/dirWgt below now print on the SAME
+    // rows as the meters (left column vs. right-anchored boxes), not above
+    // them, so the meters' own first row lines up with "weight".
     const aC = tensionArrow(s.tC), aE = tensionArrow(s.tE), aF = tensionArrow(s.tF);
     const aP = tensionArrow(s.tP), aH = tensionArrow(s.tH), aT = tensionArrow(s.tT);
 
@@ -1895,28 +3458,15 @@ function render() {
     // (node_modules/blessed/lib/unicode.js) classifies this as width 1, but
     // a live screenshot showed it actually rendering as a tofu box on this
     // system's terminal font (no native glyph → fallback substitution),
-    // which draws as 2 columns wide. LOCK_SLOT_W below is set to account for
-    // that real on-screen width (7, not 6) rather than blessed's count, so
-    // the budget matches what's actually drawn and locked/unlocked stems'
-    // tails (bars:/stay:/match:) stay on the same column.
+    // which draws as 2 columns wide — the candidate below accounts for that
+    // real on-screen width, not blessed's count, when budgeting remaining
+    // space (see the lockTo candidate's `len` further down).
     const lockPlain = lockTo ? `${lockTo.slice(0, 3)}⚿` : '';
     // { text: what actually gets appended (may include color tags), len: its
     //   VISIBLE width (tags stripped) — kept separate since tags cost zero
     //   real screen columns but do add characters that would otherwise
     //   throw the budget off. }
     const candidates = [];
-    // Fixed-width slot regardless of whether THIS stem is locked — every
-    // stem abbreviation is exactly 3 letters, so the tag itself is always
-    // 3 letters + the (double-width-on-screen) "⚿" = 5 visible cols, plus
-    // its 2-space lead-in = 7. Always reserving that slot (blank-padded when
-    // unlocked, e.g. the leader itself) means "bars:"/"stay:"/etc. that
-    // follow always start at the same column on every row — was conditional
-    // before, so an unlocked stem's row had nothing there and everything
-    // after it drifted left relative to its locked neighbors.
-    const LOCK_SLOT_W = 7;
-    candidates.push(lockTo
-      ? { text: `  {cyan-fg}${lockPlain}{/cyan-fg}`, len: LOCK_SLOT_W }
-      : { text: pad('', LOCK_SLOT_W), len: LOCK_SLOT_W });
     // match — moved here from the header: matchProb is genuinely per-stem,
     // so it belongs next to this
     // stem's own bars/stay rather than a single "representative" header row.
@@ -1927,6 +3477,19 @@ function render() {
     candidates.push({ text: sidTxt, len: sidTxt.length });
     if (subGenre) { const t = `  [${subGenre}]`; candidates.push({ text: t, len: t.length }); }
     if (s.track)  { const t = `  ${trackShort}`;  candidates.push({ text: t, len: t.length }); }
+    // Lock indicator — LAST, lowest priority, instead of a fixed slot
+    // reserved up front. It used to sit first with a fixed-width reserved
+    // slot (blank-padded when unlocked) specifically so bars:/stay:/match:
+    // that follow would always start at the same column — but that fixed
+    // slot itself was the thing throwing rows off (the "⚿" key glyph draws
+    // 2 columns wide on this terminal despite blessed counting it as 1, see
+    // the width-bug note above). Appended last instead: nothing follows it,
+    // so its own presence/width can no longer misalign anything else, and
+    // an unlocked stem no longer needs a blank placeholder at all.
+    if (lockTo) {
+      const t = `  {bright-white-fg}${lockPlain}{/bright-white-fg}`;
+      candidates.push({ text: t, len: 2 + lockPlain.length + 1 }); // +1 for ⚿'s real 2-col width vs its 1-char string length
+    }
 
     let tail = '';
     for (const c of candidates) {
@@ -1939,6 +3502,41 @@ function render() {
     }
     const descLine = preLock + tail;
     playLines.push(`{grey-fg}${descLine}{/grey-fg}`);
+
+    // This stem's own weight/dir/dirWgt — right under the descriptor line;
+    // shares its rows with that stem's meters box (which starts here too —
+    // see PRE_METERS_ROWS), so "weight" lines up with the meters' own first
+    // row. These used to live once in the header as a
+    // single "[wmdScope]"-representative row (see weightStr/dirStr/
+    // dirWgtStr above in this same function), which could only ever show
+    // one stem's values as a stand-in for all four. Reading straight from
+    // state.paramsPerStem[name] here means every stem shows its own real
+    // values side by side, not a proxy — state.paramsPerStem is genuinely
+    // per-stem storage (see its own comment near state.paramsPerStem's
+    // definition), and only ever gets written by the per-stem WS feedback
+    // handler above ("weightC_vocals" etc, confirmed values straight from
+    // slicer.js — no optimistic local echo), so these numbers are already
+    // wired to whatever this actual stem is doing, not a shared/global
+    // value. The bracket label WAS still a copy-pasted "[all]" though — a
+    // leftover from the old single representative header row — which read
+    // as if every stem were showing the same "all stems" value even though
+    // the numbers themselves were already stem-specific; user: "make sure
+    // the [all] is set to the actual stem". Now uses that stem's own
+    // 3-letter code (same abbreviation the descriptor grid/VU sidebar use),
+    // same 5-char width as "[all]" so nothing shifts.
+    const spWp     = state.paramsPerStem[name];
+    const spIndent = pad('', nameW + 3);
+    const spLabel  = '[' + (DESC_LABELS[name] || name.slice(0, 3)) + ']';
+    playLines.push(`${spIndent}{grey-fg}weight ${spLabel}{/grey-fg} {grey-fg}M:{/grey-fg}${fmtM(spWp.weightC)} {grey-fg}E:{/grey-fg}${fmtM(spWp.weightE)} {grey-fg}F:{/grey-fg}${fmtM(spWp.weightF)} {grey-fg}P:{/grey-fg}${fmtM(spWp.weightP)} {grey-fg}H:{/grey-fg}${fmtM(spWp.weightH)} {grey-fg}T:{/grey-fg}${fmtM(spWp.weightT)}`);
+    playLines.push(`${spIndent}{grey-fg}dir    ${spLabel}{/grey-fg} {grey-fg}M:{/grey-fg}${fmtDir(spWp.dirC)} {grey-fg}E:{/grey-fg}${fmtDir(spWp.dirE)} {grey-fg}F:{/grey-fg}${fmtDir(spWp.dirF)} {grey-fg}P:{/grey-fg}${fmtDir(spWp.dirP)} {grey-fg}H:{/grey-fg}${fmtDir(spWp.dirH)} {grey-fg}T:{/grey-fg}${fmtDir(spWp.dirT)}`);
+    playLines.push(`${spIndent}{grey-fg}dirWgt:{/grey-fg}${fmtM(spWp.dirWeight)}`);
+
+    // Blank rows under the text block — the meters boxes (which start
+    // earlier, at the weight row — see PRE_METERS_ROWS) keep going past
+    // dirWgt down to STEM_ROW_BAND_H's full 7 rows; these blank playBox
+    // rows just reserve that same space on the left so the next stem's
+    // waveform starts exactly at row N * STEM_BAND_H.
+    while ((playLines.length % STEM_BAND_H) !== 0) playLines.push('');
   });
 
   // Calculate actual height accounting for line wrapping at current terminal width
@@ -1947,7 +3545,13 @@ function render() {
   playBox.height = playHeight;
   playBox.setContent(playLines.join('\n'));
 
-  fixedTop = statusH + 1 + playHeight;
+  // fixedTop (where sep/menuHeader/lang/cmd/log start) just has to clear
+  // playHeight now — master's VU+spatial block and bakeInfo/tip/entropy all
+  // moved up into the header zone (rows 0..playTop-1, see playTop's own
+  // comment above), so nothing below playTop extends past playHeight
+  // anymore (each stem's VU/spatial/descriptor-grid/momentum boxes are
+  // confined within that same row range — see vuStemBoxes etc. above).
+  fixedTop = playTop + playHeight + 1;
   reflow();
   screen.render();
 }
@@ -1991,7 +3595,8 @@ const COMMANDS = new Set([
   // audio — FX + outputs
   'fx', 'fxSwitch', 'boothGain', 'recGain', 'record',
   // pitch
-  'pitchShift',
+  'pitchShift', 'formantShift',
+  'setShiftBand', 'setPitchBand', 'setFormantBand', 'clearPitchBand', 'clearFormantBand', 'clearShiftBand',
   // trigger pad
   'triggerMode', 'trigger',
   // tipping session (payouts) — NOT the login/workspace session
@@ -2080,26 +3685,356 @@ ${cricketDocs}`;
 
 const chatHistory = [{ role: 'system', content: CRICKET_SYSTEM }];
 
+// ── CRICKET'S MEMORY ─────────────────────────────────────────────────────────
+// chatHistory above IS Cricket's working memory — literally what gets sent to
+// Ollama on every turn. Two problems this section fixes:
+//   1. It used to grow forever within a session and then get silently hard-
+//      truncated (oldest turns just dropped, no record, no warning) once it
+//      crossed a cap — see maybeSummarizeMemory() below, which condenses the
+//      oldest chunk into a compact note instead of discarding it outright.
+//   2. It lived in memory only — closing the TUI wiped it completely, so
+//      Cricket started every session from zero. The running summary now
+//      persists to disk per-session (CRICKET_MEMORY_PATH) and gets reloaded
+//      as a seed memory on boot, right after the system prompt.
+const CRICKET_MEMORY_PATH      = path.join(DATA_DIR, 'cricket_memory.json');
+const CHAT_HISTORY_CAP         = 41;  // 1 system prompt + 20 user/assistant pairs
+const MEMORY_SUMMARIZE_AT      = 0.8; // fraction of CHAT_HISTORY_CAP that triggers auto-summarization
+const MEMORY_KEEP_RECENT_PAIRS = 6;   // most recent exchanges kept verbatim through a summarization pass
+
+let cricketMemory = { summary: '', turns: 0, updatedAt: null };
+try {
+  const loadedMem = JSON.parse(fs.readFileSync(CRICKET_MEMORY_PATH, 'utf8'));
+  if (loadedMem && typeof loadedMem.summary === 'string') cricketMemory = loadedMem;
+} catch (e) { /* no memory file yet — fresh start, nothing to seed */ }
+
+if (cricketMemory.summary) {
+  chatHistory.push({
+    role: 'system',
+    content: '[memory carried over from earlier sessions — use naturally, do not quote verbatim]\n' + cricketMemory.summary,
+  });
+}
+
+function saveCricketMemory() {
+  try { fs.writeFileSync(CRICKET_MEMORY_PATH, JSON.stringify(cricketMemory, null, 2), 'utf8'); }
+  catch (e) { /* non-fatal — memory just won't persist past this run */ }
+}
+
+// 0–1: how full the live working memory is against its cap. Drives the header
+// meter (buildMenuHeaderLine) and the :memory status line.
+function memorySaturation() {
+  return Math.min(1, chatHistory.length / CHAT_HISTORY_CAP);
+}
+
+function memoryBar(width) {
+  const w = width || 10;
+  const sat = memorySaturation();
+  const filled = Math.round(sat * w);
+  const pct = Math.round(sat * 100);
+  const color = pct >= 95 ? 'red' : (pct >= Math.round(MEMORY_SUMMARIZE_AT * 100) ? 'yellow' : 'grey');
+  const bar = '●'.repeat(filled) + '○'.repeat(Math.max(0, w - filled));
+  return `{${color}-fg}mem ${bar} ${pct}%{/${color}-fg}`;
+}
+
+// Condenses the oldest chunk of chatHistory into a running summary once
+// saturation crosses MEMORY_SUMMARIZE_AT, instead of the old silent
+// truncate-and-forget behavior. Keeps the most recent MEMORY_KEEP_RECENT_PAIRS
+// exchanges verbatim; everything older than that (but after any prior memory
+// note) gets folded into cricketMemory.summary and persisted to disk.
+let memorySummarizing = false;
+function maybeSummarizeMemory() {
+  if (memorySummarizing) return;
+  if (chatHistory.length < Math.floor(CHAT_HISTORY_CAP * MEMORY_SUMMARIZE_AT)) return;
+
+  const recentCount = MEMORY_KEEP_RECENT_PAIRS * 2;
+  const toSummarize = chatHistory.slice(1, Math.max(1, chatHistory.length - recentCount));
+  if (toSummarize.length < 2) return; // not enough to bother condensing yet
+
+  memorySummarizing = true;
+  const transcript = toSummarize
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => `${m.role}: ${m.content}`)
+    .join('\n');
+
+  const sumBody = JSON.stringify({
+    model: CONFIG.ollama_model,
+    messages: [
+      { role: 'system', content:
+        'Summarize this conversation into a short, dense memory note — facts, preferences, names, ' +
+        'and decisions worth remembering. Plain prose, no commentary, no engine commands, under 150 words.'
+        + (cricketMemory.summary ? ' Fold in and update this earlier memory rather than repeating it verbatim:\n' + cricketMemory.summary : '') },
+      { role: 'user', content: transcript },
+    ],
+    stream: false,
+  });
+
+  const req = http.request({
+    hostname: CONFIG.ollama_host,
+    port:     CONFIG.ollama_port,
+    path:     '/api/chat',
+    method:   'POST',
+    headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(sumBody) },
+    timeout:  60000,
+  }, res => {
+    let data = '';
+    res.on('data', c => data += c);
+    res.on('end', () => {
+      memorySummarizing = false;
+      try {
+        const json = JSON.parse(data);
+        const summary = (json.message?.content || '').trim();
+        if (!summary) return;
+        cricketMemory = {
+          summary,
+          turns: (cricketMemory.turns || 0) + toSummarize.length,
+          updatedAt: new Date().toISOString(),
+        };
+        saveCricketMemory();
+        const memNote = {
+          role: 'system',
+          content: '[memory from earlier in this conversation — use naturally, do not quote verbatim]\n' + summary,
+        };
+        chatHistory.splice(1, chatHistory.length - recentCount - 1, memNote);
+        logCricket('tidying up my memory — condensed the older part so I stay quick. (' + memoryBar(10) + ')');
+        render();
+      } catch (e) { /* summarization failed silently — history just keeps growing until the next attempt */ }
+    });
+  });
+  req.on('timeout', () => { req.destroy(); memorySummarizing = false; });
+  req.on('error',   () => { memorySummarizing = false; });
+  req.write(sumBody);
+  req.end();
+}
+
 // ── BAKE SESSION TRACKING ─────────────────────────────────────────────────────
 // Captures the intent → Cricket attempt → user corrections loop for fine-tuning.
 let bakeIntent     = '';   // last natural language message sent to Cricket
-let bakeCricketCmds = [];  // commands Cricket generated from that intent
-let bakeUserCmds    = [];  // manual :commands the user sent after Cricket's response
+let bakeCricketCmds = [];  // commands Cricket generated from that intent, RAW/unresolved —
+                            // the "before" side of the correction-delta training signal
+let bakeUserCmds    = [];  // manual :commands the user sent after Cricket's response, RAW log
+let bakeComportment  = []; // the live, editable, resolved recipe for a single-comportment
+                            // bracket — see upsertComportment/comportmentKey below and
+                            // :bake show/:bake edit/:bake remove in handleInput
+
+// ── BAKE STATES ───────────────────────────────────────────────────────────────
+// A "state" is a named, reusable comportment — just a saved list of commands
+// (setStayProb/setMatchProb/setDirPref/setGenreFilter/etc), NOT audio, NOT a
+// single-moment snapshot. The point: a single flat comportment can't express
+// something like "rise for 4 bars then drop for 4" — that's two DIFFERENT
+// comportments handed off at a boundary, not one. So instead of trying to
+// bake the whole transition in one shot, train each state on its own (open a
+// normal :bake bracket, correct + :score it until it reliably feels like
+// "rising" or "dropping"), save it under a name with :bake end <name>, then
+// assemble named states into a timed sequence with :bake sequence — see
+// startBakeSequence below. The commands are what's reusable; the audio each
+// state produces is different every time it's applied, same as the
+// single-comportment bracket above.
+const BAKE_STATES_PATH = path.join(DATA_DIR, 'bake_states.json');
+
+function loadBakeStates() {
+    try { return JSON.parse(fs.readFileSync(BAKE_STATES_PATH, 'utf8')); }
+    catch (e) { return {}; }
+}
+
+function saveBakeState(name, commands, sourceBakeSessionId) {
+    const states = loadBakeStates();
+    states[name] = {
+        commands: commands.slice(),
+        savedAt:  new Date().toISOString(),
+        sourceBakeSessionId: sourceBakeSessionId || null,
+    };
+    try {
+        fs.writeFileSync(BAKE_STATES_PATH, JSON.stringify(states, null, 2), 'utf8');
+        return true;
+    } catch (e) {
+        logSys('bakeState: failed to save "' + name + '" — ' + e.message);
+        return false;
+    }
+}
+
+// Applies a saved state's commands live, immediately — no bracket needed.
+// Returns the command list applied (so sequence mode can log it), or null if
+// the name doesn't exist.
+function applyBakeState(name) {
+    const states = loadBakeStates();
+    const st = states[name];
+    if (!st) {
+        const known = Object.keys(states);
+        logSys('bakeState: no saved state named "' + name + '"'
+               + (known.length ? '  — known: ' + known.join(', ') : '  — none saved yet, use :bake end <name> after a bracket'));
+        return null;
+    }
+    st.commands.forEach(cmd => sendToMax(cmd));
+    return st.commands;
+}
+
+// A command's "identity" for comportment purposes — verb + every arg except
+// the last token (treated as the value). Heuristic: correct for
+// "verb [target] [dim] value" shaped commands (setStayProb, setMatchProb,
+// setDirPref, setDirWeight, setSegmentBars, setGenreFilter, etc — everything
+// a comportment bracket typically touches). Commands with more than one
+// trailing value (:joystick stem x y) won't key correctly by this and are
+// rare inside a comportment bracket anyway.
+function comportmentKey(cmd) {
+    const tokens = cmd.trim().split(/\s+/);
+    return tokens.length > 1 ? tokens.slice(0, -1).join(' ') : cmd;
+}
+
+// Batch version — collapses an ordered command list down to one command per
+// identity, keeping only the LATEST value per identity, in first-seen order.
+// Used for sequence mode's trailing live corrections (see stopBakeLoop).
+function resolveComportment(cmds) {
+    const order = [];
+    const byKey = new Map();
+    cmds.forEach(cmd => {
+        const key = comportmentKey(cmd);
+        if (!byKey.has(key)) order.push(key);
+        byKey.set(key, cmd);
+    });
+    return order.map(k => byKey.get(k));
+}
+
+// Incremental version, for single-comportment brackets — bakeComportment is
+// the live, authoritative, EDITABLE recipe for the bracket. Cricket's
+// commands and your live corrections both upsert into it by identity (same
+// rule as resolveComportment); :bake edit/:bake remove (see handleInput)
+// mutate it directly by the index :bake show prints. Because this stays
+// resolved incrementally, final_cmds at :bake end is just bakeComportment
+// itself — no separate resolve pass needed, and "removed" really means gone,
+// not just superseded.
+function upsertComportment(cmd) {
+    const key = comportmentKey(cmd);
+    const idx = bakeComportment.findIndex(c => comportmentKey(c) === key);
+    if (idx === -1) bakeComportment.push(cmd);
+    else bakeComportment[idx] = cmd;
+}
 
 // ── BAKE LOOP STATE ───────────────────────────────────────────────────────────
-// Full training bracket: :bake start → loop N bars → bakeRestore → repeat → :bake end
-let bakeLoopBars     = 4;      // loop window in bars (set by :bakeloop)
+// Two bracket modes, both sharing the same timer/close machinery:
+//
+//   :bake start <prompt>              — single comportment for the whole
+//                                        bracket (Cricket's translation of
+//                                        the prompt + your live corrections).
+//                                        See startBakeLoop.
+//   :bake sequence name:bars name:bars ... — cycles through PRE-TRAINED named
+//                                        states, handing off comportment at
+//                                        each bar boundary and looping the
+//                                        whole timeline. See startBakeSequence.
+//
+// Neither mode freezes/replays audio (no bakeSnapshot/bakeRestore) — every
+// checkpoint/handoff is a genuinely live pass: slicer.js keeps picking new
+// slices under whatever comportment currently applies. The commands are
+// what's held constant (single mode) or scheduled (sequence mode); the audio
+// is always different. That's also what makes :score meaningful — it rates
+// an actual distinct live-generated layering — and what makes
+// :scoreTransition meaningful in sequence mode — it rates the actual cut at
+// a state handoff, not a replayed one.
+let bakeLoopBars     = 4;      // checkpoint window in bars (set by :bakeloop) — single-comportment mode only
 let bakeSessionActive = false; // true while a training bracket is open
-let bakeLoopTimer    = null;   // setInterval handle
-let bakeAttempt      = 0;      // how many loops have completed this session
-let bakeEndQueued    = false;  // :bake end called mid-loop — close at next boundary
-let bakeSessionLabel = '';     // NL prompt for this session
-let bakeFirstCmds    = null;   // commands from Cricket's first attempt (stored at loop 1 end)
+let bakeLoopTimer    = null;   // setInterval/setTimeout handle (interchangeable in Node)
+let bakeAttempt      = 0;      // how many checkpoints/handoffs have passed this session
+let bakeEndQueued    = false;  // :bake end called mid-window — close at next boundary
+let bakeSessionLabel = '';     // NL prompt (single mode) or "name:bars → name:bars" spec (sequence mode)
+let bakeFirstCmds    = null;   // commands from Cricket's first attempt (single mode only)
+let bakeSessionId    = null;   // stable id for the open bracket — lets a :score called
+                                // mid-window (see verb === 'score' below) be traced back to
+                                // which bake session + which attempt it happened during
+let bakeEndSaveName  = null;   // set by ":bake end <name>" — save final_cmds as a reusable state
+let bakeSeqSteps     = null;   // [{name, bars}] — non-null only while a sequence bracket is open
+let bakeSeqIndex     = 0;      // which step is currently applied
+let bakeSeqLog       = [];     // flattened "# state: x" + commands, in handoff order — becomes
+                                // final_cmds for the Cricket training example on close, so a
+                                // scored-well sequence doubles as an (intent → assembled
+                                // multi-phase command timeline) example, not just a live jam aid
+let bakeScoreCount   = 0;      // :score + :scoreTransition calls tagged to this bracket
+let bakeLastScore    = null;   // { type: 'score'|'transition', value } — most recent of either
+let bakeTag          = null;   // label from the most recent :tag typed during this bracket —
+                                // structural context (verse/chorus/build/drop/etc, see
+                                // ws_server.js's :tag handler) so a bracket also records what
+                                // section of the song it was trained against. Bracket-scoped
+                                // (reset at :bake start), unlike bakeScoreCount/bakeLastScore.
+
+// Auto-recording for Learn-mode playback (see LEARN MODE below).
+// A bake bracket triggers the SAME :record start/stop path a manual
+// :record does (ws_server.js has no idea these calls came from a bracket
+// rather than the DJ's own fingers) — the only new thing is that app.js
+// picks a deterministic filename (bakeSessionId + '.wav') so it can be
+// referenced back into the training_log.jsonl snapshot without ws_server.js
+// having to echo anything. If the DJ is already recording the whole set
+// when a bracket opens, this bracket rides along inside that recording
+// instead of splitting it — bakeOwnsRecording stays false, no audioFile.
+let bakeRecordingFile = null;  // '<bakeSessionId>.wav', set only if this bracket owns the recording
+let bakeOwnsRecording = false; // true only if THIS bracket started the recording (and must stop it)
+
+function startBakeRecording() {
+    bakeRecordingFile = null;
+    bakeOwnsRecording = false;
+    if (state.recording) {
+        logSys('  (note: full recording already in progress — this bake won\'t have its own audio clip)');
+        return;
+    }
+    if (!bakeSessionId) return;
+    bakeRecordingFile = bakeSessionId + '.wav';
+    bakeOwnsRecording = true;
+    sendToMax('record start ' + bakeSessionId);
+}
+
+// Called from stopBakeLoop. store=false (:bake abort) deletes the clip —
+// it was never going to be referenced by a training_log.jsonl entry, so
+// there's no point leaving an orphaned .wav in recordings/. Best-effort:
+// wrapped in a short delay since Max's own record_cmd 'stop' is async, and
+// in try/catch since nothing here should ever block a bracket from closing.
+function stopBakeRecording(store) {
+    if (!bakeOwnsRecording) return null;
+    sendToMax('record stop');
+    bakeOwnsRecording = false;
+    const file = bakeRecordingFile;
+    bakeRecordingFile = null;
+    if (!store && file) {
+        setTimeout(() => {
+            try { fs.unlinkSync(path.join(DATA_DIR, 'recordings', file)); } catch (e) {}
+        }, 300);
+        return null;
+    }
+    return file;
+}
+
+// Most recent SIMULATED incoming tip (":tip <username> <amount>") — there's
+// no real Stripe→ws_server.js bridge yet (see src/backend/routes/tips.js,
+// which is a separate, unconnected server), so this is a manual trigger for
+// the tipping panel, same pattern as :score/:tag feeding the training panel.
+// { username, amount, curator, stems: {vocals,melody,bass,drums}, ts, txnId }
+let lastTip = null;
+
+// DJ (curator) share of every tip — module-level so both the :tip handler
+// AND the tipping panel's equation bar (renderTipInfo) read the same value.
+// Currently a flat floor; full eq is 0.40 + 0.60 × creative_factor once
+// edit_rate/spectral_dist/genre_div are wired from Max — see the :tip
+// handler's own comment.
+const CURATOR_FLOOR = 0.40;
+
+// User-overridable floors — shown under the equation bar so the DJ can see
+// (and eventually set, via a :setFloor-style command not wired up yet) a
+// per-set override of the ∫ (DJ) and aᵢ (artist) floors, instead of only
+// ever running on CURATOR_FLOOR above. null = no override, renders "--".
+let floorDj     = null;
+let floorArtist = null;
+
+// Simulated Stripe-style transaction id (":tip" has no real payment intent
+// to attach to — see lastTip's comment above).
+function genTxnId() {
+  return 'tx_' + Math.random().toString(36).slice(2, 10);
+}
 
 function bakeLoopMs() {
     const bpm    = state.bpm > 0 ? state.bpm : 120;
     const meter  = 4;  // assume 4/4 for now
     return (60000 / bpm) * meter * bakeLoopBars;
+}
+
+function barsToMs(bars) {
+    const bpm    = state.bpm > 0 ? state.bpm : 120;
+    const meter  = 4;  // assume 4/4 for now
+    return (60000 / bpm) * meter * bars;
 }
 
 function startBakeLoop(label) {
@@ -2109,53 +4044,799 @@ function startBakeLoop(label) {
     bakeAttempt       = 0;
     bakeFirstCmds     = null;
     bakeSessionLabel  = label;
+    bakeSeqSteps      = null;
+    bakeSeqLog        = [];
+    bakeComportment   = [];
+    bakeTag           = null;
+    // bakeScoreCount/bakeLastScore deliberately NOT reset here — they're a
+    // running tally for the whole TUI session (mirrors how training_log_
+    // vertical/transition.jsonl just keep growing across brackets), not
+    // scoped to one bracket. See renderBakeInfo, where "sc" is shown
+    // regardless of bakeSessionActive for the same reason.
+    startBakeRecording();   // see its own comment — no-op if already recording
 
     const ms = bakeLoopMs();
-    logSys('🎯 bake: loop started — "' + label + '"  ' + bakeLoopBars + ' bars @ '
-           + (state.bpm || 120) + ' BPM  (' + Math.round(ms / 1000) + 's/loop)');
+    logSys('✓ bake: bracket open — "' + label + '"  checkpoint every ' + bakeLoopBars + ' bars @ '
+           + (state.bpm || 120) + ' BPM  (' + Math.round(ms / 1000) + 's) — audio keeps generating live,'
+           + ' :score whatever just played, tweak comportment any time');
 
     bakeLoopTimer = setInterval(() => {
         bakeAttempt++;
 
-        // Store first attempt commands for training pair
+        // Store first attempt's commands for the Cricket training pair —
+        // whatever Cricket translated the prompt into, before any corrections.
         if (bakeAttempt === 1) {
             bakeFirstCmds = bakeCricketCmds.slice();
         }
 
         if (bakeEndQueued) {
-            // This loop just finished — close the session
+            // This checkpoint just finished — close the session
             stopBakeLoop(true);
             return;
         }
 
-        // Reset ring buffers to snapshot, replay from frozen position
-        sendToMax('bakeRestore');
-        logSys('🔄 bake: loop ' + bakeAttempt + ' reset → bakeRestore');
+        // No audio reset — playback just keeps running under the current
+        // comportment. This tick only marks a new checkpoint boundary so
+        // bakeAttempt (and therefore any :score tagged during the next
+        // window) advances.
+        logSys('↻ bake: checkpoint ' + bakeAttempt + ' — still generating live, comportment unchanged');
     }, ms);
+}
+
+// steps: [{name, bars}], each name already validated to exist in bake_states.json.
+function startBakeSequence(steps, label) {
+    if (bakeLoopTimer) clearInterval(bakeLoopTimer);
+    bakeSessionActive = true;
+    bakeEndQueued     = false;
+    bakeAttempt       = 0;
+    bakeFirstCmds     = null;
+    bakeCricketCmds   = [];
+    bakeUserCmds      = [];
+    bakeSessionLabel  = label;
+    bakeSessionId     = 'bake_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    bakeSeqSteps      = steps;
+    bakeSeqIndex      = 0;
+    bakeSeqLog        = [];
+    bakeComportment   = [];   // unused in sequence mode — :bake edit/:bake remove are single-mode only
+    bakeTag           = null;
+    // bakeScoreCount/bakeLastScore NOT reset — see the comment in startBakeLoop.
+    startBakeRecording();   // see its own comment — no-op if already recording
+
+    logSys('✓ bake: sequence bracket open — ' + steps.map(s => s.name + ':' + s.bars).join(' → ')
+           + '  (loops until :bake end) — applying "' + steps[0].name + '" now');
+
+    const applied = applyBakeState(steps[0].name);
+    if (applied) { bakeSeqLog.push('# state: ' + steps[0].name); bakeSeqLog.push(...applied); }
+
+    const scheduleNext = () => {
+        const bars = bakeSeqSteps[bakeSeqIndex].bars;
+        bakeLoopTimer = setTimeout(() => {
+            bakeAttempt++;
+            if (bakeEndQueued) { stopBakeLoop(true); return; }
+
+            bakeSeqIndex = (bakeSeqIndex + 1) % bakeSeqSteps.length;
+            const next = bakeSeqSteps[bakeSeqIndex];
+            const cmds = applyBakeState(next.name);
+            if (cmds) { bakeSeqLog.push('# state: ' + next.name); bakeSeqLog.push(...cmds); }
+            logSys('↻ bake: checkpoint ' + bakeAttempt + ' — handed off to state "' + next.name
+                   + '"  (' + next.bars + ' bars) — :scoreTransition rates this cut, :score rates the state');
+
+            scheduleNext();
+        }, barsToMs(bars));
+    };
+    scheduleNext();
 }
 
 function stopBakeLoop(store) {
     if (bakeLoopTimer) { clearInterval(bakeLoopTimer); bakeLoopTimer = null; }
     bakeSessionActive = false;
     bakeEndQueued     = false;
+    const wasSequence = !!bakeSeqSteps;
+    // Stop (and, if aborted, discard) whatever recording this bracket owns.
+    // Must run before bakeSessionId gets nulled below, and before the
+    // snapshot object is built so audioFile can be attached to it.
+    const audioFile = stopBakeRecording(store);
 
     if (store && bakeSessionLabel) {
-        const snapshot = {
+        const snapshot = wasSequence ? {
+            bakeSessionId:    bakeSessionId,
             intent:           bakeSessionLabel,
-            cricket_cmds:     bakeFirstCmds || bakeCricketCmds.slice(),
+            cricket_cmds:     [],   // no single Cricket call in sequence mode — see bakeSeqLog below
             user_corrections: bakeUserCmds.slice(),
-            final_cmds:       [...(bakeFirstCmds || bakeCricketCmds), ...bakeUserCmds],
+            // The assembled timeline itself: "# state: x" markers + that state's commands, in
+            // handoff order — NOT deduped, each state legitimately needs its own conflicting
+            // values preserved (e.g. setDirPref D +1 for rise, D -1 for drop; collapsing across
+            // states would destroy exactly the distinction that makes them different states).
+            // Only the trailing live corrections (not yet tied to one particular state) get
+            // resolved among themselves. This is the (intent → multi-phase command sequence)
+            // pair convert_bakes.py can fine-tune Cricket on.
+            final_cmds:       [...bakeSeqLog, ...resolveComportment(bakeUserCmds)],
             attempts:         bakeAttempt,
+            audioFile:        audioFile,   // recorded clip of this bracket, or null — see LEARN MODE
+        } : {
+            bakeSessionId:    bakeSessionId,   // joins this Cricket example to any
+                                                // :score entries logged during the
+                                                // same bracket (training_log_vertical.jsonl)
+            intent:           bakeSessionLabel,
+            cricket_cmds:     bakeFirstCmds || bakeCricketCmds.slice(),   // raw, unresolved — the
+                                                // "before" side of the correction-delta training
+                                                // signal (see convert_bakes.py's docstring)
+            user_corrections: bakeUserCmds.slice(),
+            // bakeComportment is already the live, resolved, EDITED recipe — kept current the
+            // whole bracket by upsertComportment() (Cricket's cmds, your corrections) and by
+            // :bake edit/:bake remove directly. No separate resolve pass needed here, and a
+            // :bake remove really means gone, not just superseded. This is what gets saved when
+            // :bake end <name> is used, and what Cricket trains toward.
+            final_cmds:       bakeComportment.slice(),
+            attempts:         bakeAttempt,
+            audioFile:        audioFile,   // recorded clip of this bracket, or null — see LEARN MODE
         };
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'bake', ...snapshot }));
         }
-        logSys('🫳 bake end — "' + bakeSessionLabel + '"  attempts: ' + bakeAttempt
-               + '  stored first + last attempt');
+        logSys('✓ bake end — "' + bakeSessionLabel + '"  attempts: ' + bakeAttempt
+               + (wasSequence ? '  stored assembled sequence' : '  stored first + last attempt')
+               + (audioFile ? '  · audio: ' + audioFile : ''));
+
+        // Always saves — name defaults to the prompt itself (naming is only
+        // required when you want a short, space-free handle for :bake sequence).
+        const saveName = bakeEndSaveName || bakeSessionLabel;
+        if (saveName) {
+            const ok = saveBakeState(saveName, snapshot.final_cmds, bakeSessionId);
+            if (ok) {
+                const seqHint = /\s/.test(saveName)
+                    ? ' — give it a short name (:bake end <name>) before using :bake sequence, spaces aren\'t allowed there'
+                    : ' — use :bake sequence ' + saveName + ':<bars> to schedule it';
+                logSys('✓ saved as state "' + saveName + '"  (' + snapshot.final_cmds.length + ' commands)' + seqHint);
+            }
+        }
     } else {
         logSys('bake aborted — nothing stored');
     }
+    bakeSessionId = null;   // any :score after this point is untagged, same as pre-bracket
+    bakeEndSaveName = null;
+    bakeSeqSteps    = null;
+    bakeSeqLog      = [];
 }
+
+// ── LEARN MODE ───────────────────────────────────────────────────────────────
+// The training screen (^T / :train) — the peer of playback, not a takeover
+// of it (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES/
+// PLAYBACK_HEADER_BOXES) — for everything to do with training Cricket rather
+// than performing. Its own sub-menu, learnView, picks between two views
+// (:train training / :train review — switches take effect immediately, and
+// also enter Learn mode if you weren't already in it):
+//
+//   'training' — the LIVE bake bracket: same :bake start/show/edit/end/
+//                abort commands that already work from Playback (those
+//                aren't gated by appMode — see handleInput's :bake block),
+//                just with somewhere to actually SEE the bracket's status
+//                while you're not looking at the header cluster's bakeInfoBox
+//                (which Learn mode hides along with the rest of
+//                PLAYBACK_HEADER_BOXES). playBox (the 4-channel waveforms)
+//                stays up here too — a live bracket really is live.
+//
+//   'review'   — pages back through what's already been baked, off the
+//                clock, over two sources:
+//                  'bakes'  — training_log.jsonl, one entry per :bake
+//                             session (intent, Cricket's raw attempt, your
+//                             corrections, final_cmds — what convert_bakes.py
+//                             actually fine-tunes Cricket on).
+//                  'states' — bake_states.json, the named, reusable recipes
+//                             saved by :bake end <name> (see BAKE STATES
+//                             above). Not used for fine-tuning at all
+//                             (:bake sequence is the only consumer), so
+//                             approve/exclude don't apply — only editing does.
+//                Default view on entry — reviewing what's already there is
+//                the more common reason to open Learn mode than starting a
+//                fresh bracket. playBox is replaced by reviewWaveformBox
+//                here — the recorded clip's own waveform, not the live
+//                engine's current (unrelated) state — see
+//                updateReviewWaveformBox().
+//
+// Every action here is a typed :train command (see handleInput), same as
+// the rest of this app — nothing hijacks inputBox's key handling, so there's
+// no risk to the live performance controls (see CURSOR-AWARE INPUT EDITING).
+const TRAINING_LOG_PATH = path.join(DATA_DIR, 'training_log.jsonl');
+const RECORDINGS_DIR    = path.join(DATA_DIR, 'recordings');
+
+let appMode        = 'playback'; // 'playback' | 'learn'
+let learnView       = 'review';   // 'training' | 'review' — sub-menu within Learn mode
+let reviewSource    = 'bakes';    // 'bakes' | 'states' — only meaningful in the 'review' view
+let reviewIndex     = 0;          // index into reviewEntries
+let reviewEntries   = [];         // cached list for the current source, newest first
+let reviewAudioProc = null;       // spawned afplay/aplay child, or null while nothing's playing
+let reviewPlayStartTime = 0;      // Date.now() when reviewAudioProc was spawned — playhead math below
+
+// The recording's waveform, cached by file path so switching entries or
+// re-rendering on every 100ms tick (see the review-waveform block in
+// render()) doesn't re-parse the WAV each time — only when currentAudioPath()
+// actually changes. env is a 0-100 amplitude-per-bucket array, same shape
+// waveforms.json's precomputed envelopes use, so it can reuse waveGlyphs().
+// null env means "no audio for this entry" (missing file, unsupported/
+// unparseable WAV, or nothing recorded) — the bar falls back to a flat line.
+let reviewWaveformCache = { path: null, env: null, durationMs: 0 };
+const REVIEW_WAVE_BUCKETS = 200; // resampled to actual bar width by waveGlyphs() anyway
+
+// Parse a WAV file's fmt/data chunks directly (no external deps/binaries) —
+// handles 8/16/24/32-bit PCM int and 32-bit float, mono or multi-channel,
+// which covers whatever Max's sfrecord~ (the actual writer — see ws_server.js's
+// 'record' command) is configured to output. Returns null on anything it
+// can't parse; callers treat that the same as "no audio" rather than crashing.
+function computeWavInfo(filePath, buckets) {
+    const buf = fs.readFileSync(filePath);
+    if (buf.length < 44 || buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WAVE') {
+        return null;
+    }
+    let offset = 12, fmt = null, dataOffset = -1, dataLen = 0;
+    while (offset + 8 <= buf.length) {
+        const chunkId   = buf.toString('ascii', offset, offset + 4);
+        const chunkLen  = buf.readUInt32LE(offset + 4);
+        const bodyStart = offset + 8;
+        if (chunkId === 'fmt ') {
+            fmt = {
+                audioFormat:   buf.readUInt16LE(bodyStart),
+                numChannels:   buf.readUInt16LE(bodyStart + 2),
+                sampleRate:    buf.readUInt32LE(bodyStart + 4),
+                bitsPerSample: buf.readUInt16LE(bodyStart + 14),
+            };
+        } else if (chunkId === 'data') {
+            dataOffset = bodyStart;
+            dataLen    = Math.min(chunkLen, buf.length - bodyStart);
+        }
+        offset = bodyStart + chunkLen + (chunkLen % 2); // chunks are word-aligned
+    }
+    if (!fmt || dataOffset < 0 || !fmt.numChannels || !fmt.sampleRate || !fmt.bitsPerSample) return null;
+
+    const { numChannels, sampleRate, bitsPerSample, audioFormat } = fmt;
+    const bytesPerSample = bitsPerSample / 8;
+    const frameSize       = bytesPerSample * numChannels;
+    const totalFrames     = Math.floor(dataLen / frameSize);
+    if (totalFrames <= 0) return null;
+    const durationMs = Math.round((totalFrames / sampleRate) * 1000);
+
+    const readSample = (frameIdx, ch) => {
+        const base = dataOffset + frameIdx * frameSize + ch * bytesPerSample;
+        if (audioFormat === 3 && bitsPerSample === 32) return buf.readFloatLE(base); // IEEE float
+        if (bitsPerSample === 16) return buf.readInt16LE(base) / 32768;
+        if (bitsPerSample === 24) {
+            let v = buf[base] | (buf[base + 1] << 8) | (buf[base + 2] << 16);
+            if (v & 0x800000) v -= 0x1000000;
+            return v / 8388608;
+        }
+        if (bitsPerSample === 32) return buf.readInt32LE(base) / 2147483648;
+        if (bitsPerSample === 8)  return (buf.readUInt8(base) - 128) / 128;
+        return 0;
+    };
+
+    const env = new Array(buckets).fill(0);
+    const framesPerBucket = Math.max(1, Math.floor(totalFrames / buckets));
+    for (let b = 0; b < buckets; b++) {
+        const startFrame = b * framesPerBucket;
+        const endFrame    = Math.min(totalFrames, startFrame + framesPerBucket);
+        // Stride through each bucket rather than reading every frame — plenty
+        // of resolution for a peak read without an O(all samples) scan on a
+        // long recording.
+        const stride = Math.max(1, Math.floor((endFrame - startFrame) / 200));
+        let peak = 0;
+        for (let f = startFrame; f < endFrame; f += stride) {
+            for (let ch = 0; ch < numChannels; ch++) {
+                const v = Math.abs(readSample(f, ch));
+                if (v > peak) peak = v;
+            }
+        }
+        env[b] = Math.round(Math.min(1, peak) * 100);
+    }
+    return { env, durationMs };
+}
+
+// Refreshes reviewWaveformCache to match whatever currentAudioPath() returns
+// right now — no-ops (cheap) once it's already loaded for that path, so this
+// is safe to call every render() tick as well as on entry change.
+function loadReviewWaveform() {
+    const p = currentAudioPath();
+    if (p === reviewWaveformCache.path) return;
+    reviewWaveformCache = { path: p, env: null, durationMs: 0 };
+    if (!p || !fs.existsSync(p)) return;
+    try {
+        const info = computeWavInfo(p, REVIEW_WAVE_BUCKETS);
+        if (info) { reviewWaveformCache.env = info.env; reviewWaveformCache.durationMs = info.durationMs; }
+    } catch (e) { /* leave env null — falls back to the flat placeholder line */ }
+}
+
+// One continuous timeline, played portion in bright-white, the rest grey —
+// same visual language sliceBar() already uses for the played/unplayed split
+// within a live slice window, just without the bracket markers since this is
+// the whole recording, not one slice inside a bigger track.
+function recordingWaveformLine(env, progress, width) {
+    if (!env || !env.length) return '{grey-fg}' + '─'.repeat(Math.max(0, width)) + '{/grey-fg}';
+    const playedCols = Math.max(0, Math.min(width, Math.round(progress * width)));
+    return '{bright-white-fg}' + waveGlyphs(env, 0, playedCols, width) + '{/bright-white-fg}'
+         + '{grey-fg}'         + waveGlyphs(env, playedCols, width, width) + '{/grey-fg}';
+}
+
+// Redraws reviewWaveformBox from reviewWaveformCache + however far into
+// playback reviewAudioProc currently is. Called from render() every tick
+// while learnView === 'review' (see playTop's own block), so the playhead
+// advances smoothly without a dedicated interval of its own.
+function updateReviewWaveformBox(width) {
+    loadReviewWaveform();
+    const { env, durationMs } = reviewWaveformCache;
+    const elapsedMs = reviewAudioProc ? Math.min(durationMs, Date.now() - reviewPlayStartTime) : 0;
+    const progress  = durationMs > 0 ? elapsedMs / durationMs : 0;
+    const status = !env
+        ? '{grey-fg}(no recorded audio for this entry){/grey-fg}'
+        : (reviewAudioProc ? '{bright-white-fg}▶ playing{/bright-white-fg}' : '{grey-fg}stopped{/grey-fg}')
+          + '  {grey-fg}' + fmtMs(elapsedMs) + ' / ' + fmtMs(durationMs) + '{/grey-fg}';
+    reviewWaveformBox.setContent(
+        '{bright-white-fg}recording{/bright-white-fg}   ' + status + '\n' +
+        recordingWaveformLine(env, progress, Math.max(4, width))
+    );
+}
+
+// How many lines the Learn panel's current content actually needs — kept in
+// sync by renderTrainingView() every time content changes, and read back by
+// learnPanelHeight() so the panel (and therefore where the waveforms start
+// right below it) shrinks to fit a short bake/entry instead of always
+// reserving its full bounded-fraction cap. Starts at a reasonable guess;
+// renderTrainingView() re-derives layout immediately after updating this,
+// so it's never actually shown stale.
+let learnPanelContentLines = 10;
+
+function loadTrainingLog() {
+    try {
+        return fs.readFileSync(TRAINING_LOG_PATH, 'utf8')
+            .split('\n')
+            .map(l => l.trim())
+            .filter(Boolean)
+            .map(l => { try { return JSON.parse(l); } catch (e) { return null; } })
+            .filter(Boolean);
+    } catch (e) { return []; }
+}
+
+function saveTrainingLog(entries) {
+    try {
+        const body = entries.map(e => JSON.stringify(e)).join('\n') + (entries.length ? '\n' : '');
+        fs.writeFileSync(TRAINING_LOG_PATH, body, 'utf8');
+        return true;
+    } catch (e) {
+        logSys('review: failed to save training_log.jsonl — ' + e.message);
+        return false;
+    }
+}
+
+// Re-loads the current source fresh from disk. _idx (bakes only) records
+// each entry's position in loadTrainingLog()'s file-order array, so an edit
+// later can find its way back without assuming sort order is stable — see
+// mutateCurrentBakeEntry.
+function refreshReviewEntries() {
+    if (reviewSource === 'bakes') {
+        reviewEntries = loadTrainingLog()
+            .map((e, i) => ({ ...e, _idx: i }))
+            .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+    } else {
+        const states = loadBakeStates();
+        reviewEntries = Object.keys(states)
+            .map(name => ({ _name: name, ...states[name] }))
+            .sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+    }
+    if (reviewIndex >= reviewEntries.length) reviewIndex = Math.max(0, reviewEntries.length - 1);
+}
+
+function updateBakeStateCommands(name, commands) {
+    const states = loadBakeStates();
+    if (!states[name]) return false;
+    states[name].commands  = commands.slice();
+    states[name].editedAt  = new Date().toISOString();
+    try {
+        fs.writeFileSync(BAKE_STATES_PATH, JSON.stringify(states, null, 2), 'utf8');
+        return true;
+    } catch (e) {
+        logSys('review: failed to save state — ' + e.message);
+        return false;
+    }
+}
+
+// Re-reads training_log.jsonl fresh (appends only ever add new lines at the
+// end, so an _idx captured at listing time stays valid), applies `mutator`
+// to the target entry in place, writes the whole file back, then refreshes
+// the in-memory list so the review UI reflects the change immediately.
+function mutateCurrentBakeEntry(mutator) {
+    const cur = reviewEntries[reviewIndex];
+    if (!cur) { logSys('review: nothing selected'); return false; }
+    const all = loadTrainingLog();
+    if (cur._idx == null || !all[cur._idx]) { logSys('review: could not locate that entry on disk'); return false; }
+    mutator(all[cur._idx]);
+    const ok = saveTrainingLog(all);
+    if (ok) refreshReviewEntries();
+    return ok;
+}
+
+function reviewEntryLabel(e) {
+    if (reviewSource === 'bakes') {
+        const flag   = e.excluded ? '✗' : ' ';
+        const aud    = e.audioFile ? '♪' : ' ';
+        const when   = (e.timestamp || '').slice(0, 16).replace('T', ' ');
+        const intent = (e.intent || '(no intent)').replace(/\s+/g, ' ').slice(0, 40);
+        return `${flag}${aud} ${when}  ${intent}`;
+    }
+    const aud  = e.sourceBakeSessionId ? '♪' : ' ';
+    const when = (e.savedAt || '').slice(0, 16).replace('T', ' ');
+    return `${aud} ${when}  ${e._name}`;
+}
+
+// Resolves the actual audio file for whatever's currently selected. States
+// have no recording of their own (see the section comment) — fall back to
+// the bake that produced them, if it's still in training_log.jsonl.
+function currentAudioPath() {
+    const e = reviewEntries[reviewIndex];
+    if (!e) return null;
+    if (reviewSource === 'bakes') {
+        return e.audioFile ? path.join(RECORDINGS_DIR, e.audioFile) : null;
+    }
+    if (!e.sourceBakeSessionId) return null;
+    const src = loadTrainingLog().find(b => b.bakeSessionId === e.sourceBakeSessionId);
+    return (src && src.audioFile) ? path.join(RECORDINGS_DIR, src.audioFile) : null;
+}
+
+function reviewPlay() {
+    const p = currentAudioPath();
+    if (!p) { logSys('review: no recorded audio for this ' + (reviewSource === 'bakes' ? 'session' : 'state')); return; }
+    if (!fs.existsSync(p)) { logSys('review: audio file missing on disk — ' + p); return; }
+    reviewStop();
+    const player = process.platform === 'darwin' ? 'afplay'
+                 : process.platform === 'linux'  ? 'aplay'
+                 : null;
+    if (!player) { logSys('review: audio playback isn\'t supported on this platform'); return; }
+    try {
+        reviewAudioProc = spawn(player, [p]);
+        reviewPlayStartTime = Date.now(); // drives the waveform playhead — see updateReviewWaveformBox()
+        reviewAudioProc.on('exit', () => { reviewAudioProc = null; renderTrainingView(); });
+        reviewAudioProc.on('error', e => { logSys('review: playback failed — ' + e.message); reviewAudioProc = null; renderTrainingView(); });
+        logSys('▶ playing ' + path.basename(p));
+    } catch (e) {
+        logSys('review: playback failed — ' + e.message);
+        reviewAudioProc = null;
+    }
+    renderTrainingView();
+}
+
+function reviewStop() {
+    if (!reviewAudioProc) return;
+    try { reviewAudioProc.kill(); } catch (e) {}
+    reviewAudioProc = null;
+    renderTrainingView();
+}
+
+// Absolute jump — reviewMove()'s relative next/prev below builds on this.
+function reviewGoto(i) {
+    if (!reviewEntries.length) return;
+    reviewIndex = Math.max(0, Math.min(reviewEntries.length - 1, i));
+    reviewStop(); // don't let the previous session's audio keep playing under a new one
+    renderTrainingView();
+}
+
+function reviewMove(delta) {
+    if (!reviewEntries.length) return;
+    reviewGoto(reviewIndex + delta);
+}
+
+function reviewSetSource(src) {
+    if (src !== 'bakes' && src !== 'states') { logSys('usage: :train source bakes|states'); return; }
+    reviewSource = src;
+    reviewIndex  = 0;
+    reviewStop();
+    refreshReviewEntries();
+    renderTrainingView();
+}
+
+function reviewApprove() {
+    if (reviewSource !== 'bakes') { logSys('review: states aren\'t used for training — nothing to approve'); return; }
+    if (mutateCurrentBakeEntry(e => { e.excluded = false; })) logSys('✓ kept for training');
+}
+
+function reviewExclude() {
+    if (reviewSource !== 'bakes') { logSys('review: states aren\'t used for training — edit the commands directly instead'); return; }
+    if (mutateCurrentBakeEntry(e => { e.excluded = true; })) logSys('✗ excluded from training');
+}
+
+function reviewEditLine(idxStr, rest) {
+    const idx = parseInt(idxStr, 10) - 1;
+    const cmd = (rest || []).join(' ').trim();
+    if (isNaN(idx) || idx < 0 || !cmd) { logSys('usage: :train edit <n> <command...>'); return; }
+    if (reviewSource === 'bakes') {
+        let bad = false;
+        const ok = mutateCurrentBakeEntry(e => {
+            e.final_cmds = e.final_cmds || [];
+            if (idx >= e.final_cmds.length) { bad = true; return; }
+            e.final_cmds[idx] = cmd;
+        });
+        if (bad) logSys('review: line ' + (idx + 1) + ' doesn\'t exist');
+        else if (ok) logSys('✓ line ' + (idx + 1) + ' updated');
+    } else {
+        const cur = reviewEntries[reviewIndex];
+        if (!cur) { logSys('review: nothing selected'); return; }
+        const cmds = (cur.commands || []).slice();
+        if (idx >= cmds.length) { logSys('review: line ' + (idx + 1) + ' doesn\'t exist'); return; }
+        cmds[idx] = cmd;
+        if (updateBakeStateCommands(cur._name, cmds)) { refreshReviewEntries(); renderTrainingView(); logSys('✓ line ' + (idx + 1) + ' updated'); }
+    }
+}
+
+function reviewRemoveLine(idxStr) {
+    const idx = parseInt(idxStr, 10) - 1;
+    if (isNaN(idx) || idx < 0) { logSys('usage: :train remove <n>'); return; }
+    if (reviewSource === 'bakes') {
+        let bad = false;
+        const ok = mutateCurrentBakeEntry(e => {
+            e.final_cmds = e.final_cmds || [];
+            if (idx >= e.final_cmds.length) { bad = true; return; }
+            e.final_cmds.splice(idx, 1);
+        });
+        if (bad) logSys('review: line ' + (idx + 1) + ' doesn\'t exist');
+        else if (ok) logSys('✓ line ' + (idx + 1) + ' removed');
+    } else {
+        const cur = reviewEntries[reviewIndex];
+        if (!cur) { logSys('review: nothing selected'); return; }
+        const cmds = (cur.commands || []).slice();
+        if (idx >= cmds.length) { logSys('review: line ' + (idx + 1) + ' doesn\'t exist'); return; }
+        cmds.splice(idx, 1);
+        if (updateBakeStateCommands(cur._name, cmds)) { refreshReviewEntries(); renderTrainingView(); logSys('✓ line ' + (idx + 1) + ' removed'); }
+    }
+}
+
+function reviewAddLine(rest) {
+    const cmd = (rest || []).join(' ').trim();
+    if (!cmd) { logSys('usage: :train add <command...>'); return; }
+    if (reviewSource === 'bakes') {
+        const ok = mutateCurrentBakeEntry(e => {
+            e.final_cmds = e.final_cmds || [];
+            e.final_cmds.push(cmd);
+        });
+        if (ok) logSys('✓ line added');
+    } else {
+        const cur = reviewEntries[reviewIndex];
+        if (!cur) { logSys('review: nothing selected'); return; }
+        const cmds = (cur.commands || []).slice();
+        cmds.push(cmd);
+        if (updateBakeStateCommands(cur._name, cmds)) { refreshReviewEntries(); renderTrainingView(); logSys('✓ line added'); }
+    }
+}
+
+function renderReviewDetail(e) {
+    if (!e) {
+        return '{grey-fg}nothing to review yet — ' + (reviewSource === 'bakes'
+            ? 'bake something first (:bake start ... → :bake end)'
+            : 'no named states saved yet (:bake end <name>)') + '{/grey-fg}';
+    }
+    const lines = [];
+    if (reviewSource === 'bakes') {
+        lines.push('{bright-white-fg}intent:{/bright-white-fg}  ' + (e.intent || '(none)'));
+        lines.push('{grey-fg}' + (e.timestamp || '') + '   track: ' + (e.track || '--')
+            + '   bpm: ' + (e.bpm || '--') + '   attempts: ' + (e.attempts == null ? '--' : e.attempts) + '{/grey-fg}');
+        lines.push('{grey-fg}status: ' + (e.excluded ? '{/grey-fg}{bright-white-fg}✗ excluded from training{/bright-white-fg}' : '{/grey-fg}✓ kept for training')
+            + '{grey-fg}   audio: ' + (e.audioFile ? e.audioFile : '(none recorded)') + '{/grey-fg}');
+        lines.push('');
+        // cricket's attempt + your corrections share one row (":train"
+        // panel real estate is tight) — each is usually 0-1 short commands,
+        // so joining with "; " reads fine; genuinely long lists just wrap.
+        const cricketStr    = (e.cricket_cmds && e.cricket_cmds.length) ? e.cricket_cmds.join('; ') : '(none)';
+        const correctionStr = (e.user_corrections && e.user_corrections.length) ? e.user_corrections.join('; ') : '(none)';
+        lines.push('{bright-white-fg}cricket\'s attempt:{/bright-white-fg} ' + cricketStr
+          + '    {bright-white-fg}corrections:{/bright-white-fg} ' + correctionStr);
+        lines.push('');
+        lines.push('{bright-white-fg}final_cmds{/bright-white-fg} {grey-fg}(what Cricket trains toward — :train edit/remove/add <n>){/grey-fg}');
+        const fc = e.final_cmds || [];
+        (fc.length ? fc : ['{grey-fg}(empty){/grey-fg}']).forEach((c, i) => lines.push('  ' + String(i + 1).padStart(2) + '  ' + c));
+    } else {
+        lines.push('{bright-white-fg}state:{/bright-white-fg}  ' + e._name);
+        lines.push('{grey-fg}saved: ' + (e.savedAt || '--') + (e.editedAt ? '   edited: ' + e.editedAt : '')
+            + '   from bake: ' + (e.sourceBakeSessionId || '--') + '{/grey-fg}');
+        lines.push('');
+        lines.push('{bright-white-fg}commands{/bright-white-fg} {grey-fg}(:train edit/remove/add <n>){/grey-fg}');
+        const cmds = e.commands || [];
+        (cmds.length ? cmds : ['{grey-fg}(empty){/grey-fg}']).forEach((c, i) => lines.push('  ' + String(i + 1).padStart(2) + '  ' + c));
+    }
+    return lines.join('\n');
+}
+
+// Inline training/review indicator, next to TRAIN/source/session in
+// reviewHeaderBox's own line — bright-white for whichever sub-view is
+// current, grey for the other (user: "keep in the header next to TRAIN
+// source and session the current opened tab, the other, not opened, in
+// grey"). The actual switching now happens via the footer chips/keys
+// (^R — see renderFooter()/toggleLearnSubView()); this is just the at-a-
+// glance status readout.
+function learnSubMenuLine() {
+    const seg = (label, active) => active
+        ? '{bright-white-fg}' + label + '{/bright-white-fg}'
+        : '{grey-fg}' + label + '{/grey-fg}';
+    return seg('Training', learnView === 'training') + '  ' + seg('Review', learnView === 'review');
+}
+
+// Shared by the :train training|review command, the ^R key (see
+// toggleLearnSubView()), and the footer chip's label — all just need
+// "switch sub-view, entering Learn mode first if we weren't already there."
+function switchLearnView(view) {
+    if (appMode !== 'learn') enterLearnMode();
+    learnView = view;
+    reflowLearn();
+    renderTrainingView();
+    renderFooter();
+    screen.render();
+}
+
+function renderTrainingView() {
+    if (appMode !== 'learn') return;
+
+    if (learnView === 'training') {
+        // Live bracket view — reviewListBox has nothing to list here (see
+        // reflowLearn(), which hides it and gives reviewDetailBox the full
+        // width instead), so this only touches header + detail.
+        const status = bakeSessionActive
+            ? '{bright-white-fg}[BRACKET OPEN]{/bright-white-fg}'
+            : '{grey-fg}[no bracket open]{/grey-fg}';
+        reviewHeaderBox.setContent(
+            '{bright-white-fg}TRAIN{/bright-white-fg}  ' + learnSubMenuLine() + '   ' + status
+        );
+        const lines = bakeInfoLines().slice();
+        if (!bakeSessionActive) {
+            lines.push('');
+            lines.push('{grey-fg}:bakeloop <bars>  then  :bake start <prompt>  to open a bracket{/grey-fg}');
+            lines.push('{grey-fg}(same commands as Playback — :bake works from either mode){/grey-fg}');
+        }
+        reviewDetailBox.setContent(lines.join('\n'));
+        learnPanelContentLines = lines.length;
+        relayoutLearnPanel();
+        return;
+    }
+
+    const total = reviewEntries.length;
+    reviewHeaderBox.setContent(
+        '{bright-white-fg}TRAIN{/bright-white-fg}  ' + learnSubMenuLine()
+        + '   {grey-fg}source:{/grey-fg} ' + reviewSource
+        + '  {grey-fg}session{/grey-fg} ' + (total ? (reviewIndex + 1) : 0) + '/' + total
+        + (reviewAudioProc ? '  {bright-white-fg}▶ playing{/bright-white-fg}' : '')
+    );
+    const items = reviewEntries.map(e => reviewEntryLabel(e));
+    reviewListBox.setItems(items.length ? items : ['{grey-fg}(none yet){/grey-fg}']);
+    if (total) reviewListBox.select(reviewIndex);
+    const detailText = renderReviewDetail(reviewEntries[reviewIndex]);
+    reviewDetailBox.setContent(detailText);
+    // The list needs enough rows to show every entry too, not just whatever
+    // the detail text needs — otherwise a short detail (e.g. "(none)"
+    // corrections) would squeeze the session list down to a sliver.
+    learnPanelContentLines = Math.max(detailText.split('\n').length, items.length);
+    relayoutLearnPanel();
+}
+
+// Content height just changed (learnPanelContentLines was updated right
+// before this is called) — re-run render() first so statusH/playTop pick up
+// the new learnPanelHeight() this same tick (same staleness this file
+// already guards against elsewhere — see enterLearnMode()'s render()-before-
+// reflowLearn() comment), then reflowLearn() to reposition the panel boxes
+// off that same fresh number, then repaint.
+function relayoutLearnPanel() {
+    render();
+    reflowLearn();
+    screen.render();
+}
+
+// learnPanelHeight()/learnPanelBottom() — the Learn panel (reviewHeaderBox +
+// reviewListBox/reviewDetailBox) lives IN the header cluster now, replacing
+// track/key/win/slices/LUFSs/quant/genre/beats (see sLines' appMode
+// branch above) rather than sitting below playBox — same spot bakeInfoBox/
+// tipBox/entropyBox/master normally occupy, all of which are hidden in
+// Learn mode (PLAYBACK_HEADER_BOXES). Both render() (which needs the bottom edge
+// to place playBox) and reflowLearn() (which needs the same numbers to
+// actually size the boxes) call these, so the two can never disagree.
+//
+// Content-driven within a bounded fraction of the screen (not a flat
+// fraction): a short bake/entry (a couple lines, "(none)" corrections, no
+// bracket open) shouldn't reserve up to 40% of the header cluster and push
+// the waveforms way down — see learnPanelContentLines, kept current by
+// renderTrainingView() every time content changes.
+function learnPanelHeight() {
+    const h   = screen.height - FOOTER_H;
+    const cap = Math.max(10, Math.min(24, Math.floor(h * 0.4)));
+    return Math.max(6, Math.min(cap, learnPanelContentLines + 2));
+}
+// No "+ 1" blank row here (there used to be one) — user: "move the whole
+// TRAIN section one space up... so it aligns with the playback page header
+// height." Playback's own secondary panels (bakeInfoBox/tipBox/masterVuBox)
+// dock directly at their own fixed header rows (MASTER_VU_TOP/TRAIN_TIP_TOP,
+// both 3) rather than one row below statusH — this panel now does the same,
+// starting right at statusH instead of one row under it.
+function learnPanelTop()    { return statusH; }
+function learnPanelBodyTop(){ return learnPanelTop() + 2; } // header row + one blank row
+function learnPanelBodyH()  { return Math.max(3, learnPanelHeight() - 2); }
+function learnPanelBottom() { return learnPanelBodyTop() + learnPanelBodyH(); }
+
+function reflowLearn() {
+    // w = contentW() (screen width minus SIDE_TOTAL_W), not the raw screen
+    // width — master VU/spatial now stay visible on the training screen too
+    // (see MASTER_METER_BOXES, user: "in the training page, dont forget to
+    // show the VU/spat meters too"), docked at the same right-hand columns
+    // they always use. Same margin CONTENT_W already reserves for the chat
+    // overlay boxes, applied here so reviewHeaderBox/reviewListBox/
+    // reviewDetailBox stop short of the right edge instead of running under
+    // them.
+    const w = contentW();
+    const top = learnPanelTop();
+    reviewHeaderBox.top = top;
+    reviewHeaderBox.width = w;
+
+    const bodyTop = learnPanelBodyTop();
+    const bodyH   = learnPanelBodyH();
+
+    if (learnView === 'training') {
+        // No list to browse in the live-bracket view — reviewDetailBox
+        // takes the full width instead (see renderTrainingView()'s
+        // training branch, which only ever touches header + detail).
+        reviewListBox.hide();
+        reviewDetailBox.left   = 0;
+        reviewDetailBox.width  = w;
+    } else {
+        const listW = Math.max(24, Math.min(48, Math.floor(w * 0.32)));
+        // Just the named, scrollable list — no numbered quick-tab strip
+        // above it any more (user: "there cant be a hundred boxes with
+        // numbers above the list" — a fixed-width row of number tabs is a
+        // toy at 5 sessions and useless at 100+; reviewListBox already
+        // scrolls/selects fine on its own at any count).
+        reviewListBox.show();
+        reviewListBox.top    = bodyTop;
+        reviewListBox.width  = listW;
+        reviewListBox.height = Math.max(1, bodyH);
+        reviewDetailBox.left  = listW + 1;
+        reviewDetailBox.width = w - listW - 1;
+    }
+    reviewDetailBox.top    = bodyTop;
+    reviewDetailBox.height = bodyH;
+}
+
+function enterLearnMode() {
+    if (appMode === 'learn') return;
+    // Chat (if open) is left exactly as it was — ^T only ever switches
+    // which SCREEN is underneath the overlay, never touches the overlay
+    // itself (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES).
+    appMode = 'learn';
+    refreshReviewEntries();
+    reviewHeaderBox.show(); reviewDetailBox.show(); // reviewListBox: reflowLearn() decides, per learnView
+    // render() FIRST, not after — it's what shrinks statusH down to Learn
+    // mode's 2-row header (sLines' appMode branch) AND applies the SCREEN
+    // VISIBILITY rules (hides PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES
+    // now that appMode is 'learn' — no separate forEach needed here
+    // anymore). reflowLearn() sizes the review boxes off THAT statusH (via
+    // learnPanelTop/BodyH), and playTop (set inside render(), every tick)
+    // is derived from the exact same numbers — but only once render() has
+    // actually run with appMode already 'learn'. Calling reflowLearn()
+    // first, off the stale 5-row statusH from the moment before this
+    // function ran, sized the panel a few rows too tall — that overlap ate
+    // the topmost stem's rows (vocals, first in the stems array) as soon as
+    // the NEXT render() tick moved playBox up to the (correct, smaller)
+    // statusH.
+    render();
+    reflowLearn();
+    renderTrainingView();
+    renderFooter();
+    screen.render();
+}
+
+function exitLearnMode() {
+    if (appMode !== 'learn') return;
+    reviewStop();
+    appMode = 'playback';
+    reviewHeaderBox.hide(); reviewListBox.hide(); reviewDetailBox.hide();
+    // PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES reappear on their own —
+    // see the SCREEN VISIBILITY block in render(), which this call runs
+    // (render(), not just reflow() — same statusH-staleness reasoning as
+    // enterLearnMode() above, just in reverse).
+    render();
+    renderFooter();
+    screen.render();
+}
+
+function toggleLearnMode() { appMode === 'learn' ? exitLearnMode() : enterLearnMode(); }
 
 function ts() {
   const now = new Date();
@@ -2188,184 +4869,457 @@ function logSys(text) {
 }
 
 // Zone 3 (lang) and Zone 4 (cmd) helpers — defined after reflow() above
-const _C = 60;  // description column
-const _r = (sig, desc) => sig.padEnd(_C) + desc;
+// _r used to bake sig+desc into one fixed-width-padded string (padEnd to a
+// gutter column). That made every row's width sig.length-independent of the
+// column it eventually landed in, so a handful of long rows (formantShift,
+// setLearnedWeight, the tipping section's long tip-open signature) could
+// each single-handedly force a whole column — and therefore the whole
+// layout — wider than the terminal, collapsing everything back down to one
+// column (user: "it is too long ... only one big column" — still true even
+// at 160-column-wide terminals with the old fixed-gutter math, since two
+// ~80-char sections in the same layout needed ~164 columns just for 2).
+// _r now just keeps sig/desc apart as data; buildCmdColumns() picks the
+// column width straight from the terminal (see pickCmdColumnLayout()) and
+// lays each row out — and wraps it onto extra lines if it doesn't fit —
+// against THAT width, so column count actually responds to how wide the
+// terminal really is instead of being held hostage by a few long rows.
+const _r = (sig, desc) => ({ sig, desc });
 
-const CMD_LINES = [
-  '',
-  'command list',
-  '── view ──────────────────────────────────────────────────────────────────',
-  ':language — type to expand   ·   :commands — toggle   ·   :chat — toggle',
-  _r(':showState',                               'print current track/params/stem state'),
-  _r(':showCommands',                            'same as :commands — expand/collapse this panel'),
-  _r(':resetPeaks',                              'clear the LUFSs/TP peak-hold markers in the header meters'),
-  '',
-  '── playback ──────────────────────────────────────────────────────────────',
-  ':start  ·  :stop',
-  _r(':applyNow',                                'force ALL 4 stems to reselect immediately — global reroll, not per-stem'),
-  _r(':next [vocals|melody|bass|drums]',         'force-pick next slice now — bare :next hits all unlocked/leader stems; a locked follower advances its leader instead'),
-  _r(':selectSegment vocals|melody|bass|drums',  'queue next slice for stem'),
-  _r(':loop <stem> <bars>',                      'lock stem to looping slice'),
-  _r(':unloop <stem>',                           'release loop on stem'),
-  _r(':unloopAll',                               'release all loops — bars resume normal selection'),
-  _r(':lockSource <leader> <follower...>',       'follower(s) draw from leader\'s source track, applies at each follower\'s next slice — takes 1+ followers'),
-  _r(':lockSource all [leader]',                 'lock every stem to one leader — sequential, no layering'),
-  _r(':unlockSource <stem|all>',                 'release source lock'),
-  _r(':setStemSource <stem|all> <name>',         'pin stem to one source track, applies at next slice (substring match)'),
-  _r(':setStemSource <stem|all> clear',          'release pin'),
-  '',
-  '── index ─────────────────────────────────────────────────────────────────',
-  _r(':buildIndex',                              'rebuild slice index from analysis_library.json'),
-  _r(':loadIndex',                               'load cached index (ebys_index.json) — skips rebuild'),
-  _r(':saveIndex',                               'save current index to cache'),
-  _r(':nextTrack / :prevTrack',                  'browse track bank — shows BPM, key, genre'),
-  _r(':reloadDownbeats',                         'reload downbeats.json into Max'),
-  _r(':info',                                    'dump slicer state to Max console'),
-  _r(':reset',                                   'clear index + stop'),
-  _r(':resetMemory',                             'wipe all analysis JSON (two-step)'),
-  _r(':restartWatcher',                          'restart watch_demucs service (clears processed-file memory)'),
-  _r(':switchSession [name] / :logout',          'no name → session picker; :switchSession <name> jumps straight to that session (skips the picker); :logout returns to the picker'),
-  _r(':bakeloop <bars>',                           'set bake loop window length (default 4 bars)'),
-  _r(':bake start <prompt>',                       'open training bracket — prompt is fed to NL translator, snapshots state, starts looping'),
-  _r(':bake end',                                  'queue close at next loop boundary — stores first + last completed loop'),
-  _r(':bake abort',                                'close bracket immediately — discards everything, releases engine'),
-  _r(':score <-1..1> [overallSection]',            'vertical training — score the current layered combo (which source track each stem is on + how mixed), logged instantly, no session. Auto-attaches each stem\'s tagged section if one exists'),
-  _r(':scoreTransition <-1..1> [stem]',            'horizontal training — score whether the previous→current segment cut flowed well, on one stem or all 4 (default)'),
-  _r(':tag <label> [stem]',                        'tag the bar-range currently playing on stem (default melody) as a structural section — verse/chorus/build/drop/intro/bridge/etc. Intensity computed automatically'),
-  _r(':listSections [track]',                      'print stored structure tags for a source track (default: whatever\'s loaded)'),
-  _r(':trainBias',                                 'fit learned-bias models from accumulated :score/:scoreTransition logs (train_bias.py), then reload into slicer.js'),
-  _r(':reloadBias',                                'reload learned_bias.json into Max without retraining'),
-  _r(':setLearnedWeight <stem|all> <transition|vertical> <0-5>', 'scale how much a learned model influences scoring for a stem — 0 disables it even if loaded'),
-  _r(':resetAll',                                '⚠ wipe everything — stems, uploads, analysis, memory (Y/N)'),
-  _r(':analyzeAll',                              'run genre (essentia) + beats (madmom) on all tracks'),
-  _r(':tagBeats',                                'run madmom beat tagger only'),
-  _r(':setMMT <bars>',                           'momentum window size (reruns tension calc)'),
-  '',
-  '── trigger pads ──────────────────────────────────────────────────────────',
-  _r(':triggerMode <stem|all> 0|1',              '0=continuous  1=stem pauses at slice end, waits for manual fire'),
-  _r(':trigger [stem]',                          'fire next slice for stem (or all paused stems)'),
-  '{grey-fg}  C-1/C-2/C-3/C-4{/grey-fg}   fire vocals/melody/bass/drums from keyboard',
-  '',
-  '── slicing ───────────────────────────────────────────────────────────────',
-  _r(':chunkMode [stem] 0|1',                    'default 0 — play the whole file, loop it, never auto-switch; 1 = bar-chunked slicing (setSegmentBars)'),
-  _r(':skip <stem>',                             'one-shot manual move to a newly-picked file for that stem'),
-  _r(':setSegmentBars [stem] 0.5|1|2|4|8|16|32', 'bars/slice, applies at next slice (also switches that stem into chunkMode 1)'),
-  _r(':returnToBase [stem|all]',                 'snap back to where the original mix would genuinely be by now, and resume full-file from there'),
-  _r(':setStayProb [stem] 0.0–1.0',             '0=jump  1=loop'),
-  _r(':setSrcWeights <bpm> <cohesion> [key]',    'source-track prob weights (key=Camelot harmonic fit, default 0)'),
-  _r(':setQuantize 0|1',                         'bar-locked cuts, applies at next slice'),
-  _r(':setMaxSlices N',                          'cap/stem  0=unlimited'),
-  _r(':setWindow hann|hamming|blackman|triangle|rect', 'FFT window for the pitch shifter (fftin~/fftout~ in ebys-pitch.maxpat) — independent of tempo/karma~'),
-  '',
-  '── tempo ─────────────────────────────────────────────────────────────────',
-  '{grey-fg}  pitch and BPM are the only params that affect already-playing audio directly — everything else waits for the next slice{/grey-fg}',
-  _r(':setFallbackBPM 40–280',                   'fallback tempo — live'),
-  _r(':setGlobalBPM 40–280',                     'BPM override  0=off — live'),
-  '',
-  '── matching ──────────────────────────────────────────────────────────────',
-  _r(':setWeight <stem|all> C|S|E|F|P|H|T 0–5',  'per-stem descriptor weight'),
-  _r(':setMatchProb <stem|all> 0–1',             'per-stem transition tightness (one value, applies to all descriptors)'),
-  _r(':setDirPref <stem|all> C|S|E|F|P|H|T|D -1–1', 'per-stem direction bias  -1/0/1  (D=density: +1 builds, -1 releases)'),
-  _r(':setDirWeight <stem|all> 0–5',             'per-stem direction bias strength'),
-  _r(':wmdScope all|vocals|melody|bass|drums',   'which stem\'s weight/match/dir the header rows show (display only)'),
-  _r(':setTrackWeight vocals|melody|bass|drums', '0–1  stem influence'),
-  _r(':followStem <stem> <target> <weight> …',  'rewire stem to follow another stem\'s descriptors'),
-  _r(':followStem <stem> self',                  'reset stem to read its own descriptors'),
-  _r(':setEntropy 0–1',                          'ORDER↔CHAOS macro — drives matchProb/stayProb/dirWeight at once'),
-  '',
-  '── audio ─────────────────────────────────────────────────────────────────',
-  _r(':fader <stem|all> <0–1>',                 'post-EQ channel level'),
-  _r(':trim <stem|all> <dB>',                   'pre-EQ input gain (-12 to +12)'),
-  _r(':mute <stem|all> 0|1',                    '0=unmute  1=mute'),
-  _r(':solo <stem|all> 0|1',                    '0=off  1=on  (stacks)'),
-  _r(':master <0–1>',                           'master output gain'),
-  _r(':eqLow <stem|all> <dB>',                  'low shelf gain'),
-  _r(':eqMid <stem|all> <dB>',                  'mid bell gain'),
-  _r(':eqMidFreq <stem|all> <Hz>',              'mid bell center (200–8000)'),
-  _r(':eqHigh <stem|all> <dB>',                 'high shelf gain'),
-  '',
-  '── spatial ───────────────────────────────────────────────────────────────',
-  _r(':width <stem|all|master> <0–1>',          'M/S stereo width  0=mono  0.5=original stereo (default)  1=wider than original — master is an alias for all, incl. the "mst" ring'),
-  _r(':joystick <stem|all> <x> <y>',            '2D pan  x=L/R(-1..1)  y=rear/front(-1..1)  — omit stem to target master'),
-  _r(':masterJoystick <x> <y>',                 '2D pan entire mix (same as :joystick <x> <y>)'),
-  _r(':pan <stem|all> 0–360',                    'quadraphonic rotation angle — 0/360=front  180=rear  90/270=all 4'),
-  _r(':analysisMode on|off',                    'auto-drive width from slice analysis'),
-  '',
-  '── FX & outputs ──────────────────────────────────────────────────────────',
-  _r(':fx <stem> <0–1>',                        'hardware FX send+return level'),
-  _r(':fxSwitch <1|2> <0|1>',                   '0=stem  1=live input on FX channel'),
-  _r(':monoSend <stem|all> on|off',             'collapse that stem\'s FX-send dac~ pair to a shared mono sum (for mono pedals) — default off (real stereo)'),
-  _r(':boothGain <0–1>',                        'monitor output level (dac 15 16)'),
-  _r(':recGain <0–1>',                          'recording output level (dac 17 18)'),
-  _r(':record start [name]',                    'start WAV recording'),
-  _r(':record stop',                            'stop and close recording'),
-  _r(':pitchShift <stem> <semitones>',          'pitch shift (+ up / - down)'),
-  '',
-  '── filters ───────────────────────────────────────────────────────────────',
-  _r(':setGenreFilter <genre>',                  'restrict selection to tracks tagged with genre (e.g. Techno)'),
-  _r(':clearGenreFilter',                        'remove genre restriction'),
-  _r(':listGenres',                              'print available genre tags to Max console'),
-  _r(':setKeyFilter <key>',                      'restrict selection to tracks in key (e.g. Am  C#  G)'),
-  _r(':clearKeyFilter',                          'remove key restriction'),
-  '',
-  '── query ─────────────────────────────────────────────────────────────────',
-  _r(':dumpDescriptors [stem]',                  'dump all slice descriptors'),
-  _r(':selectRange [stem] C:lo,hi W:lo,hi E:lo,hi F:lo,hi P:lo,hi', 'pick random slice in range'),
-  _r(':nextNearest <stem> <C> <E> <F> <P>',      'manually jump to the closest slice to these 4 values'),
-  '',
-  '── link (multi-deck sync) ───────────────────────────────────────────────',
-  _r(':link on | off',                           'legacy UDP peer sync (separate link_server process)'),
-  _r(':link status',                             'show connected decks + current mode/armed state'),
-  _r(':link mode avoid|mirror|complement|off',   'how other decks react to your changes'),
-  _r(':link arm',                                'arm the missile switch — param captured at fire time'),
-  _r(':link fire',                               'fire the armed switch — sends your last touched param to the group'),
-  _r(':link abort',                              'disarm without firing'),
-  _r(':link token <hex>',                        'set the shared session token'),
-  '',
-  '── tipping session (payouts — NOT your login session) ─────────────────────',
-  _r(':tipOpen <djId> <venue> web|venue [deck]', 'open a tracked TIPPING session — required before :tip means anything'),
-  _r(':tipClose',                                'close the current TIPPING session (alias: :sessionClose)'),
-  _r(':tip',                                     'simulate payout — shows split based on active follow graph'),
-  _r('  ↳ login session?',                       'to leave your workspace / pick another, use :switchSession or :logout'),
-].map(l => `{grey-fg}${l}{/grey-fg}`).join('\n');
+// CMD_SECTIONS — same content that used to be one flat CMD_LINES array (one
+// long single-column dump, 150+ rows, only ever using the left ~60 columns
+// of the panel no matter how wide the terminal was) — user: "the list is
+// very long ... find a way to split it in columns ... cover the whole
+// width". Grouped by the same section titles the old '── title ──' dividers
+// used, now as structured data so buildCmdColumns() below can pack whole
+// sections side by side instead. Sections are kept intact within a single
+// column (never split a section's own rows across two columns) — that's
+// what actually keeps this scannable instead of turning into a grid of
+// unrelated fragments.
+const CMD_SECTIONS = [
+  { title: 'view', rows: [
+    _r(':showState',                               'print state'),
+    _r(':showCommands',                            'toggle this panel'),
+    _r(':resetPeaks',                              'clear peak-hold markers'),
+  ]},
+  { title: 'cricket / memory', rows: [
+    _r(':language',                                'toggle language panel'),
+    _r(':chat',                                    'maximize/un-maximize chat'),
+    _r(':memory',                                  'report memory saturation'),
+    _r(':memory clear',                            'wipe chat memory (2-step)'),
+  ]},
+  { title: 'playback', rows: [
+    ':start  ·  :stop',
+    _r(':applyNow',                                'reroll all 4 stems now'),
+    _r(':next [vocals|melody|bass|drums]',         'force next slice'),
+    _r(':selectSegment vocals|melody|bass|drums',  'queue next slice'),
+    _r(':loop <stem> <bars>',                      'loop stem N bars'),
+    _r(':unloop <stem>',                           'release loop'),
+    _r(':unloopAll',                               'release all loops'),
+    _r(':lockSource <leader> <follower...>',       'follower(s) copy leader source'),
+    _r(':lockSource all [leader]',                 'lock all to one leader'),
+    _r(':unlockSource <stem|all>',                 'release source lock'),
+    _r(':setStemSource <stem|all> <name>',         'pin stem to source (match)'),
+    _r(':setStemSource <stem|all> clear',          'release pin'),
+  ]},
+  { title: 'index', rows: [
+    _r(':buildIndex',                              'rebuild slice index'),
+    _r(':loadIndex',                               'load cached index'),
+    _r(':saveIndex',                               'save index to cache'),
+    _r(':nextTrack / :prevTrack',                  'browse track bank'),
+    _r(':reloadDownbeats',                         'reload downbeats.json'),
+    _r(':info',                                    'dump state to console'),
+    _r(':reset',                                   'clear index + stop'),
+    _r(':resetMemory',                             'wipe analysis JSON (2-step)'),
+    _r(':restartWatcher',                          'restart watch_demucs'),
+    _r(':switchSession [name] / :logout',          'switch or leave session'),
+    _r(':bakeloop <bars>',                           'set checkpoint window'),
+    _r(':bake start [bars] <prompt>',                'open bake bracket'),
+    _r(':bake show',                                 'show current bracket'),
+    _r(':bake edit <n> <command...>',                'replace bracket line n'),
+    _r(':bake remove <n>',                           'drop bracket line n'),
+    _r(':bake sequence name:bars [name:bars ...]',   'open sequence bracket'),
+    _r(':bake end [name]',                           'queue bracket close'),
+    _r(':bake abort',                                'discard bracket now'),
+    _r(':bakeState list',                            'list saved states'),
+    _r(':bakeState show <name>',                     'show saved state'),
+    _r(':bakeState apply <name>',                    'apply saved state live'),
+    _r(':bakeState drop <name>',                     'delete saved state'),
+  ]},
+  { title: 'train (training + review)', rows: [
+    '{grey-fg}  ^C chat  ·  ^T train  ·  ^R training/review  ·  ^B next bake  ·  ^L log out{/grey-fg}',
+    _r(':train',                                     'toggle the training screen (^T)'),
+    _r(':train training',                            'sub-menu: live bake bracket'),
+    _r(':train review',                              'sub-menu: browse past bakes'),
+    _r(':train source bakes|states',                 'review: switch data source'),
+    _r(':train next / :train prev',                  'review: browse sessions'),
+    _r(':train play / :train stop',                  'review: play/stop this session\'s audio'),
+    _r(':train approve',                             'review: keep this bake for training'),
+    _r(':train exclude',                             'review: drop this bake from training'),
+    _r(':train edit <n> <command...>',               'review: replace final_cmds line n'),
+    _r(':train remove <n>',                          'review: drop final_cmds line n'),
+    _r(':train add <command...>',                    'review: append a final_cmds line'),
+    _r(':score <-1..1> [overallSection]',            'score current combo'),
+    _r(':scoreTransition <-1..1> [stem]',            'score last cut'),
+    _r(':tag <label> [stem]',                        'tag current bar-range'),
+    _r(':listSections [track]',                      'list structure tags'),
+    _r(':trainBias',                                 'fit bias models'),
+    _r(':reloadBias',                                'reload learned bias'),
+    _r(':setLearnedWeight <stem|all> <transition|vertical> <0-5>', 'scale learned model use'),
+    _r(':resetAll',                                '⚠ wipe everything (Y/N)'),
+    _r(':analyzeAll',                              'run genre + beat analysis'),
+    _r(':tagBeats',                                'run beat tagger only'),
+    _r(':setMMT <bars>',                           'momentum window size'),
+  ]},
+  { title: 'trigger pads', rows: [
+    _r(':triggerMode <stem|all> 0|1',              '0=auto  1=manual fire'),
+    _r(':trigger [stem]',                          'fire next slice'),
+    '{grey-fg}  C-1/C-2/C-3/C-4{/grey-fg}   fire vocals/melody/bass/drums',
+  ]},
+  { title: 'slicing', rows: [
+    _r(':chunkMode [stem] 0|1',                    '0=full file  1=bar chunks'),
+    _r(':skip <stem>',                             'jump to new file'),
+    _r(':setSegmentBars [stem] 0.5|1|2|4|8|16|32', 'bars/slice, sets chunkMode 1'),
+    _r(':returnToBase [stem|all]',                 'snap back to base mix'),
+    _r(':setStayProb [stem] 0.0–1.0',             '0=jump  1=loop'),
+    _r(':setSrcWeights <bpm> <cohesion> [key]',    'source-track prob weights'),
+    _r(':setQuantize 0|1',                         'bar-locked cuts'),
+    _r(':setMaxSlices N',                          'cap slices/stem'),
+    _r(':setWindow hann|hamming|blackman|triangle|rect', 'FFT window, pitch shifter'),
+  ]},
+  { title: 'tempo', rows: [
+    '{grey-fg}  pitch/BPM affect audio live; rest waits for next slice{/grey-fg}',
+    _r(':setFallbackBPM 40–280',                   'fallback tempo, live'),
+    _r(':setGlobalBPM 40–280',                     'BPM override, live'),
+  ]},
+  { title: 'matching', rows: [
+    _r(':setWeight <stem|all> C|S|E|F|P|H|T 0–5',  'descriptor weight'),
+    _r(':setMatchProb <stem|all> 0–1',             'transition tightness'),
+    _r(':setDirPref <stem|all> C|S|E|F|P|H|T|D -1–1', 'direction bias'),
+    _r(':setDirWeight <stem|all> 0–5',             'direction bias strength'),
+    _r(':wmdScope all|vocals|melody|bass|drums',   'which stem header shows'),
+    _r(':setTrackWeight vocals|melody|bass|drums', 'stem influence 0–1'),
+    _r(':followStem <stem> <dim> <target> <w> …', 'that dim follows another stem'),
+    _r(':followStem <stem> all <target> <w> …',   'every dim follows another stem'),
+    _r(':followStem <stem> <dim> self',            'reset just that dimension'),
+    _r(':followStem <stem> self',                  'reset every dimension'),
+    _r(':setEntropy 0–1',                          'order↔chaos macro'),
+  ]},
+  { title: 'audio', rows: [
+    _r(':fader <stem|all> <0–1>',                 'channel level'),
+    _r(':trim <stem|all> <dB>',                   'input gain'),
+    _r(':mute <stem|all> 0|1',                    '0=unmute  1=mute'),
+    _r(':solo <stem|all> 0|1',                    '0=off  1=on'),
+    _r(':master <0–1>',                           'master gain'),
+    _r(':eqLow <stem|all> <dB>',                  'low shelf gain'),
+    _r(':eqMid <stem|all> <dB>',                  'mid bell gain'),
+    _r(':eqMidFreq <stem|all> <Hz>',              'mid bell center'),
+    _r(':eqHigh <stem|all> <dB>',                 'high shelf gain'),
+  ]},
+  { title: 'spatial', rows: [
+    _r(':width <stem|all|master> <0–1>',          'stereo width'),
+    _r(':joystick <stem|all> <x> <y>',            '2D pan'),
+    _r(':masterJoystick <x> <y>',                 '2D pan (master)'),
+    _r(':pan <stem|all> 0–360',                    'quad rotation angle'),
+    _r(':analysisMode on|off',                    'auto width from analysis'),
+  ]},
+  { title: 'FX & outputs', rows: [
+    _r(':fx <stem> <0–1>',                        'FX send/return level'),
+    _r(':fxSwitch <1|2> <0|1>',                   '0=stem  1=live input'),
+    _r(':monoSend <stem|all> on|off',             'mono sum for FX send'),
+    _r(':boothGain <0–1>',                        'monitor level'),
+    _r(':recGain <0–1>',                          'recording level'),
+    _r(':record start [name]',                    'start recording'),
+    _r(':record stop',                            'stop recording'),
+    _r(':pitchShift <stem> <semitones>',          'pitch shift'),
+    _r(':formantShift <stem> <semitones>',        'formant shift, independent of pitch'),
+    _r(':setShiftBand <stem> <loHz> <hiHz>',       'shared pitch+formant band limit'),
+    _r(':setPitchBand <stem> <loHz> <hiHz>',       'pitch-only band override'),
+    _r(':setFormantBand <stem> <loHz> <hiHz>',     'formant-only band override'),
+    _r(':clearPitchBand <stem>',                   'drop pitch band override'),
+    _r(':clearFormantBand <stem>',                 'drop formant band override'),
+    _r(':clearShiftBand <stem>',                   'reset shared band, clear overrides'),
+  ]},
+  { title: 'filters', rows: [
+    _r(':setGenreFilter <genre>',                  'restrict to genre'),
+    _r(':clearGenreFilter',                        'remove genre filter'),
+    _r(':listGenres',                              'list genre tags'),
+    _r(':setKeyFilter <key>',                      'restrict to key'),
+    _r(':clearKeyFilter',                          'remove key filter'),
+  ]},
+  { title: 'query', rows: [
+    _r(':dumpDescriptors [stem]',                  'dump slice descriptors'),
+    _r(':selectRange [stem] C:lo,hi W:lo,hi E:lo,hi F:lo,hi P:lo,hi', 'pick slice in range'),
+    _r(':nextNearest <stem> <C> <E> <F> <P>',      'jump to closest slice'),
+  ]},
+  { title: 'link (multi-deck sync)', rows: [
+    _r(':link on | off',                           'legacy UDP peer sync'),
+    _r(':link status',                             'show connected decks'),
+    _r(':link mode avoid|mirror|complement|off',   'how decks react'),
+    _r(':link arm',                                'arm missile switch'),
+    _r(':link fire',                               'fire armed switch'),
+    _r(':link abort',                              'disarm without firing'),
+    _r(':link token <hex>',                        'set session token'),
+  ]},
+  { title: 'tipping session (payouts — NOT your login session)', rows: [
+    _r(':tipOpen <djId> <venue> web|venue [deck]', 'open tipping session'),
+    _r(':tipClose',                                'close tipping session'),
+    _r(':tip',                                     'dry-run split %'),
+    _r(':tip <username> <amount>',                 'simulate incoming tip'),
+    _r('  ↳ login session?',                       'use :switchSession/:logout'),
+  ]},
+];
+
+// visWidth() (defined above, near visLines()) already strips {tag} markup to
+// measure real on-screen width — reused here for column sizing/padding so a
+// row like the trigger-pads C-1..C-4 line (which carries its own {grey-fg}
+// tag) measures by its visible text, not its raw character count.
+function plainWidth(line) { return visWidth(line.replace(/\{[^}]+\}/g, '')); }
+function padVisible(line, width) {
+  return line + ' '.repeat(Math.max(0, width - plainWidth(line)));
+}
+
+// Plain (untagged) word-wrap — used for a {sig, desc} row's own text, which
+// never carries {tag} markup itself (only the occasional decorative section
+// row does — see wrapTaggedLine() below for those). Never splits a single
+// word even if it alone exceeds width — it just overflows that one line
+// rather than breaking mid-word.
+function wrapPlainText(text, width) {
+  const words = text.split(' ').filter(w => w.length);
+  if (!words.length) return [''];
+  const lines = [];
+  let cur = words[0];
+  for (let i = 1; i < words.length; i++) {
+    const w = words[i];
+    if (cur.length + 1 + w.length > width) { lines.push(cur); cur = w; }
+    else { cur += ' ' + w; }
+  }
+  lines.push(cur);
+  return lines;
+}
+
+// Tag-aware word-wrap for the handful of decorative section rows that carry
+// their own {grey-fg}/{inverse} markup (the train sub-view's key-hint line,
+// the trigger-pads C-1..C-4 line, tempo's live-vs-next-slice note). Walks
+// word-by-word same as wrapPlainText, but tracks which tags are currently
+// "open" so a line broken mid-tag gets that tag closed at the break and
+// reopened on the next line — otherwise a wrapped {grey-fg} line would bleed
+// its color into whatever renders after it.
+function wrapTaggedLine(text, width) {
+  const tokens = text.match(/\{\/?[\w\-,;!#]*\}|\s+|\S+/g) || [];
+  const lines = [];
+  let cur = '', curVis = 0;
+  const openStack = [];
+  const closeTagsStr = () => openStack.slice().reverse().map(t => `{/${t}}`).join('');
+  const openTagsStr  = () => openStack.map(t => `{${t}}`).join('');
+  function breakLine() {
+    lines.push(cur.replace(/ +$/, '') + closeTagsStr());
+    cur = openTagsStr();
+    curVis = 0;
+  }
+  tokens.forEach(tok => {
+    if (/^\{\//.test(tok)) { openStack.pop(); cur += tok; return; }
+    if (/^\{/.test(tok))   { openStack.push(tok.slice(1, -1)); cur += tok; return; }
+    if (/^\s+$/.test(tok)) { if (curVis > 0) { cur += ' '; curVis++; } return; }
+    if (curVis > 0 && curVis + tok.length > width) breakLine();
+    cur += tok; curVis += tok.length;
+  });
+  lines.push(cur.replace(/ +$/, '') + closeTagsStr());
+  return lines;
+}
+
+// Lays a single {sig, desc} row out against a known column width: one line
+// if sig + gap + desc fits, otherwise sig on its own line with desc word-
+// wrapped underneath it (2-space hanging indent) — instead of the old fixed
+// 40-column gutter, which either wasted space (short signatures) or
+// collided (long ones) depending on what width the column ended up at.
+function layoutSigDescRow(sig, desc, colWidth) {
+  const gap = 2;
+  if (sig.length + gap + desc.length <= colWidth) return [sig + ' '.repeat(gap) + desc];
+  const lines = sig.length <= colWidth ? [sig] : wrapPlainText(sig, colWidth);
+  const indent = '  ';
+  wrapPlainText(desc, Math.max(4, colWidth - indent.length)).forEach(l => lines.push(indent + l));
+  return lines;
+}
+
+// Section header line(s) — dash-filled on one line normally, but a couple of
+// section titles (the tipping session one, at 51 chars) are wider than even
+// the widest column gets once 3-4 columns are in play, so wrap the title
+// itself rather than let it blow past colWidth and drag the whole merged
+// row wider than the terminal.
+function renderSectionHeader(title, colWidth) {
+  const prefix = '── ';
+  if (prefix.length + title.length + 1 <= colWidth) {
+    const dashes = Math.max(0, colWidth - (prefix.length + title.length + 1));
+    return [prefix + title + ' ' + '─'.repeat(dashes)];
+  }
+  return wrapPlainText(title, Math.max(4, colWidth - prefix.length))
+    .map((l, i) => (i === 0 ? prefix : '  ') + l);
+}
+
+// One section's rows rendered against a known column width — the single
+// source of truth for both a section's LINE COUNT (used to balance columns
+// in packCmdColumns()) and its actual rendered content (renderCmdColumnLines()),
+// so the two can never disagree about how tall a section turns out to be.
+function renderSectionLines(sec, colWidth) {
+  const lines = renderSectionHeader(sec.title, colWidth);
+  sec.rows.forEach(r => {
+    if (typeof r === 'string') {
+      lines.push(...(plainWidth(r) <= colWidth ? [r] : wrapTaggedLine(r, colWidth)));
+    } else {
+      lines.push(...layoutSigDescRow(r.sig, r.desc, colWidth));
+    }
+  });
+  return lines;
+}
+
+// Greedy bin-pack (longest-processing-time-first): sections sorted tallest
+// first, each one dropped into whichever column currently has the fewest
+// lines — keeps columns level in HEIGHT, which is what actually shortens
+// the panel vertically. Height is measured AFTER wrapping (renderSectionLines
+// at the real colWidth), not by row count, so a section that wraps heavily
+// at a narrow column width is weighted correctly instead of looking cheap.
+function packCmdColumns(numCols, colWidth) {
+  const cols = Array.from({ length: numCols }, () => ({ sections: [], lineCount: 0 }));
+  const withHeights = CMD_SECTIONS.map(sec => ({ sec, h: renderSectionLines(sec, colWidth).length + 1 }));
+  withHeights
+    .slice()
+    .sort((a, b) => b.h - a.h)
+    .forEach(({ sec, h }) => {
+      let target = cols[0];
+      for (const c of cols) if (c.lineCount < target.lineCount) target = c;
+      target.sections.push(sec);
+      target.lineCount += h;
+    });
+  // Restore original top-to-bottom reading order within each column —
+  // tallest-first was only for the placement DECISION above.
+  cols.forEach(c => c.sections.sort((a, b) => CMD_SECTIONS.indexOf(a) - CMD_SECTIONS.indexOf(b)));
+  return cols;
+}
+
+function renderCmdColumnLines(col, colWidth) {
+  const lines = [];
+  col.sections.forEach((sec, i) => {
+    if (i > 0) lines.push('');
+    renderSectionLines(sec, colWidth).forEach(l => lines.push(padVisible(l, colWidth)));
+  });
+  return lines;
+}
+
+const CMD_COL_GAP    = 3;  // spaces between adjacent columns
+const CMD_MAX_COLS   = 4;  // sanity ceiling
+const CMD_MIN_COL_W  = 34; // below this, a column wraps too aggressively to be worth splitting off
+
+// Column count/width now comes straight from the terminal width — divide it
+// into as many equal-ish columns as fit at >= CMD_MIN_COL_W each (capped at
+// CMD_MAX_COLS) — instead of being derived from section content, which is
+// what made the old version need a 160+ column terminal before it would
+// ever produce more than one column (two of the widest sections alone
+// needed ~164 columns together). Content that doesn't fit the chosen
+// column width wraps (see renderSectionLines()) rather than vetoing the
+// column count, so a normal 80–120 column terminal now actually gets 2–3
+// columns instead of the single long list the user was still seeing.
+function pickCmdColumnLayout(width) {
+  for (let n = CMD_MAX_COLS; n >= 1; n--) {
+    const colWidth = Math.floor((width - CMD_COL_GAP * (n - 1)) / n);
+    if (colWidth >= CMD_MIN_COL_W || n === 1) return { n, colWidth: Math.max(colWidth, 20) };
+  }
+}
+
+// Rebuilt fresh against the CURRENT terminal width every time the panel
+// opens (and on resize while it's open — see the screen.on('resize')
+// handler) rather than baked in once at startup, same reasoning as
+// buildLangList().
+function buildCmdColumns(width) {
+  const { n, colWidth } = pickCmdColumnLayout(width);
+  const cols = packCmdColumns(n, colWidth);
+
+  const colLines = cols.map(c => renderCmdColumnLines(c, colWidth));
+  const maxRows  = Math.max(0, ...colLines.map(l => l.length));
+  const lastCol  = colLines.length - 1;
+  const merged = [];
+  for (let r = 0; r < maxRows; r++) {
+    const parts = colLines.map((lines, c) => {
+      const line = lines[r] || '';
+      return c === lastCol ? line : padVisible(line, colWidth);
+    });
+    merged.push(parts.join(' '.repeat(CMD_COL_GAP)));
+  }
+
+  return ['', 'command list', '', ...merged].map(l => `{grey-fg}${l}{/grey-fg}`).join('\n');
+}
 
 function expandCmd() {
   cmdCollapsed = false;
-  // Keep the hint line as a header, just flip expand → collapse.
-  setCmdContent('{white-fg}:commands — type to collapse{/white-fg}\n' + CMD_LINES);
+  // The "type to collapse" hint now lives permanently in menuHeaderBox
+  // (always shows all three panels' state — see buildMenuHeaderLine), so
+  // this panel's own content is just the list, no duplicate header line.
+  // Built fresh against the current width (see buildCmdColumns) instead of
+  // a static string, so the column count matches whatever room is actually
+  // available right now.
+  setCmdContent(buildCmdColumns(contentW()));
   screen.render();
 }
 
 function collapseCmd() {
   cmdCollapsed = true;
-  setCmdContent('{white-fg}:commands — type to expand{/white-fg}');
+  // Hint text now lives in menuHeaderBox (see buildMenuHeaderLine) — this
+  // panel itself takes 0 rows while collapsed, nothing to show here.
+  setCmdContent('');
   screen.render();
 }
 
 function expandLang() {
   langCollapsed = false;
-  setLangContent(`{white-fg}:language — type to collapse{/white-fg}\n{grey-fg}${buildLangList()}{/grey-fg}`);
+  // Same as expandCmd — hint lives in menuHeaderBox now, content is just the list.
+  setLangContent(`{grey-fg}${buildLangList()}{/grey-fg}`);
   screen.realloc();
   screen.render();
 }
 
 function collapseLang() {
   langCollapsed = true;
-  setLangContent(`{white-fg}:language — type to expand{/white-fg}`);
+  // Hint text now lives in menuHeaderBox (see buildMenuHeaderLine) — this
+  // panel itself takes 0 rows while collapsed, nothing to show here.
+  setLangContent('');
   screen.realloc();
   screen.render();
 }
 
-function collapseChat() {
-  chatCollapsed = true;
-  reflow();
-  screen.realloc();
-  screen.render();
-}
+// :commands/:language now only ever actually render while chat is
+// maximized (see reflow()'s langH/cmdH gating on chatMaximized) — they're
+// part of the same takeover as the chat log now, not a standalone playback
+// panel. So an interactive request to open one (typing :commands, :language,
+// the bare "@" shortcut, or Cricket itself returning a showCommands action)
+// has to open chat too, or cmdCollapsed/langCollapsed would flip to
+// "expanded" with nothing on screen to show for it — the exact "I typed
+// :commands and nothing happened" bug this replaces. Boot's own
+// applyLanguage() → expandCmd() call is deliberately NOT routed through
+// these — that runs before the user has done anything, and chat must stay
+// hidden by default (chatMaximized starts false) even though the commands
+// panel starts pre-expanded, ready to appear the first time chat actually
+// opens.
+function openCmdPanel()  { if (!chatMaximized) toggleChatMaximize(); expandCmd(); }
+function openLangPanel() { if (!chatMaximized) toggleChatMaximize(); expandLang(); }
 
-function expandChat() {
-  chatCollapsed = false;
-  reflow();
+// ── CHAT MAXIMIZE (^C) ─────────────────────────────────────────────────────
+// Chat is a pure overlay now, fully independent of appMode — see the
+// SCREEN MODEL comment above CHAT_OVERLAY_BOXES. Toggling it never touches
+// appMode/appMode-specific boxes itself; it just flips chatMaximized and
+// lets render()'s SCREEN VISIBILITY block (which the render() call below
+// runs) work out what that means for whichever screen happens to be
+// active — CHAT_OVERLAY_BOXES show, PLAYBACK_CHANNEL_BOXES/playBox hide
+// underneath it. reviewWaveformBox (the recorded-file playback zone in the
+// training tab's review sub-view) is the one exception — it stays visible
+// even under a maximized chat; the chat log docks below it instead of
+// covering it. Nothing here ever touches the audio engine either way —
+// hiding a box is purely visual, playback (or a live training bracket)
+// keeps running exactly as it was.
+let chatMaximized = false;
+
+function toggleChatMaximize() {
+  chatMaximized = !chatMaximized;
+  render();
+  renderFooter();
   screen.realloc();
   screen.render();
 }
@@ -2384,12 +5338,24 @@ function displayState() {
   );
 }
 
+// Speaker color used to be label-only ("you:"/"cricket:" tinted, the actual
+// sentence after it left at the log's own default fg) — and both labels
+// happened to resolve to the exact same bright-white besides, so the whole
+// log read as one undifferentiated wall of text with no way to tell, at a
+// skim, who said what. Now the WHOLE line (label + body) is tinted per
+// speaker, and the two speakers get genuinely different shades: user lines
+// stay full-bright (SKIN.user_fg — your own words, full emphasis), Cricket's
+// lines use SKIN.dim_fg, a medium grey a step down from bright-white but a
+// step up from logSys's plain grey-fg housekeeping lines — so at a glance:
+// brightest = you, mid-grey = Cricket, dim grey = system notices.
 function logUser(text) {
-  appendLog(`${ts()}{${SKIN.user_fg}-fg}you:{/${SKIN.user_fg}-fg} ${text}`);
+  const c = skinTag(SKIN.user_fg);
+  appendLog(`${ts()}{${c}-fg}you: ${text}{/${c}-fg}`);
 }
 
 function logCricket(text) {
-  appendLog(`${ts()}{cyan-fg}${state.agentName.toLowerCase()}:{/cyan-fg} ${text}`);
+  const c = skinTag(SKIN.dim_fg);
+  appendLog(`${ts()}{${c}-fg}${state.agentName.toLowerCase()}: ${text}{/${c}-fg}`);
 }
 
 function buildStateContext() {
@@ -2422,13 +5388,13 @@ function startChatSpinner() {
   spinnerTimer = setInterval(() => {
     if (!languageSelected) return;
     spinnerFrame = (spinnerFrame + 1) % SPINNER_FRAMES.length;
-    sepBox.setContent(`{cyan-fg}${state.agentName.toLowerCase()} - loading{/cyan-fg} {white-fg}${SPINNER_FRAMES[spinnerFrame]}{/white-fg}`);
+    sepBox.setContent(`{bright-white-fg}${state.agentName.toLowerCase()} - loading{/bright-white-fg} {bright-white-fg}${SPINNER_FRAMES[spinnerFrame]}{/bright-white-fg}`);
   }, 100);
 }
 
 function stopChatSpinner() {
   if (spinnerTimer) { clearInterval(spinnerTimer); spinnerTimer = null; }
-  sepBox.setContent(languageSelected ? '' : '{white-fg}' + randCurse() + '{/white-fg}');
+  sepBox.setContent(languageSelected ? chatTopRule() : '{bright-white-fg}' + randCurse() + '{/bright-white-fg}');
   scheduleRender();
 }
 
@@ -2473,10 +5439,15 @@ function callCricket(text, onCommand) {
 
   startChatSpinner();
 
-  // Trim history — keep system prompt + last 20 exchanges to avoid context overflow
-  const MAX_HISTORY = 41; // 1 system + 20 pairs
-  if (chatHistory.length > MAX_HISTORY) {
-    chatHistory.splice(1, chatHistory.length - MAX_HISTORY);
+  // Safety net only. Normal trimming now happens via maybeSummarizeMemory()
+  // below (called after each reply) — it condenses the oldest chunk into a
+  // running summary instead of throwing it away. This hard cap just protects
+  // against unbounded growth if summarization itself is failing (Ollama
+  // down, etc.) — it's roughly 2x the normal cap so summarization gets
+  // several chances to catch up before this ever fires.
+  if (chatHistory.length > CHAT_HISTORY_CAP * 2) {
+    chatHistory.splice(1, chatHistory.length - CHAT_HISTORY_CAP);
+    logSys('memory summarization fell behind — trimmed oldest turns to stay responsive');
   }
 
   const body = JSON.stringify({
@@ -2508,6 +5479,7 @@ function callCricket(text, onCommand) {
         if (!reply) { logSys('no response — check CONFIG.ollama_model'); return; }
         chatHistory.push({ role: 'assistant', content: reply });
         processReply(reply, onCommand);
+        maybeSummarizeMemory();
       } catch (e) {
         logSys('parse error: ' + e.message);
       }
@@ -2603,6 +5575,16 @@ function connectToMax() {
         if (state.track !== prevTrack) {
           updateGenreForTrack(state.track);
           updateBeatsForTrack(state.track);
+          // New track — the rolling descriptor window's buffered slices
+          // belong to whatever was loaded before, so drop them rather than
+          // showing a grid (and the momentum panel's in-progress bar — see
+          // momSparkline()) that's half old-track, half new-track.
+          DESC_STEMS.forEach(s => {
+            descRollBuffers[s].length = 0;
+            lastOutDesc[s] = null;
+            lastMomPush[s] = 0;
+            DIMS.forEach(d => { curBarBuffers[s][d] = []; });
+          });
         }
       } else if (msg.type === 'desc' && state.stems[msg.name]) {
         // desc always arrives before seg (slicer.js outlet order) — just update state.
@@ -2614,6 +5596,63 @@ function connectToMax() {
         playbackStopped = false;
         state.running   = true;
         ensurePlaybackRender();
+        scheduleRender();
+      } else if (msg.type === 'stopped') {
+        // slicer.js confirms :stop actually froze the transport (its own
+        // stop(), see outlet(1,"stopped")). state.running must flip false
+        // here — nothing else in this dispatch table ever clears it back to
+        // false, so without this branch the elapsed-time overlays below
+        // (posMs's `state.running ? baseMs + (Date.now()-s.lastPosTime) : baseMs`,
+        // and the progress-bar fill) kept counting real wall-clock time
+        // straight through the pause even though the audio was genuinely
+        // frozen — the display drifting ahead of what was actually playing.
+        state.running   = false;
+        playbackStopped = true;
+        stoppedAtMs      = Date.now();
+        // Momentum panel keeps whatever it had built up — momentumBarTick()
+        // already stops advancing while !state.running, so pausing just
+        // freezes the strip mid-fill instead of wiping it. It picks up
+        // filling in the rest again once :start/resume flips running back on.
+        scheduleRender();
+      } else if (msg.type === 'resumed') {
+        // slicer.js confirms :start took the resume branch — already-loaded
+        // segments, karma~ re-armed from exactly its paused position (see
+        // slicer.js's start()/stop(), which now also re-arms each stem's
+        // auto-advance countdown with the real remaining time instead of
+        // letting it count through the pause). Rebase every stem's
+        // elapsed-time reference points forward by the real pause duration
+        // so the position readout and progress-bar fill pick up right where
+        // they were frozen instead of jumping ahead by however long
+        // playback was stopped — same rebase reasoning as segRetime above,
+        // just for a full pause/resume instead of a live tempo change.
+        const pauseDurationMs = stoppedAtMs ? Math.max(0, Date.now() - stoppedAtMs) : 0;
+        stoppedAtMs = null;
+        Object.keys(state.stems).forEach(name => {
+          const s = state.stems[name];
+          if (s && s.lastPosTime) s.lastPosTime += pauseDurationMs;
+          if (stemSliceStartTime[name]) stemSliceStartTime[name] += pauseDurationMs;
+        });
+        playbackStopped = false;
+        state.running   = true;
+        ensurePlaybackRender();
+        scheduleRender();
+      } else if (msg.type === 'downbeat') {
+        // Real downbeat pulse from slicer.js's scheduleDownbeatPulse() (see
+        // ws_server.js's Max.addHandler('downbeat', ...)) — phase-locked to
+        // the actual music, not a client-side bpm guess.
+        // Used to wipe descRollBuffers here on the theory that the
+        // descriptor grid represents "this bar" — but that's NOT what
+        // DESC_ROLL_PAIRS actually is (see its own comment: "the last
+        // DESC_ROLL_PAIRS real TRANSITIONS per stem", not "this bar's
+        // transitions"). A downbeat fires every single musical bar, real
+        // transitions only fire on an actual segment change (e.g. every 32
+        // bars with a long :setSegmentBars) — wiping on every downbeat
+        // cleared the rolling window far more often than real transitions
+        // could ever fill it, so the grid read as permanently empty
+        // whenever a segment spanned more than ~1 bar (user: "the
+        // transition edges visualization doesn't work anymore"). Removed —
+        // descRollPush() (called from the real 'stem' transition handler
+        // above) is the only thing that should ever touch this buffer now.
         scheduleRender();
       } else if (msg.type === 'segPlayMs') {
         // Actual playback duration from slicer: content_dur × stretchRatio.
@@ -2674,6 +5713,35 @@ function connectToMax() {
         Object.assign(state.stems[msg.name], msg);
         if (msg.pos !== undefined) state.stems[msg.name].lastPosTime = Date.now();
         if (!state.running) { state.running = true; ensurePlaybackRender(); }
+        // This IS the transition — push the {out, in} pair onto this stem's
+        // rolling window (see descRollBuffers' own comment). `in` is the
+        // segment starting now (state.stems[sn], just updated above). `out`
+        // is ws_server.js's own prevSegment snapshot of whatever this stem
+        // was just playing, riding along on this same message — null on a
+        // stem's first transition, when there's nothing to have snapshotted.
+        const outDesc = msg.prevSegment && msg.prevSegment.descriptors;
+        descRollPush(sn, {
+          out: outDesc ? {
+            C: outDesc.C, S: outDesc.S, E: outDesc.E,
+            F: outDesc.F, P: outDesc.P, H: outDesc.H, T: outDesc.T,
+          } : null,
+          in: {
+            C: state.stems[sn].C, S: state.stems[sn].S, E: state.stems[sn].E,
+            F: state.stems[sn].F, P: state.stems[sn].P, H: state.stems[sn].H,
+            T: state.stems[sn].T,
+          },
+        });
+        // Momentum panel's bar just ended — snapshot what it's ramping FROM
+        // (same outDesc the grid's `out` uses) for the new bar's own ramp.
+        // See momentumBarTick()'s own comment for how that ramp is used.
+        // No longer wipes curBarBuffers here — the strip now scrolls
+        // continuously across multiple bars (MOM_BARS_SPAN) instead of
+        // resetting to empty on every single transition; momentumBarTick()
+        // itself handles dropping old columns once the strip is full.
+        lastOutDesc[sn] = outDesc ? {
+          C: outDesc.C, S: outDesc.S, E: outDesc.E,
+          F: outDesc.F, P: outDesc.P, H: outDesc.H, T: outDesc.T,
+        } : null;
       } else if (msg.type === 'stemTrack' && state.stems[msg.name]) {
         state.stems[msg.name].track = msg.track || '';
         // Update this stem's genre independently from its actual source track.
@@ -2735,7 +5803,7 @@ function connectToMax() {
           }
           // Snap each channel's peak-hold up instantly to this new reading —
           // same "snap up now, release down later in peakDecayTick()"
-          // convention as state.lufsPeak/dbfsPeak.
+          // convention as state.lufsPeak.
           const pk = vuPeaks[msg.name];
           ['FL', 'FR', 'RL', 'RR'].forEach(ch => {
             const db = levelToDb(vuLevels[msg.name][ch]);
@@ -2744,30 +5812,49 @@ function connectToMax() {
         }
       } else if (msg.type === 'lufs') {
         // fluid.loudness~ perceptual loudness (K-weighted dBFS), sampled at 10 Hz
-        // short     = short-term loudness  → state.lufs  (displayed as LUFSs in header)
-        // integrated = integrated loudness → state.dbfs  (displayed as LUFSi in header)
+        // short = short-term loudness → state.lufs (displayed as LUFSs in header).
+        // msg.integrated was previously mirrored into state.dbfs to drive the
+        // header's separate "TP" meter — removed along with that meter, since
+        // the VU sidebar's own per-channel peak-hold already covers true peak.
         const s = parseFloat(msg.short);
-        const i = parseFloat(msg.integrated);
         if (isFinite(s)) {
           state.lufs = s;
           if (state.lufsPeak === null || s > state.lufsPeak) state.lufsPeak = s;
-        }
-        if (isFinite(i)) {
-          state.dbfs = i;
-          if (state.dbfsPeak === null || i > state.dbfsPeak) state.dbfsPeak = i;
         }
       } else if (msg.type === 'slice_ms' && state.stems[msg.name]) {
         state.stems[msg.name].timeMs = msg.timeMs || 0;
         // Reset elapsed-time anchor so the smooth-count starts from this slice position
         state.stems[msg.name].lastPosTime = Date.now();
-      } else if (msg.type === 'entropy') {
-        state.params.entropy   = msg.value;
-        state.params.matchProb = msg.matchProb;
+      } else if (msg.type === 'param' && msg.key === 'entropy') {
+        // :setEntropy — value always arrives; matchProb/stayProb/dirWeight
+        // only come along when this is slicer.js's own feedback (Max.
+        // addHandler('entropy', ...) in ws_server.js, fired from its
+        // outlet 1 whenever the macro actually derives new values), not
+        // the plain command passthrough, which only echoes value. Was
+        // previously listening for msg.type === 'entropy', a type
+        // ws_server.js never actually sends (it's always type:'param',
+        // key:'entropy') — so this branch never fired and the entropy
+        // meter's context line had nothing real to show.
+        state.params.entropy = msg.value;
+        if (typeof msg.matchProb === 'number') state.params.matchProb = msg.matchProb;
+        if (typeof msg.stayProb  === 'number') state.params.stayProb  = msg.stayProb;
+        if (typeof msg.dirWeight === 'number') state.params.dirWeight = msg.dirWeight;
       } else if (msg.type === 'matchProb') {
         state.params.matchProb = msg.value;
       } else if (msg.type === 'session') {
         // From ws_server.js's :sessionOpen/:sessionClose — drives the $ status icon.
-        state.session = { active: !!msg.active, sessionId: msg.sessionId || null, deck: msg.deck || null };
+        // mode + deck together pick the tipping protocol's precision level
+        // (see the [LVL n/3] header chip); openedAt is a server timestamp,
+        // shown in the tipping panel.
+        state.session = {
+          active: !!msg.active, sessionId: msg.sessionId || null,
+          deck: msg.deck || null, mode: msg.mode || null,
+          openedAt: msg.openedAt || null, djId: msg.djId || null,
+        };
+      } else if (msg.type === 'tipBackend') {
+        // Tipping HTTP server reachability — see :tipOpen/pingBackend/
+        // :tipClose in ws_server.js. msg.up is true/false/null.
+        state.tipBackendUp = (msg.up === undefined) ? null : msg.up;
       } else if (msg.type === 'lastTouchedParam') {
         // Live readout of what LINK's missile switch would fire right now.
         state.lastCommandTouched = msg.atoms || null;
@@ -2827,6 +5914,26 @@ function connectToMax() {
         });
         if (msg.stem === 'all' && typeof msg.value === 'number') {
           state.spatial.master.width = Math.max(0, Math.min(1, msg.value));
+        }
+      } else if (msg.type === 'param' && msg.key === 'followStem') {
+        // Authoritative follow-state confirmation from ws_server.js's own
+        // :followStem parsing (broadcast to every connected client, not
+        // just the one that typed the command) — this used to have no
+        // handler at all, so state.followGraph only ever reflected this
+        // TUI's own local optimistic echo above, never a change made by
+        // another client or session. msg.dim is 'all' (reset-everything or
+        // apply-to-every-dim), a single dim key, or absent for a legacy
+        // whole-stem message; msg.follows is an array of {target,weight}
+        // or null (self).
+        if (state.followGraph[msg.stem]) {
+          const dims = msg.dim === 'all' || !msg.dim ? DIMS : [msg.dim];
+          if (!msg.follows) {
+            dims.forEach(d => { state.followGraph[msg.stem][d] = {}; });
+          } else {
+            const map = {};
+            msg.follows.forEach(p => { map[p.target] = p.weight; });
+            dims.forEach(d => { state.followGraph[msg.stem][d] = map; });
+          }
         }
       } else if (msg.type === 'param' && msg.key === 'sourceLock') {
         // Confirmed lock state from slicer.js itself (via ws_server's
@@ -3089,9 +6196,13 @@ function linkTouch(command) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function sendToMax(command) {
+function sendToMax(command, extra) {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'command', text: command }));
+    // extra — optional plain object merged into the outgoing envelope
+    // alongside {type, text}. Used by the :score handler below to carry
+    // bakeSessionId/bakeAttempt/bakeIntent without changing the command
+    // string a user actually typed or ws_server's atom-parsing of `text`.
+    ws.send(JSON.stringify({ type: 'command', text: command, ...(extra || {}) }));
   }
   linkTouch(command);   // always notify link_server, it filters by verb
 }
@@ -3120,15 +6231,23 @@ function handleInput(text) {
   const trimmed = text.trim();
   if (!trimmed) return;
 
-  // Two-step confirmation gate (e.g. :resetMemory, :resetAll)
+  // Two-step confirmation gate (e.g. :resetMemory, :resetAll, ^L logout).
+  // pendingConfirm must be cleared BEFORE the callback runs, not after:
+  // confirmExitToLogin()'s callback is `() => handleInput(':logout')`, which
+  // re-enters this very function recursively. If pendingConfirm were still
+  // set at that point, the recursive call would see it as still-pending,
+  // read ":logout" as the confirm/cancel answer (neither "y" nor "yes"),
+  // and immediately log "cancelled" — which is exactly why typing Y to
+  // confirm logout self-cancelled instead of going through.
   if (pendingConfirm) {
-    const ans = trimmed.toLowerCase().replace(/^[:@]/, '').trim();
+    const ans     = trimmed.toLowerCase().replace(/^[:@]/, '').trim();
+    const confirm = pendingConfirm;
+    pendingConfirm = null;
     if (ans === 'y' || ans === 'yes') {
-      pendingConfirm();
+      confirm();
     } else {
       logSys('cancelled');
     }
-    pendingConfirm = null;
     return;
   }
 
@@ -3154,7 +6273,7 @@ function handleInput(text) {
       languageSelected = true;
       applyLanguage(lang);
     } else {
-      logSys('🦗');
+      logSys('…');
     }
     return;
   }
@@ -3166,12 +6285,11 @@ function handleInput(text) {
     const parts  = body.split(/\s+/);
     const verb   = parts[0];
 
-    // :resetPeaks — clear the LUFS/TP peak-hold markers (see dbMeter()).
+    // :resetPeaks — clear the LUFS peak-hold marker (see dbMeter()).
     // Purely client-side/TUI state, nothing to forward to Max.
     if (verb === 'resetPeaks') {
       state.lufsPeak = null;
-      state.dbfsPeak = null;
-      logSys('peak-hold cleared (LUFSs/TP)');
+      logSys('peak-hold cleared (LUFSs)');
       render();
       return;
     }
@@ -3210,19 +6328,28 @@ function handleInput(text) {
     if (verb === 'bake') {
       const sub = parts[1];
 
-      // :bake start <prompt>
+      // :bake start [bars] <prompt> — bars is optional; when given as a bare
+      // number right after "start", it sets bakeLoopBars for this bracket so
+      // you don't need a separate :bakeloop call first. Omit it to keep
+      // whatever :bakeloop last set (default 4).
       if (sub === 'start') {
         if (bakeSessionActive) {
           logSys('bake already running — :bake abort first');
           return;
         }
-        const label = parts.slice(2).join(' ');
-        if (!label) { logSys('usage: :bake start <prompt>'); return; }
+        const rest = parts.slice(2);
+        if (rest.length && /^\d+(\.\d+)?$/.test(rest[0])) {
+          bakeLoopBars = parseFloat(rest.shift());
+        }
+        const label = rest.join(' ');
+        if (!label) { logSys('usage: :bake start [bars] <prompt>'); return; }
 
-        // 1. Take ring buffer snapshot
-        sendToMax('bakeSnapshot');
+        // No ring-buffer snapshot here on purpose — this bracket never freezes
+        // audio (see the BAKE LOOP STATE comment above). Playback just keeps
+        // running live once Cricket's commands land.
 
-        // 2. Send label to Cricket (first attempt translation)
+        // 1. Send label to Cricket (first attempt translation)
+        bakeSessionId   = 'bake_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         bakeIntent      = label;
         bakeCricketCmds = [];
         bakeUserCmds    = [];
@@ -3232,19 +6359,134 @@ function handleInput(text) {
             state.bpm = parseFloat(p[1]); render();
           }
           bakeCricketCmds.push(cmd.trim());
+          upsertComportment(cmd.trim());   // seeds the editable recipe — see :bake show/edit/remove
           sendToMax(expandSelectRange(cmd));
         });
 
-        // 3. Start loop timer — loop resets to snapshot every N bars
+        // 2. Start the checkpoint timer — marks a new bakeAttempt every N bars,
+        //    no audio reset (see startBakeLoop)
         startBakeLoop(label);
         return;
       }
 
-      // :bake end — queue close at next loop boundary
+      // :bake show — review the current comportment before deciding whether
+      // to correct further, :score it, or :bake end it. "Editing" a
+      // comportment just means typing a new command — it applies live
+      // immediately, same as always — but there was no way to see the
+      // resolved result of everything typed so far, only the raw log. This
+      // is that missing review step.
+      if (sub === 'show') {
+        if (!bakeSessionActive) { logSys('no bake session running'); return; }
+        if (bakeSeqSteps) {
+          logSys('sequence "' + bakeSessionLabel + '" — assembled timeline so far:');
+          bakeSeqLog.forEach(l => logSys('  ' + l));
+          if (bakeUserCmds.length) {
+            logSys('  live corrections (not yet tied to one state):');
+            resolveComportment(bakeUserCmds).forEach(c => logSys('    ' + c));
+          }
+        } else {
+          logSys('bracket "' + bakeSessionLabel + '" — current comportment ('
+                 + bakeComportment.length + ' commands, :bake edit <n> <cmd> / :bake remove <n> to change):');
+          bakeComportment.forEach((c, i) => logSys('  ' + String(i + 1).padStart(2) + '  ' + c));
+          logSys('cricket\'s original attempt: ' + (bakeFirstCmds || bakeCricketCmds).length
+                 + ' cmds  ·  corrections since: ' + bakeUserCmds.length);
+        }
+        return;
+      }
+
+      // :bake edit <n> <command...> — replace the nth line from :bake show
+      // with a new command, applied live immediately. This is the actual
+      // "modify the commands" step: type the corrected line back in by
+      // number instead of having to remember + retype Cricket's exact
+      // original verb/target to override it.
+      if (sub === 'edit') {
+        if (!bakeSessionActive) { logSys('no bake session running'); return; }
+        if (bakeSeqSteps) { logSys('bake edit: not supported inside a sequence bracket — retrain the individual state instead (:bake start ... :bake end <name>)'); return; }
+        const n = parseInt(parts[2]);
+        const newCmd = parts.slice(3).join(' ');
+        if (isNaN(n) || n < 1 || n > bakeComportment.length || !newCmd) {
+          logSys('usage: :bake edit <n> <command...>  (n from :bake show, 1-' + bakeComportment.length + ')');
+          return;
+        }
+        const old = bakeComportment[n - 1];
+        bakeComportment[n - 1] = newCmd;
+        bakeUserCmds.push(newCmd);
+        sendToMax(newCmd);
+        logSys('* edited ' + n + ':  ' + old + '  →  ' + newCmd);
+        return;
+      }
+
+      // :bake remove <n> — drop the nth line entirely. Note: this removes it
+      // from the RECIPE (what gets saved/scored going forward) — it does not
+      // itself revert the engine's current live value, since most verbs have
+      // no generic "unset" opcode to call. Send a replacement value if you
+      // need the live behavior to change right now too.
+      if (sub === 'remove') {
+        if (!bakeSessionActive) { logSys('no bake session running'); return; }
+        if (bakeSeqSteps) { logSys('bake remove: not supported inside a sequence bracket'); return; }
+        const n = parseInt(parts[2]);
+        if (isNaN(n) || n < 1 || n > bakeComportment.length) {
+          logSys('usage: :bake remove <n>  (n from :bake show, 1-' + bakeComportment.length + ')');
+          return;
+        }
+        const [removed] = bakeComportment.splice(n - 1, 1);
+        logSys('x removed ' + n + ':  ' + removed + '  (live engine unchanged — send a new value if needed)');
+        return;
+      }
+
+      // :bake sequence name:bars [name:bars ...] — assemble PRE-TRAINED states
+      // into a timed, looping handoff instead of one static comportment.
+      // Each name must already exist in bake_states.json (train + save it
+      // first with a normal :bake start/.../:bake end <name>).
+      if (sub === 'sequence') {
+        if (bakeSessionActive) {
+          logSys('bake already running — :bake abort first');
+          return;
+        }
+        const specs = parts.slice(2);
+        if (!specs.length) { logSys('usage: :bake sequence name:bars [name:bars ...]'); return; }
+
+        const steps = [];
+        const bad   = [];
+        for (const spec of specs) {
+          const m = spec.match(/^([A-Za-z0-9_-]+):(\d+(?:\.\d+)?)$/);
+          if (!m) { bad.push(spec); continue; }
+          steps.push({ name: m[1], bars: parseFloat(m[2]) });
+        }
+        if (bad.length) {
+          logSys('usage: :bake sequence name:bars [name:bars ...] — bad step(s): ' + bad.join(', '));
+          return;
+        }
+
+        const states  = loadBakeStates();
+        const missing = steps.map(s => s.name).filter(n => !states[n]);
+        if (missing.length) {
+          const known = Object.keys(states);
+          logSys('bake sequence: unknown state(s): ' + missing.join(', ')
+                 + (known.length ? '  — known: ' + known.join(', ') : '  — nothing saved yet, train one with :bake start then :bake end <name>'));
+          return;
+        }
+
+        startBakeSequence(steps, steps.map(s => s.name + ':' + s.bars).join(' '));
+        return;
+      }
+
+      // :bake end [name] — queue close at next checkpoint/handoff boundary.
+      // Always saves the final assembled commands as a reusable state (single
+      // mode: the corrected comportment; sequence mode: the whole assembled
+      // timeline) — see saveBakeState / stopBakeLoop. The name defaults to
+      // the bracket's own prompt (naming isn't required for the common case:
+      // train Cricket, done), but an explicit name overrides it — e.g. after
+      // ":bake start move the shit up", ":bake end" alone saves it AS "move
+      // the shit up", while ":bake end rise" saves it as "rise" instead. A
+      // short name is really only necessary later, for :bake sequence
+      // (name:bars can't contain spaces) — see its usage note.
       if (sub === 'end') {
         if (!bakeSessionActive) { logSys('no bake session running'); return; }
-        bakeEndQueued = true;
-        logSys('bake: close queued — will store at next loop boundary');
+        bakeEndSaveName = parts.slice(2).join(' ') || null;
+        bakeEndQueued   = true;
+        logSys('bake: close queued — will store at next checkpoint boundary'
+               + '  (saving as state "' + (bakeEndSaveName || bakeSessionLabel) + '")');
         return;
       }
 
@@ -3266,8 +6508,107 @@ function handleInput(text) {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'bake', ...snapshot }));
       }
-      logSys('🫳 baked — intent: "' + bakeIntent + '"  cricket: '
+      logSys('✓ baked — intent: "' + bakeIntent + '"  cricket: '
              + bakeCricketCmds.length + ' cmds  corrections: ' + bakeUserCmds.length);
+      return;
+    }
+
+    // :bakeState list|show|apply|drop — inspect/use named states saved via
+    // :bake end <name>. These are what :bake sequence assembles.
+    if (verb === 'bakeState') {
+      const sub  = parts[1];
+      const name = parts.slice(2).join(' ');   // joined — default state names are the
+                                                // full prompt now, so they can contain spaces
+      const states = loadBakeStates();
+
+      if (sub === 'list') {
+        const names = Object.keys(states);
+        if (!names.length) { logSys('bakeState: none saved yet — :bake start ... then :bake end <name>'); return; }
+        logSys('saved states: ' + names.map(n => n + ' (' + states[n].commands.length + ' cmds)').join('  ·  '));
+        return;
+      }
+
+      if (sub === 'show') {
+        if (!name || !states[name]) { logSys('usage: :bakeState show <name>' + (!name ? '' : ' — unknown "' + name + '"')); return; }
+        logSys('state "' + name + '"  saved ' + states[name].savedAt + ':');
+        states[name].commands.forEach(c => logSys('  ' + c));
+        return;
+      }
+
+      if (sub === 'apply') {
+        if (!name) { logSys('usage: :bakeState apply <name>'); return; }
+        const applied = applyBakeState(name);
+        if (applied) logSys('→ applied state "' + name + '"  (' + applied.length + ' commands)');
+        return;
+      }
+
+      if (sub === 'drop') {
+        if (!name || !states[name]) { logSys('usage: :bakeState drop <name>' + (!name ? '' : ' — unknown "' + name + '"')); return; }
+        delete states[name];
+        try { fs.writeFileSync(BAKE_STATES_PATH, JSON.stringify(states, null, 2), 'utf8'); logSys('dropped state "' + name + '"'); }
+        catch (e) { logSys('bakeState: failed to drop "' + name + '" — ' + e.message); }
+        return;
+      }
+
+      logSys('usage: :bakeState list | show <name> | apply <name> | drop <name>');
+      return;
+    }
+
+    // :score <-1..1> [overallSection] — handled here, ahead of the generic
+    // COMMANDS.has(verb) block further down, for two reasons:
+    //   1. That block unconditionally does bakeUserCmds.push(expanded) for
+    //      every command it forwards, treating it as a "user correction" fed
+    //      to Cricket's fine-tune log at :bake end. A rating isn't an engine
+    //      parameter Cricket should learn to emit, so :score needs to bypass
+    //      that push entirely — previously it didn't, and every :score typed
+    //      during a bracket silently leaked into cricket_finetune.jsonl.
+    //   2. When a :bake bracket is open, this attaches bakeSessionId + which
+    //      attempt is currently playing (bakeAttempt hasn't incremented yet
+    //      for the in-progress loop, hence +1) so ws_server.js can tag the
+    //      training_log_vertical.jsonl entry — see sendToMax's `extra` param
+    //      and ws_server.js's :score handler. Outside a bracket this is a
+    //      plain passthrough, identical to before.
+    if (verb === 'score') {
+      const extra = bakeSessionActive
+        ? { bakeSessionId, bakeAttempt: bakeAttempt + 1, bakeIntent: bakeSessionLabel }
+        : null;
+      if (bakeSessionActive) {
+        const v = parseFloat(parts[1]);
+        if (!isNaN(v)) { bakeScoreCount++; bakeLastScore = { type: 'score', value: v }; }
+      }
+      sendToMax(body, extra);
+      logSys('→ ' + body + (extra ? '  {grey-fg}[bake ' + bakeSessionId + ' · attempt '
+             + extra.bakeAttempt + ']{/grey-fg}' : ''));
+      return;
+    }
+
+    // :scoreTransition <-1..1> [stem] — same treatment as :score immediately
+    // above, and for the same two reasons (doesn't belong in bakeUserCmds,
+    // gets tagged to the open bracket). This is the primary signal for
+    // :bake sequence handoffs — see startBakeSequence's checkpoint log line.
+    if (verb === 'scoreTransition') {
+      const extra = bakeSessionActive
+        ? { bakeSessionId, bakeAttempt: bakeAttempt + 1, bakeIntent: bakeSessionLabel }
+        : null;
+      if (bakeSessionActive) {
+        const v = parseFloat(parts[1]);
+        if (!isNaN(v)) { bakeScoreCount++; bakeLastScore = { type: 'transition', value: v }; }
+      }
+      sendToMax(body, extra);
+      logSys('→ ' + body + (extra ? '  {grey-fg}[bake ' + bakeSessionId + ' · attempt '
+             + extra.bakeAttempt + ']{/grey-fg}' : ''));
+      return;
+    }
+
+    // :tag <label> [stem] — same treatment as :score/:scoreTransition above:
+    // a structural section label isn't an engine parameter Cricket should
+    // learn to emit, so it bypasses bakeUserCmds/bakeComportment entirely.
+    // Tracked in bakeTag purely for the training panel's own "tag:" line, so
+    // a bracket also records what section of the song it was trained against.
+    if (verb === 'tag') {
+      if (bakeSessionActive) bakeTag = parts[1] || null;
+      sendToMax(body);
+      logSys('→ ' + body);
       return;
     }
 
@@ -3507,12 +6848,35 @@ function handleInput(text) {
 
     // Track follow graph locally so :tip can compute payouts
     if (verb === 'followStem') {
-      const from = parts[1], to = parts[2], w = parseFloat(parts[3]);
+      // :followStem <stem> self                       — reset every dimension
+      // :followStem <stem> <dim|all> self               — reset just those dimension(s)
+      // :followStem <stem> <dim|all> <target> <w> ...   — set that dimension's blend
+      // Local optimistic echo only — the server's broadcast (msg.type==='param',
+      // key==='followStem') is what actually confirms this, see below.
+      const from   = parts[1];
+      const second = parts[2];
       if (state.followGraph[from]) {
-        if (to === 'self') {
-          state.followGraph[from] = {};
-        } else if (state.stems[to] && !isNaN(w)) {
-          state.followGraph[from][to] = w / 100;
+        if (second === undefined || second === 'self') {
+          DIMS.forEach(d => { state.followGraph[from][d] = {}; });
+        } else {
+          const dims = second === 'all' ? DIMS : (DIMS.includes(second) ? [second] : null);
+          if (dims) {
+            if (parts[3] === 'self') {
+              dims.forEach(d => { state.followGraph[from][d] = {}; });
+            } else {
+              const pairs = [];
+              let totalW = 0;
+              for (let i = 3; i + 1 < parts.length; i += 2) {
+                const target = parts[i], w = parseFloat(parts[i + 1]);
+                if (state.stems[target] && !isNaN(w) && w >= 0) { pairs.push([target, w]); totalW += w; }
+              }
+              if (pairs.length && totalW > 0) {
+                const map = {};
+                pairs.forEach(([target, w]) => { map[target] = w / totalW; });
+                dims.forEach(d => { state.followGraph[from][d] = map; });
+              }
+            }
+          }
         }
       }
     }
@@ -3522,23 +6886,56 @@ function handleInput(text) {
       const N = STEMS.length;
 
       // ── Curator share ─────────────────────────────────────────────────────
-      const FLOOR = 0.40;
       // creative factors (edit_rate, spectral_dist, genre_div) not yet wired from Max
-      const curatorShare = FLOOR;  // full eq: 0.40 + 0.60 × creative_factor
+      const curatorShare = CURATOR_FLOOR;  // full eq: 0.40 + 0.60 × creative_factor
       const artistPool   = 1 - curatorShare;  // 0.60
 
       // ── Artist split (80/20 within artist pool) ───────────────────────────
       const base = 0.8 / N;
 
-      // Sum incoming follows per stem
+      // Sum incoming follows per stem, averaged across DIMS.length so a
+      // stem following on every dimension still totals to the same
+      // influence as the old whole-stem model did (weight 1.0 == fully
+      // followed), while following on just one dimension (e.g. only P)
+      // correctly counts for a proportionally smaller share.
       const influence = {};
       STEMS.forEach(s => { influence[s] = 0; });
       STEMS.forEach(from => {
-        Object.entries(state.followGraph[from] || {}).forEach(([to, w]) => {
-          if (influence[to] !== undefined) influence[to] += w;
+        DIMS.forEach(dim => {
+          Object.entries((state.followGraph[from] && state.followGraph[from][dim]) || {}).forEach(([to, w]) => {
+            if (influence[to] !== undefined) influence[to] += w / DIMS.length;
+          });
         });
       });
       const totalInfluence = STEMS.reduce((sum, s) => sum + influence[s], 0);
+
+      // :tip <username> <amount> — a simulated INCOMING tip (someone actually
+      // tipped $X), as opposed to bare :tip below (a dry-run showing the
+      // current split percentages with no dollar amount attached). Updates
+      // lastTip so the tipping panel shows who tipped, how much, and the
+      // resulting split — same dollar math as the dry-run, just scaled by
+      // amount instead of printed as bare percentages.
+      const tipUser = parts[1];
+      const tipAmt  = parseFloat(parts[2]);
+      if (tipUser && !isNaN(tipAmt) && tipAmt > 0) {
+        const stemAmts = {};
+        STEMS.forEach(s => {
+          const share      = totalInfluence > 0 ? influence[s] / totalInfluence : 0;
+          const stemOfPool = base + 0.2 * share;
+          stemAmts[s] = artistPool * stemOfPool * tipAmt;
+        });
+        lastTip = {
+          username: tipUser, amount: tipAmt,
+          curator: curatorShare * tipAmt,
+          stems: stemAmts,
+          ts: Date.now(),
+          txnId: genTxnId(),
+        };
+        logSys('✓ tip: ' + tipUser + ' → $' + tipAmt.toFixed(2)
+          + '  {grey-fg}(curator $' + lastTip.curator.toFixed(2) + ' · ' + lastTip.txnId + '){/grey-fg}');
+        render();
+        return;
+      }
 
       const lines = ['── tip simulation ──────────────────'];
       lines.push(`  curator   ${(curatorShare * 100).toFixed(1)}%  (floor — creative factors not yet live)`);
@@ -3554,11 +6951,13 @@ function handleInput(text) {
       lines.push(`  ─────────────────────────────────`);
       lines.push(`  artists   ${(artistPool * 100).toFixed(1)}%  total`);
 
-      // Show active follow graph
+      // Show active follow graph, per dimension
       const edges = [];
       STEMS.forEach(from => {
-        Object.entries(state.followGraph[from] || {}).forEach(([to, w]) => {
-          edges.push(`${from} → ${to} ${(w * 100).toFixed(0)}%`);
+        DIMS.forEach(dim => {
+          Object.entries((state.followGraph[from] && state.followGraph[from][dim]) || {}).forEach(([to, w]) => {
+            edges.push(`${from}.${dim} → ${to} ${(w * 100).toFixed(0)}%`);
+          });
         });
       });
       if (edges.length) {
@@ -3652,20 +7051,97 @@ function handleInput(text) {
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    // @commands / :commands — toggle command panel
-    if (verb === 'commands') { cmdCollapsed ? expandCmd() : collapseCmd(); return; }
+    // @commands / :commands — toggle command panel. Opening it now reads as
+    // an actual answer from Cricket in the chat log instead of a silent panel
+    // flip — same treatment the natural-language showCommands path gets
+    // (see the onCommand callback below), so both ways of asking feel consistent.
+    if (verb === 'commands') {
+      if (cmdCollapsed) { openCmdPanel(); logCricket('command list — panel\'s up.'); }
+      else              { collapseCmd(); }
+      return;
+    }
 
-    // :language — toggle language panel
-    if (verb === 'language') { langCollapsed ? expandLang() : collapseLang(); return; }
+    // :language — toggle language panel, same chat-answer treatment as :commands.
+    if (verb === 'language') {
+      if (langCollapsed) { openLangPanel(); logCricket('pick a language — number, name, or code all work.'); }
+      else               { collapseLang(); }
+      return;
+    }
 
-    // :chat — toggle chat panel
-    if (verb === 'chat') { chatCollapsed ? expandChat() : collapseChat(); return; }
+    // :chat — same as ^C: maximize/un-maximize chat. There's no more small
+    // docked state to toggle into — chat is either hidden or maximized.
+    if (verb === 'chat') { toggleChatMaximize(); return; }
+
+    // :memory — Cricket's own conversational memory (see CRICKET'S MEMORY,
+    // near chatHistory). Distinct from :resetMemory, which wipes the audio
+    // ANALYSIS data — this only touches the chat/summary side.
+    //   :memory            report saturation + whether a persisted summary
+    //                      exists, as an actual Cricket chat answer
+    //   :memory clear      two-step confirm — empties live history back to
+    //                      just the system prompt and deletes the summary
+    //                      persisted on disk (same pattern as :resetMemory)
+    if (verb === 'memory') {
+      const sub = (parts[1] || '').toLowerCase();
+      if (sub === 'clear' || sub === 'forget') {
+        logSys('⚠  This will erase Cricket\'s conversational memory — the running summary and everything said this session.');
+        logSys('Type Y to confirm, anything else to cancel.');
+        pendingConfirm = () => {
+          chatHistory.splice(1, chatHistory.length - 1); // keep only the system prompt at index 0
+          cricketMemory = { summary: '', turns: 0, updatedAt: null };
+          try { fs.unlinkSync(CRICKET_MEMORY_PATH); } catch (e) {}
+          cricketMsgCount = 0;
+          if (!chatMaximized) toggleChatMaximize();
+          logCricket('clean slate — memory cleared.');
+          render();
+        };
+        return;
+      }
+      if (!chatMaximized) toggleChatMaximize();
+      const persisted = cricketMemory.summary
+        ? `carrying a summary from earlier sessions (${cricketMemory.turns} turns folded in).`
+        : `nothing persisted from earlier sessions yet.`;
+      logCricket(`memory: ${memoryBar(10)}  —  ${Math.max(0, chatHistory.length - 1)} messages live this session. ${persisted}`);
+      return;
+    }
+
+    // :train — toggle the training screen (same as ^T), switch its
+    // training/review sub-menu, or run a review sub-action while already on
+    // that view. See LEARN MODE, right after stopBakeLoop, for what each one
+    // actually does (still named for the internal appMode/learnView state —
+    // only the user-facing command/label changed from :learn/"Learn" to :train/"Train").
+    if (verb === 'train') {
+      const sub = (parts[1] || '').toLowerCase();
+      if (!sub) { toggleLearnMode(); return; }
+      // training/review switch the sub-menu — and enter the training screen
+      // first if you weren't already there, so ":train training" alone is
+      // enough to jump straight to the live bracket view from Playback.
+      if (sub === 'training' || sub === 'review') { switchLearnView(sub); return; }
+      if (appMode !== 'learn') { logSys('train: not on the training screen — type :train or press ^T first'); return; }
+      if (learnView !== 'review') { logSys('train: this only applies to the review view — :train review first'); return; }
+      if (sub === 'source')                 { reviewSetSource((parts[2] || '').toLowerCase()); return; }
+      if (sub === 'next' || sub === 'n')    { reviewMove(1); return; }
+      if (sub === 'prev' || sub === 'p')    { reviewMove(-1); return; }
+      if (sub === 'play')                   { reviewPlay(); return; }
+      if (sub === 'stop')                   { reviewStop(); return; }
+      if (sub === 'approve')                { reviewApprove(); return; }
+      if (sub === 'exclude')                { reviewExclude(); return; }
+      if (sub === 'edit')                   { reviewEditLine(parts[2], parts.slice(3)); return; }
+      if (sub === 'remove' || sub === 'rm') { reviewRemoveLine(parts[2]); return; }
+      if (sub === 'add')                    { reviewAddLine(parts.slice(2)); return; }
+      logSys('usage: :train [training | review | source bakes|states | next | prev | play | stop'
+             + ' | approve | exclude | edit <n> <cmd...> | remove <n> | add <cmd...>]');
+      return;
+    }
 
     // @state / :state — show current state
     if (verb === 'state') { displayState(); return; }
 
-    // @ alone — expand language list
-    if (!body && prefix === '@') { langCollapsed ? expandLang() : collapseLang(); return; }
+    // @ alone — expand language list, same chat-answer treatment as :language.
+    if (!body && prefix === '@') {
+      if (langCollapsed) { openLangPanel(); logCricket('pick a language — number, name, or code all work.'); }
+      else               { collapseLang(); }
+      return;
+    }
 
     // Check if verb is a known command
     if (COMMANDS.has(verb)) {
@@ -3684,6 +7160,7 @@ function handleInput(text) {
         ALL_STEMS.filter(s => s !== leader).forEach(follower => {
           const cmd = `lockSource ${leader} ${follower}`;
           bakeUserCmds.push(cmd);
+          if (bakeSessionActive && !bakeSeqSteps) upsertComportment(cmd);
           sendToMax(cmd);
           logSys('→ ' + cmd);
         });
@@ -3704,6 +7181,7 @@ function handleInput(text) {
         const w = parseFloat(parts[2]);
         const cmd = 'width all ' + parts[2];
         bakeUserCmds.push(cmd);
+        if (bakeSessionActive && !bakeSeqSteps) upsertComportment(cmd);
         sendToMax(cmd);
         logSys('→ ' + cmd + '  (master = all stems)');
         if (!isNaN(w)) {
@@ -3715,9 +7193,17 @@ function handleInput(text) {
         return;
       }
       if (verb === 'showState' || verb === 'state') { displayState(); return; }
-      if (verb === 'showCommands') { cmdCollapsed ? expandCmd() : collapseCmd(); return; }
-      if (verb === 'language') { langCollapsed ? expandLang() : collapseLang(); return; }
-      if (verb === 'chat') { chatCollapsed ? expandChat() : collapseChat(); return; }
+      if (verb === 'showCommands') {
+        if (cmdCollapsed) { openCmdPanel(); logCricket('command list — panel\'s up.'); }
+        else              { collapseCmd(); }
+        return;
+      }
+      if (verb === 'language') {
+        if (langCollapsed) { openLangPanel(); logCricket('pick a language — number, name, or code all work.'); }
+        else               { collapseLang(); }
+        return;
+      }
+      if (verb === 'chat') { toggleChatMaximize(); return; }
       if (verb === 'stop')  { playbackStopped = true; }
       if (verb === 'start') { playbackStopped = false; }
       if (verb === 'setGlobalBPM') {
@@ -3779,6 +7265,7 @@ function handleInput(text) {
       }
       const expanded = expandSelectRange(body);
       bakeUserCmds.push(expanded);   // track as user correction for :bake
+      if (bakeSessionActive && !bakeSeqSteps) upsertComportment(expanded);   // live-edit the recipe
       sendToMax(expanded);
       logSys('→ ' + expanded);
       render();
@@ -3801,6 +7288,12 @@ function handleInput(text) {
   }
 
   // Natural language → Cricket → Max
+  // Open the chat overlay if it isn't already — otherwise the message (and
+  // Cricket's reply) gets written straight into a hidden logBox, same "I
+  // typed something and nothing happened" problem :commands/:language had
+  // before openCmdPanel()/openLangPanel(). Talking to Cricket should always
+  // land you somewhere you can actually see the conversation.
+  if (!chatMaximized) toggleChatMaximize();
   // Collapse commands panel on first chat message
   if (!cmdCollapsed) collapseCmd();
   logUser(trimmed);
@@ -3812,7 +7305,10 @@ function handleInput(text) {
 
   callCricket(trimmed, cmd => {
     if (cmd === 'showState')    displayState();
-    else if (cmd === 'showCommands') { cmdCollapsed ? expandCmd() : collapseCmd(); }
+    else if (cmd === 'showCommands') {
+      if (cmdCollapsed) { openCmdPanel(); logCricket('command list — panel\'s up.'); }
+      else              { collapseCmd(); }
+    }
     else {
       const parts = cmd.trim().split(/\s+/);
       if ((parts[0] === 'setGlobalBPM' || parts[0] === 'setFallbackBPM') && parseFloat(parts[1]) > 0) {
@@ -3825,8 +7321,78 @@ function handleInput(text) {
   });
 }
 
-// Quit
-screen.key(['escape', 'C-c'], () => process.exit(0));
+// Quit — 'C-c' used to live here too; it's now the chat-maximize chip (see
+// below), so escape is the only key bound to a hard exit.
+screen.key(['escape'], () => process.exit(0));
+
+// Mode toggles — bound on both screen AND inputBox (inputBox has focus
+// essentially always, and its own readInput lifecycle grabs keys ahead of
+// screen-level bindings — see the C-1..C-4 trigger pads below and the
+// pageup/pagedown scroll bindings for the same dual-binding pattern).
+// All five are Control combos, not Option/Alt — tried Option first (user
+// request), but Option+letter isn't a real modifier at the terminal-protocol
+// level on macOS by default, it's how accented/special characters get
+// typed. Confirmed live: unconfigured, it doesn't fire the binding at all,
+// it inserts the special character straight into whatever's being typed in
+// the chat box (user: "⌥ only outputs special characters in the chat ™¶").
+// Control chars don't have that failure mode — they're raw control bytes,
+// universally understood with zero terminal configuration — so back to ⌃,
+// and each is already excluded by inputBox's own _cursorPos/_listener
+// character-insert regex (see CURSOR-AWARE INPUT EDITING below) so none of
+// them leak into whatever's currently typed either.
+//
+// There are two SCREENS — playback and training — plus one OVERLAY, chat,
+// that can toggle on top of whichever screen is active without changing it
+// (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES, near where
+// PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES are defined). ^C and ^T are
+// therefore fully independent: ^T keeps working while chat is open (the
+// overlay just follows to the new screen), and ^C keeps working regardless
+// of which screen you're on.
+//
+//   ^C — open/close the chat overlay, on top of whichever screen is active
+//   ^T — switch between the playback and training screens (training has
+//        its own sub-menu — training/review — see :train training|review
+//        and the LEARN MODE section). Was ^R; moved to ^T so the letter
+//        matches "Train".
+//   ^R — switch training's own sub-menu, training <-> review (see
+//        toggleLearnSubView()) — enters the training screen first if you
+//        weren't already there, same as :train training|review.
+//   ^B — jump straight to the review sub-view showing whichever bake is
+//        currently selected (same as ^R would, if not already there); if
+//        already on review, cycles forward through reviewEntries instead,
+//        wrapping past the last one back to the first (see cycleBake()).
+//   ^L — leave this session, back to the login/session picker (2-step
+//        confirm — reuses :logout's own logic, see that verb's own comment).
+screen.key(   ['C-c'], toggleChatMaximize);
+inputBox.key( ['C-c'], toggleChatMaximize);
+screen.key(   ['C-t'], toggleLearnMode);
+inputBox.key( ['C-t'], toggleLearnMode);
+function toggleLearnSubView() { switchLearnView(learnView === 'training' ? 'review' : 'training'); }
+function cycleBake() {
+  const wasReview = appMode === 'learn' && learnView === 'review';
+  if (!wasReview) { switchLearnView('review'); return; }
+  if (reviewEntries.length) reviewGoto((reviewIndex + 1) % reviewEntries.length);
+}
+screen.key(   ['C-r'], toggleLearnSubView);
+inputBox.key( ['C-r'], toggleLearnSubView);
+screen.key(   ['C-b'], cycleBake);
+inputBox.key( ['C-b'], cycleBake);
+function confirmExitToLogin() {
+  // The confirm prompt is a logSys() line into logBox, which only exists
+  // inside the chat overlay now (see CHAT_OVERLAY_BOXES) — maximize chat
+  // FIRST so logBox is actually on screen before the prompt gets written to
+  // it. Also drop out of Learn mode explicitly: chat and Learn are fully
+  // independent toggles now (toggleChatMaximize() no longer touches
+  // appMode), so nothing else will do this for us, and there's no reason
+  // to leave the training screen "active in the background" through a logout.
+  if (appMode === 'learn') exitLearnMode();
+  if (!chatMaximized) toggleChatMaximize();
+  logSys('leaving this session — back to the login screen. Type Y to confirm, anything else to cancel.');
+  pendingConfirm = () => handleInput(':logout');
+  render();
+}
+screen.key(   ['C-l'], confirmExitToLogin);
+inputBox.key( ['C-l'], confirmExitToLogin);
 
 
 // Scroll
@@ -3862,7 +7428,7 @@ const TRIGGER_STEMS = ['vocals', 'melody', 'bass', 'drums'];
   });
 });
 
-// Mouse wheel scroll — direct handler bypasses element routing
+// Mouse wheel scroll + clicks — direct handler bypasses element routing
 screen.on('mouse', data => {
   if (data.action === 'wheelup' || data.action === 'wheeldown') {
     const dir = data.action === 'wheelup' ? -3 : 3;
@@ -3871,13 +7437,24 @@ screen.on('mouse', data => {
       && data.y <  cmdBox.top + cmdBox.height;
     if (overCmd) { cmdBox.scroll(dir); screen.render(); }
     else          { logBox.scroll(dir); screen.render(); }
+    return;
   }
+
+  // Training/review switching lives in the footer chips/keys (^R — see
+  // renderFooter()/toggleLearnSubView()); bake browsing is reviewListBox's
+  // own mouse:true list selection. No other in-panel widget needs
+  // hit-testing here.
 });
 
 
 screen.on('resize', () => {
-  if (!langCollapsed) setLangContent(`{white-fg}:language — type to collapse{/white-fg}\n{grey-fg}${buildLangList()}{/grey-fg}`);
+  if (!langCollapsed) setLangContent(`{bright-white-fg}:language — type to collapse{/bright-white-fg}\n{grey-fg}${buildLangList()}{/grey-fg}`);
+  // Same reasoning as the lang rebuild above — the command panel's column
+  // count depends on terminal width, so it has to be rebuilt on resize too,
+  // not just at expandCmd() time (see buildCmdColumns()).
+  if (!cmdCollapsed) setCmdContent(buildCmdColumns(contentW()));
   reflow(); render();
+  if (appMode === 'learn') { reflowLearn(); renderTrainingView(); }
   // Belt-and-suspenders: with smartCSR off this shouldn't be load-bearing
   // anymore (see screen options above for the real fix), but a full
   // reallocation on resize is cheap and guarantees no stale buffer state
@@ -3900,22 +7477,118 @@ function updateInputSize() {
 
 inputBox.on('keypress', () => setImmediate(updateInputSize));
 
+// ── CURSOR-AWARE INPUT EDITING ────────────────────────────────────────────────
+// blessed's Textarea is append-only + backspace-from-the-end only — its own
+// _listener has a literal "// TODO: Handle directional keys." no-op for
+// left/right/up/down (node_modules/blessed/lib/widgets/textarea.js). There's
+// no way to move into the middle of a typed command and fix it without
+// clearing the whole line. Overridden at the INSTANCE level (not the
+// Textarea prototype, so nothing else using blessed is affected) so the
+// existing readInput()/grabKeys/escape-to-cancel lifecycle from
+// inputOnFocus stays intact — only what a keypress actually DOES changes.
+// up/down stay bound to command history (below); this only adds left/right
+// cursor movement, Home/End (C-a/C-e, readline-style), insert-at-cursor, and
+// delete-forward (the "delete" key — backspace already existed, just always
+// deleted from the end before this).
+inputBox._cursorPos = 0;
+
+inputBox._listener = function(ch, key) {
+  const done = this._done;
+  const prevValue = this.value;
+  const v   = this.value;
+  const pos = this._cursorPos;
+
+  if (key.name === 'return') return;
+  if (key.name === 'enter') { ch = '\n'; }
+
+  if (key.name === 'left') {
+    this._cursorPos = Math.max(0, pos - 1);
+  } else if (key.name === 'right') {
+    this._cursorPos = Math.min(v.length, pos + 1);
+  } else if (key.ctrl && key.name === 'a') {
+    this._cursorPos = 0;                 // readline-style: start of line
+  } else if (key.ctrl && key.name === 'e') {
+    this._cursorPos = v.length;          // readline-style: end of line
+  } else if (key.name === 'escape') {
+    done(null, null);
+  } else if (key.name === 'backspace') {
+    if (pos > 0) {
+      this.value = v.slice(0, pos - 1) + v.slice(pos);
+      this._cursorPos = pos - 1;
+    }
+  } else if (key.name === 'delete') {
+    if (pos < v.length) {
+      this.value = v.slice(0, pos) + v.slice(pos + 1);
+    }
+  } else if (ch) {
+    if (!/^[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]$/.test(ch)) {
+      this.value = v.slice(0, pos) + ch + v.slice(pos);
+      this._cursorPos = pos + ch.length;
+    }
+  }
+
+  if (this.value !== prevValue || this._cursorPos !== pos) {
+    this.screen.render();
+  }
+};
+
+// Default _updateCursor always places the terminal cursor at the END of the
+// content (based on the last rendered line's width) — that stopped matching
+// _cursorPos the moment left/right could move it anywhere else. Simplified
+// to the display width of value up to _cursorPos; treats the field as
+// single-line, which matches how it's actually used here (Enter always
+// submits via the 'enter' key binding below, so text never really
+// accumulates a literal embedded newline in practice).
+inputBox._updateCursor = function(get) {
+  if (this.screen.focused !== this) return;
+  const lpos = get ? this.lpos : this._getCoords();
+  if (!lpos) return;
+  const program = this.screen.program;
+  const before  = this.value.slice(0, this._cursorPos || 0);
+  const cy = lpos.yi + this.itop;
+  const cx = lpos.xi + this.ileft + this.strWidth(before);
+  if (cy === program.y && cx === program.x) return;
+  if (cy === program.y) {
+    if (cx > program.x) program.cuf(cx - program.x);
+    else if (cx < program.x) program.cub(program.x - cx);
+  } else {
+    program.cup(cy, cx);
+  }
+};
+
+// setValue() (history recall, clearValue) doesn't know about _cursorPos —
+// keep it at the end after any programmatic value change, same place
+// blessed's own default behavior always left it.
+function setInputValue(v) {
+  inputBox.setValue(v);
+  inputBox._cursorPos = inputBox.value.length;
+}
+
 // ── Command history (up/down arrow) ──────────────────────────────────────────
 let cmdHistory = [];
 let historyIdx = -1;
 
+// up/down are ALWAYS command history, everywhere — including Learn/review.
+// They used to double as session-browse (reviewMove()) while learnView was
+// 'review', on the theory that the command line "wasn't really for typing
+// prose" there — but that made up/down behave differently depending on
+// which tab you were in, with no visual cue which mode you'd get, which is
+// exactly what made it confusing/felt "broken." Browsing sessions already
+// has its own dedicated, unambiguous command — :train next / :train n and
+// :train prev / :train p (see handleInput's :train verb) — so nothing is
+// lost by keeping arrows reserved for their one job.
 inputBox.key('up', () => {
   if (cmdHistory.length === 0) return;
   historyIdx = Math.min(historyIdx + 1, cmdHistory.length - 1);
-  inputBox.setValue(cmdHistory[historyIdx]);
+  setInputValue(cmdHistory[historyIdx]);
   updateInputSize();
   screen.render();
 });
 
 inputBox.key('down', () => {
-  if (historyIdx <= 0) { historyIdx = -1; inputBox.setValue(''); updateInputSize(); screen.render(); return; }
+  if (historyIdx <= 0) { historyIdx = -1; setInputValue(''); updateInputSize(); screen.render(); return; }
   historyIdx--;
-  inputBox.setValue(cmdHistory[historyIdx]);
+  setInputValue(cmdHistory[historyIdx]);
   updateInputSize();
   screen.render();
 });
@@ -3924,7 +7597,7 @@ inputBox.key('enter', () => {
   const text = inputBox.getValue().replace(/\n/g, ' ').trim();
   if (text) { cmdHistory.unshift(text); historyIdx = -1; }
   handleInput(text);
-  inputBox.clearValue();
+  setInputValue('');
   inputLines = 1;
   inputBox.height = 1;
   reflow();
@@ -3936,6 +7609,7 @@ inputBox.key('enter', () => {
 
 inputBox.focus();
 connectToMax();
+renderFooter();
 render();
 
 // ── LANGUAGE SELECTION ────────────────────────────────────────────────────────
@@ -4071,7 +7745,7 @@ const LANG_MODELS = {
 };
 
 function applyLanguage(lang) {
-  sepBox.setContent('');
+  sepBox.setContent(chatTopRule());
   // Switch Ollama model if this language has a custom one
   CONFIG.ollama_model = LANG_MODELS[lang.code] || 'llama3.1:latest';
 
@@ -4103,6 +7777,10 @@ setTimeout(() => {
 
 // Clock tick — keeps timestamps counting smoothly between Max messages.
 setInterval(() => { peakDecayTick(); scheduleRender(); }, 100);
+// Momentum panel — one new sample per bar-in-progress per second, separate
+// from the 100ms render/decay tick above since this one actually mutates
+// data (see momentumBarTick()'s own comment) rather than just redrawing.
+setInterval(() => { momentumBarTick(); scheduleRender(); }, 1000);
 
 // Refresh playback bars on interval (position updates come from Max in real use)
 setInterval(() => {
