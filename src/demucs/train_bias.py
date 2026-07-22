@@ -15,20 +15,29 @@ Two independent signals, two independent models:
   1. TRANSITION quality — from training_log_transition.jsonl (:scoreTransition).
      Each logged entry has, per stem, a `from` slice's descriptors and a `to`
      slice's descriptors, plus one -1..1 rating for how well that specific cut
-     flowed. Feature = the per-descriptor delta (to - from) for C/E/F/P/H/T —
-     the same 6 dimensions slicer.js already tracks in lastEndDesc, so the
-     runtime side can compute the identical feature at scoring time
-     (candidate[d] - endDesc[d]) with no new state needed.
+     flowed. Feature = the per-descriptor delta (to - from) for C/S/E/F/P/H/T
+     (7 level dims) PLUS the same delta treatment applied to tension_C/E/F/P/H/T
+     (6 tension dims, no tension_S — see TENSION_DIMS below) — 13 dims × 2
+     (signed + absolute delta) = 26 features. The 7 level dims are the same
+     ones slicer.js already tracks in lastEndDesc, so the runtime side can
+     compute the identical feature at scoring time (candidate[d] - endDesc[d])
+     with no new state needed.
 
   2. VERTICAL / mix quality — from training_log_vertical.jsonl (:score).
      Each entry rates the whole 4-stem combination at one instant. There's no
      natural per-stem feature here — it's a judgment about how the 4 stems'
      current states sit together — so the feature is the mean and standard
-     deviation of each descriptor (C/E/F/P/H/T) ACROSS the 4 stems' current
-     values. 12 features total. This is deliberately generic (not
+     deviation of each of the same 13 level+tension dims ACROSS the 4 stems'
+     current values. 26 features total. This is deliberately generic (not
      hand-designed "clash" heuristics) — with real data accumulated, the
-     fitted weights themselves will reveal which of mean/std per descriptor
+     fitted weights themselves will reveal which of mean/std per dimension
      actually correlates with a good mix, rather than us guessing upfront.
+
+  Neither model's feature count doubled by accident: adding a dimension
+  means it needs BOTH the level treatment (if it's a level descriptor) and
+  potentially the tension treatment (if add_tension.py computes it) — more
+  weights than either alone. See the min-sample gate below: more parameters
+  raises the data bar before a fit is trusted, it isn't free.
 
 Both models are fit with ordinary least squares (numpy, no other ML
 dependency) since ratings are continuous -1..1, not binary labels.
@@ -50,8 +59,17 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-DESC_DIMS = ['C', 'E', 'F', 'P', 'H', 'T']
+DESC_DIMS = ['C', 'S', 'E', 'F', 'P', 'H', 'T']
 STEM_KEYS = ['vocals', 'melody', 'bass', 'drums']
+
+# Tension dims — normalized [0,1] per-track slope-of-descriptor-over-bars,
+# written by add_tension.py (see that file's docstring for the full
+# computation: per-bar average → sliding-window slope → min-max normalize).
+# A genuinely different KIND of signal than DESC_DIMS above — trend/momentum
+# rather than level — not a redundant copy of the same information.
+# Only 6, not 7: add_tension.py's own DESCRIPTORS list never included S, so
+# there is no tension_S field anywhere in the data to read.
+TENSION_DIMS = ['C', 'E', 'F', 'P', 'H', 'T']
 
 # Below this many examples, OLS is more likely to be fitting noise than
 # signal (6 features + bias = 7 unknowns for transition; 12 + bias = 13 for
@@ -86,6 +104,32 @@ def read_jsonl(path):
     return rows
 
 
+def load_fit_shapes(data_dir):
+    """Reads fit_shapes.json (written by the TUI's :setFitShape command) —
+    a plain {dim_label: 'quadratic'|'cubic'} map. Missing file or missing
+    entry both mean 'linear', the default. Returns a dict of label -> shape
+    for every dim explicitly opted up (never contains 'linear' itself — a
+    dim with no entry here IS linear). Read once at the START of a run,
+    before any feature matrix is built — a shape change only takes effect
+    on the next :trainBias, same as any other config the trainer reads once
+    and fits against.
+
+    'cubic' is a strict extension of 'quadratic', not a separate branch: a
+    dim flagged cubic gets BOTH the sq<label> and cu<label> terms (see
+    transition_feature_names()/build_*_dataset() below), so the fit can
+    represent any real cubic shape rather than being forced through the
+    origin-symmetric x^3-only curve a cubic term alone would give."""
+    path_ = os.path.join(data_dir, 'fit_shapes.json')
+    if not os.path.exists(path_):
+        return {}
+    try:
+        with open(path_) as f:
+            shapes = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return {label: shape for label, shape in shapes.items() if shape in ('quadratic', 'cubic')}
+
+
 def fit_ols(X, y):
     """Ordinary least squares via numpy's lstsq, with a bias column appended.
     Returns (weights: list[float] matching input feature order, bias: float,
@@ -103,7 +147,20 @@ def fit_ols(X, y):
     return weights.tolist(), float(bias), r2
 
 
-def transition_feature_names():
+def all_dims_with_keys():
+    """Every scalar feature source used by both models, as (short_label,
+    lookup_key) pairs. Level descriptors (DESC_DIMS) are looked up by their
+    bare letter in a logged descriptors{} blob. Tension descriptors
+    (TENSION_DIMS) are looked up via 'tension_<letter>' (matching how
+    ws_server.js logs them) and given a short label prefixed 'Tn' so they
+    don't collide with T (timbre) in printed weight names — e.g. tension_C's
+    short label is 'TnC', not 'TC'."""
+    pairs = [(d, d) for d in DESC_DIMS]
+    pairs += [('Tn' + d, 'tension_' + d) for d in TENSION_DIMS]
+    return pairs
+
+
+def transition_feature_names(dim_shapes=None):
     # Both signed delta AND |delta| per dimension — deliberately not assuming
     # upfront whether "did this cut flow well" is a DIRECTIONAL preference
     # (linear in delta, like DIR_PREF) or a SMOOTHNESS preference (small
@@ -113,20 +170,48 @@ def transition_feature_names():
     # with signed-delta-only features — R^2 near zero even though the
     # underlying relationship was strong. Including both lets the fitted
     # weights reveal which kind of relationship actually holds per
-    # descriptor, instead of us guessing.
+    # descriptor, instead of us guessing. Same treatment applied uniformly to
+    # tension dims below — no separate feature type invented for them, even
+    # though they're a different KIND of signal (trend, not level): keeping
+    # every dim's feature construction identical is simpler to reason about
+    # than a bespoke design per dim.
+    dim_shapes = dim_shapes or {}
     names = []
-    for d in DESC_DIMS:
-        names.append('delta' + d)
-    for d in DESC_DIMS:
-        names.append('absDelta' + d)
+    for label, _ in all_dims_with_keys():
+        names.append('delta' + label)
+    for label, _ in all_dims_with_keys():
+        names.append('absDelta' + label)
+    # Quadratic opt-in (:setFitShape) — one extra term per dim someone
+    # deliberately flipped to 'quadratic' (or 'cubic', which includes this
+    # term too — see load_fit_shapes()) after looking at the bake graph.
+    # sq<label> = delta*delta, which is exactly absDelta squared — squaring
+    # already discards the sign, so there's no separate "signed square" to
+    # also offer here the way delta/absDelta both exist above.
+    for label, _ in all_dims_with_keys():
+        if dim_shapes.get(label) in ('quadratic', 'cubic'):
+            names.append('sq' + label)
+    # Cubic opt-in — one more term still, only for dims flagged all the way
+    # up to 'cubic'. cu<label> = delta**3 — unlike sq, this one keeps its
+    # sign (a cubic is an odd-ish extra term, needed for curves that aren't
+    # symmetric around delta=0, e.g. "a positive push helps a lot but a
+    # negative one only hurts a little").
+    for label, _ in all_dims_with_keys():
+        if dim_shapes.get(label) == 'cubic':
+            names.append('cu' + label)
     return names
 
 
-def build_transition_dataset(rows):
+def build_transition_dataset(rows, dim_shapes=None):
     """Each logged :scoreTransition entry can cover 1..4 stems (stemFilter or
     all 4) — every stem present is its own training example, sharing that
-    entry's rating. Skips a stem-entry if either side is missing a
-    descriptor for any of the 6 dims (partial slice data, e.g. still loading)."""
+    entry's rating. Skips a stem-entry if either side is missing ANY of the
+    now-13 lookup keys (7 level + 6 tension) — logs written before this
+    tension/S update won't have tension_* or S keys at all, so old entries
+    are correctly excluded rather than silently padded with fabricated
+    zeros. Re-run :score/:scoreTransition after this update to accumulate
+    usable examples."""
+    dim_shapes = dim_shapes or {}
+    dims = all_dims_with_keys()
     X, y = [], []
     for row in rows:
         rating = row.get('rating')
@@ -139,44 +224,65 @@ def build_transition_dataset(rows):
             if not frm or not to:
                 continue
             try:
-                deltas = [float(to[d]) - float(frm[d]) for d in DESC_DIMS]
+                deltas = [float(to[key]) - float(frm[key]) for _, key in dims]
             except (KeyError, TypeError, ValueError):
                 continue
-            X.append(deltas + [abs(v) for v in deltas])
+            abs_deltas = [abs(v) for v in deltas]
+            sq_terms = [d * d for (label, _), d in zip(dims, deltas)
+                        if dim_shapes.get(label) in ('quadratic', 'cubic')]
+            cu_terms = [d * d * d for (label, _), d in zip(dims, deltas)
+                        if dim_shapes.get(label) == 'cubic']
+            X.append(deltas + abs_deltas + sq_terms + cu_terms)
             y.append(rating)
     return np.array(X, dtype=float), np.array(y, dtype=float)
 
 
-def build_vertical_dataset(rows):
+def build_vertical_dataset(rows, dim_shapes=None):
     """Each logged :score entry rates the whole 4-stem combo as ONE example
     (not one per stem, unlike transitions) — the judgment is inherently about
-    all 4 together. Feature = mean + std of each descriptor across whichever
-    stems have valid descriptors right now (fewer than 4 is fine — a stem can
-    be silent/unloaded; mean/std just adapt to however many are present, with
-    a floor of 2 so "spread" is still meaningful)."""
+    all 4 together. Feature = mean + std of each level/tension dim across
+    whichever stems have valid values right now (fewer than 4 is fine — a
+    stem can be silent/unloaded; mean/std just adapt to however many are
+    present, with a floor of 2 so "spread" is still meaningful). Quadratic
+    opt-in (:setFitShape) adds meanX-squared per flagged dim — lets the fit
+    curve, e.g. "medium is good, both extremes are bad", instead of forcing
+    a straight line through a shape that visibly isn't one. Cubic opt-in
+    adds meanX-cubed on top of that, for dims where even "medium is good"
+    isn't symmetric."""
+    dim_shapes = dim_shapes or {}
+    dims = all_dims_with_keys()
     X, y = [], []
     for row in rows:
         rating = row.get('rating')
         stems = row.get('stems') or {}
         if rating is None:
             continue
-        per_dim_values = {d: [] for d in DESC_DIMS}
+        per_dim_values = {label: [] for label, _ in dims}
         for stem_key in STEM_KEYS:
             desc = (stems.get(stem_key) or {}).get('descriptors') or {}
-            for d in DESC_DIMS:
-                v = desc.get(d)
+            for label, key in dims:
+                v = desc.get(key)
                 if v is not None:
                     try:
-                        per_dim_values[d].append(float(v))
+                        per_dim_values[label].append(float(v))
                     except (TypeError, ValueError):
                         pass
-        if any(len(per_dim_values[d]) < 2 for d in DESC_DIMS):
+        if any(len(per_dim_values[label]) < 2 for label, _ in dims):
             continue
         feat = []
-        for d in DESC_DIMS:
-            vals = np.array(per_dim_values[d], dtype=float)
-            feat.append(float(np.mean(vals)))
+        means = {}
+        for label, _ in dims:
+            vals = np.array(per_dim_values[label], dtype=float)
+            m = float(np.mean(vals))
+            means[label] = m
+            feat.append(m)
             feat.append(float(np.std(vals)))
+        for label, _ in dims:
+            if dim_shapes.get(label) in ('quadratic', 'cubic'):
+                feat.append(means[label] * means[label])
+        for label, _ in dims:
+            if dim_shapes.get(label) == 'cubic':
+                feat.append(means[label] ** 3)
         X.append(feat)
         y.append(rating)
     return np.array(X, dtype=float), np.array(y, dtype=float)
@@ -240,20 +346,41 @@ def main():
     print(f"transition log: {len(trans_rows)} entries ({trans_path})")
     print(f"vertical log:   {len(vert_rows)} entries ({vert_path})")
 
-    Xt, yt = build_transition_dataset(trans_rows)
-    Xv, yv = build_vertical_dataset(vert_rows)
+    dim_shapes = load_fit_shapes(data_dir)
+    if dim_shapes:
+        quad_or_up = sorted(l for l, s in dim_shapes.items() if s in ('quadratic', 'cubic'))
+        cubic_only = sorted(l for l, s in dim_shapes.items() if s == 'cubic')
+        print(f"non-linear dims (from fit_shapes.json): {', '.join(sorted(dim_shapes))} "
+              f"— quadratic term added for: {', '.join(quad_or_up) or 'none'}; "
+              f"cubic term added for: {', '.join(cubic_only) or 'none'} "
+              f"— each adds one more weight per model, raising the 3x-parameters floor below")
 
-    transition_model = train_section('transition', Xt, yt, transition_feature_names(), args.min_samples)
+    Xt, yt = build_transition_dataset(trans_rows, dim_shapes)
+    Xv, yv = build_vertical_dataset(vert_rows, dim_shapes)
+
+    transition_model = train_section('transition', Xt, yt, transition_feature_names(dim_shapes), args.min_samples)
 
     vert_feature_names = []
-    for d in DESC_DIMS:
-        vert_feature_names.append('mean' + d)
-        vert_feature_names.append('std' + d)
+    for label, _ in all_dims_with_keys():
+        vert_feature_names.append('mean' + label)
+        vert_feature_names.append('std' + label)
+    for label, _ in all_dims_with_keys():
+        if dim_shapes.get(label) in ('quadratic', 'cubic'):
+            vert_feature_names.append('sqMean' + label)
+    for label, _ in all_dims_with_keys():
+        if dim_shapes.get(label) == 'cubic':
+            vert_feature_names.append('cuMean' + label)
     vertical_model = train_section('vertical', Xv, yv, vert_feature_names, args.min_samples)
 
     out = {
         'transition': transition_model,
         'vertical': vertical_model,
+        # Replaces the old 'quadratic_dims' array — slicer.js now reads this
+        # single {label: shape} map instead (see loadLearnedBias() there),
+        # since a dim can now be quadratic OR cubic, not just "quadratic or
+        # not". dim_shapes is already exactly this shape (it's what
+        # load_fit_shapes() returned above), so no reshaping needed.
+        'dim_shapes': dim_shapes,
         'generated_at': datetime.now(timezone.utc).isoformat(),
     }
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)

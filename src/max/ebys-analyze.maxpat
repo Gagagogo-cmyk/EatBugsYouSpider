@@ -10396,7 +10396,7 @@
                     "outlettype": [ "", "" ],
                     "patching_rect": [ 5848.148050546646, 840.7407267093658, 140.0, 22.0 ],
                     "saved_object_attributes": {
-                        "filename": "ms_router.js",
+                        "filename": "spat_fx_router.js",
                         "parameter_enable": 0
                     },
                     "text": "js spat_fx_router.js"

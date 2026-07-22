@@ -1,6 +1,6 @@
 # EBYS — Generative Layer (Roadmap)
 
-Status: **not started**. This document is a plan, not a description of shipped code.
+Status: **scaffolding built, not yet run**. The integration code (generation script, fine-tune script, tagging script, the remix/generate switch in `slicer.js`, the `:setAgentMode` command) exists and is syntax-checked. Nothing has actually been executed — no model downloaded, no fine-tune run, no clip generated — because that needs a GPU and an accepted Hugging Face license this environment doesn't have. See [Implementation status](#implementation-status) for exactly what's real vs. what still needs to happen on your own hardware.
 
 ---
 
@@ -27,27 +27,18 @@ A generative model removes that ceiling — it can synthesize points that were n
 
 ---
 
-## Build order
+## Build order — with Stable Audio Open
 
-### Box 1 — A model that can make sound at all
-Fine-tune an existing pretrained generative audio model on EBYS's own catalog. Not built from scratch — see [Model choice](#model-choice) below for why. This is a new subsystem, with no connection to `train_bias.py` yet. Output: a component that takes an input and produces a playable clip.
-
-### Box 2 — Feed generated audio back through the existing analysis pipeline
-Run generated clips through `analyze_reader.js`, the same descriptor pipeline every real track already goes through (C/S/E/F/P/H/T via FluCoMa). Mostly validation: confirming descriptor computation doesn't care whether the waveform came from a mic or a model.
-
-### Box 3 — Close the loop
-Start with the cheap version: generate many candidates, score each with the existing taste model (`scoreCandidate` / `applyLearnedRefusal` in `slicer.js`), keep the best. This reuses code that already exists almost unchanged.
-
-Only after that's proven, consider the harder version: fine-tune the generator itself using the taste score as a training reward — same shape as RLHF, applied to audio instead of text. Bigger engineering lift; not a v1 requirement.
-
-### Box 4 — Per-stem routing (optional, later)
-EBYS already treats each stem independently (`seg_voc`, `seg_mel`, `seg_bas`, `seg_drm` are separate in the schema; the mixer just recombines four independent streams). That means source strategy can be chosen per stem — e.g. vocals generated, melody/bass/drums still remixed from the real library. The mixing/playback layer doesn't need to change; it already expects a waveform per stem per slice regardless of origin.
-
-Two real requirements, not blockers:
-- Each stem on the generative path needs its own fine-tuned model — one generator can't credibly cover all instrument types.
-- Generated audio has to land on the same bar/timing grid the mixer already expects.
-
-Recommended: prove the pipeline on one stem before touching the rest.
+1. **Get the base model.** Download Stable Audio Open's pretrained weights and code (Hugging Face / Stability AI).
+2. **Prepare the catalog as training data.** Stable Audio Open is text-conditioned — each fine-tuning clip needs a caption alongside the audio. EBYS already has this: Essentia genre tags (`genres.json` / `genres` table, per track) and madmom tempo/BPM (`downbeats.json` / `tracks.bpm`), both computed at import time already. Build captions from existing genre + BPM metadata rather than tagging the catalog again from scratch.
+3. **Fine-tune.** Continue training Stable Audio Open's weights on the captioned catalog (rented GPU realistically). Shifts the model's learned "shape" toward EBYS's own material without erasing its original training.
+4. **Generate.** Prompt the fine-tuned model, conditioned on genre + target BPM. It starts from random noise and runs its learned denoising steps, producing a compressed latent — not audio yet, an internal representation.
+5. **Resynthesize.** Stable Audio Open's bundled decoder converts that latent into actual raw waveform samples — a real, playable clip. Ships with the model; no separate component to build.
+6. **Analyze.** Run the clip through `analyze_reader.js`, the same descriptor pipeline every real track already goes through (C/S/E/F/P/H/T via FluCoMa). No special case for generated audio — **but note `analyze_reader.js` is a Max object driven by FluCoMa's `buf~` externals, not a standalone script.** There's no way to compute these descriptors outside the Max patch without silently using different math than what the taste model was trained on. In practice this means: generated clips go through the same offline import step any new track does (see step 9a below), not an instant inline analysis at generation time.
+7. **Score.** Feed those descriptors into the existing taste model — `train_bias.py`'s learned weights, via the scoring functions already in `slicer.js`.
+8. **Filter.** Keep candidates that score well (`scoreCandidate` / `applyLearnedRefusal`), discard or regenerate the rest. Closes the loop using code that already exists, almost unchanged.
+9. **(Later) Per-stem.** Repeat 1–8 with a separately fine-tuned Stable Audio Open instance per stem to generate — vocals first, as a testbed — feeding output into the mixer alongside stems still coming from the real library. EBYS already treats each stem independently (`seg_voc`, `seg_mel`, `seg_bas`, `seg_drm` are separate in the schema), so the mixer doesn't need to change; it already expects a waveform per stem per slice regardless of origin. Two real requirements: each generative stem needs its own fine-tuned model, and output has to land on the same bar/timing grid the mixer expects — condition generation on the session's target BPM (madmom data) and/or time-align the resynthesized clip afterward, same problem real slices already solve.
+10. **(Later, harder) Train-time guidance.** Instead of filtering after generation, use the taste score as a training signal to keep fine-tuning Stable Audio Open itself, so it drifts toward what scores well over time — same shape as RLHF, applied to audio. Bigger lift; not a v1 requirement.
 
 ---
 
@@ -73,8 +64,31 @@ Stable Audio Open is diffusion-based: trained by learning to reverse a noising p
 
 ---
 
+## Implementation status
+
+Real, syntax-checked code exists for the pieces that don't require a GPU or model weights to write correctly. None of it has been run.
+
+| File | Job | Runnable here? |
+|---|---|---|
+| `src/demucs/generate_agent.py` | Loads Stable Audio Open Small, generates a batch of candidate clips per (stem, genre, BPM), can pull genre/BPM pairs straight from `ebys.db` via `--seed-from-db`. Names output `GEN__<stem>_<timestamp>_<n>_<suffix>.wav`. | No — needs `pip install diffusers transformers accelerate soundfile`, a GPU, and an accepted license at huggingface.co/stabilityai/stable-audio-open-small. Written to be correct on your own machine. |
+| `src/demucs/tag_generated.py` | Takes `generate_agent.py`'s manifest, writes matching `genres.json`/`downbeats.json` entries using the *known* generation conditioning (no re-running Essentia/madmom — the genre/BPM asked for is already ground truth). | Yes — pure JSON manipulation, no model needed. |
+| `src/demucs/finetune_generative.py` | Builds an (audio, caption) manifest from `ebys.db` using the same caption format as `generate_agent.py`, loads the base model, sets up the training loop. | Manifest-building and `--dry-run`: yes. Actual training: no — needs GPU + the diffusers reference training loop wired in (flagged directly in the script; API moves too fast across diffusers versions to hardcode the loss function here). |
+| `src/max/slicer.js` — `AGENT_MODE`, `setAgentMode()`, `filterPoolByAgentMode()` | Per-stem switch between real catalog material and `GEN__`-prefixed generated material. Filters the candidate pool *before* `applyLearnedRefusal()`/`scoreCandidate()` run — neither of those, nor `next()`, needed any changes. | Yes — this is live Node code in the real engine, verified with `node --check`. Defaults every stem to `'remix'`, so behavior for anyone not using this feature is unchanged. |
+| `:setAgentMode <stem\|all> <remix\|generate>` (`src/tui/app.js`) | TUI command, passthrough to `slicer.js` exactly like `:setLearnedWeight`. | Yes. |
+
+**The actual missing piece is entirely outside this codebase:** a machine with a GPU, Stable Audio Open's license accepted, and the time to run a real fine-tune. Everything on this side of that boundary is wired and ready.
+
+## Path to a first real test
+
+1. On a GPU machine: `pip install diffusers transformers accelerate soundfile torch`, accept the Stable Audio Open Small license on Hugging Face, `huggingface-cli login`.
+2. `python3 generate_agent.py --stem vocals --seed-from-db /path/to/ebys.db --count 4 --dry-run` — sanity-check the planned captions before spending GPU time.
+3. Drop `--dry-run`, generate a small batch.
+4. `python3 tag_generated.py --manifest data/generated/manifest_....json --genres-path data/current/genres.json --downbeats-path data/current/downbeats.json`.
+5. Run the normal Max analysis pass on the new WAVs (FluCoMa still has to compute real descriptors — not skippable), then `import_library.py` as usual.
+6. `:setAgentMode vocals generate` in the TUI, and confirm the vocals stem starts picking from the generated pool instead of the real one.
+
 ## Open questions
 
 - Fine-tuning infra: rent cloud GPU time vs. local hardware — not yet decided.
 - Per-stem vs. single general model: start with one stem (vocals suggested) as a testbed before committing to Box 4.
-- How generated candidates get tagged/logged in the session log for downstream use (scoring history, protocol accounting) — not yet designed.
+- Real-time/live generation (vs. this batch-then-switch approach) is a separate, harder problem — see the "live generation" discussion this doc doesn't cover yet. Stable Audio Open Small's 8-step inference is fast enough to generate *ahead* of a buffer, not fast enough to be truly causal/reactive mid-bar.

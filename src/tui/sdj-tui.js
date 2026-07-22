@@ -71,16 +71,24 @@ const footerBox = blessed.box({
 // so `^N` looks like the light-background chips in nano.
 const chip = (key, label) => `{inverse} ${key} {/inverse} ${label}`;
 
+// Quit sits on its own, right-anchored (user: "put control quit on the
+// right side of the screen") — everything else stays grouped left as
+// before; only ^Q moves. Enter/Select joined it on the right too (user:
+// "put enter tab to the right also, before log out") — right-flushed
+// group is now Select, Quit, in that order, Quit still the outermost/
+// rightmost entry.
 const footerCells = [
   chip('^N', 'New'),
   chip('^R', 'Rename'),
   chip('^D', 'Delete'),
-  chip('^Q', 'Quit'),
-  chip('Enter', 'Select'),
 ];
 blessed.text({
   parent: footerBox, bottom: 0, left: 1,
   tags: true, content: footerCells.join('   '),
+});
+blessed.text({
+  parent: footerBox, bottom: 0, right: 1,
+  tags: true, content: chip('Enter', 'Select') + '   ' + chip('^Q', 'Quit'),
 });
 
 // Status line sits just above the footer so a status message never paints

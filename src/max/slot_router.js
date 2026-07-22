@@ -483,7 +483,14 @@ function setPitch(stem, ratio) {
             post("slot_router: setPitch — unknown stem '" + t + "'\n"); continue;
         }
         stemPitch[t] = ratio;
-        outlet(PITCH_OUT[t], ratio);
+        // Same float-atom guarantee prepare()/rescheduleLive() use for karma~'s
+        // speed inlet: whole-number ratios (e.g. exactly 2.0 at +12 semitones)
+        // have no fractional part, so Max JS's outlet() sends them as an INT
+        // atom instead of a float. gizmo~'s ratio inlet — like karma~'s speed
+        // inlet — needs a float atom or the message is silently a no-op, which
+        // is exactly why round semitone values (12, -12, 0, 24...) were the
+        // ones that appeared "broken" while others may have worked.
+        outlet(PITCH_OUT[t], ratio + 1e-9);
         post("slot_router: pitch[" + t + "] = " + ratio.toFixed(4)
              + "  (" + (Math.log(ratio) / Math.log(2) * 12).toFixed(2) + " st)\n");
     }
@@ -528,7 +535,8 @@ function setFormant(stem, ratio) {
             post("slot_router: setFormant — unknown stem '" + t + "'\n"); continue;
         }
         stemFormant[t] = ratio;
-        outlet(FORMANT_OUT[t], ratio);
+        // Same int-vs-float atom guard as setPitch() above — see its comment.
+        outlet(FORMANT_OUT[t], ratio + 1e-9);
         post("slot_router: formant[" + t + "] = " + ratio.toFixed(4)
              + "  (" + (Math.log(ratio) / Math.log(2) * 12).toFixed(2) + " st)\n");
     }

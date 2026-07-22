@@ -28,8 +28,23 @@ const WebSocket = require('ws');
 const http      = require('http');
 const fs        = require('fs');
 const path      = require('path');
-const { spawn, exec } = require('child_process');
+const os        = require('os');
+const { spawn, exec, execFile } = require('child_process');
 const dgram      = require('dgram');
+
+// Network-detection state, declared early on purpose — networkAddrText()
+// (used inside titleCenter, built every render()) reads these, and
+// render() itself gets called once synchronously near the bottom of this
+// file, well before execution ever reaches these variables' "natural"
+// declaration point further down (next to the code that actually
+// populates/polls them). Left as `let` there too (see updateWifiSsid(),
+// the :network handler, and the networksetup -listallhardwareports
+// callback) — those are plain assignments now, not re-declarations; this
+// is the one and only `let` for each. Fixes: ReferenceError: Cannot
+// access 'wifiConnecting' before initialization.
+let macHardwarePortMap = {}; // BSD device name (e.g. "en0") -> 'wifi' | 'ethernet' | null
+let wifiSsid            = null;  // current Wi-Fi SSID, once polled
+let wifiConnecting      = false; // true while a :network join is in flight
 const sessionMgr = require('./session_manager');
 
 // ── ACTIVE SESSION DATA ROOT ─────────────────────────────────────────────────
@@ -152,6 +167,19 @@ const state = {
   // the existing 100ms render tick (see bottom of file) fades it back out
   // without needing its own timer.
   linkFiredAt: 0,
+  // Whether link_server.js currently has a peer deck reachable — separate
+  // from linkFiredAt above (that's a momentary missile-fire flash; this is
+  // the standing "are we actually paired with another deck right now"
+  // state). Set by linkRecvSock's PEER_ONLINE/PEER_OFFLINE messages, which
+  // used to only be logged (see logSys('✓ LINK peer connected') etc.) with
+  // nothing in the header reflecting it — user: "the link protocol could
+  // have something more in the header. visible connections to a network."
+  linkPeerOnline: false,
+  // Local network reachability — refreshed every NETWORK_POLL_MS by
+  // updateNetworkInfo() via os.networkInterfaces(), NOT a Wi-Fi-specific
+  // check (see that function's own comment for why). null = not polled
+  // yet, otherwise { iface, address } or null (no active interface).
+  network: null,
   params: {
     quant: true, envelope: 'hann',
     // Boot-time defaults simulate a plausible, already-dialed-in set rather
@@ -246,6 +274,14 @@ const state = {
   // the first WS message confirming it arrives (slicer.js re-announces it at
   // :start regardless).
   sourceLock: { vocals: 'melody', melody: null, bass: 'melody', drums: 'melody' },
+  // agentMode[stem] — mirrors slicer.js's AGENT_MODE ('remix' | 'generate').
+  // Confirmed values only, via the 'agentMode_<stem>' param broadcast from
+  // setAgentMode()'s own outlet(1, "param", ...) call — same one-way
+  // confirmation pattern as sourceLock above, no optimistic local echo.
+  // Defaults match slicer.js's own default so the gen/remix indicator under
+  // each stem's name (see the "Row 1 lead-in" block below STEM_ROW_LABEL)
+  // reads correctly even before the first confirmation arrives.
+  agentMode: { vocals: 'remix', melody: 'remix', bass: 'remix', drums: 'remix' },
   // playFullFile[stem] — mirrors slicer.js's PLAY_FULL_FILE. Default true for
   // every stem (whole-file mode is the out-of-the-box behavior). Any stem
   // going false means that stem is bar-chunked — either via an explicit
@@ -397,6 +433,25 @@ function updateBeatsForTrack(trackName) {
     ? { meter: entry.meter || 4, bpm: entry.bpm || 0, conf: entry.confidence || 0 }
     : { meter: 0, bpm: 0, conf: 0.0 };
   if (entry && entry.key && entry.key !== '?') state.key = entry.key;
+}
+
+// Native (analyzed) BPM of a single stem's own source track, looked up the
+// same way updateBeatsForTrack looks up the session's main track — user
+// wants this printed next to the current global/fallback BPM on each
+// stem's own descriptor line so the amount of pitch-shift actually being
+// applied to THAT stem (native vs. playback tempo) is visible per stem,
+// not just for the track the session was loaded on. Returns 0 (not found)
+// rather than throwing so a missing/unanalyzed source track just silently
+// omits the candidate below.
+function getNativeBpmForTrack(trackName) {
+  if (!trackName) return 0;
+  const base = trackName.replace(/_(vocals|melody|bass|drums|other|melo)(\.\w+)?$/i, '').trim();
+  let entry = beatsDb[base];
+  if (!entry) {
+    const lower = base.toLowerCase();
+    entry = Object.entries(beatsDb).find(([k]) => k.toLowerCase() === lower)?.[1];
+  }
+  return (entry && entry.bpm) ? entry.bpm : 0;
 }
 
 const DOWNBEAT_MIN_CONF = 0.4;  // must match slicer.js
@@ -815,7 +870,18 @@ const stemSliceStartPos   = {}; // track pos (0-1) at the moment each slice star
 const stemSliceStartTime  = {}; // wall-clock ms when each slice started playing
 const stemSliceEndTime    = {}; // wall-clock ms when segmentEnd arrived (exact audio end)
 const stemLearnedExtra    = {}; // EMA of buffer_manager delay per stem (ms) — self-calibrating
-let   playbackStopped     = false; // true after :stop, cleared by :start
+// Starts true (not false) on purpose — user: "only when :start is entered
+// that the visualizer should operate... it should never open playing,
+// always open fresh from a stopped state." Every boot/reconnect must assume
+// nothing is playing until proven otherwise by a real 'started'/'resumed'
+// confirmation from slicer.js (or the user's own :start), even if a stray
+// 'state' snapshot with running:true slips in first (e.g. ws_server.js's
+// own stop-on-disconnect hasn't finished its quantized freeze yet by the
+// time a reconnecting TUI's initial state snapshot goes out — see that
+// file's socket 'close'/'hello' handlers). Cleared to false only by the
+// 'started'/'resumed' messages and the :start command below — never by the
+// plain 'state' merge.
+let   playbackStopped     = true;
 let   playbackRenderTimer = null;  // drives progress-bar animation between WS events
 let   stoppedAtMs         = null;  // Date.now() when the server-confirmed 'stopped'
                                     // message arrived — lets the 'resumed' handler
@@ -1004,16 +1070,6 @@ function loadWaveforms() {
 }
 loadWaveforms();
 
-// Momentum direction arrow from MMT tension value (0–1, from add_tension.py).
-// Shows the CURRENT SLICE's momentum tendency — not the delta from the previous slice.
-// ↑ = building  ─ = stable  ↓ = releasing  · = no tension data
-function tensionArrow(t) {
-  if (t === null || t === undefined || isNaN(t)) return '·';
-  if (t > 0.6) return '↑';
-  if (t < 0.4) return '↓';
-  return '─';
-}
-
 // Keep umapDb around (still written by ws_server.js) but no longer rendered.
 let umapDb = {};
 function loadUmapDb() {
@@ -1187,10 +1243,15 @@ function momGlyphFor(stem, dim, v) {
 // samples already taken render as glyphs, seconds still to come render as
 // blank space (the strip visibly growing), no '│' seams anywhere since this
 // is one continuous run, not discrete cut-marked pairs.
-function momSparkline(stem, dim) {
+function momSparkline(stem, dim, maxLen) {
+  // maxLen lets a caller shrink the strip below its usual MOM_MAX_SAMPLES —
+  // used by momentumStemLines() to make room for the follow-graph tag
+  // ("[drm]") inline, without widening the box itself. Defaults to the
+  // full strip when omitted.
+  maxLen = maxLen == null ? MOM_MAX_SAMPLES : Math.max(0, maxLen);
   const buf = curBarBuffers[stem][dim];
   let out = '';
-  for (let i = 0; i < MOM_MAX_SAMPLES; i++) {
+  for (let i = 0; i < maxLen; i++) {
     // No sample at this slot yet (i >= buf.length) reads the same as a
     // sample that came back null — both are "no data here", so both fill
     // with the same grey · placeholder instead of one being a blank space.
@@ -1199,22 +1260,6 @@ function momSparkline(stem, dim) {
     out += v === null ? '{grey-fg}·{/grey-fg}' : momGlyphFor(stem, dim, v);
   }
   return out;
-}
-
-// Range bar: shows current value as a • cursor on a ━━━━ track within min-max range.
-// Cursor uses the small • (same glyph as the header record dot), not the larger ●.
-// width = number of inner characters (cursor included).
-function rangeBar(val, stemName, dim, width) {
-  width = width || 5;
-  if (Object.keys(stemRanges).length === 0) loadStemRanges();
-  const r = stemRanges[stemName];
-  const rng = r && r[dim];
-  if (!rng || rng.max === rng.min) {
-    return `{bright-white-fg}•{/bright-white-fg}{grey-fg}${'─'.repeat(width - 1)}{/grey-fg}`;
-  }
-  const lv  = Math.max(0, Math.min(1, ((parseFloat(val) || 0) - rng.min) / (rng.max - rng.min)));
-  const pos = Math.round(lv * (width - 1));
-  return `{grey-fg}${'─'.repeat(pos)}{/grey-fg}{bright-white-fg}•{/bright-white-fg}{grey-fg}${'─'.repeat(width - 1 - pos)}{/grey-fg}`;
 }
 
 // DAW-style block meter for a dB-scale reading (LUFS, or a VU channel's own
@@ -1251,6 +1296,23 @@ function dbMeter(value, peak, floor, redAt, width) {
     } else {
       out += '{grey-fg}░{/grey-fg}';
     }
+  }
+  return out;
+}
+
+// Two-tone proportional block bar — solid █ for the DJ/curator's share,
+// ░ for the remainder (the artist pool) — same fill/empty glyph convention
+// dbMeter() above already uses, reused here for a different meaning
+// (proportion of a split, not level-vs-max). Built for the tip equation
+// bar specifically (user: "using unicode blocks to represent the tip
+// scale") — swapped in for the old dash-and-cursor entropyBar() rendering,
+// which read as a range/position control rather than a two-way split.
+function splitBar(djFrac, width) {
+  width = width || 10;
+  const djCells = Math.round(Math.max(0, Math.min(1, djFrac)) * width);
+  let out = '';
+  for (let i = 0; i < width; i++) {
+    out += i < djCells ? '{bright-white-fg}█{/bright-white-fg}' : '{grey-fg}░{/grey-fg}';
   }
   return out;
 }
@@ -1329,9 +1391,16 @@ function renderStemGraph(stemName) {
   return levels.map(lv => lv > 0.66 ? 0 : lv > 0.33 ? 1 : 2);
 }
 
-// The sidebar sits beside sep/lang/cmd/chatHeader/log, which are all narrowed
-// to CONTENT_W so the language zone (and everything else in that column)
-// stops short of the right edge instead of running under the VU meters.
+// CONTENT_W/contentW() — the width still used by boxes that genuinely sit
+// BESIDE the VU/spatial sidebar for their whole height (reflowLearn()'s
+// training panel, which shares rows 3-7 with master's meters — see
+// MASTER_METER_BOXES). The chat overlay (sep/menuHeader/lang/cmd/log) used
+// to be narrowed to this too, but it never actually shares a row with the
+// sidebar — mTop (where the overlay starts) always docks below wherever
+// the header cluster (including master's meters) ends, never beside it —
+// so that margin was just wasted width there. Widened to '100%' instead
+// (user: "the chat should occupy the whole width of the screen... so maybe
+// the command list would fit all in one space").
 // Computed, not hand-counted, from the exact pieces vuSidebarBlock() joins:
 // label(5) + channel code "FL"(2) + gap(1) + bar(VU_W) + gap(1) + number(VU_NUM_W).
 const VU_SIDEBAR_W = VU_LABEL_W + 2 + 1 + VU_W + 1 + VU_NUM_W;
@@ -1341,6 +1410,12 @@ const VU_SIDEBAR_W = VU_LABEL_W + 2 + 1 + VU_W + 1 + VU_NUM_W;
 // extra margin there, box width equals content width exactly; the breathing
 // room between the two columns is VU_SPATIAL_GAP alone.
 const SPATIAL_W      = 9;
+// Back to 1 (briefly tried 0 — user: "put more space between the VU meter
+// numbers and the spatialization viewer... like before"). Zero read as too
+// cramped once the VU numbers and the pan-dot grid sat directly adjacent —
+// DESC_GRID_GAP/MOM_GAP (the momentum/transition gaps, a separate ask)
+// stay at 0, this is the one gap that specifically needed breathing room
+// back.
 const VU_SPATIAL_GAP = 1;
 const SIDE_TOTAL_W  = VU_SIDEBAR_W + VU_SPATIAL_GAP + SPATIAL_W;
 const CONTENT_W    = '100%-' + SIDE_TOTAL_W;
@@ -1351,12 +1426,18 @@ function contentW() { return Math.max(20, screen.width - SIDE_TOTAL_W); }
 // (which needs them to actually position the boxes), so both stay in sync.
 // Header row indices (see sLines in render()): 0 = state chips/version,
 // 1 = last touched, 2 = track/key, 3 = win/slices/LUFS/quant, 4 = genre/beats.
-// 2, not 1: row 1 ("last touched") flushes ITS OWN text to the true right
-// edge (atCol('', lastTouchLine)), the same column master's right-anchored
-// box paints into — starting master at row 1 painted straight over that
-// text. Row 2 (trackKey) only has LEFT-flushed content, empty on the
-// right, so master can safely start there instead — still right next to
-// "last touched", just one row lower, without covering it.
+// PEER ONLINE/OFFLINE and NETWORK used to get their own row 2 here — moved
+// back into the icon cluster on row 0 instead (user: "put the [peer
+// offline/online] and the [network] in the menu bar"), so the row indices
+// below are back to what they were before that row existed.
+// Both land on row 3 (win/slices/LUFS/quant, "quant:beat") rather than row
+// 1 ("last touched") — that row flushes ITS OWN text to the true right edge
+// (atCol('', lastTouchLine)), the same column master's right-anchored box
+// paints into, so starting master there would paint straight over that
+// text. Row 2 (track/key) is the first row with empty right-side space,
+// but master and tipBox/bakeInfoBox share ONE row deliberately (different
+// columns, same top) rather than master landing a row earlier than the
+// tip/train column — hence row 3, not 2.
 const MASTER_VU_TOP = 3; // masterVuBox/masterSpatialBox — "closer to last touched" (without covering it)
 const TRAIN_TIP_TOP = 3; // bakeInfoBox/tipBox — "align prmpt: with the row of quant:beat"
 // Column where iconCluster (and therefore [REC •], its first element)
@@ -1364,14 +1445,11 @@ const TRAIN_TIP_TOP = 3; // bakeInfoBox/tipBox — "align prmpt: with the row of
 // by reflow() to line tipBox's own left edge up with it (user: "align the
 // tipping zone with the [REC] box").
 let recColStart = 0;
-// Column where the [AGPL-3.0] badge specifically starts within withLCR's
-// centered title block (the block also contains "[EBYS 0.1.19]" before it) —
-// read by reflow() to line bakeInfoBox's own left edge up with it (user:
-// "align prmpt section with [AGPL...]"). Set right after withLCR runs (see
-// sLines below), not inside withLCR itself, since it needs the version-label
-// prefix's own width, which withLCR only ever sees as part of one combined
-// `center` string.
-let agplColStart = 0;
+// agplColStart (used to line up bakeInfoBox's left edge with the header's
+// [AGPL-3.0] badge) removed along with the badge itself — both bakeInfoBox
+// and the header's version/AGPL center column are gone now (version/AGPL
+// moved to the footer, see renderFooter() — user: "move [ebys version] and
+// [agpl] in the center of the bottom of the window").
 
 // ── ZONE 1 — Header (version + EBYS state) ───────────────────────────────────
 const statusBox = blessed.box({
@@ -1417,7 +1495,11 @@ let statusH  = 5;
 // '' once a language is picked (see stopSpinner()/stopChatSpinner()/
 // applyLanguage()).
 function chatTopRule() {
-  const w = Math.max(1, contentW());
+  const w = Math.max(1, screen.width);
+  // Was 'chirp' for a while (user: "keep the tab name chat, but the - chat -
+  // name that shows from the demarcation can be 'chirp'"), reverted back
+  // (user: "replace the chirp in the chat by chat") — matches the ^C footer
+  // chip and :chat command, which both stayed "chat" the whole time anyway.
   const label = ' chat ';
   const dashes = Math.max(0, w - label.length);
   const left = Math.floor(dashes / 2);
@@ -1426,7 +1508,7 @@ function chatTopRule() {
 }
 
 const sepBox = blessed.box({
-  top: fixedTop, left: 0, width: CONTENT_W, height: 1,
+  top: fixedTop, left: 0, width: '100%', height: 1,
   tags: true,
   style: { fg: 'grey', bg: SKIN.bg },
 });
@@ -1459,21 +1541,33 @@ function buildMenuHeaderLine() {
 }
 
 const menuHeaderBox = blessed.box({
-  top: fixedTop, left: 0, width: CONTENT_W, height: 1,
+  top: fixedTop, left: 0, width: '100%', height: 1,
   tags: true, wrap: true,
   style: { fg: 'grey', bg: SKIN.bg },
 });
 
+// ⌘/文 shortcut tags — NOT here any more. First tried as clickable tags on
+// this row (menuHeaderBox) — user: "ah i see it but thats not what i
+// meant. I want them as tabs at the bottom of the screen [^ ⌘] and
+// [^文]." Moved into renderFooter() instead, as two more chips in the
+// SAME leftChips row ^C/^T already live in (see its own comment) — that
+// reuses the exact gap-computation logic already proven correct there,
+// rather than another independently-positioned floating box (which is
+// exactly what caused the network zone's earlier header-overlap bug).
+// ⌘ (U+2318) is the user's own choice; 文 (U+6587, "language/script/
+// writing" — see its own comment in renderFooter() for the full
+// reasoning) is the proposed symbol for language.
+
 // ── ZONE 3.5 — Language selector (expands on boot, collapses after selection) ─
 const langBox = blessed.box({
-  top: fixedTop, left: 0, width: CONTENT_W, height: 1,
+  top: fixedTop, left: 0, width: '100%', height: 1,
   tags: true, wrap: true,
   style: { fg: 'grey', bg: SKIN.bg },
 });
 
 // ── ZONE 4 — Command list (expands on boot, collapses to one-liner) ───────────
 const cmdBox = blessed.box({
-  top: fixedTop + 1, left: 0, width: CONTENT_W, height: 1,
+  top: fixedTop + 1, left: 0, width: '100%', height: 1,
   tags: true, wrap: true,
   scrollable: true, alwaysScroll: true, mouse: true,
   style: { fg: 'grey', bg: SKIN.bg, scrollbar: { bg: 'grey' } },
@@ -1483,7 +1577,7 @@ const cmdBox = blessed.box({
 const logBox = blessed.log({
   top:           fixedTop + 3,
   left:          0,
-  width:         CONTENT_W,
+  width:         '100%',
   height:        screen.height - fixedTop - 3 - 1,
   tags:          true,
   scrollable:    true,
@@ -1554,42 +1648,23 @@ const masterSpatialBox = blessed.box({
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
 
-// ── ZONE 6.6 — Bake training readout, docked in the header area directly
-// under master's own VU+spatial block (one row of gap below it — see
-// bakeInfoBox.top in reflow). Lives up here, near track/win/genre, rather
-// than below the whole per-stem waveform+meters zone, so it stays visible
-// without scrolling past four stems' worth of content first. [TRAINING
-// ON]/[TRAINING OFF] itself lives in the header icon cluster (next to
-// [CHUNK]) — this panel is the detail view. Redesigned as: prompt line,
-// one dense stat line (matches the header's own "bars:32 stay:0.0"
-// convention), then a single spec-sheet-style command table instead of
-// separate cricket/corrections lists — cricket_cmds and user_corrections
-// overlap by parameter identity far more often than not (a correction is
-// usually "the same param, a different value"), so showing both in full
-// mostly duplicated lines. bakeComportment is already the deduped result;
-// this just renders it as aligned name/value columns with a * marker on
-// whatever doesn't match what Cricket originally proposed for that
-// parameter. wrap:true (unlike the other zone 6 boxes) since command text
-// is variable-length prose, not a fixed-width meter.
-// Height now tracks actual content (see renderBakeInfo's return value used in
-// reflow) instead of always reserving the worst case — idle state is just
-// prmpt/stat/rcp (~4 rows), a full recipe table can still grow up to the
-// MAX. Was a flat 10 always reserved regardless of content, which combined
-// with the tipping panel below it was tall enough to push the entropy meter
-// off the bottom of shorter terminal windows.
-const BAKE_INFO_MIN_H = 3;
-const BAKE_INFO_MAX_H = 10;
-const bakeInfoBox = blessed.box({
-  top: 0, right: 0, width: SIDE_TOTAL_W, height: BAKE_INFO_MIN_H,
-  tags: true, wrap: true,
-  style: { fg: SKIN.fg, bg: SKIN.bg },
-});
-
-// Indented to VU_LABEL_W so this panel's text starts in the same column as
-// "FL"/"FR"/"RL"/"RR" do in the VU meters directly above it. Table rows
-// step in one further level (+2), same convention as before.
-const BAKE_INFO_INDENT     = ' '.repeat(VU_LABEL_W);
-const BAKE_INFO_SUB_INDENT = ' '.repeat(VU_LABEL_W + 2);
+// ── ZONE 6.6 — Bake training readout ────────────────────────────────────────
+// Used to have its own header-area box on the PLAYBACK screen (bakeInfoBox,
+// docked next to tipBox) — removed (user: "remove the training zone
+// indicator in the playback tab. this should all go in the training tab").
+// bakeInfoLines() below is the shared content builder; the training screen's
+// own 'training' sub-view (see renderTrainingView()) is now the only place
+// it's actually rendered, straight into reviewDetailBox — no separate box
+// needed here any more, no duplication between the two screens either.
+// BAKE_INFO_INDENT used to match VU_LABEL_W — a holdover from when this
+// text lined up with "FL"/"FR"/"RL"/"RR" in the VU meters directly above
+// it on the playback header. That box is gone; bakeInfoLines() now only
+// renders into the training view's reviewDetailBox, where prmpt/bars/rcp
+// should sit flush with the left edge like everything else in that panel
+// (user: "align prmpt bars and rcp with the left side of the window").
+// Table rows still step in one level (+2) relative to their label.
+const BAKE_INFO_INDENT     = '';
+const BAKE_INFO_SUB_INDENT = ' '.repeat(2);
 const RECIPE_NAME_W  = 13;
 const RECIPE_VALUE_W = 8;
 
@@ -1636,8 +1711,382 @@ function sortRecipeCmds(cmds) {
 // tipBox now, which sits flush against tipBox.left (aligned with [REC] —
 // see reflow()) with no indent, so this no longer re-adds one either (used
 // to prepend BAKE_INFO_INDENT to every row).
-function wrapStatLine(tokens) {
-  const w = SIDE_TOTAL_W;
+// ── BAKE GRAPH (:showBakeGraph) ───────────────────────────────────────────────
+// Diagnostic-only, deliberately separate from train_bias.py's real
+// multi-dimension fit: reads a training log directly, fits ONE dimension in
+// isolation with plain 1D least squares, and renders it as a scatter plot
+// using Unicode Braille characters (each character = a 2x4 sub-cell dot
+// grid, real technique used by terminal plotting tools like plotext — see
+// GENERATIVE_LAYER.md-adjacent discussion on why a GUI isn't required for
+// this). Exists so a dimension's actual shape can be SEEN before deciding,
+// via :setFitShape, whether it deserves a quadratic term in the real model.
+
+function dimLookupKey(label) {
+  // Mirrors slicer.js's learnedDims()/all_dims_with_keys() label convention:
+  // level dims look themselves up, tension dims ('Tn' prefix) look up
+  // 'tension_<letter>'. Kept as a small parallel here rather than shared
+  // code since this file never loads slicer.js (separate process/runtime).
+  if (label.indexOf('Tn') === 0) return 'tension_' + label.slice(2);
+  return label;
+}
+
+function simpleOLS(xs, ys) {
+  // Plain closed-form 1D least squares — the same math numpy.linalg.lstsq
+  // does for train_bias.py, just solved directly since there's only one
+  // input dimension here instead of 13-27.
+  const n = xs.length;
+  const meanX = xs.reduce((a, b) => a + b, 0) / n;
+  const meanY = ys.reduce((a, b) => a + b, 0) / n;
+  let cov = 0, varX = 0;
+  for (let i = 0; i < n; i++) {
+    cov  += (xs[i] - meanX) * (ys[i] - meanY);
+    varX += (xs[i] - meanX) * (xs[i] - meanX);
+  }
+  const slope = varX > 1e-12 ? cov / varX : 0;
+  const intercept = meanY - slope * meanX;
+  return { slope, intercept };
+}
+
+// solveLinearSystem — Gaussian elimination with partial pivoting for a
+// small (<=4x4 here) dense system Ax = b. Only used by polyFit() below;
+// n is always degree+1 <= 4 (cubic is the highest shape :setFitShape
+// offers), so nothing fancier than a direct solve is worth reaching for.
+// A near-singular pivot column (fewer distinct x values than the degree
+// needs) leaves that coefficient at 0 rather than blowing up or throwing —
+// same "degrade gracefully, never crash the TUI over a diagnostic graph"
+// posture as the rest of this file's bake-graph code.
+function solveLinearSystem(A, b) {
+  const n = b.length;
+  const M = A.map((row, i) => row.concat([b[i]]));
+  for (let col = 0; col < n; col++) {
+    let pivotRow = col;
+    for (let r = col + 1; r < n; r++) {
+      if (Math.abs(M[r][col]) > Math.abs(M[pivotRow][col])) pivotRow = r;
+    }
+    if (Math.abs(M[pivotRow][col]) < 1e-9) continue;
+    const tmp = M[col]; M[col] = M[pivotRow]; M[pivotRow] = tmp;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const factor = M[r][col] / M[col][col];
+      if (factor === 0) continue;
+      for (let c = col; c <= n; c++) M[r][c] -= factor * M[col][c];
+    }
+  }
+  return M.map((row, i) => Math.abs(row[i]) < 1e-9 ? 0 : row[n] / row[i]);
+}
+
+// polyFit — ordinary least squares polynomial fit of the given degree
+// (1 = linear, matching simpleOLS; 2 = quadratic; 3 = cubic — the same
+// three shapes :setFitShape offers), via the normal equations
+// (Xᵀ X) c = Xᵀ y solved directly. Same OLS math as simpleOLS/
+// train_bias.py's numpy.lstsq, just generalized past one power of x — this
+// is what makes the bake-graph PREVIEW actually draw the curve a dim is
+// set to fit, instead of always drawing a straight line regardless of
+// :setFitShape (see renderBrailleScatter() below for why that used to be
+// misleading). Returns coefficients LOW to HIGH degree:
+// [c0 (intercept), c1 (x), c2 (x^2), c3 (x^3), ...].
+function polyFit(xs, ys, degree) {
+  const n = xs.length;
+  const terms = degree + 1;
+  const powSums = new Array(2 * terms - 1).fill(0);
+  const b = new Array(terms).fill(0);
+  for (let k = 0; k < n; k++) {
+    const xp = [1];
+    for (let d = 1; d < 2 * terms - 1; d++) xp.push(xp[d - 1] * xs[k]);
+    for (let i = 0; i < 2 * terms - 1; i++) powSums[i] += xp[i];
+    let xi = 1;
+    for (let i = 0; i < terms; i++) { b[i] += xi * ys[k]; xi *= xs[k]; }
+  }
+  const A = [];
+  for (let i = 0; i < terms; i++) {
+    const row = [];
+    for (let j = 0; j < terms; j++) row.push(powSums[i + j]);
+    A.push(row);
+  }
+  return solveLinearSystem(A, b);
+}
+
+function evalPoly(coeffs, x) {
+  let y = 0, p = 1;
+  for (let i = 0; i < coeffs.length; i++) { y += coeffs[i] * p; p *= x; }
+  return y;
+}
+
+// formatPolyEquation — coeffs are LOW to HIGH degree (polyFit()'s own
+// order); printed HIGH to LOW since that's the conventional reading order
+// for a polynomial (y = ax^3 + bx^2 + cx + d, not the reverse).
+function formatPolyEquation(coeffs) {
+  let out = 'y = ';
+  for (let i = coeffs.length - 1; i >= 0; i--) {
+    const c = coeffs[i];
+    const label = i === 0 ? '' : (i === 1 ? 'x' : 'x^' + i);
+    const sign = c < 0 ? '-' : '+';
+    const mag = Math.abs(c).toFixed(3);
+    out += (i === coeffs.length - 1)
+      ? (c < 0 ? '-' : '') + mag + label
+      : ' ' + sign + ' ' + mag + label;
+  }
+  return out;
+}
+
+// loadFitShapesSync / fitDegreeForDim — mirrors train_bias.py's own
+// load_fit_shapes(): reads fit_shapes.json fresh (no caching — this is only
+// ever called right before a graph redraw, same frequency the training-log
+// reads already happen at, see refreshSelectedBakePage()) and turns a dim
+// label into the polynomial degree to preview it at. This is what makes the
+// bake-graph PREVIEW actually track :setFitShape — previously
+// renderBrailleScatter() always fit a straight line via simpleOLS()
+// regardless of this file, so a dim flipped to quadratic/cubic still showed
+// a misleading linear preview.
+function loadFitShapesSync() {
+  const p = path.join(DATA_DIR, 'fit_shapes.json');
+  if (!fs.existsSync(p)) return {};
+  try {
+    const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+    const out = {};
+    for (const k in raw) { if (raw[k] === 'quadratic' || raw[k] === 'cubic') out[k] = raw[k]; }
+    return out;
+  } catch (e) { return {}; }
+}
+function fitDegreeForDim(dim) {
+  const shape = loadFitShapesSync()[dim];
+  return shape === 'cubic' ? 3 : (shape === 'quadratic' ? 2 : 1);
+}
+
+function readJsonlSafe(p) {
+  if (!fs.existsSync(p)) return [];
+  const rows = [];
+  const lines = fs.readFileSync(p, 'utf8').split('\n');
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    try { rows.push(JSON.parse(t)); } catch (e) { /* skip a corrupt/partial line, same as train_bias.py's read_jsonl */ }
+  }
+  return rows;
+}
+
+// extractBakePoints — one (x, y) point per usable bake. `feature` selects
+// which weight this graph actually corresponds to in train_bias.py's real
+// fit — 'delta'/'absDelta' for transition (matches transition_feature_names()'s
+// delta<label>/absDelta<label> pair), 'mean'/'std' for vertical (matches
+// build_vertical_dataset()'s mean<label>/std<label> pair). Defaults (delta,
+// mean) match this function's old single-feature behavior exactly, so every
+// existing :showBakeGraph call without a feature arg still renders the same
+// graph it always did.
+function extractBakePoints(dataDir, dim, model, feature) {
+  const key = dimLookupKey(dim);
+  const points = [];
+  if (model === 'transition') {
+    const feat = feature || 'delta';
+    const rows = readJsonlSafe(path.join(dataDir, 'training_log_transition.jsonl'));
+    for (const row of rows) {
+      const rating = row.rating;
+      if (rating === undefined || rating === null) continue;
+      const stems = row.stems || {};
+      for (const stemKey in stems) {
+        const pair = stems[stemKey] || {};
+        const frm = (pair.from && pair.from.descriptors) || {};
+        const to  = (pair.to   && pair.to.descriptors)   || {};
+        if (frm[key] === undefined || frm[key] === null) continue;
+        if (to[key]  === undefined || to[key]  === null) continue;
+        const delta = to[key] - frm[key];
+        points.push({ x: feat === 'absDelta' ? Math.abs(delta) : delta, y: rating });
+      }
+    }
+  } else {
+    const feat = feature || 'mean';
+    const rows = readJsonlSafe(path.join(dataDir, 'training_log_vertical.jsonl'));
+    for (const row of rows) {
+      const rating = row.rating;
+      if (rating === undefined || rating === null) continue;
+      const stems = row.stems || {};
+      const vals = [];
+      for (const stemKey in stems) {
+        const desc = (stems[stemKey] && stems[stemKey].descriptors) || {};
+        if (desc[key] !== undefined && desc[key] !== null) vals.push(desc[key]);
+      }
+      if (vals.length < 2) continue;
+      const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      if (feat === 'std') {
+        const variance = vals.reduce((a, b) => a + (b - mean) * (b - mean), 0) / vals.length;
+        points.push({ x: Math.sqrt(variance), y: rating });
+      } else {
+        points.push({ x: mean, y: rating });
+      }
+    }
+  }
+  return points;
+}
+
+// BAKE_GRAPH_LIST — the graph menu (user: "I will need a graph menu to
+// select which graphs I want to view, since there are 50ish possible graph
+// (per weights)"). One entry per real weight train_bias.py actually fits:
+// 13 dims (7 level + 6 tension) × {delta, absDelta} for transition, ×
+// {mean, std} for vertical = 52 entries. Deliberately excludes the sq*/cu*/
+// sqMean*/cuMean* non-linear-only terms (see FIT_SHAPES in slicer.js /
+// :setFitShape) — those only exist for whichever dims are opted in, so a
+// fixed 1-52 numbering would shift under the user's feet as fit_shapes.json
+// changes; :showBakeGraph <dim> <model> still reaches those by name.
+// :showBakeGraph <n> below indexes into this list (1-based, matches
+// :listGraphs' printed numbering).
+const BAKE_GRAPH_DIMS = ['C','S','E','F','P','H','T','TnC','TnE','TnF','TnP','TnH','TnT'];
+function buildBakeGraphList() {
+  const list = [];
+  BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'transition', feature: 'delta' }));
+  BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'transition', feature: 'absDelta' }));
+  BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'vertical', feature: 'mean' }));
+  BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'vertical', feature: 'std' }));
+  return list;
+}
+const BAKE_GRAPH_LIST = buildBakeGraphList();
+
+// BAKE_GRAPH_PAGES — the picker menu actually shown/stepped through now
+// (user: "show multiple graph at the same time to reduce the number of
+// options in the menu ... all the descriptor delta graphs on number 1 ...
+// then all the Tn[descriptors] delta on number 2"). Groups BAKE_GRAPH_LIST's
+// existing 52 entries into 8 pages — one per (model, feature) ×
+// {level dims, tension dims} — instead of a flat 1-52 list. Nothing about
+// which underlying graphs EXIST changed (still the same 52 dim×model×
+// feature combos, still fit exactly as train_bias.py does), just how many
+// render on screen per pick: a page shows all 7 level dims (or all 6
+// tension dims) for one model/feature stacked together — see
+// refreshSelectedBakePage(). LEVEL_DIMS/TENSION_DIMS split BAKE_GRAPH_DIMS
+// the same way it was already implicitly ordered (level block then tension
+// block within each model×feature run), just made explicit here since a
+// page needs to know its own dims as a real array, not a slice offset.
+const LEVEL_DIMS   = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
+const TENSION_DIMS = ['TnC', 'TnE', 'TnF', 'TnP', 'TnH', 'TnT'];
+function buildBakeGraphPages() {
+  const combos = [
+    ['transition', 'delta'],
+    ['transition', 'absDelta'],
+    ['vertical',   'mean'],
+    ['vertical',   'std'],
+  ];
+  const pages = [];
+  combos.forEach(([model, feature]) => {
+    pages.push({ model, feature, kind: 'level',   dims: LEVEL_DIMS });
+    pages.push({ model, feature, kind: 'tension', dims: TENSION_DIMS });
+  });
+  return pages;
+}
+const BAKE_GRAPH_PAGES = buildBakeGraphPages(); // 8 pages, 7 or 6 graphs each
+
+// pageIndexForDim — which page (1-based) a given dim/model/feature combo
+// lives on, used by :showBakeGraph <dim> [model] [feature] (the named
+// single-dim lookup form) and :setFitShape's "refresh the preview if it's
+// showing the dim that just changed" check, now that a "current graph" is
+// really a whole page of dims rather than one.
+function pageIndexForDim(dim, model, feature) {
+  const kind = dim.indexOf('Tn') === 0 ? 'tension' : 'level';
+  return BAKE_GRAPH_PAGES.findIndex(p => p.model === model && p.feature === feature && p.kind === kind) + 1;
+}
+
+const BRAILLE_BASE = 0x2800;
+// [row][col] -> dot bit, standard Unicode Braille dot numbering (1-8)
+const BRAILLE_BIT = [
+  [0x01, 0x08],
+  [0x02, 0x10],
+  [0x04, 0x20],
+  [0x40, 0x80],
+];
+
+// renderBrailleScatter — width/height are CHARACTER cells; the actual dot
+// grid is 2x width by 4x height, giving noticeably finer resolution than
+// one glyph per data point would. Draws the fitted line first, then real
+// data points on top (points always win visually over the line where they
+// overlap, since the line is illustrative and the points are ground truth).
+// isPoint[][] tracks, per CHARACTER cell (not sub-dot — blessed can only
+// color a whole character, not individual Braille sub-dots), whether any
+// real data point landed there; the fitted line renders grey, real bakes
+// render white (user: "put the weighted line in grey and the actual bakes
+// in white") — a cell with both just goes white, same "points win" rule
+// the dot-merging itself already followed before this, now carried into
+// color too.
+// degree (1/2/3) selects linear/quadratic/cubic — see fitDegreeForDim(),
+// which derives it from fit_shapes.json for whichever dim is selected.
+// Previously this always fit degree-1 (simpleOLS) no matter what
+// :setFitShape had that dim set to, so the preview line was flat-out wrong
+// for any dim already opted into a curve — see polyFit()'s own comment.
+function renderBrailleScatter(points, width, height, degree) {
+  const subW = width * 2, subH = height * 4;
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  let xMin = Math.min.apply(null, xs), xMax = Math.max.apply(null, xs);
+  let yMin = Math.min.apply(null, ys), yMax = Math.max.apply(null, ys);
+  if (xMax - xMin < 1e-9) { xMax += 0.5; xMin -= 0.5; }
+  if (yMax - yMin < 1e-9) { yMax += 0.5; yMin -= 0.5; }
+  // Can't fit a degree-D polynomial with fewer than D+1 points — falls back
+  // to whatever degree the point count actually supports rather than
+  // producing a singular/garbage fit (solveLinearSystem() would just zero
+  // out the unsolvable coefficients, but capping degree up front reads
+  // cleaner in the printed equation too).
+  const usableDegree = Math.max(1, Math.min(degree || 1, points.length - 1));
+  const coeffs = polyFit(xs, ys, usableDegree);
+
+  const grid = [], isPoint = [];
+  for (let r = 0; r < height; r++) {
+    grid.push(new Array(width).fill(0));
+    isPoint.push(new Array(width).fill(false));
+  }
+
+  function setDot(px, py, pointFlag) {
+    if (px < 0 || px >= subW || py < 0 || py >= subH) return;
+    const cellX = Math.floor(px / 2), cellY = Math.floor(py / 4);
+    const subX = px % 2, subY = py % 4;
+    grid[cellY][cellX] |= BRAILLE_BIT[subY][subX];
+    if (pointFlag) isPoint[cellY][cellX] = true;
+  }
+
+  for (let px = 0; px < subW; px++) {
+    const x = xMin + (px / (subW - 1)) * (xMax - xMin);
+    const yLine = evalPoly(coeffs, x);
+    const py = Math.round((1 - (yLine - yMin) / (yMax - yMin)) * (subH - 1));
+    setDot(px, py, false);
+  }
+
+  for (const p of points) {
+    const px = Math.round(((p.x - xMin) / (xMax - xMin)) * (subW - 1));
+    const py = Math.round((1 - (p.y - yMin) / (yMax - yMin)) * (subH - 1));
+    setDot(px, py, true);
+  }
+
+  const lines = [];
+  for (let r = 0; r < height; r++) {
+    let line = '';
+    for (let c = 0; c < width; c++) {
+      if (grid[r][c] === 0) { line += ' '; continue; }
+      const ch = String.fromCharCode(BRAILLE_BASE + grid[r][c]);
+      line += isPoint[r][c] ? `{white-fg}${ch}{/white-fg}` : `{grey-fg}${ch}{/grey-fg}`;
+    }
+    lines.push(line);
+  }
+  return {
+    text: lines.join('\n'), coeffs, degree: usableDegree, n: points.length,
+    xMin, xMax, yMin, yMax,
+  };
+}
+
+// featureAxisLabel — what X actually is for a given dim/model/feature combo
+// (user: "add axis to the graph. what x is and what y is"). Y is always
+// the bake rating (-1..1, whatever :score/:scoreTransition logged) — X
+// changes meaning per feature, same four shapes train_bias.py itself fits:
+// a raw delta (signed, can be negative), an absolute delta (always >= 0),
+// or a cross-stem mean/std at one instant.
+function featureAxisLabel(dim, model, feature) {
+  if (model === 'transition') {
+    return feature === 'absDelta' ? '|Δ' + dim + '| = |to − from|' : 'Δ' + dim + ' = to − from';
+  }
+  return feature === 'std' ? 'std(' + dim + ') across stems' : 'mean(' + dim + ') across stems';
+}
+
+function wrapStatLine(tokens, wrapW) {
+  // wrapW defaults to SIDE_TOTAL_W for backward compat, but tipBox's actual
+  // rendered width now varies (see reflow()'s tipBox.width clamp — user:
+  // "make sure the master VU meter isnt covered by the tip infos"), so
+  // renderTipInfo() below passes tipBox.width explicitly instead of relying
+  // on this default, keeping the wrap point in sync with where the box
+  // itself actually ends.
+  const w = wrapW || SIDE_TOTAL_W;
   const rows = [];
   let cur = [];
   let curW = 0;
@@ -1657,11 +2106,12 @@ function wrapStatLine(tokens) {
   return rows.join('\n');
 }
 
-// bakeInfoLines() — the actual line-building logic, split out of
-// renderBakeInfo() below so Learn mode's 'training' sub-view (see LEARN
-// MODE, and renderTrainingView()'s training branch) can show the exact same
-// live-bracket readout in reviewDetailBox without duplicating this logic —
-// bakeInfoBox itself is hidden while in Learn mode (PLAYBACK_HEADER_BOXES).
+// bakeInfoLines() — the actual line-building logic. Used to feed both
+// bakeInfoBox (playback's own header-area readout) and the training
+// screen's 'training' sub-view; bakeInfoBox is gone now (see the ZONE 6.6
+// comment above) so this only ever renders into reviewDetailBox, via
+// renderTrainingView()'s training branch — but kept as its own function
+// since that's still the single source of truth for the content itself.
 function bakeInfoLines() {
   const scoreShort = bakeScoreCount
     ? bakeScoreCount + '(' + bakeLastScore.value.toFixed(2) + ')' : '--';
@@ -1671,20 +2121,22 @@ function bakeInfoLines() {
   // for whatever isn't there yet, nothing is omitted. Otherwise a bare "--"
   // with no label (the previous version) reads as unexplained noise; you
   // can't tell what's missing without already knowing the layout by heart.
-  // Fixed 2-per-row pairing now (not wrapStatLine's dynamic width-based
-  // wrap) — user-specified layout: prmpt on its own line, then two rows of
-  // two paired stats each, then rcp:. "end" (queued save name) dropped from
-  // this readout entirely to fit that exact 4-line shape.
+  // prmpt on its own line, then bars/chk/tag/scr all together on ONE line
+  // (user: "put bars, chk, tag and scr on the same line" — was split
+  // across two paired-stat rows), then rcp:. "end" (queued save name)
+  // dropped from this readout entirely to fit that shape.
   const lines = [BAKE_INFO_INDENT + '{grey-fg}prmpt:{/grey-fg} '
     + (bakeSessionActive ? (bakeSessionLabel || '--') : '--')];
 
   if (bakeSessionActive && bakeSeqSteps) {
     const step = bakeSeqSteps[bakeSeqIndex];
+    // step/chk/tag/scr all on one line now (user: "put bars, chk, tag and
+    // scr on the same line" — step name+index stands in for "bars" here,
+    // since a sequence step doesn't have one fixed bar count of its own).
     lines.push('{grey-fg}' + BAKE_INFO_INDENT
       + step.name + ' ' + (bakeSeqIndex + 1) + '/' + bakeSeqSteps.length
-      + ' · chk ' + bakeAttempt + '{/grey-fg}');
-    lines.push('{grey-fg}' + BAKE_INFO_INDENT
-      + 'tag ' + tagShort + ' · scr ' + scoreShort + '{/grey-fg}');
+      + ' · chk ' + bakeAttempt
+      + ' · tag ' + tagShort + ' · scr ' + scoreShort + '{/grey-fg}');
     // The currently-playing step's own saved recipe — no * marking here,
     // sequence states aren't being corrected against a single Cricket
     // attempt the way a single-comportment bracket is.
@@ -1702,14 +2154,14 @@ function bakeInfoLines() {
     const corrCount = bakeUserCmds.length ? resolveComportment(bakeUserCmds).length : 0;
     lines.push('{grey-fg}' + BAKE_INFO_INDENT + 'corrections:{/grey-fg} ' + (corrCount || '--'));
   } else {
-    // "scr" (scores) is NOT gated on bakeSessionActive, unlike bars/chk —
-    // it's a running tally across the whole session, meant to stay visible
-    // after :bake end instead of dropping back to "--".
+    // bars/chk/tag/scr all on one line (user: "put bars, chk, tag and scr
+    // on the same line"). "scr" (scores) is NOT gated on bakeSessionActive,
+    // unlike bars/chk — it's a running tally across the whole session,
+    // meant to stay visible after :bake end instead of dropping back to "--".
     lines.push('{grey-fg}' + BAKE_INFO_INDENT
       + 'bars ' + (bakeSessionActive ? bakeLoopBars : '--')
-      + ' · chk ' + (bakeSessionActive ? bakeAttempt : '--') + '{/grey-fg}');
-    lines.push('{grey-fg}' + BAKE_INFO_INDENT
-      + 'tag ' + tagShort + ' · scr ' + scoreShort + '{/grey-fg}');
+      + ' · chk ' + (bakeSessionActive ? bakeAttempt : '--')
+      + ' · tag ' + tagShort + ' · scr ' + scoreShort + '{/grey-fg}');
     if (bakeSessionActive && bakeComportment.length) {
       lines.push('{grey-fg}' + BAKE_INFO_INDENT + 'rcp:{/grey-fg}');
       const originals = new Map((bakeFirstCmds || bakeCricketCmds).map(c => [comportmentKey(c), c]));
@@ -1722,12 +2174,6 @@ function bakeInfoLines() {
   return lines;
 }
 
-function renderBakeInfo() {
-  const content = bakeInfoLines().join('\n');
-  bakeInfoBox.setContent(content);
-  return content.split('\n').length;
-}
-
 // ── ZONE 6.8 — Entropy meter, docked directly under the tipping panel.
 // Starting binding is state.params.entropy — the existing ORDER(0)↔CHAOS(1)
 // macro (:setEntropy 0–1, see the 'entropy' WS handler above), the only
@@ -1735,11 +2181,12 @@ function renderBakeInfo() {
 // point, not a final definition — the intent is to eventually drive this
 // off a bespoke combination of parameters the user defines for what "high
 // entropy" should mean in the bake/training context specifically, and
-// rewire renderEntropyMeter() to that once decided. Visually mirrors
-// rangeBar() (dash track + • cursor), but rangeBar() calibrates against a
-// specific stem's learned min/max (stemRanges), which doesn't apply to a
-// single global 0..1 macro — so this is a simpler fixed-range version
-// rather than reusing rangeBar() directly.
+// rewire renderEntropyMeter() to that once decided. Visually similar to the
+// old per-stem rangeBar() (dash track + • cursor, since removed — see the
+// per-stem descriptor-line comment near playLines.push, "remove the range
+// bar showing descriptor value under the waveform"), but this one was
+// always its own simpler fixed-range implementation, calibrated against a
+// single global 0..1 macro rather than a specific stem's learned min/max.
 // Two-column layout, fixed at 2 rows — user-specified: bar (row 1) and
 // floor readout (row 2) on the left, match/stay (row 1) and dirWgt/bpm
 // (row 2) on the right, no blank gap between them. Replaces the old
@@ -1925,6 +2372,139 @@ const tipBox = blessed.box({
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
 
+// ── ZONE 6.65 — Network zone, docked directly beside (to the LEFT of)
+// tipBox — a standalone panel, same hierarchy as tipBox rather than chips
+// folded into the icon cluster or spliced under it (user: "i want network
+// zone to be next to tip zone. in the same hierarchy. just another zone
+// next to it. to its left."). Three rows now: network address and the
+// dedicated ethernet indicator stacked ABOVE peer (user: "put network and
+// ethernet in the same box as peer. above peer. the need to be in the
+// header section, not in the top menu.") — see renderNetworkInfo() for the
+// actual line order. Both used to live inlined in the header's title row
+// (row 0, next to the EBYS version badge) instead, but that's "the top
+// menu" the user wants this OUT of; this box (docked beside tipBox at
+// TRAIN_TIP_TOP, header row 3) is "the header section" they want it IN.
+// Width widened accordingly from the old peer-only box — network's own
+// worst case ("network: [wifi: xxxxxxxxxxxx] 255.255.255.255") is the
+// longest line this box now has to fit, not the short peer-dots row.
+// Positioned in reflow(), right-anchored as a pair with tipBox against
+// masterColLeft rather than pinned to recColStart (see reflow()'s own
+// comment on why that changed).
+const NETWORK_ZONE_W = 40;
+const NETWORK_ZONE_H = 2;
+const NETWORK_ZONE_GAP = 2; // breathing room between networkBox and tipBox
+const networkBox = blessed.box({
+  top: 0, left: 0, width: NETWORK_ZONE_W, height: NETWORK_ZONE_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+
+// LINK deck-select dots — one per slot EBYS can send LINK info to (user:
+// "i want 4 dots. grey if slot isnt connected to any system. white is
+// connected. and fill the dot if selected. if selected and link is fired,
+// the infos goes to that deck."). Three states per dot:
+//   grey ○   — not connected to anything
+//   white ○  — connected, not the current target
+//   white ●  — connected AND selected — this is where :link fire sends
+// linkSelectedSlot: 0-3, or null (nothing selected — the pre-existing
+// single-peer :link fire behavior, unchanged). Set via ":link select <1-4>"
+// (see its handler further down).
+const LINK_SLOT_COUNT = 4;
+let linkSelectedSlot = null;
+
+// Only slot 0 has a real connectivity signal right now — state.linkPeerOnline,
+// from the legacy on/off UDP pairing (linkRecvSock's PEER_ONLINE/
+// PEER_OFFLINE handling, see near LINK_IPC_RECV). Slots 1-3 render grey
+// until "the newer multi-deck LINK subsystem" (see :link's own handler
+// comment — ws_server.js/slicer.js's arm/fire/mode system) actually reports
+// back which decks are reachable; there's no such signal wired yet, so
+// they're honest placeholders, not fake data.
+function linkSlotConnected(i) {
+  return i === 0 ? !!state.linkPeerOnline : false;
+}
+
+function linkDotsLine() {
+  let out = '';
+  for (let i = 0; i < LINK_SLOT_COUNT; i++) {
+    const selected  = linkSelectedSlot === i;
+    const connected = linkSlotConnected(i);
+    const glyph = selected ? '●' : '○';
+    const color = (selected || connected) ? 'bright-white' : 'grey';
+    out += '{' + color + '-fg}' + glyph + '{/' + color + '-fg}';
+    if (i < LINK_SLOT_COUNT - 1) out += ' ';
+  }
+  return out;
+}
+
+// [wifi: SSID]/[ethernet: hostname] + IP — the network address text itself.
+// Pulled out as its own function so it can be inlined directly into the
+// header's title row (see titleCenter in render()) instead of living in a
+// separately positioned floating box — user: "make sure the network infos
+// stay in the header, aligned with ebys version... right now, the network
+// box moved to the menu zone and is covering ebys version and agpl
+// license." That covering bug was exactly because a floating box, anchored
+// off the master-meter column boundary (meaningful for rows 3+, NOT row 0),
+// had no actual guarantee of clearing titleCenter's own CENTERED text on a
+// typical terminal width — the two spans just happened to overlap. Folding
+// this into titleCenter itself instead means it's now part of the same
+// single concatenated string withLCR already pads/sizes correctly, so it
+// can never land on top of stateChips or iconCluster — there's nothing left
+// to "collide" with, it's just more text in the one line.
+// classifyIface() (see its own comment) tells us WHICH kind of connection
+// this is; what label we print for it depends on the kind:
+//   wifi     — the actual SSID (user: "show the name of the chosen wifi
+//              network"), refreshed by the separate updateWifiSsid() poll
+//              (see its own comment) since that needs a shell-out, not the
+//              free os.networkInterfaces() read. Falls back to the bare
+//              [wifi] label until the first lookup lands.
+//   ethernet — plain wired Ethernet has no SSID equivalent — nothing
+//              broadcasts a "network name" on a wired LAN. The closest
+//              useful stand-in is THIS machine's own hostname, since
+//              that's what other devices on the same wire would actually
+//              use to find it (directly, or via its hostname.local mDNS/
+//              Bonjour alias) — user asked "what would be the appropriate
+//              way to name machines connected within that ethernet
+//              connection?".
+//   neither  — (unrecognized interface naming) no label, just the IP, same
+//              as before this feature existed.
+function networkAddrText() {
+  // Spinner frame first, while a :network join is in flight — see
+  // wifiConnecting's own comment for why this (not just the sepBox
+  // spinner) is the guaranteed-visible spot for it.
+  if (wifiConnecting) {
+    return '{bright-white-fg}' + SPIN_FRAMES[spinFrame] + ' connecting…{/bright-white-fg}';
+  }
+  const trunc = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+  const ifaceKind = state.network ? classifyIface(state.network.iface) : null;
+  if (!state.network) return '{grey-fg}offline{/grey-fg}';
+  const label = ifaceKind === 'wifi'     ? (wifiSsid ? `[wifi: ${trunc(wifiSsid, 12)}] ` : '[wifi] ')
+              : ifaceKind === 'ethernet' ? `[ethernet: ${trunc(os.hostname(), 12)}] `
+              : '';
+  return '{bright-white-fg}' + label + state.network.address + '{/bright-white-fg}';
+}
+
+// peer: <4 dots> — same label:value convention tipBox's own sid:/srv:/uid:
+// rows use. All that's left in the standalone networkBox now that the
+// address line moved into the header (see networkAddrText() above) — back
+// to a single row, back beside tipBox (TRAIN_TIP_TOP — see reflow()),
+// where there's real free space for a floating box instead of a row
+// already fully spoken for by stateChips/titleCenter/iconCluster. peer's
+// value used to be plain "online"/"offline" text — replaced with the dots
+// themselves (user: "when peer are offline, dont write offline. just show
+// the 4 empty grey circles") since they already carry richer per-slot
+// state than one boolean ever could.
+function renderNetworkInfo() {
+  // network, then peer — dedicated ethernet tag removed per user request
+  // (it duplicated the [ethernet: ...] label networkAddrText() already
+  // folds into the network line itself when that's the active interface).
+  const lines = [
+    '{grey-fg}network:{/grey-fg} ' + networkAddrText(),
+    '{grey-fg}peer:{/grey-fg} ' + linkDotsLine(),
+  ];
+  networkBox.setContent(lines.join('\n'));
+  return lines.length;
+}
+
 // DJ/producer split "equation" bar — shares SHARED_BAR_W with the entropy
 // meter above (see its comment) rather than its own independently-computed
 // width.
@@ -1974,13 +2554,26 @@ function renderTipInfo() {
   const upTxt  = fmtDuration(
     (state.session.active && state.session.openedAt) ? Date.now() - state.session.openedAt : null);
 
+  // lvl — which of the tipping protocol's 3 precision levels this session
+  // is running at (see docs/protocol/TIPPING_PROTOCOL.md):
+  //   1 = Web Radio (EBYS)           — mode 'web'
+  //   2 = Venue (EBYS + Card Reader) — mode 'venue', deck 'ebys'
+  //   3 = Venue (Non-EBYS + Reader)  — mode 'venue', deck 'direct'
+  // '--' while no tipping session is open at all. Used to sit as its own
+  // [LVL n/3] chip in the header (title row, then the icon cluster) —
+  // moved here instead, next to tip:/ts: (user: "remove [LVL --] from the
+  // menu. put lvl: in the tip zone. next to tip:. right before ts:.").
+  const tipLevel = !state.session.active ? null
+    : state.session.mode === 'web' ? 1
+    : state.session.mode === 'venue' ? (state.session.deck === 'direct' ? 3 : 2)
+    : null;
+  const lvlTxt = tipLevel ? '{bright-white-fg}' + tipLevel + '/3{/bright-white-fg}' : wht('--');
+
   // DJ/producer split "equation" — always visible, not gated on lastTip,
   // since it's the standing split rule, not a per-tip result. Leads the
   // panel (above the per-tip sid/uid/tip rows below) since it's the
   // standing rule everything else is measured against, not a result of
-  // any one tip. The dot's position IS the split — same rangeBar-style
-  // dash-track-with-cursor as the entropy meter, reused via entropyBar()
-  // rather than duplicating it.
+  // any one tip — editable live via :setSplit, see currentCuratorShare().
   // ∫ (INTEGRAL SIGN, U+222B) for the DJ — plain Σ (summation) was
   // rejected: the DJ doesn't just combine the artists' fragments, they
   // transform them (EQ, pitch, width, pan, timing — the whole signal
@@ -1996,7 +2589,8 @@ function renderTipInfo() {
   // considered first but those live in the astral-plane emoji range,
   // U+1F577+ — exactly the glyph class that broke blessed's column-width
   // math earlier in this file).
-  const eqPct = Math.round(CURATOR_FLOOR * 100) + '/' + Math.round((1 - CURATOR_FLOOR) * 100);
+  const liveCuratorShare = currentCuratorShare();
+  const eqPct = Math.round(liveCuratorShare * 100) + '/' + Math.round((1 - liveCuratorShare) * 100);
 
   // sid/up/srv, uid/txn, and tip/ts each go through wrapStatLine too (not
   // just as one row) — a real session id, username, or txn id can run long
@@ -2029,20 +2623,21 @@ function renderTipInfo() {
   lines.push(wrapStatLine([
     '{grey-fg}uid:{/grey-fg} ' + uidTxt,
     '{grey-fg}txn:{/grey-fg} ' + (lastTip ? lastTip.txnId : wht('--')),
-  ]));
+  ], tipBox.width));
 
   // tip is just the dollar amount — who/how much they paid is already
-  // covered by uid/txn above; ts is when it landed.
+  // covered by uid/txn above; lvl (see tipLevel above) sits right before
+  // ts, which is when it landed.
   lines.push(wrapStatLine([
     '{grey-fg}tip{/grey-fg} ' + (lastTip ? '$' + lastTip.amount.toFixed(2) : wht('--')),
+    '{grey-fg}lvl{/grey-fg} ' + lvlTxt,
     '{grey-fg}ts{/grey-fg} ' + fmtClock(lastTip ? lastTip.ts : null),
-  ]));
+  ], tipBox.width));
 
   // DJ/producer split "equation" bar — always visible, not gated on
-  // lastTip, since it's the standing split rule, not a per-tip result. The
-  // dot's position IS the split — same rangeBar-style dash-track-with-
-  // cursor as the entropy meter, reused via entropyBar() rather than
-  // duplicating it.
+  // lastTip, since it's the standing split rule, not a per-tip result (now
+  // an editable one — see :setSplit). Rendered with splitBar() below, the
+  // same solid-block convention dbMeter() uses elsewhere in the header.
   // ∫ (INTEGRAL SIGN, U+222B) for the DJ — plain Σ (summation) was
   // rejected: the DJ doesn't just combine the artists' fragments, they
   // transform them (EQ, pitch, width, pan, timing — the whole signal
@@ -2058,23 +2653,23 @@ function renderTipInfo() {
   // considered first but those live in the astral-plane emoji range,
   // U+1F577+ — exactly the glyph class that broke blessed's column-width
   // math earlier in this file).
-  // floorLo = CURATOR_FLOOR: the curator (∫) side is blocked (grey) below
-  // its floor, white from there to 100%. No floorHi passed — artists (aᵢ)
-  // have no floor of their own, so their side stays white all the way.
-  // Dot uses the default magenta (not 'brightwhite' anymore) since the
-  // travelable track itself is white now — a white dot on a white track
-  // would be invisible.
-  lines.push('{grey-fg}∫{/grey-fg} ' + entropyBar(CURATOR_FLOOR, EQ_BAR_W, undefined, CURATOR_FLOOR)
-    + ' {grey-fg}aᵢ{/grey-fg}  ' + eqPct);
+  // Solid block bar (splitBar, see its own comment) instead of the old
+  // dash-and-cursor entropyBar() rendering — user: "using unicode blocks to
+  // represent the tip scale". █ portion = curator/∫ share, ░ portion =
+  // artist pool/aᵢ — editable live via :setSplit (see currentCuratorShare()
+  // above), not just a readout anymore.
+  lines.push('{grey-fg}∫{/grey-fg} ' + splitBar(liveCuratorShare, EQ_BAR_W)
+    + ' {grey-fg}aᵢ{/grey-fg}  ' + eqPct
+    + (curatorShareOverride !== null ? '  {grey-fg}(:setSplit override){/grey-fg}' : ''));
 
-  // User-overridable floors, one row under the bar — "--" until set (see
-  // floorDj/floorArtist above; no :setFloor command wired up yet, this is
-  // just the readout). Separate from CURATOR_FLOOR, which is the actual
-  // value driving the bar/eqPct above until an override exists.
+  // Separate, still-unwired feature: user-settable MINIMUM guarantees for
+  // either side (floorDj/floorArtist, no :setFloor command yet — "--" until
+  // one exists), distinct from curatorShareOverride above, which is the
+  // actual live split value the bar/eqPct/:tip all use right now.
   lines.push(wrapStatLine([
     '{grey-fg}floor ∫:{/grey-fg} ' + (floorDj !== null ? (floorDj * 100).toFixed(0) + '%' : wht('--')),
     '{grey-fg}floor aᵢ:{/grey-fg} ' + (floorArtist !== null ? (floorArtist * 100).toFixed(0) + '%' : wht('--')),
-  ]));
+  ], tipBox.width));
 
   const content = lines.join('\n');
   tipBox.setContent(content);
@@ -2246,17 +2841,31 @@ function renderSpatial() {
 // anymore, an all-blank grid already reads as "nothing here yet."
 // Right-anchored the same distance from the VU sidebar regardless of width,
 // so this can never creep into the VU column.
-const DESC_GRID_GAP  = 1;
+// 0, was 1 — user: "make the visualizers closer. less space in between"
+// (horizontal spacing between momentum/transition/vu-spatial specifically).
+const DESC_GRID_GAP  = 0;
 const DESC_LABEL_W   = VU_LABEL_W;   // shares the vcl/mel/bas/drm column width
 const DESC_LABELS    = { vocals: 'vcl', melody: 'mel', bass: 'bas', drums: 'drm' };
+// Trailing numeric readout appended to every row in both the descriptor
+// grid and the momentum panel (see descValueStr() below) — user: "add
+// numbers next to the 2 descriptor visualizations (momentum and
+// transition). so we can see the actual value." Width 7 matches the
+// widest values the old per-stem range-bar row used to print (F/H can run
+// to "-100.00"/"1413.01") before that row was removed (see the comment
+// near playLines.push, "remove the range bar showing descriptor value
+// under the waveform").
+const DESC_VALUE_GAP = 2;
+const DESC_VALUE_W   = 7;
 // Sized to the grid's actual printed width, not SIDE_TOTAL_W — the box used
 // to be forced as wide as the VU+spatial column, which left dead space
 // between the last colored cell and the VU meters (box background matches
 // the screen background, so that slack was invisible but still pushed the
 // grid visually far from the VU zone). Width = label(1 char, e.g. "C") +
 // its trailing space + DESC_ROLL_PAIRS pairs of 2 cells each, separated by
-// '│' between pairs, all sitting after the DESC_LABEL_W-wide stem-label gutter.
-const DESC_GRID_W = DESC_LABEL_W + 2 + (DESC_ROLL_PAIRS * 2 + (DESC_ROLL_PAIRS - 1));
+// '│' between pairs, all sitting after the DESC_LABEL_W-wide stem-label
+// gutter, plus the value gap+column appended at the end.
+const DESC_GRID_W = DESC_LABEL_W + 2 + (DESC_ROLL_PAIRS * 2 + (DESC_ROLL_PAIRS - 1))
+                   + DESC_VALUE_GAP + DESC_VALUE_W;
 
 // Density, not color: 4 unicode shade glyphs, sparse to solid ink coverage,
 // same reading order as the old lightness gradient (low value = sparse,
@@ -2267,6 +2876,43 @@ function descShadeFor(t) {
   t = Math.max(0, Math.min(1, t));
   const i = Math.min(DESC_SHADES.length - 1, Math.floor(t * DESC_SHADES.length));
   return DESC_SHADES[i];
+}
+
+// Live numeric value for one stem+dim, appended to the end of that dim's
+// row in both the descriptor grid and the momentum panel (see DESC_VALUE_W
+// above). Reads straight off state.stems — the same live cursor value the
+// old per-stem range-bar row used to print via nC/nE/nF/etc, and the exact
+// value momentumBarTick() samples into curBarBuffers each tick — so this is
+// always "the current value", not a historical one, regardless of which
+// past transitions the grid/sparkline next to it happen to be showing.
+// descIsMissing() (defined below) is reused so "missing" reads identically
+// here as it does for the shade/glyph cells themselves.
+function descValueStr(stem, dim) {
+  const s = state.stems[stem];
+  const v = s ? s[dim] : null;
+  // A stem that's never received a real "seg"/"desc" message yet (id still
+  // at its untouched init default, '--' — same neverStarted signal used
+  // for the waveform bracket, see its own comment near sliceBar()) has no
+  // real C/S/E/F/P/H/T of its own — every dim is still whatever the
+  // initial state object was created with (0, or 0.0 depending on dim).
+  // Printing those as real numbers read as actual (if boring) measured
+  // values instead of "nothing here yet" (user: "when no infos, dont
+  // write 0 or 0.0 ... write --. then when the infos comes in, the real
+  // numbers should appear").
+  const neverStarted = !s || s.id === '--' || s.id === undefined;
+  // Left-aligned against the graph (user: "align the descriptors numbers
+  // of the descriptor visualization to the actual graph. dont align them
+  // to the right side, align them left.") — padEnd instead of padStart so
+  // the digits start right after the gap instead of hugging the far edge.
+  if (neverStarted || descIsMissing(v, dim)) return '{grey-fg}' + '--'.padEnd(DESC_VALUE_W) + '{/grey-fg}';
+  const n = parseFloat(v) || 0;
+  let str;
+  switch (dim) {
+    case 'E': case 'T': case 'F': str = n.toFixed(1); break; // F: user asked for 00.0, not 00.00
+    case 'H':           str = n.toFixed(2); break;
+    default:            str = String(Math.round(n)); // C, S, P
+  }
+  return '{grey-fg}' + str.padEnd(DESC_VALUE_W) + '{/grey-fg}';
 }
 
 // Array, not one tall box — same reasoning as vuStemBoxes/spatialStemBoxes:
@@ -2292,7 +2938,9 @@ const descGridStemBoxes = DESC_STEMS.map(() => blessed.box({
 // (a shorter, decoupled width was tried and reverted — see MOM_MAX_SAMPLES's
 // own comment; what actually changed instead is the strip's fill SPEED and
 // its behavior once full, not its width).
-const MOM_GAP = 1;
+// 0, was 1 — user: "make the visualizers closer. less space in between"
+// (horizontal spacing between momentum/transition/vu-spatial specifically).
+const MOM_GAP = 0;
 const MOM_W   = DESC_GRID_W;
 // Array, same reasoning as descGridStemBoxes — one STEM_ROW_BAND_H-tall box
 // per stem, positioned directly under that stem's own waveform block.
@@ -2306,7 +2954,33 @@ const momentumStemBoxes = DESC_STEMS.map(() => blessed.box({
 function momentumStemLines(stem) {
   const label = (DESC_LABELS[stem] || '').padEnd(DESC_LABEL_W, ' ');
   const blank = ''.padEnd(DESC_LABEL_W, ' ');
-  return DIMS.map((dim, di) => (di === 0 ? label : blank) + dim + ' ' + momSparkline(stem, dim));
+  return DIMS.map((dim, di) => {
+    // Follow-graph tag, right next to the dim letter — user: "when one
+    // descriptor is following another track, i want a tag next to the
+    // momentum visualizer. something like [drms] in grey next to the E of
+    // vocals. any parameter that follows another channel should be tagged
+    // this way. name of the followed channel next to the descriptor in
+    // question." (The descriptor grid already carries a follow indicator
+    // of its own — a shade-glyph separator + gutter abbreviation — but
+    // that's a different panel; this is the momentum panel's own tag.)
+    // Eats into the sparkline's own width rather than widening the box
+    // (tuned flush against the descriptor grid beside it), so this panel's
+    // total row width — and its alignment with that grid — never changes.
+    const followMap = (state.followGraph[stem] && state.followGraph[stem][dim]) || {};
+    const followEntries = Object.entries(followMap);
+    let tag = '';
+    let tagW = 0;
+    if (followEntries.length > 0) {
+      followEntries.sort((a, b) => b[1] - a[1]); // dominant target first
+      const [topTarget] = followEntries[0];
+      const abbr = DESC_LABELS[topTarget] || topTarget;
+      tag = '{grey-fg}[' + abbr + ']{/grey-fg} ';
+      tagW = abbr.length + 3; // "[" + abbr + "]" + trailing space
+    }
+    return (di === 0 ? label : blank) + dim + ' ' + tag
+      + momSparkline(stem, dim, MOM_MAX_SAMPLES - tagW)
+      + ' '.repeat(DESC_VALUE_GAP) + descValueStr(stem, dim);
+  });
 }
 function renderMomentumPanel() {
   DESC_STEMS.forEach((stem, i) => {
@@ -2393,7 +3067,8 @@ function descGridStemLines(stem) {
       }
     }
     const prefix = leftGutter + dim + sep;
-    lines.push(prefix + pairs.join('{grey-fg}│{/grey-fg}'));
+    lines.push(prefix + pairs.join('{grey-fg}│{/grey-fg}')
+      + ' '.repeat(DESC_VALUE_GAP) + descValueStr(stem, dim));
   });
   return lines;
 }
@@ -2448,7 +3123,25 @@ const reviewWaveformBox = blessed.box({
   tags: true, wrap: false,
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
-[reviewHeaderBox, reviewListBox, reviewDetailBox, reviewWaveformBox].forEach(b => b.hide());
+
+// reviewRegressionBox — the regression section (subtitle+rule, fitted-curve
+// graph, then its own picker menu underneath — see appendBakeGraphLines())
+// as its own full-width box, 'review'-only same as reviewWaveformBox. User:
+// "the order must be: bake menu with its own menu to its right [reviewListBox
+// + reviewDetailBox, entry-detail only now] ... then under it is the
+// recording section ... and then under it is the regression section." Used
+// to be crammed into the tail of reviewDetailBox, sharing space (and
+// scroll position) with the entry-detail prose above it — pulled out into
+// its own box so it's a genuinely separate, independently-sized section
+// instead. Positioned/sized in reflowLearn() only (same as reviewListBox/
+// reviewDetailBox), never in render() (same reasoning as those two).
+const reviewRegressionBox = blessed.box({
+  left: 0, width: '100%', height: 10,
+  tags: true, wrap: true,
+  scrollable: true, alwaysScroll: true, mouse: true,
+  style: { fg: SKIN.fg, bg: SKIN.bg, scrollbar: { bg: 'grey' } },
+});
+[reviewHeaderBox, reviewListBox, reviewDetailBox, reviewWaveformBox, reviewRegressionBox].forEach(b => b.hide());
 
 // ── ZONE F — Footer shortcut bar, pinned to the very bottom, both modes ──────
 // Mirrors sdj-tui.js's login-screen footer: inverse-video key "chip"
@@ -2475,32 +3168,83 @@ function footerChip(key, label) {
 // it doesn't land you on any one particular screen, it just returns to
 // whichever one was already underneath, so "Close" instead of naming a
 // destination that isn't always the same one.
-// ^R/^B — training-screen sub-navigation, right-flushed on the same footer
-// row as ^C/^T/^L (user: "put the training and review tabs at the bottom
-// just like the chat and playback tabs... but on the right side. same for
-// the bake switcher"). Only shown while appMode === 'learn' (user: "the
-// training/review sub tab should only appear when train tab is open") —
-// the keys themselves still work from Playback (switchLearnView() enters
-// Learn mode first), but the chips stay hidden until you're actually there.
+// ^L — moved to the right-flushed side (user: "move log out tab control to
+// the right side of the screen") — always shown there, both screens, same
+// as it always fired from either. ^R/^B — training-screen sub-navigation,
+// share that same right side, but only while appMode === 'learn' (user:
+// "the training/review sub tab should only appear when train tab is
+// open") — the keys themselves still work from Playback (switchLearnView()
+// enters Learn mode first), but the chips stay hidden until you're
+// actually there. ^L sits outermost/rightmost either way, since it's the
+// one action here that isn't training-specific.
 function renderFooter() {
   const leftChips = [
     footerChip('^C', chatMaximized ? 'Close' : 'Chat'),
     footerChip('^T', appMode === 'learn' ? 'Playback' : 'Train'),
-    footerChip('^L', 'Log out'),
   ];
   const leftStr = '  ' + leftChips.join('   ');
   const vis = s => s.replace(/\{[^}]+\}/g, '').length;
 
-  if (appMode !== 'learn') {
-    footerBox.setContent(leftStr);
-    return;
-  }
+  // [^Q]/[^A] — shortcut tabs for :commands/:language, chat-only — user:
+  // "I want them as tabs at the bottom of the screen" (moved here after an
+  // earlier attempt as a clickable tag up on menuHeaderBox — "thats not
+  // what i meant"), then moved AGAIN from the left cluster to right before
+  // Log out (user: "put them on the right side of the screen right before
+  // log out") — spliced into rightChips just ahead of the ^L entry in BOTH
+  // branches below instead of living in leftChips, so it's still always
+  // immediately left of Log out regardless of appMode.
+  // These used to show ⌘/文 as BOTH the key glyph AND (implicitly) the only
+  // label, with no real key binding behind them at all — typing
+  // :commands/:language was the only actual way to trigger these. Split now
+  // (user: "use Q for commands. use the symbols for the desription
+  // (commands become the command mac symbol and language becomes the
+  // chinese letter)"): the bracketed tab is a real, typeable Control combo —
+  // ^Q for commands (Q, user's own pick — Q was already free alongside the
+  // ^C/^T/^R/^B/^L set), ^A for language ("A" from lAnguage) — and ⌘/文
+  // moved down into the description slot instead, purely decorative there,
+  // same as they always visually were. See footerChip() calls below and
+  // toggleCommandsPanel()/toggleLanguagePanel() for the matching real
+  // bindings.
+  const cmdLangChips = chatMaximized ? [footerChip('^Q', '⌘'), footerChip('^A', '文')] : [];
 
-  const rightChips = [
-    footerChip('^R', learnView === 'training' ? 'Review' : 'Training'),
-    footerChip('^B', 'Next Bake'),
-  ];
+  // Log out (^L) is always the LAST entry in rightChips in both branches,
+  // and rightStr is right-flushed all the way to screen.width below (same
+  // as it always was) — so it's always the rightmost thing on screen,
+  // regardless of whatever else sits in this row (user: "make sure log out
+  // is always at the most right side of the screen"). cmdLangChips sits
+  // right before it in both branches (see comment above).
+  // Bake chip (^B/^D) — always shown on the training screen (stepBake()
+  // cold-starts into Review from either sub-view, so both keys always do
+  // SOMETHING here, unlike the graph chip below). Collapsed back down to
+  // ONE chip covering both directions (user: "put them in the same tab,
+  // cause its taking a lot of space for something not so important") —
+  // arrows instead of two separate "(up)"/"(down)" chips. Still reads
+  // "^B/^D", not "^B/^H" — Ctrl+H is the one request this file can't
+  // actually honor: confirmed live (see the mode-toggles comment block
+  // above) that it arrives as a plain Backspace keystroke, not a
+  // distinguishable Ctrl combo, so the label would be lying about what key
+  // to press if it said H.
+  const bakeChips = [footerChip('^B/^D', '↑↓ Bake')];
+  // Graph chip (^P/^N) — same "only shown where the key actually does
+  // something" rule ^R/^B already follow, just one level narrower (review
+  // sub-view specifically, not the whole training screen) since stepGraph()
+  // itself is a no-op outside Train > Review (see stepGraphKey()). Same
+  // one-chip collapse as bakeChips above, same reasoning.
+  const graphChips = (appMode === 'learn' && learnView === 'review')
+    ? [footerChip('^P/^N', '↑↓ Graph')]
+    : [];
+  const rightChips = appMode === 'learn'
+    ? [footerChip('^R', learnView === 'training' ? 'Review' : 'Training'),
+       ...bakeChips,
+       ...graphChips,
+       ...cmdLangChips,
+       footerChip('^L', 'Log out')]
+    : [...cmdLangChips, footerChip('^L', 'Log out')];
   const rightStr = rightChips.join('   ') + '  ';
+  // EBYS version + AGPL badge moved back up to the header's title row
+  // (user: "put back ebys version and agpl license at the top of the
+  // screen") — see titleCenter in render()'s withLCR call. This row is
+  // just the shortcut chips again, left and right.
   const gap = Math.max(1, screen.width - vis(leftStr) - vis(rightStr));
   footerBox.setContent(leftStr + ' '.repeat(gap) + rightStr);
 }
@@ -2514,15 +3258,68 @@ let inputLines = 1;
 // actually reserved rather than eaten by whichever box sits above it.
 const INPUT_GAP = 1;
 const inputBox = blessed.textarea({
-  // width: CONTENT_W (not '100%') — stops before the VU sidebar column so
-  // that column stays free for other visualizers, same reasoning as
-  // sepBox/langBox/cmdBox/logBox above. bottom: FOOTER_H + INPUT_GAP (not
-  // just FOOTER_H) — leaves the footer chip row its own permanent line
-  // under the input, with a blank row between them.
-  bottom: FOOTER_H + INPUT_GAP, left: 0, width: CONTENT_W, height: 1,
+  // width: '100%' — same reasoning as sepBox/langBox/cmdBox/logBox above
+  // (see the CONTENT_W/contentW() comment near VU_SIDEBAR_W): inputBox is
+  // pinned to the very bottom of the screen, nowhere near the master VU/
+  // spatial meters' row band (rows 3-7), so there's no actual column to
+  // stay clear of down here. bottom: FOOTER_H + INPUT_GAP (not just
+  // FOOTER_H) — leaves the footer chip row its own permanent line under
+  // the input, with a blank row between them.
+  bottom: FOOTER_H + INPUT_GAP, left: 0, width: '100%', height: 1,
   inputOnFocus: true, tags: false, wrap: true,
   style: { fg: SKIN.user_fg, bg: SKIN.bg },
 });
+
+// peekBox — "always there" 2-3 line preview of the most recent log
+// activity, sitting directly above inputBox — user: ":start and :stop
+// should never open the chat. I still want to see their linked messages.
+// but i dont want the chat to open fully... maybe have a short window of
+// text of 2-3 lines. always there." Mirrors recentLogLines (kept in sync
+// by appendLog() regardless of chatMaximized/opts.quiet — see its own
+// comment), so a command whose feedback is deliberately marked quiet
+// (skips the full chat auto-open) still shows up here instead of
+// vanishing into a hidden logBox. Hidden while chat IS maximized (see
+// reflow()) since logBox already shows the same tail, in full, right
+// there — no need for a redundant duplicate.
+const PEEK_H = 3;
+const peekBox = blessed.box({
+  bottom: FOOTER_H + INPUT_GAP + inputLines, left: 0, width: '100%', height: PEEK_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+
+// Thin rule directly above peekBox — demarcates the command/chat preview
+// from whatever's stacked above it (log/cmd/lang while chat is maximized,
+// or the bare playback/training screen otherwise) — user: "put something
+// to demarcate the chat line. maybe a thin line above it?" Always visible
+// (inputBox itself is never hidden, so neither is this), and its `bottom`
+// tracks inputBox's own height (inputLines can grow past 1 line — see the
+// inputLines comment) PLUS peekBox's own height, so the rule always sits
+// directly above whichever of peekBox/inputBox is currently the topmost
+// of the pair, never overlapping either. Content/position both refreshed
+// in reflow(), which runs on every render tick, so width changes (resize)
+// and inputLines changes both stay in sync automatically.
+const inputRuleBox = blessed.box({
+  bottom: FOOTER_H + INPUT_GAP + inputLines + PEEK_H, left: 0, width: '100%', height: 1,
+  tags: true,
+  style: { fg: 'grey', bg: SKIN.bg },
+});
+
+// Ghost-completion box — sits on the SAME row as inputBox, left-offset to
+// start exactly where the typed text ends, so it never overlaps a single
+// real character (user: "guess what the command will be... propose the
+// continuation in grey"). A separate box rather than appending colored text
+// into inputBox's own content: inputBox runs with tags:false on purpose (so
+// a user typing a literal "{" never gets silently eaten as markup — see the
+// CURSOR-AWARE INPUT EDITING block below), and this way that stays
+// untouched. width:'shrink' (same trick spinnerBox uses) keeps it exactly
+// as wide as the suggestion text, never wider — see updateSuggestion().
+const suggestBox = blessed.text({
+  bottom: FOOTER_H + INPUT_GAP, left: 0, width: 'shrink', height: 1,
+  tags: true, wrap: false,
+  style: { fg: SKIN.user_fg, bg: SKIN.bg },
+});
+suggestBox.hide();
 
 // Spinner — top-right corner
 const spinnerBox = blessed.text({
@@ -2545,16 +3342,20 @@ vuStemBoxes.forEach(b => screen.append(b));
 screen.append(masterVuBox);
 spatialStemBoxes.forEach(b => screen.append(b));
 screen.append(masterSpatialBox);
-screen.append(bakeInfoBox);
 screen.append(entropyBox);
 screen.append(tipBox);
+screen.append(networkBox);
 descGridStemBoxes.forEach(b => screen.append(b));
 momentumStemBoxes.forEach(b => screen.append(b));
 screen.append(reviewHeaderBox);
 screen.append(reviewListBox);
 screen.append(reviewDetailBox);
 screen.append(reviewWaveformBox);
+screen.append(reviewRegressionBox);
 screen.append(inputBox);
+screen.append(peekBox);
+screen.append(inputRuleBox);
+screen.append(suggestBox);
 screen.append(footerBox);
 screen.append(spinnerBox);
 
@@ -2589,24 +3390,32 @@ const CHAT_OVERLAY_BOXES = [sepBox, menuHeaderBox, langBox, cmdBox, logBox];
 // too (`:train play` plays real audio) — so these two stay up on BOTH
 // screens instead of being hidden with the rest of the cluster. Reserved
 // screen space for them: reflowLearn() narrows the training panel's own
-// boxes to contentW() instead of the full width, same margin CONTENT_W
-// already carves out for the chat overlay boxes below.
+// boxes to contentW() so they stop short of this column — the chat overlay
+// boxes below don't need that same margin, since mTop always docks them
+// below master's row band rather than beside it (see the CONTENT_W/
+// contentW() comment above VU_SIDEBAR_W).
 const MASTER_METER_BOXES = [masterVuBox, masterSpatialBox];
 
 // PLAYBACK_HEADER_BOXES — the REST of playback's own header-cluster readouts
-// (bake/tip/entropy). The direct analog of Learn's own header cluster
-// (reviewHeaderBox/reviewListBox/reviewDetailBox, see enterLearnMode()):
-// visible for as long as the playback screen is active, chat overlay or not
-// — it's what the overlay docks under (see headerClusterBottom in
-// reflow()). Hidden only when the OTHER screen (Learn) is active.
-const PLAYBACK_HEADER_BOXES = [bakeInfoBox, entropyBox, tipBox];
+// (tip/entropy — bake used to be here too, see the ZONE 6.6 comment above
+// for why it isn't any more). The direct analog of Learn's own header
+// cluster (reviewHeaderBox/reviewListBox/reviewDetailBox, see
+// enterLearnMode()): visible for as long as the playback screen is active,
+// chat overlay or not — it's what the overlay docks under (see
+// headerClusterBottom in reflow()). Hidden only when the OTHER screen
+// (Learn) is active.
+const PLAYBACK_HEADER_BOXES = [entropyBox, tipBox, networkBox];
 
 // PLAYBACK_CHANNEL_BOXES — the per-stem VU/spatial/descriptor-grid/momentum
-// boxes, playback's "channel content" (playBox's own per-stem waveform rows
-// are the other half of this, handled directly in render() since they're
-// shared with Learn's training sub-view). Hidden whenever chat is maximized
-// OR the training screen is active — LIVE per-stem state, meaningless for
-// whatever bake you're reviewing.
+// boxes, "channel content" for whichever screen currently has a LIVE
+// 4-stem waveform up (playBox's own per-stem waveform rows are the other
+// half of this, handled directly in render() since they're shared between
+// Playback and Learn's training sub-view). Up on both Playback and the
+// training screen's 'training' sub-view now (user: "add the visualizations
+// in the training tab too") — hidden only during the training screen's
+// 'review' sub-view (reviewWaveformBox there is one recorded clip, not
+// four live stems) or while chat is maximized on top of either screen —
+// see the SCREEN VISIBILITY block in render().
 const PLAYBACK_CHANNEL_BOXES = [
   ...vuStemBoxes,
   ...spatialStemBoxes,
@@ -2794,7 +3603,7 @@ function visLines(text, w) {
 }
 
 function buildLangList() {
-  const w = Math.max(1, contentW() || 80);
+  const w = Math.max(1, screen.width || 80);
   const N = LANGUAGES.length;
 
   const entries = LANGUAGES.map((l, i) => ({
@@ -2838,8 +3647,23 @@ const MIN_LOG_H = 5; // always reserve this many lines for chat
 const LOG_GAP   = 1; // blank row between the :commands line and the chat log
 
 function reflow() {
-  const w = contentW();
+  // w = screen.width, not contentW() — lang/cmd (and the rest of the chat
+  // overlay) are full width now, not narrowed for the VU sidebar (see the
+  // CONTENT_W/contentW() comment above VU_SIDEBAR_W), so their wrapped-line
+  // estimate below needs to match that same width or langHFull/cmdHFull
+  // would under-count how many rows the content actually needs.
+  const w = screen.width;
   const h = screen.height - FOOTER_H; // footerBox always owns the very last row
+
+  // peekBox — sits directly above inputBox, see its own comment near its
+  // definition. bottom tracks inputLines so it stays glued to input's
+  // current top edge even while input is multiple lines tall.
+  peekBox.bottom = FOOTER_H + INPUT_GAP + inputLines;
+  // inputRuleBox — thin line directly above peekBox, see its own comment
+  // near its definition. Same inputLines tracking, plus PEEK_H so it
+  // clears peekBox too.
+  inputRuleBox.bottom = FOOTER_H + INPUT_GAP + inputLines + PEEK_H;
+  inputRuleBox.setContent('{grey-fg}' + '─'.repeat(Math.max(0, w)) + '{/grey-fg}');
 
   // langHFull/cmdHFull are the EXPANDED content height only — while collapsed
   // a panel takes 0 rows of its own, since its "type to expand" hint now
@@ -2887,17 +3711,19 @@ function reflow() {
     // waveform + playhead — the "playback of the recorded file" zone) on
     // screen even with chat maximized (see the SCREEN VISIBILITY block
     // below, where it's shown unconditionally while inReview instead of
-    // being hidden under chat like playBox). So chat has to dock one row
-    // further down here too — under the waveform (playTop + its fixed
-    // height of 2), not directly under the review header cluster — or the
-    // log would start drawing right on top of it.
+    // being hidden under chat like playBox). reviewWaveformBox now docks
+    // INSIDE the learn-panel footprint, right under the header (user: "put
+    // the menu under recording" — see reflowLearn()), not below it anymore
+    // — so learnPanelBottom() alone is already the true bottom of the whole
+    // cluster (waveform + list/detail together), same as the training
+    // sub-view. No more "+1+2" tacked on for the waveform's old spot below
+    // the panel.
     const headerClusterBottom = appMode === 'learn'
-      ? (learnView === 'review' ? learnPanelBottom() + 1 + 2 : learnPanelBottom())
+      ? learnPanelBottom()
       : Math.max(
           statusH + 1,
           masterVuBox.top      + masterVuBox.height,
           masterSpatialBox.top + masterSpatialBox.height,
-          bakeInfoBox.top       + bakeInfoBox.height,
           tipBox.top            + tipBox.height,
           entropyBox.top        + entropyBox.height
         );
@@ -2920,6 +3746,10 @@ function reflow() {
     // bleeding onto the cursor line: nothing below this point can ever claim
     // more vertical space than chromeBudget allows, so logTop can never land
     // past where the input line starts.
+    // No row reserved for inputRuleBox here — it's hidden while chat is
+    // maximized (see the chatMaximized ? hide : show line above), so the
+    // log can reclaim that row instead of leaving it blank underneath a
+    // box that isn't drawing anything.
     const chromeBudget = Math.max(0, h - (mTop + 2) - LOG_GAP - MIN_LOG_H - inputLines - INPUT_GAP);
     const langH = langCollapsed ? 0 : Math.min(langHFull, chromeBudget);
     const cmdH  = cmdCollapsed  ? 0 : Math.min(cmdHFull,  Math.max(0, chromeBudget - langH));
@@ -2979,27 +3809,60 @@ function reflow() {
   masterVuBox.top      = MASTER_VU_TOP;
   masterSpatialBox.top = MASTER_VU_TOP;
 
-  // Training + tips — both start at TRAIN_TIP_TOP (header row 3, "quant:
-  // beat"'s own row — user: "align the prmpt: with the row of quant:beat").
-  // tipBox's own LEFT edge anchors to recColStart, the same column [REC]
-  // starts at on the title row (user: "align the tipping zone with the
-  // [REC] box"). bakeInfoBox's LEFT edge anchors to agplColStart instead —
-  // the column [AGPL-3.0] starts at on that same title row (user: "align
-  // prmpt section with [AGPL...]") — no longer tipBox-relative, so the two
-  // don't necessarily sit right next to each other any more; each lines up
-  // with its own title-row landmark instead. left/right are reassigned
-  // every call since these boxes were originally created right-anchored.
+  // Network + tip zones, same top (TRAIN_TIP_TOP, header row 3, "quant:
+  // beat"'s own row). No longer anchored to recColStart (the [REC] column)
+  // — that pinned both zones far into the same tight corner the icon
+  // cluster already occupies, which is what squeezed tipBox down to almost
+  // nothing (user: "move the zones so tip has enough space to sit
+  // correctly. now its all packed up in a corner."). Anchored from the
+  // RIGHT instead: masterColLeft is the one hard boundary that actually
+  // matters (one column short of master's own VU/spatial column — user:
+  // "make sure the master VU meter and spat viewer dont get written over
+  // by the tip and network zone") — the pair sizes itself to its full
+  // desired width (networkBox's NETWORK_ZONE_W + gap + tipBox's own
+  // SIDE_TOTAL_W) flush against that boundary, and only starts eating into
+  // either zone's width if the terminal is genuinely too narrow to fit
+  // both at their natural size. No minimum-width floor overrides that
+  // clamp either — a zone shrinks toward 0 in a real space crunch rather
+  // than ever overlapping master.
+  const masterColLeft = w - SIDE_TOTAL_W - 1;
+  const zonesDesiredW = NETWORK_ZONE_W + NETWORK_ZONE_GAP + SIDE_TOTAL_W;
+  const zonesLeft     = Math.max(0, masterColLeft - zonesDesiredW);
+
+  // Back to TRAIN_TIP_TOP, beside tipBox — row 0 (tried per an earlier
+  // "align it with ebys version" request) turned out to only be safe in
+  // theory: zonesLeft is anchored off masterColLeft, a boundary that means
+  // something for rows 3+ (clearing the master VU/spatial column) but has
+  // no real relationship to where titleCenter's CENTERED text actually
+  // sits on row 0 — on a typical terminal width the two spans genuinely
+  // overlapped, and the floating box (drawn after statusBox in z-order)
+  // covered the version/AGPL badge. Fixed properly now by moving the
+  // network ADDRESS text into titleCenter itself (see networkAddrText()'s
+  // own comment) — that's what's actually "aligned with ebys version" —
+  // and letting this box go back to being just the peer dots, back in its
+  // own free row where it isn't fighting anything else for space.
+  networkBox.right = undefined;
+  networkBox.left  = zonesLeft;
+  networkBox.top   = TRAIN_TIP_TOP;
+  networkBox.width = Math.max(0, Math.min(NETWORK_ZONE_W, masterColLeft - zonesLeft));
+  renderNetworkInfo();
+
+  // Tips — left edge is networkBox's own right edge plus a gap (0 if
+  // networkBox itself got clamped to nothing). left/right reassigned every
+  // call since this box was originally created right-anchored.
+  // bakeInfoBox — the training-zone panel that used to sit beside this —
+  // was removed from the playback screen entirely (user: "remove the
+  // training zone indicator in the playback tab. this should all go in
+  // the training tab" — its content, bakeInfoLines(), is already shown in
+  // full on the training screen's own 'training' sub-view, so showing it
+  // here too was pure duplication).
+  const tipLeft = zonesLeft + networkBox.width + (networkBox.width > 0 ? NETWORK_ZONE_GAP : 0);
   tipBox.right = undefined;
-  tipBox.left  = recColStart;
+  tipBox.left  = tipLeft;
   tipBox.top   = TRAIN_TIP_TOP;
+  tipBox.width = Math.max(0, Math.min(SIDE_TOTAL_W, masterColLeft - tipLeft));
   const tipRows = renderTipInfo();
   tipBox.height = Math.min(TIP_MAX_H, Math.max(TIP_MIN_H, tipRows));
-
-  bakeInfoBox.right = undefined;
-  bakeInfoBox.left  = agplColStart;
-  bakeInfoBox.top   = TRAIN_TIP_TOP;
-  const bakeInfoRows = renderBakeInfo();
-  bakeInfoBox.height = Math.min(BAKE_INFO_MAX_H, Math.max(BAKE_INFO_MIN_H, bakeInfoRows));
 
   // Entropy meter — below genre (header's last row), flush to the left
   // edge of the window (user: "really stick entropy to the side of the
@@ -3034,13 +3897,13 @@ function scheduleRender() {
 }
 
 function render() {
-  // statusBox and playBox are both declared width: '100%' — the FULL
-  // terminal width, unlike sepBox/menuHeaderBox/langBox/cmdBox/logBox
-  // further down, which use the narrower CONTENT_W. Both the header row and
-  // the per-stem playback rows (waveform, descriptor line, weight, dir,
-  // dirWgt) use `w` = screen.width — the VU/spatial/descriptor-grid/momentum
-  // columns dock UNDER each stem's own block (see STEM_BAND_H), not beside
-  // it, so nothing needs to narrow these rows anymore.
+  // statusBox and playBox are both declared width: '100%' — same full
+  // terminal width sepBox/menuHeaderBox/langBox/cmdBox/logBox now use too
+  // (see the CONTENT_W/contentW() comment above VU_SIDEBAR_W). Both the
+  // header row and the per-stem playback rows (waveform, descriptor line,
+  // weight, dir, dirWgt) use `w` = screen.width — the VU/spatial/descriptor-
+  // grid/momentum columns dock UNDER each stem's own block (see
+  // STEM_BAND_H), not beside it, so nothing needs to narrow these rows.
   const w = screen.width;
 
   // Status
@@ -3138,48 +4001,52 @@ function render() {
   const tipDirect     = tipOn && state.session.deck === 'direct' ? ' DIRECT' : '';
   const tipLabel     = tipOn
     ? `{bright-white-fg}[TIP OPEN${tipDirect}]{/bright-white-fg}` : `{grey-fg}[TIP CLOSED]{/grey-fg}`;
-  // [LVL n/3] — which of the tipping protocol's 3 precision levels this
-  // session is running at (see docs/protocol/TIPPING_PROTOCOL.md):
-  //   1 = Web Radio (EBYS)           — mode 'web'
-  //   2 = Venue (EBYS + Card Reader) — mode 'venue', deck 'ebys'
-  //   3 = Venue (Non-EBYS + Reader)  — mode 'venue', deck 'direct'
-  // '--' while no tipping session is open at all.
-  const tipLevel = !tipOn ? null
-    : state.session.mode === 'web' ? 1
-    : state.session.mode === 'venue' ? (state.session.deck === 'direct' ? 3 : 2)
-    : null;
-  const lvlLabel = tipLevel
-    ? `{bright-white-fg}[LVL ${tipLevel}/3]{/bright-white-fg}` : `{grey-fg}[LVL --]{/grey-fg}`;
+  // [LVL n/3] used to live here (and before that, on the title row) — moved
+  // into the tip zone itself, next to tip:/ts: (user: "remove [LVL --] from
+  // the menu. put lvl: in the tip zone. next to tip:. right before ts:.") —
+  // see renderTipInfo()'s own lvl comment for the precision-level meaning.
   const linkFiring  = state.linkFiredAt > 0 && (Date.now() - state.linkFiredAt < LINK_FLASH_MS);
   // cyan reads as "pale blue" in this terminal palette — same convention
   // already used for the source-lock indicator.
   const linkLabel   = linkFiring
     ? `{bright-white-fg}[LINK ON]{/bright-white-fg}` : `{grey-fg}[LINK OFF]{/grey-fg}`;
-  // [CHUNK MODE ON]/[CHUNK MODE OFF] — mirrors slicer.js's PLAY_FULL_FILE per
-  // stem (state.playFullFile, updated by the 'playFullFile' WS handler
-  // above — still the same underlying broadcast, chunkMode() in slicer.js
-  // just replaced the old setPlayFullFile as the command that sets it). OFF
-  // (grey, the default) means every stem is still in whole-file mode —
-  // :chunkMode 0 is effectively active everywhere. ON (white) means at least
-  // one stem has been switched to bar-chunked slicing, whether via an
-  // explicit :chunkMode <stem> 1 or (far more commonly) just by
-  // running :setSegmentBars, which always clears it for the stem(s) it
-  // touches — see slicer.js's setSegmentBars(). "Any stem" rather than "all
-  // stems" so a single-stem chunk switch doesn't silently read as OFF.
-  const chunkModeOn = Object.keys(state.playFullFile).some(t => !state.playFullFile[t]);
-  const chunkLabel  = chunkModeOn
-    ? `{bright-white-fg}[CHUNK MODE ON]{/bright-white-fg}` : `{grey-fg}[CHUNK MODE OFF]{/grey-fg}`;
-  // [TRAINING ON]/[TRAINING OFF] — mirrors bakeSessionActive (module-level,
-  // set by :bake start / cleared by :bake end / :bake abort — see the BAKE
-  // LOOP STATE section). Sits next to [CHUNK MODE] here in the header; the
-  // bars/prompt/cricket/corrections detail lives below in the training
-  // panel (see renderBakeInfo), reached from this chip.
-  const trainingLabel = bakeSessionActive
-    ? `{bright-white-fg}[TRAINING ON]{/bright-white-fg}` : `{grey-fg}[TRAINING OFF]{/grey-fg}`;
-  // Order: REC, TIP, TRAINING next to CHUNK, LINK rightmost in the group.
-  // LVL moved out of this cluster — sits on the title row next to
-  // [CONNECTED]/[DISCONNECTED] instead (see stateChips below).
-  const iconCluster = `${recLabel}   ${tipLabel}   ${trainingLabel}   ${chunkLabel}   ${linkLabel}`;
+  // PEER/NETWORK used to be chips in this cluster (and before that, a row
+  // positioned under one of them) — pulled out entirely now into their own
+  // dedicated zone box, networkBox, docked next to tipBox (user: "i want
+  // network zone to be next to tip zone. in the same hierarchy. just
+  // another zone next to it. to its left") — see renderNetworkInfo() and
+  // networkBox's own comments below.
+  // [CHUNK MODE ON/OFF] used to be a single header-wide chip here (mirroring
+  // slicer.js's PLAY_FULL_FILE, "on" if ANY stem was chunked) — removed
+  // (user: "remove [CHUNK MODE] from the menu. instead, when chunk mode is
+  // on, we see it in the infos under the waveform. we see the [x] numbers
+  // of bars. and when chunk mode is off, the bar number becomes
+  // [fullfile]"). Chunk state is genuinely per-stem, so it's now printed
+  // per-stem instead, as part of each stem's own bars: field — see the
+  // barsTxt/barsStay comment in the stem loop below.
+  // [TRAINING ON]/[TRAINING OFF] used to sit here, tied to bakeSessionActive
+  // (bracket open/closed) — removed (user: "remove the training zone
+  // indicator in the playback tab. this should all go in the training
+  // tab"), then asked for back in a different shape: not bracket state
+  // (the training screen's own header already covers that, as "[BRACKET
+  // OPEN]"/"[no bracket open]" — see renderTrainingView()'s training
+  // branch), just which SCREEN is currently active — "[TRAINING MODE] vs
+  // [PLAYBACK MODE]". Bright for Learn (the less-common, "you're doing
+  // something deliberate" state) — now ALSO bright for Playback (user: "no,
+  // i meant the [PLAYBACK MODE] [TRAINING MODE] in the header" / "training
+  // mode and playback mode should be white. so this toggle mode is always
+  // white."), dropping the earlier grey-for-Playback/bright-for-Training
+  // on/off distinction in favor of both states just being white always.
+  const modeLabel = appMode === 'learn'
+    ? `{bright-white-fg}[TRAINING MODE]{/bright-white-fg}`
+    : `{bright-white-fg}[PLAYBACK MODE]{/bright-white-fg}`;
+  // Order: REC, TIP, MODE, LINK. NETWORK/PEER no longer chips in here —
+  // they're networkBox now, a standalone zone docked beside tipBox (see
+  // renderNetworkInfo()/reflow()). LVL no longer lives in this cluster or
+  // on the title row either — it's in the tip zone now, next to tip:/ts:
+  // (see renderTipInfo()'s own comment). CHUNK is gone too — now per-stem,
+  // see the barsTxt comment in the stem loop below.
+  const iconCluster = `${recLabel}   ${tipLabel}   ${modeLabel}   ${linkLabel}`;
 
   // Last command touched — what LINK's missile switch would fire right now
   // if armed. Blank until the first performative command of the session.
@@ -3205,7 +4072,6 @@ function render() {
   // Also records where `right` (iconCluster, which starts with [REC]) ends
   // up starting — tipBox aligns its own left edge to that same column (see
   // reflow() — user: "align the tipping zone with the [REC] box").
-  let centerColStart = 0; // where `center` itself begins — agplColStart below adds the version-label prefix width to this
   const withLCR = (left, center, right, edge) => {
     if (edge === undefined) edge = w - 1;
     const vis = s => s.replace(/\{[^}]+\}/g, '').length;
@@ -3213,13 +4079,19 @@ function render() {
     const lV = vis(left), cV = vis(center), rV = vis(right);
     const gap1 = Math.max(1, Math.floor((total - cV) / 2) - lV);
     const gap2 = Math.max(1, total - rV - (lV + gap1 + cV));
-    centerColStart = lV + gap1;
     recColStart = lV + gap1 + cV + gap2;
     return left + ' '.repeat(gap1) + center + ' '.repeat(gap2) + right;
   };
-  const stateChips = `${sessionLabel}   ${run}   ${conn}   ${lvlLabel}`;
-  // Split out of the old inline literal so agplColStart (below) can measure
-  // just the "[EBYS 0.1.19]   " prefix's own width instead of hardcoding it.
+  const stateChips = `${sessionLabel}   ${run}   ${conn}`;
+  // EBYS version + AGPL badge — briefly moved down to the footer, back up
+  // here now (user: "put back ebys version and agpl license at the top of
+  // the screen"), centered in the title row same as it always was.
+  // Network/ethernet used to be inlined right here too, but moved back out
+  // (user: "put network and ethernet in the same box as peer. above peer.
+  // the need to be in the header section, not in the top menu.") — this row
+  // is what the user means by "top menu"; "header section" is networkBox,
+  // docked beside tipBox at TRAIN_TIP_TOP — see renderNetworkInfo() for
+  // where network/ethernet/peer all live now, stacked in that one box.
   const versionLabel = `{grey-fg}[EBYS 0.1.19]{/grey-fg}   `;
   const agplLabel    = `{grey-fg}[{bold}🄯{/bold} AGPL-3.0]{/grey-fg}`;
   const titleCenter  = versionLabel + agplLabel;
@@ -3247,10 +4119,6 @@ function render() {
     atCol(envLine, ''),
     atCol(genreBeatsLine, ''),
   ];
-  // withLCR (just called, first element of sLines either way) set
-  // centerColStart to where titleCenter begins — AGPL sits right after the
-  // version-label prefix within it.
-  agplColStart = centerColStart + versionLabel.replace(/\{[^}]+\}/g, '').length;
   statusH = sLines.reduce((h, l) =>
     h + Math.max(1, Math.ceil(visWidth(l.replace(/\{[^}]+\}/g,'')) / Math.max(1, w))), 0);
   statusBox.height = statusH;
@@ -3272,11 +4140,13 @@ function render() {
   // wrapped multi-tip readout, etc.) — using the real count instead of
   // always the max is what keeps this gap tight instead of permanently
   // reserving room for content that isn't there most of the time.
-  const bakeInfoH  = Math.min(BAKE_INFO_MAX_H, Math.max(BAKE_INFO_MIN_H, renderBakeInfo()));
   const tipH       = Math.min(TIP_MAX_H,       Math.max(TIP_MIN_H,       renderTipInfo()));
   const masterColBottom = MASTER_VU_TOP + 5; // master's own VU+spatial height
-  const trainBottom     = TRAIN_TIP_TOP + bakeInfoH;
   const tipBottom       = TRAIN_TIP_TOP + tipH; // beside training, same top
+  // No separate networkBottom candidate needed below — networkBox starts
+  // at this same TRAIN_TIP_TOP and is fixed at NETWORK_ZONE_H (2) rows
+  // (network/peer — see renderNetworkInfo()), still shorter than tipH's
+  // own floor (TIP_MIN_H = 5), so tipBottom already covers it.
   // Entropy docks at statusH + 1 (left-edge column, no longer sharing
   // horizontal space with the training/tips cluster — see reflow()'s own
   // entropyBox.top) — mirrored here so playTop reserves the same real
@@ -3291,7 +4161,7 @@ function render() {
   // One blank row between whichever block is lowest and the progression bars.
   playTop = appMode === 'learn'
     ? learnPanelBottom() + 1
-    : Math.max(masterColBottom, trainBottom, tipBottom, entropyBottom, statusH) + 1;
+    : Math.max(masterColBottom, tipBottom, entropyBottom, statusH) + 1;
   playBox.top = playTop;
 
   // ── SCREEN VISIBILITY ──────────────────────────────────────────────────
@@ -3311,6 +4181,17 @@ function render() {
   // The chat overlay — same 5 boxes regardless of which screen is underneath.
   CHAT_OVERLAY_BOXES.forEach(b => chatMaximized ? b.show() : b.hide());
 
+  // inputRuleBox — only while chat is CLOSED (user: "remove the line we
+  // just added to demarcate the chat box. the line must exist only when
+  // whole chat is closed"). While chat is maximized, logBox itself already
+  // sits directly above inputBox and reads as its own boundary; the rule
+  // was for demarcating the input line against the bare playback/training
+  // screen, not against the chat log. peekBox hides right alongside it for
+  // the same reason — logBox already shows this exact tail, in full, once
+  // chat is open, so the small preview would just be a redundant duplicate.
+  chatMaximized ? inputRuleBox.hide() : inputRuleBox.show();
+  chatMaximized ? peekBox.hide()      : peekBox.show();
+
   // Master VU/spatial — up on BOTH screens (see MASTER_METER_BOXES), so
   // just always shown here regardless of inLearn/chatMaximized (mirrors how
   // the chat overlay itself keeps running "regardless of which screen is
@@ -3319,11 +4200,19 @@ function render() {
 
   // Playback's own remaining header cluster (bake/tip/entropy) — stays up
   // for as long as the playback screen is active, chat overlay or not
-  // (mirrors the Learn panel's own always-up-in-Learn behavior). Per-stem
-  // "channel content" is stricter — hidden the moment chat is maximized on
-  // top of it too, same rule playBox itself follows below.
+  // (mirrors the Learn panel's own always-up-in-Learn behavior).
   PLAYBACK_HEADER_BOXES.forEach(b => !inLearn ? b.show() : b.hide());
-  PLAYBACK_CHANNEL_BOXES.forEach(b => (!inLearn && !chatMaximized) ? b.show() : b.hide());
+  // Per-stem "channel content" (VU, spatial, descriptor grid/momentum) —
+  // user: "dont forget to add the visualizations in the training tab too.
+  // descriptor graphs (momentum and transition) and vu/spat graphs." These
+  // used to hide whenever inLearn, full stop — now they follow playBox's
+  // OWN visibility instead (see the inReview branch right below): up
+  // whenever there's a live per-stem waveform to sit next to, whether
+  // that's plain Playback or the training screen's own 'training'
+  // sub-view, and hidden only during 'review' (reviewWaveformBox there is
+  // a single recorded clip, not four live stems — nothing for these to
+  // align with) or while chat is maximized on top of either screen.
+  PLAYBACK_CHANNEL_BOXES.forEach(b => (!inReview && !chatMaximized) ? b.show() : b.hide());
 
   // playBox/reviewWaveformBox — the two screens' shared "channel content"
   // slot. playBox serves playback AND Learn's training sub-view (a live
@@ -3336,12 +4225,18 @@ function render() {
   // zone and stays up regardless of chat, same treatment as reviewHeaderBox/
   // reviewDetailBox get — the chat log docks below it instead (see
   // headerClusterBottom in reflow()) rather than covering it.
+  // Position (top/width) is NOT set here anymore — reviewWaveformBox now
+  // docks right under the header, ABOVE reviewListBox/reviewDetailBox (user:
+  // "put the menu under recording"), which only reflowLearn() has the
+  // layout for (see its own comment). Setting `.top = playTop` here too, on
+  // every tick, would just fight reflowLearn()'s placement and drag it back
+  // down to the OLD below-the-panel spot on the very next render(). This
+  // block still owns show/hide and the playhead-content redraw, same as
+  // before.
   if (inReview) {
     playBox.hide();
-    reviewWaveformBox.top   = playTop;
-    reviewWaveformBox.width = w;
     reviewWaveformBox.show();
-    updateReviewWaveformBox(w);
+    updateReviewWaveformBox(reviewWaveformBox.width || w);
   } else {
     reviewWaveformBox.hide();
     if (!chatMaximized) playBox.show(); else playBox.hide();
@@ -3357,9 +4252,14 @@ function render() {
   // triggerReady/triggerMode etc. all still key off the full 'vocals' etc.
   // name — only the printed label changes) — user: "this section is
   // important in the design. i want it to be written: vocs, mels, bass,
-  // drms".
-  const STEM_ROW_LABEL = { vocals: 'vocs', melody: 'mels', bass: 'bass', drums: 'drms' };
-  const nameW  = 6;
+  // drms", then shortened again (user: "rename the channels vocs, melo,
+  // bass, drums by vcl, mel, bas, drm").
+  const STEM_ROW_LABEL = { vocals: 'vcl', melody: 'mel', bass: 'bas', drums: 'drm' };
+  // nameW trimmed to 4 (was 5, back when labels were 4 chars each — see
+  // above) — all four labels are 3 chars now, so this is still a single
+  // trailing space before pinMark/tMark, same "reduce the space between the
+  // label and the waveform" request as before, just re-tightened to match.
+  const nameW  = 4;
   const TS_W   = 8;
   const barW   = Math.max(4, w - nameW - 4 - TS_W);   // VU moved to header — reclaim width
   // +1 for the pin indicator column (was 3 = tMark + ": ", now 4 = pinMark + tMark + ": ")
@@ -3383,20 +4283,6 @@ function render() {
     const subGenre  = parseGenre(s.genre).sub;
     const trackShort = s.track.length > 16 ? s.track.slice(0, 15) + '…' : s.track;
 
-    // Fixed-width numbers — padStart (right-align) guarantees column width never overflows.
-    // Widths chosen to fit the largest observed value for each descriptor.
-    // Left-aligned (padEnd) so each value sits right next to its own range
-    // bar instead of floating at the far right of a wide field; the field
-    // widths are unchanged, so columns still line up and the width budget
-    // (NUM_WIDTHS below) stays correct.
-    const nC = String(Math.round(parseFloat(s.C)||0)).padEnd(5);   // up to 99999
-    const nS = String(Math.round(parseFloat(s.S)||0)).padEnd(4);   // usually 0-9
-    const nE = (parseFloat(s.E)||0).toFixed(1).padEnd(5);          // up to 99.9
-    const nF = (parseFloat(s.F)||0).toFixed(2).padEnd(7);          // -100.00 to 0.00
-    const nP = String(Math.round(parseFloat(s.P)||0)).padEnd(5);   // up to 99999
-    const nH = (parseFloat(s.H)||0).toFixed(2).padEnd(7);          // e.g. 1413.01
-    const nT = (parseFloat(s.T)||0).toFixed(2).padEnd(4);          // 0.00 to 1.00
-
     // Row 0 — progress bar + timestamp (VU meters moved to sidebar)
     // Trigger mode indicator replaces the space before ':':
     //   ' ' = continuous  'T' = trigger mode  '●' = ready to fire (bold)
@@ -3412,41 +4298,51 @@ function render() {
     const pinMark = s.pinnedSource ? `{bright-white-fg}•{/bright-white-fg}` : ' ';
     playLines.push(`${pad(STEM_ROW_LABEL[name] || name, nameW)}${pinMark}${tMark}: ${b} ${tsStr}`);
 
-    // Descriptor line — M↑━━●━━ nnnnn   E↓━━━━●━ nnnnnn   …  aligned
-    // columns. Arrow sits between the descriptor letter and its range bar
-    // (replaces the space). This is the last row before the meters start
-    // (see PRE_METERS_ROWS) — weight/dir/dirWgt below now print on the SAME
-    // rows as the meters (left column vs. right-anchored boxes), not above
-    // them, so the meters' own first row lines up with "weight".
-    const aC = tensionArrow(s.tC), aE = tensionArrow(s.tE), aF = tensionArrow(s.tF);
-    const aP = tensionArrow(s.tP), aH = tensionArrow(s.tH), aT = tensionArrow(s.tT);
-
-    // This whole row previously summed to 150+ fixed characters (7 range
-    // bars at a hardcoded width of 5, 3-space gaps) plus a variable-length
-    // tail (bars/stay/sid/genre/track/lock) — reliably wider than most
-    // terminals, so it silently wrapped onto extra lines. Everything below
-    // is now sized against the ACTUAL terminal width `w` instead, so the
-    // whole row — descriptors, spark, and every tail item — fits on one
-    // line, shrinking the range bars first and then dropping the least
-    // essential tail items (in that order) rather than wrapping.
-    const DESC_GAP    = '  '; // was 3 spaces per gap; tightened to buy back room
-    // Fixed (non-range-bar) character count for the descriptor block: each
-    // of the 7 dims contributes letter+arrow(2) + space(1) + space(1) +
-    // its own padded number width, joined by 6 DESC_GAP gaps, plus the
-    // leading name-column pad.
-    const NUM_WIDTHS  = [5, 4, 5, 7, 5, 7, 4]; // nC nS nE nF nP nH nT
-    const nonRbFixed  = NUM_WIDTHS.reduce((sum, wid) => sum + 2 + 1 + 1 + wid, 0)
-                       + 6 * DESC_GAP.length + (nameW + 3);
-    const RESERVE_FOR_TAIL = 19; // keep at least enough room for "bars:X  stay:Y  match:Z"
-    // Floor of 1 (not 2) so genuinely narrow terminals still degrade to a
-    // single-character bar instead of the row refusing to shrink any
-    // further — better than falling back to wrapping.
-    const rbW = Math.max(1, Math.min(6, Math.floor((w - nonRbFixed - RESERVE_FOR_TAIL) / 7)));
-    // Range bar: grey ━━●━━ showing where current value sits in observed
-    // min-max — width now adaptive (rbW) instead of a hardcoded 5.
-    const rb = (dim, val) => rangeBar(val, name, dim, rbW);
-    const preLock  = `${pad('', nameW + 3)}C${aC} ${rb('C',s.C)} ${nC}${DESC_GAP}S· ${rb('S',s.S)} ${nS}${DESC_GAP}E${aE} ${rb('E',s.E)} ${nE}${DESC_GAP}F${aF} ${rb('F',s.F)} ${nF}${DESC_GAP}P${aP} ${rb('P',s.P)} ${nP}${DESC_GAP}H${aH} ${rb('H',s.H)} ${nH}${DESC_GAP}T${aT} ${rb('T',s.T)} ${nT}`;
-    const preLockVis = preLock.replace(/\{[^}]+\}/g, '').length;
+    // Tail row — bars/stay/match/sid/genre/track/lock, right under the
+    // waveform row. Used to be preceded by a 7-dim C/S/E/F/P/H/T range-bar
+    // block (M↑━━●━━ nnnnn …) on this same line — removed (user: "remove
+    // the range bar showing descriptor value under the waveform. now we
+    // have the visualization that does a better job" — the descriptor grid
+    // and momentum panels, docked beside the VU sidebar, show the same
+    // dimensions with actual history instead of one static snapshot; see
+    // descGridStemLines()/momentumStemLines(), which now print the live
+    // value alongside each of their own rows too, per dim, so nothing
+    // that was readable here is actually lost). This is the last row
+    // before the meters start (see PRE_METERS_ROWS) — weight/dir/dirWgt
+    // below still print on the SAME rows as the meters (left column vs.
+    // right-anchored boxes), not above them, so the meters' own first row
+    // lines up with "weight".
+    // nameW + 4 lines this row's start up with where the waveform bracket
+    // itself starts one row up: pad(name, nameW) + pinMark(1) + tMark(1) +
+    // ": "(2) = nameW + 4 before `b` (user: "align the infos, such as
+    // bars:x with the start of the waveform").
+    // Row 1 lead-in — used to be blank padding under the name; now carries
+    // this stem's remix/generate mode, stacked directly under STEM_ROW_LABEL
+    // on the row above (user: "integrate the gen/remix indicator under the
+    // channels name. vcl, mel, bas, drm..."). Sourced from
+    // state.agentMode[name], which only ever updates from a confirmed
+    // agentMode_<stem> param broadcast off slicer.js's setAgentMode() — see
+    // the WS handler above, no optimistic local echo.
+    // Both "rmx" and "gen" are always shown together now (user: "I want to
+    // see them both, all the time" — a single tag that swapped text was
+    // read as one indicator disappearing/changing rather than two fixed
+    // options with one currently selected). Both render in grey; whichever
+    // one matches the live mode switches to bold white (user: "the selected
+    // rmx or gen becomes white"). Fills the full nameW+4 lead width itself
+    // (7 visible cols: "rmx" + "/" + "gen", padded 1) — no separate blank
+    // pad(''), unlike the single-tag version this replaces.
+    const isGen  = state.agentMode[name] === 'generate';
+    const rmxSeg = isGen ? '{grey-fg}rmx{/grey-fg}' : '{white-fg}{bold}rmx{/bold}{/white-fg}';
+    const genSeg = isGen ? '{white-fg}{bold}gen{/bold}{/white-fg}' : '{grey-fg}gen{/grey-fg}';
+    const leadPad     = rmxSeg + '{grey-fg}/{/grey-fg}' + genSeg + ' ';
+    // Visible width, not leadPad.length — leadPad carries blessed
+    // {tag}...{/tag} color markup (see rmxSeg/genSeg above), which adds
+    // characters that cost zero real screen columns; .length would
+    // overcount and starve the tail-item budget below (same class of bug
+    // the candidates[] `len` field further down exists to avoid). Visible
+    // width is 8 (3 + 1 + 3 + 1), matching nameW + 4 exactly, same as the
+    // plain-blank leadPad this replaces.
+    const preLockVis  = nameW + 4;
     let   remaining   = Math.max(0, w - 1 - preLockVis);
 
     // Tail items, highest priority first — each only gets appended if it
@@ -3471,12 +4367,52 @@ function render() {
     // so it belongs next to this
     // stem's own bars/stay rather than a single "representative" header row.
     const stemMatch = (state.paramsPerStem[name] && state.paramsPerStem[name].matchProb) || 0;
-    const barsStay = `    bars:${s.bars}  stay:${s.stay.toFixed(1)}  match:${stemMatch.toFixed(1)}`;
+    // No leading literal spaces here any more — leadPad (nameW + 4) already
+    // supplies the full offset needed to line "bars:" up with where `b`
+    // (the waveform bracket) starts one row up.
+    // bars: value — [fullfile] when this stem is in whole-file mode
+    // (state.playFullFile[name], mirrors slicer.js's PLAY_FULL_FILE),
+    // otherwise the actual segment bar count in brackets. Used to be a
+    // header-wide [CHUNK MODE ON/OFF] chip (true if ANY stem was chunked) —
+    // removed in favor of this, since chunk mode is genuinely per-stem and
+    // this is already the per-stem row (user: "remove [CHUNK MODE] from
+    // the menu. instead, when chunk mode is on, we see it in the infos
+    // under the waveform. we see the [x] numbers of bars. and when chunk
+    // mode is off, the bar number becomes [fullfile]").
+    const barsTxt = state.playFullFile[name] ? '[fullfile]' : `[${s.bars}]`;
+    const barsStay = `bars:${barsTxt}  stay:${s.stay.toFixed(1)}  match:${stemMatch.toFixed(1)}`;
     candidates.push({ text: barsStay, len: barsStay.length });
     const sidTxt = `  ${sid(s.id)}`;
     candidates.push({ text: sidTxt, len: sidTxt.length });
-    if (subGenre) { const t = `  [${subGenre}]`; candidates.push({ text: t, len: t.length }); }
-    if (s.track)  { const t = `  ${trackShort}`;  candidates.push({ text: t, len: t.length }); }
+    // Genre + classifier confidence, e.g. "[house 82%]" — was just the
+    // sub-genre label with no sense of how sure the classifier actually is
+    // (user: "the sub-genre label but not how confident the classifier is
+    // — could go [house 82%]").
+    if (subGenre) {
+      const t = `  [${subGenre} ${Math.round((parseFloat(s.genreConf) || 0) * 100)}%]`;
+      candidates.push({ text: t, len: t.length });
+    }
+    // Native (analyzed) BPM of this stem's own source track next to the
+    // current global/fallback playback BPM — shows how much pitch-shift is
+    // actually being applied (user: "the source track's native BPM next to
+    // your current global/fallback BPM"). playback→native, dropped
+    // entirely when the source track hasn't been analyzed yet.
+    const nativeBpm = getNativeBpmForTrack(s.track);
+    if (nativeBpm > 0) {
+      const playbackBpm = state.globalBPM > 0 ? state.globalBPM : (state.bpm || 0);
+      const t = `  bpm:${playbackBpm}→${Math.round(nativeBpm)}`;
+      candidates.push({ text: t, len: t.length });
+    }
+    // Skip when s.track is literally the same string as s.id (already shown
+    // a few candidates back via sid(s.id), just truncated differently — 6
+    // chars there vs. up to 16 here, so the SAME identifier appeared to
+    // repeat on screen, e.g. "ESRGDt ... ESRGDtb923043@$…" — user: "make
+    // sure the name of the track doesnt get written twice."). This happens
+    // when a stem's real 'stemTrack' name hasn't arrived/been set yet and
+    // whatever populated s.track fell back to the same raw id string in the
+    // meantime — once a genuine, distinct track name comes in this check
+    // stops suppressing it and both fields show their own real values.
+    if (s.track && s.track !== s.id) { const t = `  ${trackShort}`; candidates.push({ text: t, len: t.length }); }
     // Lock indicator — LAST, lowest priority, instead of a fixed slot
     // reserved up front. It used to sit first with a fixed-width reserved
     // slot (blank-padded when unlocked) specifically so bars:/stay:/match:
@@ -3500,7 +4436,7 @@ function render() {
       // else: dropped — not enough room left, skip to the next (lower-
       // priority) candidate rather than truncating mid-item.
     }
-    const descLine = preLock + tail;
+    const descLine = leadPad + tail;
     playLines.push(`{grey-fg}${descLine}{/grey-fg}`);
 
     // This stem's own weight/dir/dirWgt — right under the descriptor line;
@@ -3525,7 +4461,11 @@ function render() {
     // 3-letter code (same abbreviation the descriptor grid/VU sidebar use),
     // same 5-char width as "[all]" so nothing shifts.
     const spWp     = state.paramsPerStem[name];
-    const spIndent = pad('', nameW + 3);
+    // nameW + 4, same offset as leadPad above — lines weight/dir/dirWgt up
+    // with where the waveform bracket itself starts (was nameW + 3, one
+    // column short; user: "align weight/dir/dirwgt with the start of the
+    // waveform").
+    const spIndent = pad('', nameW + 4);
     const spLabel  = '[' + (DESC_LABELS[name] || name.slice(0, 3)) + ']';
     playLines.push(`${spIndent}{grey-fg}weight ${spLabel}{/grey-fg} {grey-fg}M:{/grey-fg}${fmtM(spWp.weightC)} {grey-fg}E:{/grey-fg}${fmtM(spWp.weightE)} {grey-fg}F:{/grey-fg}${fmtM(spWp.weightF)} {grey-fg}P:{/grey-fg}${fmtM(spWp.weightP)} {grey-fg}H:{/grey-fg}${fmtM(spWp.weightH)} {grey-fg}T:{/grey-fg}${fmtM(spWp.weightT)}`);
     playLines.push(`${spIndent}{grey-fg}dir    ${spLabel}{/grey-fg} {grey-fg}M:{/grey-fg}${fmtDir(spWp.dirC)} {grey-fg}E:{/grey-fg}${fmtDir(spWp.dirE)} {grey-fg}F:{/grey-fg}${fmtDir(spWp.dirF)} {grey-fg}P:{/grey-fg}${fmtDir(spWp.dirP)} {grey-fg}H:{/grey-fg}${fmtDir(spWp.dirH)} {grey-fg}T:{/grey-fg}${fmtDir(spWp.dirT)}`);
@@ -3620,6 +4560,15 @@ const COMMANDS = new Set([
   // intercepted by its own handler before ever reaching Max; reloadBias and
   // setLearnedWeight are plain passthroughs to slicer.js.
   'trainBias', 'reloadBias', 'setLearnedWeight',
+  // generative agent switch — plain passthrough to slicer.js's setAgentMode().
+  // Real candidate generation itself (generate_agent.py) runs offline, not
+  // from this command — this only flips which already-imported population
+  // (real vs. GEN__-prefixed) the live picker chooses from.
+  'setAgentMode',
+  // fit shape — TUI/Node-only, same shape as trainBias: writes fit_shapes.json
+  // and returns, never reaches Max. Doesn't retrain anything by itself —
+  // :trainBias reads the file on its next run to actually refit.
+  'setFitShape', 'showBakeGraph', 'listGraphs', 'graphs', 'fakeBakes', 'graphNext', 'graphPrev',
   // TUI-only
   'showState', 'showCommands', 'chat', 'language',
   'nextTrack', 'prevTrack',
@@ -4019,6 +4968,38 @@ const CURATOR_FLOOR = 0.40;
 let floorDj     = null;
 let floorArtist = null;
 
+// The ACTUAL live curatorShare, editable via :setSplit — separate from
+// floorDj above (that's a still-unwired minimum-guarantee readout; this is
+// the real value both :tip and the header's equation bar use every time).
+// null = no override, just run on CURATOR_FLOOR's flat default, same as
+// before this existed. Clamped to [CURATOR_FLOOR, 1] wherever it's SET
+// (see :setSplit's handler) so it can only ever raise the DJ's cut above
+// the protocol floor, never drop it below — docs/protocol/SPLIT_EQUATION.md:
+// "The DJ is always compensated for the act of curation."
+let curatorShareOverride = null;
+function currentCuratorShare() {
+  return curatorShareOverride !== null ? curatorShareOverride : CURATOR_FLOOR;
+}
+
+// Follow-graph influence per stem — shared by the :tip command handler and
+// renderTipInfo()'s equation bar/future per-stem breakdown, so the header
+// display and the actual payout math read from the exact same numbers
+// instead of two independently-maintained copies of this calc.
+const TIP_STEMS = ['vocals', 'melody', 'bass', 'drums'];
+function computeStemInfluence() {
+  const influence = {};
+  TIP_STEMS.forEach(s => { influence[s] = 0; });
+  TIP_STEMS.forEach(from => {
+    DIMS.forEach(dim => {
+      Object.entries((state.followGraph[from] && state.followGraph[from][dim]) || {}).forEach(([to, w]) => {
+        if (influence[to] !== undefined) influence[to] += w / DIMS.length;
+      });
+    });
+  });
+  const totalInfluence = TIP_STEMS.reduce((sum, s) => sum + influence[s], 0);
+  return { influence, totalInfluence };
+}
+
 // Simulated Stripe-style transaction id (":tip" has no real payment intent
 // to attach to — see lastTip's comment above).
 function genTxnId() {
@@ -4210,10 +5191,10 @@ function stopBakeLoop(store) {
 //   'training' — the LIVE bake bracket: same :bake start/show/edit/end/
 //                abort commands that already work from Playback (those
 //                aren't gated by appMode — see handleInput's :bake block),
-//                just with somewhere to actually SEE the bracket's status
-//                while you're not looking at the header cluster's bakeInfoBox
-//                (which Learn mode hides along with the rest of
-//                PLAYBACK_HEADER_BOXES). playBox (the 4-channel waveforms)
+//                just with somewhere to actually SEE the bracket's status —
+//                bakeInfoLines() (bars/prmpt/stat/rcp) now renders ONLY
+//                here, not on Playback's own header at all any more (see
+//                the ZONE 6.6 comment). playBox (the 4-channel waveforms)
 //                stays up here too — a live bracket really is live.
 //
 //   'review'   — pages back through what's already been baked, off the
@@ -4247,6 +5228,112 @@ let reviewIndex     = 0;          // index into reviewEntries
 let reviewEntries   = [];         // cached list for the current source, newest first
 let reviewAudioProc = null;       // spawned afplay/aplay child, or null while nothing's playing
 let reviewPlayStartTime = 0;      // Date.now() when reviewAudioProc was spawned — playhead math below
+// lastBakePage — always set (see refreshSelectedBakePage() below), shown
+// appended under reviewDetailBox's normal content (see renderTrainingView())
+// so it sits directly under reviewWaveformBox ("the recording") — but ONLY
+// in the 'review' sub-view now (user: "it should only appear under review,
+// not in the training tab of the train tab"), not a separate box/geometry
+// change, just more content in the box that already occupies that space.
+// Holds a whole PAGE's worth of mini-graphs now (user: "show multiple graph
+// at the same time") — { model, feature, kind, cols, colW, graphs: [{dim,
+// text, coeffs, degree, n, xMin, xMax, yMin, yMax, empty}, ...] } — one
+// `graphs` entry per dim on the page (7 for a 'level' page, 6 for
+// 'tension'), laid out `cols` per row (see refreshSelectedBakePage() —
+// user: "put them on two rows, not only one, so everything can fit in one
+// page").
+let lastBakePage = null;
+
+// selectedPageIdx — which of BAKE_GRAPH_PAGES' 8 entries is "the" page
+// right now (1-based). This is the actual selection state behind the graph
+// menu (user: "a menu to select with graph is being shown") — :showBakeGraph
+// and :graphNext/:graphPrev both just change this and re-derive
+// lastBakePage from it, so there's one source of truth instead of the
+// picker and the rendered graphs drifting apart. Defaults to the vertical/
+// mean page, level dims — E/vertical/mean lives on it, the one :fakeBakes
+// deliberately biases to correlate with rating, so a fresh app + a first
+// :fakeBakes run lands on a page with at least one real slope visible
+// instead of all noise.
+let selectedPageIdx = pageIndexForDim('E', 'vertical', 'mean');
+
+// refreshSelectedBakePage — re-derives lastBakePage from whatever
+// selectedPageIdx currently points at, reading the training logs fresh for
+// EVERY dim on that page. Always sets lastBakePage, even with zero usable
+// bakes for a given dim (user: "when no bakes are baked, i still want to
+// see a graph, but with no data in it") — draws a blank frame for that one
+// dim instead of skipping it, so every page's SHAPE (and axis labels) are
+// always on screen once Review has been opened at least once, not just
+// after the first successful bake. Called from three places:
+// :showBakeGraph/:graphNext/:graphPrev (user changed the selection),
+// :fakeBakes (synthetic data just landed), and the WS 'bakeScored' handler
+// (user: "I want it to be automatically drawn when bakes are baked" — a
+// REAL :score/:scoreTransition just got logged by ws_server.js).
+function refreshSelectedBakePage() {
+  const page = BAKE_GRAPH_PAGES[selectedPageIdx - 1];
+  if (!page) return;
+  // Width source is reviewRegressionBox now, not reviewDetailBox — the
+  // regression graph moved into its own full-width box (see reflowLearn()'s
+  // review branch), so sizing off reviewDetailBox's now-much-narrower
+  // column would squeeze the plot down to a sliver of the space it
+  // actually has. Cap raised from 64 to 96 to make use of that extra width
+  // instead of leaving it mostly blank on a wide terminal.
+  const fullW = Math.max(24, Math.min(96, (reviewRegressionBox.width || 48) - 2));
+  // GRID_ROWS fixed at 2 (user: "put them on two rows, not only one, so
+  // everything can fit in one page") — cols is whatever spreads this
+  // page's dims (7 for level, 6 for tension) across exactly 2 rows, not a
+  // straight-down stack of one graph per row. That's what keeps a 7-graph
+  // page to ~2 rows of cards instead of ~7, so the whole page (menu +
+  // every graph) fits on screen without scrolling, at the cost of each
+  // individual graph being narrower.
+  const GRID_ROWS = 2;
+  const CARD_GAP  = 2; // spaces between adjacent cards in the same row
+  const cols = Math.ceil(page.dims.length / GRID_ROWS);
+  const colW = Math.max(12, Math.floor((fullW - CARD_GAP * (cols - 1)) / cols));
+  // Each mini-graph is only 3 rows tall (vs. the old single graph's 12) —
+  // that's what makes fitting up to 7 of them on one page readable instead
+  // of requiring 7x the scrolling (user: "can you fit 7 graphs under the
+  // regression section and still keep them readable?"). 3 rows still gives
+  // 12 sub-dot rows of real Braille resolution (3 × 4), plenty to see a
+  // trend/scatter shape at a glance even at colW's narrower width.
+  const MINI_H = 3;
+  const graphs = page.dims.map(dim => {
+    const points = extractBakePoints(DATA_DIR, dim, page.model, page.feature);
+    // Degree comes from fit_shapes.json (see fitDegreeForDim()) — this is
+    // what keeps the preview honest about whatever :setFitShape last set
+    // for THIS dim, instead of always defaulting to a straight line. Each
+    // dim on a page can have its own independent shape.
+    const degree = fitDegreeForDim(dim);
+    // Need at least degree+2 points for a fit that isn't just threading
+    // through every point exactly (same "don't trust a saturated fit"
+    // spirit as train_bias.py's train_section() 3x-parameters floor, just
+    // a much smaller version of it for this 1D diagnostic).
+    if (points.length >= Math.max(3, degree + 2)) {
+      const result = renderBrailleScatter(points, colW, MINI_H, degree);
+      return {
+        dim, text: result.text, coeffs: result.coeffs, degree: result.degree, n: result.n,
+        xMin: result.xMin, xMax: result.xMax, yMin: result.yMin, yMax: result.yMax,
+        empty: false,
+      };
+    }
+    // Blank frame, same footprint a real graph would use — no dots, no
+    // fitted curve (there isn't one yet), just empty axes.
+    const blankRow = ' '.repeat(colW);
+    return {
+      dim,
+      text: Array.from({ length: MINI_H }, () => blankRow).join('\n'),
+      coeffs: [0], degree, n: points.length,
+      xMin: 0, xMax: 0, yMin: -1, yMax: 1,
+      empty: true,
+    };
+  });
+  lastBakePage = { model: page.model, feature: page.feature, kind: page.kind, cols, colW, graphs };
+}
+// NOT called eagerly here — reviewRegressionBox.width isn't reliably
+// resolved yet this early in module load (before the screen/box tree is
+// attached), which would feed NaN into colW's Math.min/repeat below and
+// crash on startup. renderTrainingView()'s 'review' branch below calls this itself
+// on first use instead (lastBakePage still null), by which point the box
+// is definitely sized — same "empty graph if nothing's been baked yet"
+// result, just resolved lazily instead of at parse time.
 
 // The recording's waveform, cached by file path so switching entries or
 // re-rendering on every 100ms tick (see the review-waveform block in
@@ -4380,8 +5467,18 @@ function updateReviewWaveformBox(width) {
 // right below it) shrinks to fit a short bake/entry instead of always
 // reserving its full bounded-fraction cap. Starts at a reasonable guess;
 // renderTrainingView() re-derives layout immediately after updating this,
-// so it's never actually shown stale.
+// so it's never actually shown stale. Only the 'training' sub-view still
+// uses this one now — 'review' has its own reviewBakeContentLines just
+// below (see reflowLearn()'s review branch for why: three independently-
+// sized sections now instead of one shared budget).
 let learnPanelContentLines = 10;
+
+// reviewBakeContentLines — same idea as learnPanelContentLines above, but
+// scoped to just the bake row (reviewListBox + reviewDetailBox's own
+// entry-detail text) in the 'review' sub-view, now that regression is a
+// separate box with its own independent height (reviewRegressionBox, sized
+// to fill whatever's left down to the footer — see reflowLearn()).
+let reviewBakeContentLines = 6;
 
 function loadTrainingLog() {
     try {
@@ -4685,6 +5782,9 @@ function renderTrainingView() {
             lines.push('{grey-fg}:bakeloop <bars>  then  :bake start <prompt>  to open a bracket{/grey-fg}');
             lines.push('{grey-fg}(same commands as Playback — :bake works from either mode){/grey-fg}');
         }
+        // Bake graph deliberately NOT shown here (user: "it should only
+        // appear under review, not in the training tab of the train tab") —
+        // see the 'review' branch below instead.
         reviewDetailBox.setContent(lines.join('\n'));
         learnPanelContentLines = lines.length;
         relayoutLearnPanel();
@@ -4701,13 +5801,200 @@ function renderTrainingView() {
     const items = reviewEntries.map(e => reviewEntryLabel(e));
     reviewListBox.setItems(items.length ? items : ['{grey-fg}(none yet){/grey-fg}']);
     if (total) reviewListBox.select(reviewIndex);
-    const detailText = renderReviewDetail(reviewEntries[reviewIndex]);
-    reviewDetailBox.setContent(detailText);
-    // The list needs enough rows to show every entry too, not just whatever
-    // the detail text needs — otherwise a short detail (e.g. "(none)"
-    // corrections) would squeeze the session list down to a sliver.
-    learnPanelContentLines = Math.max(detailText.split('\n').length, items.length);
+    // Three separate sections now, stacked top to bottom (user: "the order
+    // must be: bake menu with its own menu to its right ... then under it
+    // is the recording section ... and then under it is the regression
+    // section"): bake row (reviewListBox + reviewDetailBox, entry detail
+    // ONLY), then reviewWaveformBox ("recording"), then reviewRegressionBox
+    // ("regression" + its own picker menu underneath — see
+    // appendBakeGraphLines()). Used to be one combined blob — entry detail
+    // then regression appended after, both crammed into reviewDetailBox —
+    // which is what buried regression (and its 50+ line menu) under
+    // whatever the entry detail needed. See reflowLearn() for how the three
+    // boxes are actually positioned/sized.
+    const detailLines = renderReviewDetail(reviewEntries[reviewIndex]).split('\n');
+    reviewDetailBox.setContent(detailLines.join('\n'));
+    const regressionLines = [];
+    appendBakeGraphLines(regressionLines);
+    reviewRegressionBox.setContent(regressionLines.join('\n'));
+    // reviewBakeContentLines drives ONLY the bake row's height now (see
+    // reflowLearn()) — needs enough rows to show every list entry too, not
+    // just whatever the detail text needs, same reasoning as before, just
+    // no longer conflated with regression's own (much larger) line count.
+    reviewBakeContentLines = Math.max(detailLines.length, items.length);
     relayoutLearnPanel();
+}
+
+// appendBakeGraphLines — mutates `lines` in place, adding the last
+// :showBakeGraph result (a whole page's worth of graphs, if any) below
+// whatever detail content was already there. Persists across every
+// renderTrainingView() rebuild (navigation, ticks, etc.) since it's driven
+// by module-level lastBakePage rather than being computed fresh each time —
+// same reasoning as bakeSessionActive and everything else this function
+// reads without recomputing.
+// FEATURE_GLYPH — short marker for the page-menu grid below; keeps each
+// entry to a compact, scannable width instead of spelling out
+// "absDelta"/"mean" etc. every time. mean's glyph is 'avg', not the more
+// textbook x̄ (x-bar) — deliberately: x̄ is 'x' + a COMBINING MACRON, TWO
+// UTF-16 code units that render as ONE terminal column, so pad()'s raw
+// .length-based padding below counted it a character too long and threw
+// every column after a mean-page entry out of alignment (user: "make sure
+// the space between the infos in the menu is equal for all" — this is what
+// broke it). 'avg' is plain ASCII, same visible length as its own
+// .length, no such landmine.
+const FEATURE_GLYPH = { delta: 'Δ', absDelta: '|Δ|', mean: 'avg', std: 'σ' };
+// KIND_LABEL — 'level' page shows C/S/E/F/P/H/T, 'tension' shows the Tn*
+// six — short words used in both the page menu and each page's own header.
+const KIND_LABEL = { level: 'level', tension: 'tension' };
+const MODEL_LABEL = { transition: 'trans', vertical: 'vert' };
+
+// bakeGraphMenuLines — the page picker (user originally: "dont forget the
+// submenu that shows the graph attributed to each possible weight of this
+// system (50-ish)"; later: "show multiple graph at the same time to reduce
+// the number of options in the menu" — see BAKE_GRAPH_PAGES for the
+// grouping this now reflects). One entry per BAKE_GRAPH_PAGES item (8, not
+// 52), wrapped into a grid that fits `width`; the live selection
+// (selectedPageIdx) renders bold white, everything else grey — same "blank
+// unless it's the thing that matters" convention as the gen/remix tag and
+// pinMark elsewhere in this file. Labels are padded to a fixed width
+// BEFORE being wrapped in {tag}s (same reason as modeCol near
+// STEM_ROW_LABEL — pad()'s raw .length/.slice would otherwise miscount/cut
+// blessed markup).
+function bakeGraphMenuLines(width) {
+  const w = Math.max(20, width || 48);
+  const itemW = 20;
+  const perRow = Math.max(1, Math.floor(w / itemW));
+  const rows = [];
+  let row = '', count = 0;
+  BAKE_GRAPH_PAGES.forEach((p, i) => {
+    const n = i + 1;
+    const label = pad(n + '.' + KIND_LABEL[p.kind] + ' ' + MODEL_LABEL[p.model]
+      + ' ' + (FEATURE_GLYPH[p.feature] || p.feature), itemW);
+    row += (n === selectedPageIdx)
+      ? `{white-fg}{bold}${label}{/bold}{/white-fg}`
+      : `{grey-fg}${label}{/grey-fg}`;
+    count++;
+    if (count === perRow) { rows.push(row); row = ''; count = 0; }
+  });
+  if (row) rows.push(row);
+  return rows;
+}
+
+// DIM_SHAPE_LABEL — degree -> the word :setFitShape uses for it, for status
+// lines/log messages that need to say which shape is active in English
+// rather than just printing "2".
+const DIM_SHAPE_LABEL = { 1: 'linear', 2: 'quadratic', 3: 'cubic' };
+// DIM_SHAPE_SHORT — same, abbreviated for the narrow per-card headers in
+// the 2-row grid below, where "quadratic" alone can be a third of the
+// card's whole width.
+const DIM_SHAPE_SHORT = { 1: 'lin', 2: 'quad', 3: 'cub' };
+
+// padVis — pads `str` with plain (untagged) spaces up to `len` VISIBLE
+// characters, not raw string length — needed because the grid rows below
+// splice multiple already-{tag}ged card lines side by side, and a raw
+// .length/.padEnd would count each {white-fg}/{/white-fg} etc. as visible
+// characters and misalign every column after the first (same class of bug
+// pad()'s own comment elsewhere in this file warns about, just here the
+// tags are already embedded mid-string instead of wrapped around the whole
+// thing afterward, so pad() itself can't be reused as-is).
+function padVis(str, len) {
+  const visLen = str.replace(/\{[^}]+\}/g, '').length;
+  return visLen >= len ? str : str + ' '.repeat(len - visLen);
+}
+
+// composeGridRow — zips N same-height card line-arrays into single output
+// lines, column by column, `colW` wide with `gap` spaces between — this is
+// what actually puts multiple graphs side by side (user: "put them on two
+// rows, not only one, so everything can fit in one page"). Cards can have
+// different heights (shouldn't in practice — every card here is built by
+// buildGraphCard() below, always the same shape — but this stays correct
+// either way rather than assuming).
+function composeGridRow(cards, colW, gap) {
+  const height = Math.max(0, ...cards.map(c => c.length));
+  const rows = [];
+  for (let li = 0; li < height; li++) {
+    rows.push(cards.map(c => padVis(c[li] || '', colW)).join(' '.repeat(gap)));
+  }
+  return rows;
+}
+
+// buildGraphCard — one dim's compact card: a one-line header (dim name,
+// sample count, abbreviated fit shape — the full equation doesn't fit at
+// colW anymore, see formatPolyEquation() for where it's still shown in
+// full), the mini scatter itself, then its own x-range (the numeric range
+// varies per dim even though every card shares the same y meaning — see
+// the shared y note printed once above the grid instead of per-card).
+function buildGraphCard(g) {
+  const lines = [];
+  const shapeShort = DIM_SHAPE_SHORT[g.degree] || 'lin';
+  lines.push('{bold}{white-fg}' + g.dim + '{/white-fg}{/bold} '
+    + (g.empty ? '{grey-fg}no data{/grey-fg}' : '{grey-fg}n=' + g.n + ' ' + shapeShort + '{/grey-fg}'));
+  lines.push(...g.text.split('\n'));
+  lines.push(g.empty ? '{grey-fg}—{/grey-fg}' : '{grey-fg}[' + g.xMin.toFixed(2) + '..' + g.xMax.toFixed(2) + ']{/grey-fg}');
+  return lines;
+}
+
+function appendBakeGraphLines(lines) {
+    // Lazy-init instead of at module load — see refreshSelectedBakePage()'s
+    // own comment on why calling it eagerly at parse time isn't safe (box
+    // sizing not resolved yet). By the time anything actually renders the
+    // training screen, reviewRegressionBox is definitely sized, so this is
+    // safe.
+    if (!lastBakePage) refreshSelectedBakePage();
+    if (!lastBakePage) return;
+    // Same subtitle-over-a-rule header reviewWaveformBox uses for
+    // "recording" (user: "use the layout of the recording section, with
+    // the subtitle and the line ... use the same layout but for the graph
+    // section"): a bold one-word subtitle + status on row one, one plain
+    // rule on row two, then the actual content underneath.
+    // "regression" over plain "graph": this box is specifically a scatter
+    // plot with a fitted regression curve overlaid (linear/quadratic/cubic
+    // depending on :setFitShape) — see recordingWaveformLine()'s own
+    // subtitle ("recording") for the pattern this is matching.
+    // ruleW spans the box's FULL width now (user: "align regression line
+    // with recording line, make them the same length") — was capped at 96
+    // to match the old single big graph's own readability cap, but a plain
+    // repeated-character rule has no such readability concern, so nothing
+    // stops it from running the box's actual full width the same way
+    // recording's own line (recordingWaveformLine(), sized off the same
+    // reviewWaveformBox.width) already does. The plot width below keeps its
+    // own separate, smaller cap — more Braille columns past ~96 doesn't
+    // make a ~20-50-point scatter more readable, just sparser.
+    const fullW = reviewRegressionBox.width || contentW();
+    const kindWord = lastBakePage.kind === 'level'
+      ? 'level (C S E F P H T)'
+      : 'tension (TnC TnE TnF TnP TnH TnT)';
+    const status = '{grey-fg}' + lastBakePage.model + ' ' + lastBakePage.feature
+      + ' · ' + kindWord + '{/grey-fg}';
+    lines.push('');
+    lines.push('{bright-white-fg}regression{/bright-white-fg}   ' + status);
+    lines.push('{grey-fg}' + '─'.repeat(Math.max(1, fullW)) + '{/grey-fg}');
+    // Menu right under the header, ABOVE the graphs (user: "put the graph
+    // menu above the graph, right under the regression section") — was
+    // graphs-then-menu for one release; this is the correction back.
+    lines.push('{grey-fg}^P/^N to page through, or :showBakeGraph <n> / :graphNext / :graphPrev{/grey-fg}');
+    bakeGraphMenuLines(fullW).forEach(r => lines.push(r));
+    lines.push('');
+    // Shared axis notes — every graph on a page plots the SAME thing on y
+    // (the bake rating) and the same KIND of thing on x (just a different
+    // dim each time), so both get stated once here instead of repeated
+    // verbatim on every card (user: "add axis to the graph. what x is and
+    // what y is", amortized now that up to 7 graphs share a page). Each
+    // card below still prints its own numeric x-range, since that DOES
+    // vary per dim even though the meaning doesn't.
+    lines.push('{grey-fg}y: rating  [-1 .. 1]  ·  x: '
+      + featureAxisLabel('<dim>', lastBakePage.model, lastBakePage.feature)
+      + ', range shown per card below{/grey-fg}');
+    // The graphs themselves — two rows of compact cards (user: "put them
+    // on two rows, not only one, so everything can fit in one page"),
+    // `lastBakePage.cols` per row (see refreshSelectedBakePage()), each
+    // card built by buildGraphCard() and zipped together side by side by
+    // composeGridRow().
+    for (let i = 0; i < lastBakePage.graphs.length; i += lastBakePage.cols) {
+      const rowCards = lastBakePage.graphs.slice(i, i + lastBakePage.cols).map(buildGraphCard);
+      composeGridRow(rowCards, lastBakePage.colW, 2).forEach(r => lines.push(r));
+      lines.push('');
+    }
 }
 
 // Content height just changed (learnPanelContentLines was updated right
@@ -4752,6 +6039,32 @@ function learnPanelBodyTop(){ return learnPanelTop() + 2; } // header row + one 
 function learnPanelBodyH()  { return Math.max(3, learnPanelHeight() - 2); }
 function learnPanelBottom() { return learnPanelBodyTop() + learnPanelBodyH(); }
 
+// reviewStackBottom() — how far down 'review's own 3-section stack (bake
+// row, recording, regression) is allowed to run. Deliberately NOT
+// learnPanelBottom() — that's the shared, 24-row-capped bottom the
+// 'training' sub-view and the playback screen still use, sized to leave
+// room for playBox/the per-stem VU-spatial-descriptor columns underneath.
+// None of that exists while inReview — playBox and PLAYBACK_CHANNEL_BOXES
+// are hidden there (see render()'s SCREEN VISIBILITY block) — so the space
+// down to just above the footer is otherwise sitting empty, and this
+// reclaims it for regression instead of leaving it capped at the same 24
+// rows a short entry list gets on the training screen.
+// EXCEPT while chat is maximized: chat overlay docks right under
+// headerClusterBottom (see reflow()), which for appMode 'learn' is
+// learnPanelBottom() regardless of learnView — reclaiming the extra space
+// here too would run regression right underneath chat's own sep/menuHeader/
+// log rows with nothing left for them. So this falls back to
+// learnPanelBottom() itself whenever chat is open, matching exactly where
+// headerClusterBottom already expects this stack to end — reviewDetailBox
+// is scrollable, so a taller regression graph just scrolls in that case
+// instead of losing content. toggleChatMaximize() calls reflowLearn() so
+// this takes effect the moment chat opens/closes, not on the next
+// unrelated layout pass.
+function reviewStackBottom() {
+  if (chatMaximized) return learnPanelBottom();
+  return screen.height - FOOTER_H - 1;
+}
+
 function reflowLearn() {
     // w = contentW() (screen width minus SIDE_TOTAL_W), not the raw screen
     // width — master VU/spatial now stay visible on the training screen too
@@ -4773,10 +6086,42 @@ function reflowLearn() {
         // No list to browse in the live-bracket view — reviewDetailBox
         // takes the full width instead (see renderTrainingView()'s
         // training branch, which only ever touches header + detail).
+        // reviewWaveformBox (the recording) doesn't apply here either —
+        // it's a 'review'-only box, playBox covers the live-bracket case
+        // (see render()'s inReview branch) — so this leaves it untouched.
+        // reviewRegressionBox is 'review'-only too — hidden here same as
+        // reviewWaveformBox effectively is (render() never shows() it
+        // outside inReview).
         reviewListBox.hide();
-        reviewDetailBox.left   = 0;
-        reviewDetailBox.width  = w;
+        reviewRegressionBox.hide();
+        reviewDetailBox.left    = 0;
+        reviewDetailBox.width   = w;
+        reviewDetailBox.top     = bodyTop;
+        reviewDetailBox.height  = bodyH;
     } else {
+        // Three stacked sections, top to bottom (user: "the order must be:
+        // bake menu with its own menu to its right ... then under it is the
+        // recording section ... and then under it is the regression
+        // section"):
+        //   1. bake row — reviewListBox (session picker) beside
+        //      reviewDetailBox (that session's own intent/track/status/
+        //      corrections/final_cmds — entry detail ONLY now, see
+        //      renderTrainingView()'s review branch).
+        //   2. reviewWaveformBox ("recording") — full width, fixed height.
+        //   3. reviewRegressionBox ("regression") — full width, its own
+        //      picker menu at the BOTTOM of its own content (see
+        //      appendBakeGraphLines()) — fills whatever's left down to
+        //      reviewStackBottom() instead of sharing the old shared/capped
+        //      bodyH the training sub-view still uses (bodyH itself is
+        //      unused in this branch now).
+        const GAP = 1;
+
+        // 1. Bake row — sized off reviewBakeContentLines (entry-detail line
+        // count only, now that regression moved into its own box), not the
+        // old shared learnPanelContentLines that used to include regression
+        // too — that's what made this row balloon to the 24-row cap the
+        // moment a 50-entry graph menu got appended to the same content.
+        const bakeH = Math.max(4, Math.min(10, reviewBakeContentLines + 1));
         const listW = Math.max(24, Math.min(48, Math.floor(w * 0.32)));
         // Just the named, scrollable list — no numbered quick-tab strip
         // above it any more (user: "there cant be a hundred boxes with
@@ -4786,12 +6131,26 @@ function reflowLearn() {
         reviewListBox.show();
         reviewListBox.top    = bodyTop;
         reviewListBox.width  = listW;
-        reviewListBox.height = Math.max(1, bodyH);
-        reviewDetailBox.left  = listW + 1;
-        reviewDetailBox.width = w - listW - 1;
+        reviewListBox.height = bakeH;
+        reviewDetailBox.left   = listW + 1;
+        reviewDetailBox.width  = w - listW - 1;
+        reviewDetailBox.top    = bodyTop;
+        reviewDetailBox.height = bakeH;
+
+        // 2. Recording — fixed 2 rows, right under the bake row.
+        const RECORDING_H = reviewWaveformBox.height; // 2 — fixed at box creation
+        const recordingTop = bodyTop + bakeH + GAP;
+        reviewWaveformBox.top   = recordingTop;
+        reviewWaveformBox.width = w;
+
+        // 3. Regression — everything left, down to just above the footer.
+        const regressionTop = recordingTop + RECORDING_H + GAP;
+        const regressionH   = Math.max(6, reviewStackBottom() - regressionTop);
+        reviewRegressionBox.show();
+        reviewRegressionBox.top    = regressionTop;
+        reviewRegressionBox.width  = w;
+        reviewRegressionBox.height = regressionH;
     }
-    reviewDetailBox.top    = bodyTop;
-    reviewDetailBox.height = bodyH;
 }
 
 function enterLearnMode() {
@@ -4826,7 +6185,7 @@ function exitLearnMode() {
     if (appMode !== 'learn') return;
     reviewStop();
     appMode = 'playback';
-    reviewHeaderBox.hide(); reviewListBox.hide(); reviewDetailBox.hide();
+    reviewHeaderBox.hide(); reviewListBox.hide(); reviewDetailBox.hide(); reviewRegressionBox.hide();
     // PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES reappear on their own —
     // see the SCREEN VISIBILITY block in render(), which this call runs
     // (render(), not just reflow() — same statusH-staleness reasoning as
@@ -4851,8 +6210,30 @@ function atBottom() {
 
 const LOG_NOISE = /No network created|last created network has been deleted|VisibleDeprecationWarning|absl::InitializeLog|mlir_graph_optimization|MLIR V1 optimization/i;
 
-function appendLog(line) {
+// Last few lines appended, kept regardless of chatMaximized — feeds
+// peekBox (see its own comment near its definition), the "always there"
+// 2-3 line preview that shows a command + its message without opening the
+// whole chat overlay. Capped well past what peekBox itself displays so
+// there's headroom if PEEK_H ever grows.
+let recentLogLines = [];
+const RECENT_LOG_KEEP = 8;
+function updatePeekBox() {
+  peekBox.setContent(recentLogLines.slice(-PEEK_H).join('\n'));
+}
+
+function appendLog(line, opts) {
   if (LOG_NOISE.test(line)) return;
+  opts = opts || {};
+  // Used to auto-open chat the moment there was anything real to show in it
+  // (a whole round of "open the whole chat, i want to see the feedback").
+  // Reversed now (user: "actually, never open the chat automatically. let
+  // the user open it by typing control c.") — appendLog() no longer forces
+  // chatMaximized on for ANY message, logSys/logCricket/logUser alike.
+  // Feedback that lands while chat is closed still isn't silently lost: it
+  // goes into logBox regardless (so it's there the next time chat DOES open,
+  // via ^C or :chat) and into peekBox, the always-visible 2-3 line preview
+  // right above the input line — see updatePeekBox() below and peekBox's
+  // own comment. Only the forced full-overlay-open behavior is gone.
   const wasBottom = atBottom();
   const savedPos  = wasBottom ? -1 : logBox.getScroll();
   logBox.add(line);
@@ -4861,11 +6242,14 @@ function appendLog(line) {
   } else {
     logBox.scrollTo(savedPos);
   }
+  recentLogLines.push(line);
+  if (recentLogLines.length > RECENT_LOG_KEEP) recentLogLines.shift();
+  updatePeekBox();
   screen.render();
 }
 
-function logSys(text) {
-  appendLog(`{grey-fg}${text}{/grey-fg}`);
+function logSys(text, opts) {
+  appendLog(`{grey-fg}${text}{/grey-fg}`, opts);
 }
 
 // Zone 3 (lang) and Zone 4 (cmd) helpers — defined after reflow() above
@@ -4965,6 +6349,14 @@ const CMD_SECTIONS = [
     _r(':trainBias',                                 'fit bias models'),
     _r(':reloadBias',                                'reload learned bias'),
     _r(':setLearnedWeight <stem|all> <transition|vertical> <0-5>', 'scale learned model use'),
+    _r(':setAgentMode <stem|all> <remix|generate>', 'switch candidate source'),
+    _r(':setFitShape <dim> <linear|quadratic|cubic>', 'change one dim\'s fit shape'),
+    _r(':showBakeGraph <n>|<dim> [transition|vertical] [feature]', 'scatter + fitted curve'),
+    _r(':listGraphs', 'numbered menu of all 8 graph pages'),
+    _r(':graphNext / :graphPrev', 'cycle the picker in Train > Review'),
+    _r('^P / ^N',                                    'same cycle (up/down), while on Train > Review'),
+    _r('^B / ^D',                                    'step through bakes (up/down) in Train > Review'),
+    _r(':fakeBakes <n>', 'synthetic bake data, for demoing graphs'),
     _r(':resetAll',                                '⚠ wipe everything (Y/N)'),
     _r(':analyzeAll',                              'run genre + beat analysis'),
     _r(':tagBeats',                                'run beat tagger only'),
@@ -5051,6 +6443,9 @@ const CMD_SECTIONS = [
     _r(':selectRange [stem] C:lo,hi W:lo,hi E:lo,hi F:lo,hi P:lo,hi', 'pick slice in range'),
     _r(':nextNearest <stem> <C> <E> <F> <P>',      'jump to closest slice'),
   ]},
+  { title: 'network', rows: [
+    _r(':network <ssid> [password]',               'join a wifi network'),
+  ]},
   { title: 'link (multi-deck sync)', rows: [
     _r(':link on | off',                           'legacy UDP peer sync'),
     _r(':link status',                             'show connected decks'),
@@ -5059,15 +6454,99 @@ const CMD_SECTIONS = [
     _r(':link fire',                               'fire armed switch'),
     _r(':link abort',                              'disarm without firing'),
     _r(':link token <hex>',                        'set session token'),
+    _r(':link select <1-4>',                       'pick which deck fire targets'),
+    _r(':link select clear',                       'deselect target deck'),
   ]},
   { title: 'tipping session (payouts — NOT your login session)', rows: [
     _r(':tipOpen <djId> <venue> web|venue [deck]', 'open tipping session'),
     _r(':tipClose',                                'close tipping session'),
     _r(':tip',                                     'dry-run split %'),
     _r(':tip <username> <amount>',                 'simulate incoming tip'),
+    _r(':setSplit <dj 0-100>',                     'override dj/artist split, clamped ≥ floor'),
+    _r(':setSplit clear',                          'reset split to floor'),
     _r('  ↳ login session?',                       'use :switchSession/:logout'),
   ]},
 ];
+
+// ── GHOST COMPLETION ─────────────────────────────────────────────────────────
+// All distinct command verbs a user might type after ':'/'@' — pulled from
+// CMD_SECTIONS (the exact same data :showCommands renders) unioned with
+// COMMANDS (the Cricket→Max passthrough set, which covers a few verbs like
+// 'start'/'stop' that CMD_SECTIONS only shows folded into one decorative
+// display string, ':start  ·  :stop', rather than as their own {sig,desc}
+// rows) — so ghost-suggestions read from the same source of truth as the
+// real command list instead of a third, independently-maintained copy that
+// could drift out of sync with either. Built once; both source lists are
+// static. Only the FIRST word of each sig counts (verb-level completion —
+// see suggestCompletion()'s own comment for why arguments aren't included).
+const ALL_CMD_VERBS = (() => {
+  const set = new Set(COMMANDS);
+  CMD_SECTIONS.forEach(sec => sec.rows.forEach(r => {
+    if (typeof r === 'string') return; // decorative rows, not real commands
+    const verb = r.sig.replace(/^:/, '').split(/\s+/)[0];
+    if (verb) set.add(verb);
+  }));
+  return Array.from(set);
+})();
+
+// Best ghost-completion for whatever verb has been typed so far, or '' if
+// there's nothing to add (no match, or the typed text already IS a full
+// verb). Verb-level only — once the whole verb is typed and the user moves
+// on to arguments, this stops suggesting; an argument placeholder like
+// "<bpm 40-280>" from the command list isn't literal text that belongs in
+// the command, so it's not safe to offer as a fill-with-Right-Arrow
+// completion the way the verb itself is.
+// SHORTEST matching verb wins ties, not first-alphabetical: ":setG" matches
+// both setGenreFilter and setGlobalBPM, and the shorter one is what actually
+// gets suggested — the shorter completion is the likelier target, and typing
+// past it to the longer one still works fine either way.
+function suggestCompletion(typedVerb) {
+  if (!typedVerb) return '';
+  let best = null;
+  for (const v of ALL_CMD_VERBS) {
+    if (v.length > typedVerb.length && v.startsWith(typedVerb)) {
+      if (!best || v.length < best.length || (v.length === best.length && v < best)) best = v;
+    }
+  }
+  return best ? best.slice(typedVerb.length) : '';
+}
+
+// Every verb matching typedVerb (empty string matches everything — see
+// below), ordered the same way suggestCompletion()'s tie-break already
+// does: shortest first, alphabetical after that. Used for CYCLING (repeated
+// Right Arrow — see inputBox._listener below), where the first press should
+// land on the exact same candidate suggestCompletion()'s ghost box was
+// already previewing, and each press after that just keeps walking down
+// the same ordered list instead of stopping at one.
+function matchingVerbs(typedVerb) {
+  return ALL_CMD_VERBS
+    .filter(v => v.length > typedVerb.length && v.startsWith(typedVerb))
+    .sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0));
+}
+
+// Recomputes and (re)paints the ghost-completion box against inputBox's
+// CURRENT value/cursor — called after every keystroke (see the
+// CURSOR-AWARE INPUT EDITING block below) and after any programmatic value
+// change (setInputValue — history recall, clear-on-submit). Only offers a
+// suggestion while: the cursor sits at the true end of the text (a ghost
+// tail mid-edit doesn't mean anything — nothing to "continue" from there),
+// the line starts with ':' or '@' (plain chat/NL prompts to Cricket aren't
+// commands, nothing to complete), and no space has been typed yet (still on
+// the verb itself, not into its arguments — see suggestCompletion()).
+function updateSuggestion() {
+  const v   = inputBox.value || '';
+  const pos = inputBox._cursorPos;
+  const body = (v[0] === ':' || v[0] === '@') ? v.slice(1) : null;
+  const suggestion = (body !== null && pos === v.length && !/\s/.test(body))
+    ? suggestCompletion(body) : '';
+  if (suggestion) {
+    suggestBox.left = inputBox.strWidth(v);
+    suggestBox.setContent('{grey-fg}' + suggestion + '{/grey-fg}');
+    suggestBox.show();
+  } else {
+    suggestBox.hide();
+  }
+}
 
 // visWidth() (defined above, near visLines()) already strips {tag} markup to
 // measure real on-screen width — reused here for column sizing/padding so a
@@ -5127,18 +6606,64 @@ function wrapTaggedLine(text, width) {
   return lines;
 }
 
-// Lays a single {sig, desc} row out against a known column width: one line
-// if sig + gap + desc fits, otherwise sig on its own line with desc word-
-// wrapped underneath it (2-space hanging indent) — instead of the old fixed
-// 40-column gutter, which either wasted space (short signatures) or
-// collided (long ones) depending on what width the column ended up at.
-function layoutSigDescRow(sig, desc, colWidth) {
+// Lays a single {sig, desc} row out against a known column width and a
+// (possibly 0) shared alignment column — sigCol, see sectionSigCol() below.
+// Three cases, in order:
+//   1. sig fits sigCol AND the padded row still fits colWidth — the common
+//      case: pad sig out to sigCol so every row's description in this
+//      section starts at the same column, table-style (user: "align the
+//      description of the command[s]" — within each section, like a
+//      table, not just sig + 2 spaces + desc).
+//   2. sigCol doesn't apply (0, or this row's own sig is an outlier longer
+//      than sigCol) but sig + gap + desc still fits colWidth as-is — same
+//      ragged single-line fallback as before, just without the padding.
+//   3. Doesn't fit at all — sig on its own line, desc word-wrapped
+//      underneath with a 2-space hanging indent, same as before.
+// sig rendered in {bright-white-fg} (desc is left uncolored, so it just
+// inherits the panel's base {grey-fg} from buildCmdColumns()'s outer wrap)
+// — the whole panel used to be one flat shade of grey with nothing to
+// distinguish "what to type" from "what it does" (user: "its really hard
+// to read ... figure out a solution to make it more accessible"). Padding
+// math below still runs on the PLAIN sig/desc strings (sig.length,
+// padEnd) so the tag markup never throws off column alignment — sigTag()
+// only wraps the already-padded text right before it goes in the line.
+function layoutSigDescRow(sig, desc, colWidth, sigCol) {
   const gap = 2;
-  if (sig.length + gap + desc.length <= colWidth) return [sig + ' '.repeat(gap) + desc];
-  const lines = sig.length <= colWidth ? [sig] : wrapPlainText(sig, colWidth);
+  const sigTag = s => '{bright-white-fg}' + s + '{/bright-white-fg}';
+  if (sigCol && sig.length <= sigCol && sigCol + gap + desc.length <= colWidth) {
+    return [sigTag(sig.padEnd(sigCol)) + ' '.repeat(gap) + desc];
+  }
+  if (sig.length + gap + desc.length <= colWidth) return [sigTag(sig) + ' '.repeat(gap) + desc];
+  const lines = (sig.length <= colWidth ? [sig] : wrapPlainText(sig, colWidth)).map(sigTag);
   const indent = '  ';
   wrapPlainText(desc, Math.max(4, colWidth - indent.length)).forEach(l => lines.push(indent + l));
   return lines;
+}
+
+// The shared sig-column width for one section at a given colWidth. MEDIAN
+// signature length among the section's {sig, desc} rows (excluding plain
+// decorative strings) — not the widest one. Every section has a handful of
+// long outlier signatures (:setLearnedWeight's is 56 chars; :lockSource
+// <leader> <follower...> is 35) sitting alongside a majority of short ones
+// — aligning to the widest would drag EVERY row's description out to that
+// same distant column, including short signatures that would rather sit
+// close to their own description. Aligning to the median instead lines up
+// the typical row cleanly and lets the few outliers fall back to their own
+// ragged/wrapped layout (see layoutSigDescRow's case 2/3) — a much better
+// trade for overall readability than one section-wide number everything
+// has to answer to.
+function sectionSigCol(sec, colWidth) {
+  const gap = 2, minDescRoom = 10;
+  const cap = Math.max(8, colWidth - gap - minDescRoom);
+  const sigLens = sec.rows
+    .filter(r => typeof r !== 'string' && r.sig.length <= cap)
+    .map(r => r.sig.length)
+    .sort((a, b) => a - b);
+  if (!sigLens.length) return 0;
+  const mid = Math.floor(sigLens.length / 2);
+  return sigLens.length % 2
+    ? sigLens[mid]
+    : Math.round((sigLens[mid - 1] + sigLens[mid]) / 2);
 }
 
 // Section header line(s) — dash-filled on one line normally, but a couple of
@@ -5146,14 +6671,19 @@ function layoutSigDescRow(sig, desc, colWidth) {
 // the widest column gets once 3-4 columns are in play, so wrap the title
 // itself rather than let it blow past colWidth and drag the whole merged
 // row wider than the terminal.
+// Title in {bright-white-fg} so it reads as an anchor when scanning down a
+// column, dashes left grey (inherited from the outer wrap) so the divider
+// recedes instead of competing with the text — same bright/grey split as
+// layoutSigDescRow's sig/desc (user: "make it more accessible").
 function renderSectionHeader(title, colWidth) {
   const prefix = '── ';
+  const titleTag = s => '{bright-white-fg}' + s + '{/bright-white-fg}';
   if (prefix.length + title.length + 1 <= colWidth) {
     const dashes = Math.max(0, colWidth - (prefix.length + title.length + 1));
-    return [prefix + title + ' ' + '─'.repeat(dashes)];
+    return [titleTag(prefix + title) + ' ' + '─'.repeat(dashes)];
   }
   return wrapPlainText(title, Math.max(4, colWidth - prefix.length))
-    .map((l, i) => (i === 0 ? prefix : '  ') + l);
+    .map((l, i) => titleTag((i === 0 ? prefix : '  ') + l));
 }
 
 // One section's rows rendered against a known column width — the single
@@ -5162,11 +6692,12 @@ function renderSectionHeader(title, colWidth) {
 // so the two can never disagree about how tall a section turns out to be.
 function renderSectionLines(sec, colWidth) {
   const lines = renderSectionHeader(sec.title, colWidth);
+  const sigCol = sectionSigCol(sec, colWidth);
   sec.rows.forEach(r => {
     if (typeof r === 'string') {
       lines.push(...(plainWidth(r) <= colWidth ? [r] : wrapTaggedLine(r, colWidth)));
     } else {
-      lines.push(...layoutSigDescRow(r.sig, r.desc, colWidth));
+      lines.push(...layoutSigDescRow(r.sig, r.desc, colWidth, sigCol));
     }
   });
   return lines;
@@ -5245,7 +6776,7 @@ function buildCmdColumns(width) {
     merged.push(parts.join(' '.repeat(CMD_COL_GAP)));
   }
 
-  return ['', 'command list', '', ...merged].map(l => `{grey-fg}${l}{/grey-fg}`).join('\n');
+  return ['', '{bright-white-fg}command list{/bright-white-fg}', '', ...merged].map(l => `{grey-fg}${l}{/grey-fg}`).join('\n');
 }
 
 function expandCmd() {
@@ -5255,8 +6786,10 @@ function expandCmd() {
   // this panel's own content is just the list, no duplicate header line.
   // Built fresh against the current width (see buildCmdColumns) instead of
   // a static string, so the column count matches whatever room is actually
-  // available right now.
-  setCmdContent(buildCmdColumns(contentW()));
+  // available right now. screen.width, not contentW() — cmdBox is full
+  // width now (user: "the chat should occupy the whole width of the
+  // screen... so maybe the command list would fit all in one space").
+  setCmdContent(buildCmdColumns(screen.width));
   screen.render();
 }
 
@@ -5298,8 +6831,15 @@ function collapseLang() {
 // hidden by default (chatMaximized starts false) even though the commands
 // panel starts pre-expanded, ready to appear the first time chat actually
 // opens.
-function openCmdPanel()  { if (!chatMaximized) toggleChatMaximize(); expandCmd(); }
-function openLangPanel() { if (!chatMaximized) toggleChatMaximize(); expandLang(); }
+// No longer force-opens chat as a side effect (user: "actually, never open
+// the chat automatically. let the user open it by typing control c.") —
+// these panels only actually RENDER while chat is maximized (see reflow()'s
+// langH/cmdH gating), so typing :commands/:language (or ^Q/^A) while chat is
+// closed now flips cmdCollapsed/langCollapsed to expanded with nothing
+// visible for it until the user opens chat themselves — same tradeoff as
+// every other message below, all deliberately reverted back to this.
+function openCmdPanel()  { expandCmd(); }
+function openLangPanel() { expandLang(); }
 
 // ── CHAT MAXIMIZE (^C) ─────────────────────────────────────────────────────
 // Chat is a pure overlay now, fully independent of appMode — see the
@@ -5319,6 +6859,13 @@ let chatMaximized = false;
 function toggleChatMaximize() {
   chatMaximized = !chatMaximized;
   render();
+  // reviewStackBottom() (used by reflowLearn()'s review branch to size
+  // reviewRegressionBox) branches on chatMaximized directly, so opening/
+  // closing chat while on Train > Review has to re-run reflowLearn() right
+  // here — otherwise regression would keep its pre-toggle height for a tick
+  // and run underneath the chat overlay that just appeared, instead of
+  // shrinking back to leave it room (see reviewStackBottom()'s own comment).
+  if (appMode === 'learn') reflowLearn();
   renderFooter();
   screen.realloc();
   screen.render();
@@ -5353,9 +6900,9 @@ function logUser(text) {
   appendLog(`${ts()}{${c}-fg}you: ${text}{/${c}-fg}`);
 }
 
-function logCricket(text) {
+function logCricket(text, opts) {
   const c = skinTag(SKIN.dim_fg);
-  appendLog(`${ts()}{${c}-fg}${state.agentName.toLowerCase()}: ${text}{/${c}-fg}`);
+  appendLog(`${ts()}{${c}-fg}${state.agentName.toLowerCase()}: ${text}{/${c}-fg}`, opts);
 }
 
 function buildStateContext() {
@@ -5506,6 +7053,18 @@ let ws = null;
 let maxWasConnected = false;
 let pendingConfirm = null;   // set by :resetMemory; holds callback for 'yes' response
 
+// Identifies THIS running app.js process to ws_server.js across reconnects —
+// sent as 'hello' the instant the socket opens (see ws.on('open') below).
+// ws_server.js uses it to tell "the same TUI process reconnecting after its
+// own watchdog-forced socket kill (below)" apart from "a genuinely new TUI
+// launch" when deciding whether a just-closed connection should force Max
+// back to a stopped state (see that file's socket.on('close') comment) — a
+// real exit must never leave playback running in the background, but a
+// same-process reconnect must never interrupt a live set just because the
+// WS link hiccuped. No crypto dependency needed, just needs to be unique
+// per process lifetime.
+const RUN_ID = process.pid + '-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+
 // Watchdog: ws_server.js is a hand-rolled WebSocket server with no ping/pong
 // keepalive in either direction (confirmed — it discards client pings instead
 // of answering them, and never sends its own). On localhost a hard TCP
@@ -5536,7 +7095,15 @@ function connectToMax() {
     maxWasConnected = true;
     lastMsgAt = Date.now();
     wsConnErrorCount = 0;
-    logSys('connected to max');
+    // Identify this process to ws_server.js first, before anything else can
+    // race it — see RUN_ID's own comment above.
+    ws.send(JSON.stringify({ type: 'hello', runId: RUN_ID }));
+    // quiet — same reasoning as the WS error case just below: this can
+    // fire within milliseconds of launch if Max is already running,
+    // before the user has done anything at all — shouldn't force chat
+    // open at boot any more than the error path should (user: "make sure
+    // the tui open on playback screen. not chat.").
+    logSys('connected to max', { quiet: true });
     render();
     // Auto-build index so the flow is: pick language → set params → :start
     setTimeout(() => {
@@ -5935,6 +7502,18 @@ function connectToMax() {
             dims.forEach(d => { state.followGraph[msg.stem][d] = map; });
           }
         }
+      } else if (msg.type === 'param' &&
+                 /^agentMode_(vocals|melody|bass|drums)$/.test(msg.key || '')) {
+        // Confirmed candidate-source mode from slicer.js's setAgentMode() —
+        // e.g. "agentMode_vocals" -> 'remix' | 'generate'. Same confirmed-
+        // only pattern as sourceLock/weight*_stem below: no optimistic local
+        // echo, this is the only place state.agentMode ever updates. Drives
+        // the "rmx"/"gen" tag stacked directly under this stem's vcl/mel/
+        // bas/drm label — see the "Row 1 lead-in" block near STEM_ROW_LABEL.
+        const stemName = msg.key.slice('agentMode_'.length);
+        if (state.agentMode.hasOwnProperty(stemName)) {
+          state.agentMode[stemName] = msg.value;
+        }
       } else if (msg.type === 'param' && msg.key === 'sourceLock') {
         // Confirmed lock state from slicer.js itself (via ws_server's
         // Max.addHandler('lockSource'/'unlockSource') — not an optimistic
@@ -6037,6 +7616,18 @@ function connectToMax() {
         loadStemRanges();
         logSys('✓ UMAP ready — descriptor grids updated');
         scheduleRender();
+      } else if (msg.type === 'bakeScored') {
+        // A real :score/:scoreTransition just got appended to
+        // training_log_vertical.jsonl / training_log_transition.jsonl by
+        // ws_server.js (see its own 'bakeScored' broadcasts). Re-derive
+        // whatever graph is currently selected so it updates on its own
+        // (user: "I want it to be automatically drawn when bakes are
+        // baked") — only worth an actual re-render if Review is on screen
+        // right now; refreshSelectedBakePage() itself is cheap (a couple
+        // hundred jsonl lines at most, times up to 7 dims) so it's fine to
+        // always run.
+        refreshSelectedBakePage();
+        if (appMode === 'learn' && learnView === 'review') { renderTrainingView(); screen.render(); }
       } else if (msg.type === 'sys' && msg.msg) {
         // Generic status-line broadcast from ws_server.js (session open/close,
         // :tag/:score confirmations, LINK status, and now slicer.js's own
@@ -6090,7 +7681,8 @@ function connectToMax() {
 
   ws.on('close', () => {
     state.connected = false;
-    if (maxWasConnected) logSys('disconnected from max');
+    // quiet — same reasoning as the 'open'/'error' handlers above.
+    if (maxWasConnected) logSys('disconnected from max', { quiet: true });
     maxWasConnected = false;
     render();
     setTimeout(connectToMax, CONFIG.reconnect_ms);
@@ -6118,7 +7710,15 @@ function connectToMax() {
     if (wsConnErrorCount === 1 || now - lastWsConnErrorLogAt > 15000) {
       lastWsConnErrorLogAt = now;
       const suffix = wsConnErrorCount > 1 ? ` (${wsConnErrorCount} attempts so far, still retrying)` : '';
-      logSys('⚠ WS error: ' + msg + suffix);
+      // quiet — same reasoning as :start/:stop (see the command handler's
+      // own comment): Max not being connected yet is an expected,
+      // recurring condition on launch, not something that should force
+      // chat open (user: "make sure the tui open on playback screen. not
+      // chat."). Still lands in logBox and the always-visible peekBox —
+      // see appendLog()'s own comment on opts.quiet — so a genuine
+      // connection problem is never actually hidden, it just doesn't
+      // yank focus the moment it happens.
+      logSys('⚠ WS error: ' + msg + suffix, { quiet: true });
     }
     try { ws.terminate ? ws.terminate() : ws.close(); } catch (_) {}
   });
@@ -6171,9 +7771,13 @@ linkRecvSock.on('message', (buf) => {
     sendToMax(cmd);
     logSys('← LINK ' + cmd);
   } else if (parts[0] === 'PEER_OFFLINE') {
+    state.linkPeerOnline = false;
     logSys('⚠ LINK peer offline');
+    scheduleRender();
   } else if (parts[0] === 'PEER_ONLINE') {
+    state.linkPeerOnline = true;
     logSys('✓ LINK peer connected');
+    scheduleRender();
   }
 });
 linkRecvSock.bind(LINK_IPC_RECV);
@@ -6882,32 +8486,24 @@ function handleInput(text) {
     }
 
     if (verb === 'tip') {
-      const STEMS = ['vocals', 'melody', 'bass', 'drums'];
+      const STEMS = TIP_STEMS;
       const N = STEMS.length;
 
       // ── Curator share ─────────────────────────────────────────────────────
-      // creative factors (edit_rate, spectral_dist, genre_div) not yet wired from Max
-      const curatorShare = CURATOR_FLOOR;  // full eq: 0.40 + 0.60 × creative_factor
+      // curatorShareOverride (see :setSplit below) takes over once set;
+      // until then this is CURATOR_FLOOR's flat default, same behavior as
+      // before — see currentCuratorShare() above. Full eq (0.40 + 0.60 ×
+      // creative_factor) still isn't wired from Max.
+      const curatorShare = currentCuratorShare();
       const artistPool   = 1 - curatorShare;  // 0.60
 
       // ── Artist split (80/20 within artist pool) ───────────────────────────
       const base = 0.8 / N;
 
-      // Sum incoming follows per stem, averaged across DIMS.length so a
-      // stem following on every dimension still totals to the same
-      // influence as the old whole-stem model did (weight 1.0 == fully
-      // followed), while following on just one dimension (e.g. only P)
-      // correctly counts for a proportionally smaller share.
-      const influence = {};
-      STEMS.forEach(s => { influence[s] = 0; });
-      STEMS.forEach(from => {
-        DIMS.forEach(dim => {
-          Object.entries((state.followGraph[from] && state.followGraph[from][dim]) || {}).forEach(([to, w]) => {
-            if (influence[to] !== undefined) influence[to] += w / DIMS.length;
-          });
-        });
-      });
-      const totalInfluence = STEMS.reduce((sum, s) => sum + influence[s], 0);
+      // Follow-graph influence per stem — see computeStemInfluence()'s own
+      // comment; shared with renderTipInfo() instead of duplicating this
+      // math a second time.
+      const { influence, totalInfluence } = computeStemInfluence();
 
       // :tip <username> <amount> — a simulated INCOMING tip (someone actually
       // tipped $X), as opposed to bare :tip below (a dry-run showing the
@@ -6938,7 +8534,7 @@ function handleInput(text) {
       }
 
       const lines = ['── tip simulation ──────────────────'];
-      lines.push(`  curator   ${(curatorShare * 100).toFixed(1)}%  (floor — creative factors not yet live)`);
+      lines.push(`  curator   ${(curatorShare * 100).toFixed(1)}%  (${curatorShareOverride !== null ? 'override — :setSplit clear to reset' : 'floor — creative factors not yet live'})`);
       lines.push(`  ─────────────────────────────────`);
       STEMS.forEach(s => {
         const share      = totalInfluence > 0 ? influence[s] / totalInfluence : 0;
@@ -6970,6 +8566,36 @@ function handleInput(text) {
       }
       lines.push('────────────────────────────────────');
       logSys(lines.join('\n'));
+      return;
+    }
+
+    // :setSplit <dj 0-100> — override curatorShare (the ∫/DJ side of the
+    // split) directly, live — user: "a tab for tips could show the actual
+    // split equation, and allow user to modify it." Clamped to
+    // [CURATOR_FLOOR, 1] so a DJ can only ever raise their own cut above
+    // the protocol floor, never drop below the guaranteed minimum. Bare
+    // ":setSplit" or ":setSplit clear" resets back to CURATOR_FLOOR's flat
+    // default. Feeds both :tip's actual payout math and the header
+    // equation bar (renderTipInfo) — see currentCuratorShare().
+    if (verb === 'setSplit') {
+      const arg = parts[1];
+      if (!arg || arg === 'clear') {
+        curatorShareOverride = null;
+        logSys('✓ split reset to floor (' + Math.round(CURATOR_FLOOR * 100) + '% dj / '
+          + Math.round((1 - CURATOR_FLOOR) * 100) + '% artist)');
+        scheduleRender();
+        return;
+      }
+      const pct = parseFloat(arg);
+      if (isNaN(pct)) {
+        logSys('usage: :setSplit <dj 0-100> | :setSplit clear');
+        return;
+      }
+      const frac = Math.max(CURATOR_FLOOR, Math.min(1, pct / 100));
+      curatorShareOverride = frac;
+      logSys('✓ split set: ' + Math.round(frac * 100) + '% dj / ' + Math.round((1 - frac) * 100) + '% artist'
+        + (Math.abs(frac - pct / 100) > 0.001 ? '  {grey-fg}(clamped to floor){/grey-fg}' : ''));
+      scheduleRender();
       return;
     }
 
@@ -7011,6 +8637,218 @@ function handleInput(text) {
       return;
     }
 
+    // :setFitShape <dim> <linear|quadratic|cubic> — TUI/Node-only, same
+    // shape as :trainBias above: writes fit_shapes.json into DATA_DIR and
+    // returns, never reaches Max/slicer.js directly. Doesn't retrain the
+    // REAL model by itself — train_bias.py reads this file at the START of
+    // its next run (before building any feature matrix), so run :trainBias
+    // afterward to actually refit with the new shape. 'linear' removes the
+    // dim's entry rather than writing it explicitly, since linear is the
+    // default for any dim with no entry at all — keeps the file only
+    // listing the dims someone deliberately opted up. 'cubic' is a strict
+    // extension of 'quadratic' (see train_bias.py's load_fit_shapes()
+    // docstring), not a separate third option someone has to pick between —
+    // the PREVIEW graph, though, DOES update immediately (refreshSelectedBakePage()
+    // below), even though the real weights don't — that's the whole point:
+    // look at the curve here before committing to a shape via :trainBias.
+    if (verb === 'setFitShape') {
+      const VALID_FIT_DIMS = ['C','S','E','F','P','H','T','TnC','TnE','TnF','TnP','TnH','TnT'];
+      const dim   = parts[1];
+      const shape = (parts[2] || '').toLowerCase();
+      if (!VALID_FIT_DIMS.includes(dim)) {
+        logSys('usage: :setFitShape <dim> <linear|quadratic|cubic> — dim must be one of ' + VALID_FIT_DIMS.join(', '));
+        return;
+      }
+      if (shape !== 'linear' && shape !== 'quadratic' && shape !== 'cubic') {
+        logSys('usage: :setFitShape <dim> <linear|quadratic|cubic>');
+        return;
+      }
+      const shapesPath = path.join(DATA_DIR, 'fit_shapes.json');
+      let shapes = {};
+      try { shapes = JSON.parse(fs.readFileSync(shapesPath, 'utf8')); } catch (e) {}
+      if (shape === 'linear') {
+        delete shapes[dim];
+      } else {
+        shapes[dim] = shape;
+      }
+      fs.writeFileSync(shapesPath, JSON.stringify(shapes, null, 2));
+      logSys('✓ fitShape[' + dim + '] = ' + shape + ' — preview graph updated; run :trainBias to refit the real weights with this shape');
+      // Re-derive the preview right away if this dim is on the page
+      // currently showing, so flipping the shape and looking at Train >
+      // Review in the same breath shows the new curve without needing a
+      // manual :showBakeGraph/:graphNext nudge first. "Currently showing"
+      // now means "part of the selected PAGE", not "the one selected
+      // graph" — a page holds 6-7 dims at once, and the one that just
+      // changed shape might be any of them.
+      const curPage = BAKE_GRAPH_PAGES[selectedPageIdx - 1];
+      if (curPage && curPage.dims.includes(dim)) refreshSelectedBakePage();
+      scheduleRender();
+      return;
+    }
+
+    // :listGraphs — prints the 8-page menu (user originally: "I will need a
+    // graph menu to select which graphs I want to view, since there are
+    // 50ish possible graph (per weights)"; later grouped down to 8 pages —
+    // see BAKE_GRAPH_PAGES). Numbers match BAKE_GRAPH_PAGES' own order 1:1,
+    // so ":showBakeGraph 3" below always means the same page this prints as
+    // "3." — this file's whole interaction model is typed commands read off
+    // the scrolling log (see reviewListBox's own comment on why nothing
+    // here is a focused/arrow-navigated widget), so a numbered log listing
+    // IS this app's menu, same as :help's own list.
+    if (verb === 'listGraphs' || verb === 'graphs') {
+      logSys('bake graph pages — :showBakeGraph <n>, or :showBakeGraph <dim> <transition|vertical> [feature] — a live picker also sits above the graphs themselves in Train > Review:');
+      BAKE_GRAPH_PAGES.forEach((p, i) => {
+        logSys('  ' + (i + 1) + '. ' + KIND_LABEL[p.kind] + ' (' + p.dims.join(', ') + ') ' + p.model + ' ' + p.feature
+          + (i + 1 === selectedPageIdx ? '  ← current' : ''));
+      });
+      return;
+    }
+
+    // :fakeBakes <n> — appends n synthetic vertical + n synthetic transition
+    // bake rows to the real training_log_*.jsonl files, purely so
+    // :showBakeGraph has something to draw (user: "can you create fake
+    // bakes in the TUI? just for the sake of seeing the graph"). Matches
+    // ws_server.js's real :score/:scoreTransition row shape exactly (see
+    // its 'score'/'scoreTransition' handlers) so extractBakePoints() — and
+    // train_bias.py itself, if ever pointed at this data — read it no
+    // differently than a real bake. Every row carries synthetic: true (an
+    // extra field both readers already ignore) so these rows stay
+    // identifiable/removable later; nothing here is meant to train a real
+    // model, just to populate a graph. `vertical`'s E and `transition`'s
+    // tension_T delta are deliberately biased to correlate with rating —
+    // everything else is plain noise — so at least a couple of the 52
+    // graphs show a real slope instead of all 52 looking like static.
+    if (verb === 'fakeBakes') {
+      const n = parseInt(parts[1], 10);
+      if (!n || n < 1) {
+        logSys('usage: :fakeBakes <n> — appends n synthetic vertical + n synthetic transition bake rows (tagged synthetic:true), for :showBakeGraph demo purposes only');
+        return;
+      }
+      const stemKeys = ['vocals', 'melody', 'bass', 'drums'];
+      const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+      function randDesc() {
+        const d = {};
+        ['C', 'S', 'E', 'F', 'P', 'H', 'T'].forEach(k => { d[k] = Math.random(); });
+        ['C', 'E', 'F', 'P', 'H', 'T'].forEach(k => { d['tension_' + k] = Math.random(); });
+        return d;
+      }
+      let vertLines = '', transLines = '';
+      for (let i = 0; i < n; i++) {
+        const vStems = {};
+        let sumE = 0;
+        stemKeys.forEach(s => {
+          const desc = randDesc();
+          vStems[s] = {
+            sourceTrack: 'FAKE_' + s, slot: 0, descriptors: desc,
+            segmentBars: 4, pan: 0, width: 0.5, section: null, sectionIntensity: null,
+          };
+          sumE += desc.E;
+        });
+        const meanE   = sumE / stemKeys.length;
+        const vRating = clamp(2 * meanE - 1 + (Math.random() * 0.4 - 0.2), -1, 1);
+        vertLines += JSON.stringify({
+          timestamp: new Date().toISOString(), type: 'vertical', rating: vRating,
+          overallSection: null, bakeSessionId: null, bakeAttempt: null, bakeIntent: null,
+          track: 'FAKE_TRACK', bpm: 120, globalBPM: 120, key: 'Am',
+          stems: vStems, master: { joy: 0, boothGain: 0, recGain: 0 }, synthetic: true,
+        }) + '\n';
+
+        const stem     = stemKeys[Math.floor(Math.random() * stemKeys.length)];
+        const fromDesc = randDesc(), toDesc = randDesc();
+        const dTnT     = toDesc.tension_T - fromDesc.tension_T;
+        const tRating  = clamp(-1.5 * dTnT + (Math.random() * 0.4 - 0.2), -1, 1);
+        transLines += JSON.stringify({
+          timestamp: new Date().toISOString(), type: 'horizontal_transition', rating: tRating,
+          bakeSessionId: null, bakeAttempt: null, bakeIntent: null,
+          stems: { [stem]: {
+            from: { sourceTrack: 'FAKE_' + stem, id: 'fake_from_' + i, descriptors: fromDesc, section: null },
+            to:   { sourceTrack: 'FAKE_' + stem, id: 'fake_to_' + i,   descriptors: toDesc,   section: null },
+          } },
+          synthetic: true,
+        }) + '\n';
+      }
+      fs.appendFileSync(path.join(DATA_DIR, 'training_log_vertical.jsonl'), vertLines);
+      fs.appendFileSync(path.join(DATA_DIR, 'training_log_transition.jsonl'), transLines);
+      // These rows are scoring data only (training_log_vertical.jsonl /
+      // training_log_transition.jsonl — what train_bias.py fits on, and now
+      // what :showBakeGraph reads) — a completely different file from
+      // training_log.jsonl, which is what the Review sub-view's
+      // reviewEntries list actually browses (real :bake bracket sessions —
+      // command sequences, corrections, audioFile). So fake bakes will
+      // never show up in Review's own session list, by design — that's not
+      // a bug, they're not bake sessions. The GRAPH itself, though, always
+      // lives in Review now (user: "it should only appear under review, not
+      // in the training tab") — refreshSelectedBakePage() re-derives
+      // whatever's currently selected from the data that just landed.
+      refreshSelectedBakePage();
+      logSys('✓ appended ' + n + ' synthetic vertical + ' + n + ' synthetic transition bake rows (synthetic:true) — see Train > Review for the graphs; :listGraphs for the other 7 pages');
+      switchLearnView('review');
+      return;
+    }
+
+    // :graphNext / :graphPrev — cycle selectedPageIdx by one and re-derive
+    // lastBakePage, the actual mechanism behind the picker rendered above
+    // the graphs in Train > Review (bakeGraphMenuLines()) — same relative-
+    // move pattern as reviewMove()/:train next for browsing reviewEntries.
+    // Shares its actual logic with the ^P/^N key bindings below (see
+    // stepGraph()) so the typed command and the keys can never drift apart.
+    if (verb === 'graphNext' || verb === 'graphPrev') {
+      stepGraph(verb === 'graphNext' ? 1 : -1);
+      return;
+    }
+
+    // :showBakeGraph <n> | <dim> [transition|vertical] [feature] — diagnostic
+    // scatter plots, TUI/Node-only (reads the training log directly, never
+    // reaches Max). Fits each dim in isolation, not the real 13-27 dim
+    // model — this is for deciding whether a dim LOOKS linear or curved
+    // before touching :setFitShape, not a substitute for train_bias.py's
+    // actual fit. `<n>` indexes BAKE_GRAPH_PAGES/​:listGraphs directly (the
+    // "graph menu" — see its own comment above); the named form still
+    // resolves a single dim down to whichever PAGE it lives on (see
+    // pageIndexForDim()) — handy for jumping straight to it without knowing
+    // the page number offhand. Just moves selectedPageIdx and calls
+    // refreshSelectedBakePage() — same one source of truth
+    // :graphNext/:graphPrev and :fakeBakes use, so whichever page you last
+    // picked here is also what auto-refreshes the next time a real bake
+    // gets logged (see the WS 'bakeScored' handler).
+    if (verb === 'showBakeGraph') {
+      const VALID_FIT_DIMS = ['C','S','E','F','P','H','T','TnC','TnE','TnF','TnP','TnH','TnT'];
+      let idx = parseInt(parts[1], 10);
+      if (!(parts[1] !== undefined && String(idx) === parts[1] && idx >= 1 && idx <= BAKE_GRAPH_PAGES.length)) {
+        const dim   = parts[1];
+        const model = (parts[2] || 'vertical').toLowerCase();
+        if (!VALID_FIT_DIMS.includes(dim)) {
+          logSys('usage: :showBakeGraph <n> (1-' + BAKE_GRAPH_PAGES.length + ', see :listGraphs) | <dim> [transition|vertical] [feature] — dim must be one of ' + VALID_FIT_DIMS.join(', '));
+          return;
+        }
+        if (model !== 'vertical' && model !== 'transition') {
+          logSys('usage: :showBakeGraph <dim> [transition|vertical] [feature]');
+          return;
+        }
+        const validFeatures = model === 'transition' ? ['delta', 'absDelta'] : ['mean', 'std'];
+        const rawFeature = (parts[3] || validFeatures[0]).toLowerCase();
+        const feature = validFeatures.find(f => f.toLowerCase() === rawFeature);
+        if (!feature) {
+          logSys('usage: :showBakeGraph ' + dim + ' ' + model + ' <' + validFeatures.join('|') + '>');
+          return;
+        }
+        idx = pageIndexForDim(dim, model, feature);
+      }
+      selectedPageIdx = idx;
+      refreshSelectedBakePage();
+      const p = BAKE_GRAPH_PAGES[selectedPageIdx - 1];
+      const withData = lastBakePage.graphs.filter(g => !g.empty).length;
+      logSys('✓ bake graph page — ' + selectedPageIdx + '. ' + KIND_LABEL[p.kind] + ' (' + p.dims.join(', ') + ') ' + p.model + ' ' + p.feature
+        + ' — ' + withData + '/' + lastBakePage.graphs.length + ' dim(s) with usable bakes'
+        + (withData === 0 ? ' (try :fakeBakes 12)' : '')
+        + (appMode === 'learn' && learnView === 'review' ? ' (shown under the recording in Train > Review)' : ' — press ^T then :train review to see it'));
+      if (appMode === 'learn' && learnView === 'review') {
+        renderTrainingView();
+        screen.render();
+      }
+      return;
+    }
+
     // ── EBYS LINK commands ───────────────────────────────────────────────────
     // :sendLink             → send last touched param to peer
     // :sendLink hold        → send full scope dump to peer
@@ -7040,13 +8878,171 @@ function handleInput(text) {
       const onOff = (parts[1] || '').toLowerCase();
       if (onOff === 'on')       { linkSend('LINK_ON');  logSys('LINK on');  }
       else if (onOff === 'off') { linkSend('LINK_OFF'); logSys('LINK off'); }
+      // :link select <1-4> — which deck slot the network zone's dots mark
+      // as the LINK fire target (user: "if selected and link is fired, the
+      // infos goes to that deck"). TUI-side only, not forwarded to Max —
+      // nothing there needs to know which dot is lit; per-deck routing
+      // itself still runs through the same single :link fire as before
+      // (see the 'fire' branch below) since the underlying protocol has no
+      // way to address one specific deck out of several yet. "clear"/
+      // "none" deselects.
+      else if (onOff === 'select') {
+        const arg = (parts[2] || '').toLowerCase();
+        if (arg === 'clear' || arg === 'none') {
+          linkSelectedSlot = null;
+          logSys('✓ LINK selection cleared');
+        } else {
+          const n = parseInt(arg);
+          if (n >= 1 && n <= LINK_SLOT_COUNT) {
+            linkSelectedSlot = n - 1;
+            logSys('✓ LINK target: deck ' + n
+              + (linkSlotConnected(n - 1) ? '' : '  {grey-fg}(not connected yet){/grey-fg}'));
+          } else {
+            logSys('usage: :link select <1-' + LINK_SLOT_COUNT + '> | :link select clear');
+          }
+        }
+        scheduleRender();
+      }
+      // 'fire' still just forwards to Max like every other sub-verb below —
+      // this branch only adds the log line naming which deck was targeted,
+      // so a selection actually means something visible even before real
+      // per-deck wire routing exists.
+      else if (onOff === 'fire') {
+        if (linkSelectedSlot !== null) logSys('→ LINK fire (targeting deck ' + (linkSelectedSlot + 1) + ')');
+        sendToMax('link fire');
+      }
       else if (onOff)           { sendToMax('link ' + parts.slice(1).join(' ')); }
-      else logSys('usage: :link on|off|status|mode <m>|arm|fire|abort|token <hex>');
+      else logSys('usage: :link on|off|status|mode <m>|arm|fire|abort|token <hex>|select <1-4>');
       return;
     }
     if (verb === 'linkscope') {
       linkSend('MISSILE_SCOPE ' + parts.slice(1).join(' '));
       logSys('LINK scope: ' + parts.slice(1).join(' '));
+      return;
+    }
+
+    // :network <ssid|ip> [password] — join a wifi network (user: "create a
+    // command to enter in a wifi. :network [name or ip adress] and
+    // [password]"). Two platform branches now — this box's actual OS at
+    // deploy time isn't pinned down (most likely a dedicated Linux venue
+    // box, but tested/run from a Mac in the meantime — see
+    // classifyIface()/macHardwarePortMap's own comments, which already
+    // made this same macOS-vs-Linux split for READING connection info):
+    //   darwin  — networksetup -setairportnetwork <device> <ssid> [pass],
+    //             using whichever device macHardwarePortMap identified as
+    //             Wi-Fi (built once at startup — see its own comment).
+    //             ENOENT here (nmcli not installed) is exactly the bug
+    //             report that prompted this split.
+    //   other   — nmcli (NetworkManager), as before.
+    // execFile, not exec, in both branches — the password goes straight
+    // into an argv array rather than a shell string, so a password
+    // containing $, ", `, etc. can't break out into a shell injection.
+    // Note: the password still gets typed into inputBox in the clear and
+    // lands in cmdHistory (see setInputValue/cmdHistory above) — there's
+    // no masked-input mode in this TUI yet, so anyone with scrollback
+    // access can see it. Worth knowing before typing it on a shared screen.
+    if (verb === 'network') {
+      const ssid = parts[1];
+      const password = parts[2];
+      if (!ssid) { logSys('usage: :network <ssid> [password]'); return; }
+      logSys('→ connecting to wifi "' + ssid + '"...');
+      // Spinner (user: "add a little spinner for when connecting to the
+      // wifi") — reuses the same sepBox-based spinner the genre/FluCoMa
+      // analysis and Cricket's own "thinking" indicator already use (see
+      // startSpinner()/stopSpinner()); chat is guaranteed visible for it
+      // to show up in since appendLog() (right above, called by the
+      // logSys() line just above this) already auto-opened chat the
+      // moment there was something to report. Every exit path below stops
+      // it — success, failure, or the final "still not showing connected"
+      // verification outcome.
+      // wifiConnecting drives the header's OWN spinner frame (networkAddrText())
+      // — the always-visible one, row 0, next to the EBYS version badge.
+      // startSpinner()/stopSpinner() drive a second one inside the chat
+      // log itself; both get set/cleared together everywhere below.
+      wifiConnecting = true;
+      startSpinner('connecting to wifi "' + ssid + '"');
+      const stopAll = () => { wifiConnecting = false; stopSpinner(); };
+      if (process.platform === 'darwin') {
+        const device = Object.keys(macHardwarePortMap).find(d => macHardwarePortMap[d] === 'wifi');
+        if (!device) {
+          stopAll();
+          logSys('✗ wifi connect failed: no Wi-Fi hardware port found via networksetup -listallhardwareports'
+            + '  {grey-fg}(macHardwarePortMap empty/still loading — try again in a second, or this Mac genuinely has no Wi-Fi adapter){/grey-fg}');
+          return;
+        }
+        const args = ['-setairportnetwork', device, ssid];
+        if (password) args.push(password);
+        execFile('networksetup', args, { timeout: 20000 }, (err, stdout, stderr) => {
+          if (err) {
+            stopAll();
+            const reason = ((stderr || err.message) + '').trim().split('\n')[0];
+            logSys('✗ wifi connect failed: ' + reason);
+            return;
+          }
+          // networksetup is notorious for returning exit code 0 even when
+          // the join actually failed (wrong password, SSID not found,
+          // etc.) — the REAL reason, when there is one, usually shows up
+          // as plain text on stdout instead ("Could not find network...",
+          // "Invalid password...") even though err is null. Surfacing it
+          // directly instead of silently discarding it, since it's the
+          // most likely place the actual cause of "still not working"
+          // lives — Location Services showing no Terminal entry at all
+          // suggests that's NOT what's blocking this particular Mac, so
+          // the real reason is more likely sitting right here.
+          const immediate = (stdout || '').trim();
+          if (immediate) logSys('  {grey-fg}networksetup: ' + immediate + '{/grey-fg}');
+          // Verify against the interface's own state instead of trusting
+          // exit code 0 alone. Reads the SSID directly here rather than
+          // going through the module-level wifiSsid/updateWifiSsid() (both
+          // async on their own timer) so this check isn't racing that
+          // separate poll. 5s, not 2 — association + DHCP genuinely takes
+          // a few seconds on a real network, and 2s was reading as
+          // "failed" on connections that would've succeeded a moment
+          // later (user: "still not working").
+          setTimeout(() => {
+            updateNetworkInfo();
+            execFile('networksetup', ['-getairportnetwork', device], { timeout: 4000 }, (err2, stdout2) => {
+              stopAll();
+              const m = !err2 && stdout2 && stdout2.match(/Current Wi-Fi Network:\s*(.+)/);
+              const nowSsid = m ? m[1].trim() : null;
+              if (nowSsid === ssid) {
+                logSys('✓ wifi: ' + ssid);
+              } else {
+                // Report what's ACTUALLY associated (or "not connected to
+                // any network" / "couldn't read Wi-Fi status") instead of
+                // just "didn't work" — most likely causes on macOS: Wi-Fi
+                // switched off, the SSID out of range or hidden, the
+                // password wrong, or (on some macOS versions) missing
+                // Location Services permission for the calling process —
+                // though if that entry isn't even showing up in System
+                // Settings, this Mac probably isn't hitting that
+                // particular wall, so check the networksetup line above
+                // first if one printed.
+                const nowTxt = nowSsid ? `"${nowSsid}"` : (err2 ? 'unreadable — ' + ((stderr || err2.message || '') + '').trim().split('\n')[0] : 'no network');
+                logSys('⚠ not connected to "' + ssid + '" — currently: ' + nowTxt
+                  + '  {grey-fg}(check Wi-Fi is on, the network is in range and not hidden, and the password is right){/grey-fg}');
+              }
+              if (nowSsid) wifiSsid = nowSsid;
+              scheduleRender();
+            });
+          }, 5000);
+        });
+        return;
+      }
+      const args = ['device', 'wifi', 'connect', ssid];
+      if (password) args.push('password', password);
+      execFile('nmcli', args, { timeout: 20000 }, (err, stdout, stderr) => {
+        stopAll();
+        if (err) {
+          const reason = ((stderr || err.message) + '').trim().split('\n')[0];
+          logSys('✗ wifi connect failed: ' + reason
+            + '  {grey-fg}(assumes nmcli/NetworkManager — wrong network stack for this box? this is the one spot to change){/grey-fg}');
+          return;
+        }
+        logSys('✓ wifi: ' + (stdout || '').trim().split('\n').pop());
+        updateNetworkInfo();
+        scheduleRender();
+      });
       return;
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -7055,18 +9051,10 @@ function handleInput(text) {
     // an actual answer from Cricket in the chat log instead of a silent panel
     // flip — same treatment the natural-language showCommands path gets
     // (see the onCommand callback below), so both ways of asking feel consistent.
-    if (verb === 'commands') {
-      if (cmdCollapsed) { openCmdPanel(); logCricket('command list — panel\'s up.'); }
-      else              { collapseCmd(); }
-      return;
-    }
+    if (verb === 'commands') { toggleCommandsPanel(); return; }
 
     // :language — toggle language panel, same chat-answer treatment as :commands.
-    if (verb === 'language') {
-      if (langCollapsed) { openLangPanel(); logCricket('pick a language — number, name, or code all work.'); }
-      else               { collapseLang(); }
-      return;
-    }
+    if (verb === 'language') { toggleLanguagePanel(); return; }
 
     // :chat — same as ^C: maximize/un-maximize chat. There's no more small
     // docked state to toggle into — chat is either hidden or maximized.
@@ -7090,13 +9078,11 @@ function handleInput(text) {
           cricketMemory = { summary: '', turns: 0, updatedAt: null };
           try { fs.unlinkSync(CRICKET_MEMORY_PATH); } catch (e) {}
           cricketMsgCount = 0;
-          if (!chatMaximized) toggleChatMaximize();
           logCricket('clean slate — memory cleared.');
           render();
         };
         return;
       }
-      if (!chatMaximized) toggleChatMaximize();
       const persisted = cricketMemory.summary
         ? `carrying a summary from earlier sessions (${cricketMemory.turns} turns folded in).`
         : `nothing persisted from earlier sessions yet.`;
@@ -7267,7 +9253,17 @@ function handleInput(text) {
       bakeUserCmds.push(expanded);   // track as user correction for :bake
       if (bakeSessionActive && !bakeSeqSteps) upsertComportment(expanded);   // live-edit the recipe
       sendToMax(expanded);
-      logSys('→ ' + expanded);
+      // :start/:stop go quiet here — user: ":start and :stop should never
+      // open the chat. I still want to see their linked messages. but i
+      // dont want the chat to open fully." These are the two commands
+      // that fire constantly mid-set, unlike most things that land here
+      // (a handful of taps, not a running rhythm) — forcing the whole
+      // overlay open every single time would be disruptive. The message
+      // still lands in logBox AND peekBox (the always-visible preview —
+      // see appendLog()'s own comment on opts.quiet), just without
+      // yanking focus to a full-screen chat.
+      const quiet = (verb === 'start' || verb === 'stop');
+      logSys('→ ' + expanded, { quiet });
       render();
       return;
     }
@@ -7288,12 +9284,11 @@ function handleInput(text) {
   }
 
   // Natural language → Cricket → Max
-  // Open the chat overlay if it isn't already — otherwise the message (and
-  // Cricket's reply) gets written straight into a hidden logBox, same "I
-  // typed something and nothing happened" problem :commands/:language had
-  // before openCmdPanel()/openLangPanel(). Talking to Cricket should always
-  // land you somewhere you can actually see the conversation.
-  if (!chatMaximized) toggleChatMaximize();
+  // Used to force the chat overlay open here so the message (and Cricket's
+  // reply) wouldn't land silently in a hidden logBox. Reverted (user:
+  // "actually, never open the chat automatically. let the user open it by
+  // typing control c.") — a message sent while chat is closed still gets
+  // logged/answered, just not visibly, until the user opens chat themselves.
   // Collapse commands panel on first chat message
   if (!cmdCollapsed) collapseCmd();
   logUser(trimmed);
@@ -7355,38 +9350,137 @@ screen.key(['escape'], () => process.exit(0));
 //        and the LEARN MODE section). Was ^R; moved to ^T so the letter
 //        matches "Train".
 //   ^R — switch training's own sub-menu, training <-> review (see
-//        toggleLearnSubView()) — enters the training screen first if you
-//        weren't already there, same as :train training|review.
-//   ^B — jump straight to the review sub-view showing whichever bake is
-//        currently selected (same as ^R would, if not already there); if
-//        already on review, cycles forward through reviewEntries instead,
-//        wrapping past the last one back to the first (see cycleBake()).
+//        toggleLearnSubView()) — only fires once you're already on the
+//        training screen (user: "the control r command should only work
+//        [...] on the training tab" — it used to also enter the training
+//        screen from Playback, same as :train training|review does, but
+//        the footer chip only ever SHOWED on the training screen, so the
+//        key now matches what's actually shown instead of doing more).
+//   ^B / ^D — jump straight to the review sub-view showing whichever bake
+//        is currently selected (same as ^R would, if not already there); if
+//        already on review, step through reviewEntries instead — ^B up
+//        (previous), ^D down (next) — wrapping past either end (see
+//        stepBake()). Was a single forward-only ^B (cycleBake()); split into
+//        a pair once both directions were wanted. ^H was the first choice
+//        for "down" (user request) but isn't usable — confirmed live that
+//        Ctrl+H arrives as a plain Backspace keypress, indistinguishable
+//        from the Backspace key at the terminal-protocol level (both send
+//        the same 0x08 byte), so it can't be bound separately without
+//        breaking text editing in inputBox. "D" (Down) took its place.
+//   ^P / ^N — step the graph picker in Train > Review — ^P up (previous),
+//        ^N down (next), classic Emacs previous/next letters. ^J was the
+//        first choice for "down" (user request) but isn't usable either —
+//        confirmed live that Ctrl+J arrives as a plain Enter keypress (both
+//        send the same 0x0A byte), which is already bound to SUBMIT
+//        whatever's typed in inputBox — so it would've submitted the
+//        command line instead of moving the picker. "P" took its place,
+//        keeping the "N" half of the original request. See stepGraph()/
+//        stepGraphKey() below.
 //   ^L — leave this session, back to the login/session picker (2-step
 //        confirm — reuses :logout's own logic, see that verb's own comment).
+//   ^Q — toggle the :commands panel (see openCmdPanel()/collapseCmd()) —
+//        same chat-answer treatment as typing :commands, chip only shows
+//        while chat is maximized. "Q" is just the user's preferred letter;
+//        the ⌘ glyph moved down into the chip's description slot instead
+//        (no longer the key glyph) — see footerChip() call above.
+//   ^A — toggle the :language panel (openLangPanel()/collapseLang()), same
+//        deal as ^Q. "A" from lAnguage; 文 likewise moved to the description.
 screen.key(   ['C-c'], toggleChatMaximize);
 inputBox.key( ['C-c'], toggleChatMaximize);
 screen.key(   ['C-t'], toggleLearnMode);
 inputBox.key( ['C-t'], toggleLearnMode);
-function toggleLearnSubView() { switchLearnView(learnView === 'training' ? 'review' : 'training'); }
-function cycleBake() {
+function toggleLearnSubView() {
+  if (appMode !== 'learn') return; // training tab only — see the ^R comment above
+  switchLearnView(learnView === 'training' ? 'review' : 'training');
+}
+
+// stepBake — shared by the ^B/^D keys below: on first press from outside
+// Review, jumps there (same cold-start behavior cycleBake() always had,
+// regardless of which of the two keys triggered it — either one means "take
+// me to my bakes"); once already on Review, moves reviewIndex by delta,
+// wrapping past either end. ^B = -1 (up/previous), ^D = +1 (down/next).
+function stepBake(delta) {
   const wasReview = appMode === 'learn' && learnView === 'review';
   if (!wasReview) { switchLearnView('review'); return; }
-  if (reviewEntries.length) reviewGoto((reviewIndex + 1) % reviewEntries.length);
+  if (reviewEntries.length) {
+    reviewGoto(((reviewIndex + delta) % reviewEntries.length + reviewEntries.length) % reviewEntries.length);
+  }
 }
 screen.key(   ['C-r'], toggleLearnSubView);
 inputBox.key( ['C-r'], toggleLearnSubView);
-screen.key(   ['C-b'], cycleBake);
-inputBox.key( ['C-b'], cycleBake);
+screen.key(   ['C-b'], () => stepBake(-1));
+inputBox.key( ['C-b'], () => stepBake(-1));
+screen.key(   ['C-d'], () => stepBake(1));
+inputBox.key( ['C-d'], () => stepBake(1));
+
+// stepGraph — shared by :graphNext/:graphPrev (see handleInput's verb
+// check) and the ^P/^N keys right below: moves selectedPageIdx by delta
+// (wrapping past either end) and re-derives lastBakePage, logging +
+// redrawing the same way either entry point always did. Pulled out into
+// its own function so the typed command and the keys share one definition
+// instead of drifting apart, same reasoning as toggleLearnSubView()/
+// stepBake() just above.
+function stepGraph(delta) {
+  selectedPageIdx = ((selectedPageIdx - 1 + delta + BAKE_GRAPH_PAGES.length) % BAKE_GRAPH_PAGES.length) + 1;
+  refreshSelectedBakePage();
+  const p = BAKE_GRAPH_PAGES[selectedPageIdx - 1];
+  const withData = lastBakePage.graphs.filter(g => !g.empty).length;
+  logSys('✓ bake graph page — ' + selectedPageIdx + '. ' + KIND_LABEL[p.kind] + ' ' + p.model + ' ' + p.feature
+    + ' — ' + withData + '/' + lastBakePage.graphs.length + ' dim(s) with data');
+  if (appMode === 'learn' && learnView === 'review') { renderTrainingView(); screen.render(); }
+}
+
+// ^P / ^N — step the graph picker, review-tab only (user originally asked
+// for control-M as the "enter graph nav mode" key, then control-N/control-J
+// for direction — see the mode-toggles comment block above for why both M
+// and J turned out to be unusable, confirmed live with an actual keypress
+// test rather than assumed: Ctrl+M is the same byte as Enter (name:
+// 'return'), Ctrl+J is the same byte as Enter's OTHER common name (name:
+// 'enter', the exact one inputBox.key('enter') below listens for) — either
+// would submit the command line, not move the picker. ^P/^N are plain
+// single control-byte keys (0x10/0x0E) with no such collision — verified
+// the same way — and happen to match readline/Emacs' own previous/next
+// convention, so ^P still reads as "up" and ^N as "down" without needing a
+// modifier+arrow combo at all. Plain Up/Down stay untouched everywhere,
+// including here — those are hard-reserved for command history (see that
+// binding's own comment for why mixing in a second meaning there was
+// deliberately reverted once already).
+function stepGraphKey(delta) {
+  if (!(appMode === 'learn' && learnView === 'review')) return; // review-tab only — mirrors ^R's own restriction
+  stepGraph(delta);
+}
+screen.key(   ['C-p'], () => stepGraphKey(-1));
+inputBox.key( ['C-p'], () => stepGraphKey(-1));
+screen.key(   ['C-n'], () => stepGraphKey(1));
+inputBox.key( ['C-n'], () => stepGraphKey(1));
+// Same toggle logic the :commands/:language verb handlers use (see those,
+// up near the other handleInput() verb checks) — pulled out into named
+// functions here so both the typed command AND ^Q/^A share one definition
+// instead of drifting apart.
+function toggleCommandsPanel() {
+  if (cmdCollapsed) { openCmdPanel(); logCricket('command list — panel\'s up.'); }
+  else              { collapseCmd(); }
+}
+function toggleLanguagePanel() {
+  if (langCollapsed) { openLangPanel(); logCricket('pick a language — number, name, or code all work.'); }
+  else                { collapseLang(); }
+}
+screen.key(   ['C-q'], toggleCommandsPanel);
+inputBox.key( ['C-q'], toggleCommandsPanel);
+screen.key(   ['C-a'], toggleLanguagePanel);
+inputBox.key( ['C-a'], toggleLanguagePanel);
 function confirmExitToLogin() {
   // The confirm prompt is a logSys() line into logBox, which only exists
-  // inside the chat overlay now (see CHAT_OVERLAY_BOXES) — maximize chat
-  // FIRST so logBox is actually on screen before the prompt gets written to
-  // it. Also drop out of Learn mode explicitly: chat and Learn are fully
+  // inside the chat overlay now (see CHAT_OVERLAY_BOXES) — used to force
+  // chat open FIRST so the prompt was guaranteed visible. No longer does
+  // (user: "actually, never open the chat automatically. let the user open
+  // it by typing control c.") — the prompt still logs via logSys() below,
+  // just silently if chat happens to be closed, same as everything else now.
+  // Also drop out of Learn mode explicitly: chat and Learn are fully
   // independent toggles now (toggleChatMaximize() no longer touches
   // appMode), so nothing else will do this for us, and there's no reason
   // to leave the training screen "active in the background" through a logout.
   if (appMode === 'learn') exitLearnMode();
-  if (!chatMaximized) toggleChatMaximize();
   logSys('leaving this session — back to the login screen. Type Y to confirm, anything else to cancel.');
   pendingConfirm = () => handleInput(':logout');
   render();
@@ -7452,7 +9546,17 @@ screen.on('resize', () => {
   // Same reasoning as the lang rebuild above — the command panel's column
   // count depends on terminal width, so it has to be rebuilt on resize too,
   // not just at expandCmd() time (see buildCmdColumns()).
-  if (!cmdCollapsed) setCmdContent(buildCmdColumns(contentW()));
+  if (!cmdCollapsed) setCmdContent(buildCmdColumns(screen.width));
+  // renderFooter() bakes its right-flushed padding off screen.width at the
+  // time it's called (see its own gap computation) — it was only ever
+  // re-run on state changes (chat toggle, learn sub-view switch, etc.),
+  // never on a plain resize, so Log out's "always" right edge (user: "make
+  // [log out] tab stick to the right side of the window. always") went
+  // stale — right for whatever width the terminal was at the last state
+  // change, not the current one — until the next thing happened to call
+  // it. Rebuilding it here keeps it glued to the true right edge across
+  // resizes too, not just state changes.
+  renderFooter();
   reflow(); render();
   if (appMode === 'learn') { reflowLearn(); renderTrainingView(); }
   // Belt-and-suspenders: with smartCSR off this shouldn't be load-bearing
@@ -7492,6 +9596,24 @@ inputBox.on('keypress', () => setImmediate(updateInputSize));
 // deleted from the end before this).
 inputBox._cursorPos = 0;
 
+// Ghost-completion CYCLING state — null while not cycling; otherwise
+// { lead, candidates, index }. Repeated Right Arrow presses (once a
+// suggestion has fired) walk through EVERY matching verb in turn instead of
+// only ever offering the single best (shortest) one — user: "if the user
+// keeps pressing the right arrow, all the available options should be
+// proposed." An empty line counts too — user: "if the chat is empty and
+// the user presses the right arrow, it should propose all the commands one
+// by one" — matchingVerbs('') matches every verb (v.startsWith('') is
+// always true), so this falls out of the same code path for free.
+// Left Arrow exits cycling — user: "if the user press[es] the left arrow,
+// it exits this mode and the left/right arrows become[] the original
+// moving through the [text] options" — handled by the generic "any key
+// except Right clears cycling" line right at the top of this function;
+// Left's own branch below is completely unchanged, so once cycling is
+// cleared, left/right immediately go back to plain one-character cursor
+// movement, same as before this feature existed.
+let suggestCycle = null;
+
 inputBox._listener = function(ch, key) {
   const done = this._done;
   const prevValue = this.value;
@@ -7501,10 +9623,42 @@ inputBox._listener = function(ch, key) {
   if (key.name === 'return') return;
   if (key.name === 'enter') { ch = '\n'; }
 
+  // Any key other than Right Arrow drops out of cycling mode — including
+  // Left Arrow (which then just falls through to its own unchanged branch
+  // below and moves the cursor left by one, same as always), typing a
+  // character, backspace/delete, history recall, everything.
+  if (key.name !== 'right' && suggestCycle) suggestCycle = null;
+
   if (key.name === 'left') {
     this._cursorPos = Math.max(0, pos - 1);
   } else if (key.name === 'right') {
-    this._cursorPos = Math.min(v.length, pos + 1);
+    if (suggestCycle) {
+      // Already cycling — advance to the next candidate, wrapping back to
+      // the first once every option has been shown.
+      suggestCycle.index = (suggestCycle.index + 1) % suggestCycle.candidates.length;
+      this.value = suggestCycle.lead + suggestCycle.candidates[suggestCycle.index];
+      this._cursorPos = this.value.length;
+    } else if (pos === v.length && (v === '' || v[0] === ':' || v[0] === '@')) {
+      // First press — same acceptance moment fish/zsh autosuggestions use
+      // (user: "the user now has two choices, either continue typing
+      // manually, or press the right arrow to fill with the proposed
+      // continuation"), except this now STARTS a cycle rather than
+      // committing to just the one candidate. An empty line defaults to
+      // ':' (every real command needs it) so accepting always lands on a
+      // directly-submittable line.
+      const lead = v === '' ? ':' : v[0];
+      const body = v === '' ? '' : v.slice(1);
+      const candidates = /\s/.test(body) ? [] : matchingVerbs(body);
+      if (candidates.length) {
+        suggestCycle = { lead, candidates, index: 0 };
+        this.value = lead + candidates[0];
+        this._cursorPos = this.value.length;
+      } else {
+        this._cursorPos = Math.min(v.length, pos + 1);
+      }
+    } else {
+      this._cursorPos = Math.min(v.length, pos + 1);
+    }
   } else if (key.ctrl && key.name === 'a') {
     this._cursorPos = 0;                 // readline-style: start of line
   } else if (key.ctrl && key.name === 'e') {
@@ -7527,6 +9681,7 @@ inputBox._listener = function(ch, key) {
     }
   }
 
+  updateSuggestion();
   if (this.value !== prevValue || this._cursorPos !== pos) {
     this.screen.render();
   }
@@ -7562,6 +9717,7 @@ inputBox._updateCursor = function(get) {
 function setInputValue(v) {
   inputBox.setValue(v);
   inputBox._cursorPos = inputBox.value.length;
+  updateSuggestion();
 }
 
 // ── Command history (up/down arrow) ──────────────────────────────────────────
@@ -7744,7 +9900,7 @@ const LANG_MODELS = {
   qc: 'franglais',  // custom model with baked-in franglais vocabulary
 };
 
-function applyLanguage(lang) {
+function applyLanguage(lang, opts) {
   sepBox.setContent(chatTopRule());
   // Switch Ollama model if this language has a custom one
   CONFIG.ollama_model = LANG_MODELS[lang.code] || 'llama3.1:latest';
@@ -7757,7 +9913,13 @@ function applyLanguage(lang) {
   chatHistory.push({ role: 'assistant', content: chirpFor(lang.code) });
   state.langLabel  = lang.label;
   state.agentName  = lang.name || 'Cricket';
-  logCricket(chirpFor(lang.code));
+  // opts.quiet — only the BOOT call below uses this (user: "make sure the
+  // tui open on playback screen. not chat."). A manual language switch
+  // (picked from :language, or typed mid-chat) is a deliberate user
+  // action whose confirmation SHOULD open chat like any other feedback —
+  // this greeting is the one call site that fires automatically before
+  // the user has done anything at all.
+  logCricket(chirpFor(lang.code), opts);
   collapseLang();
   expandCmd();
 }
@@ -7768,12 +9930,150 @@ function applyLanguage(lang) {
 let languageSelected = true;
 
 // Boot — default straight to English, land on :commands (collapsed lang panel).
+// applyLanguage()'s greeting goes quiet here specifically — user: "make
+// sure the tui open on playback screen. not chat." Without this, the
+// chat-auto-open behavior (appendLog()'s opts.quiet check — see its own
+// comment) fired on this exact boot-time greeting and landed the app on
+// the chat overlay instead of the playback screen every single launch.
 setTimeout(() => {
   const defaultLang = LANGUAGES_BASE.find(l => l.code === 'en');
-  applyLanguage(defaultLang);
+  applyLanguage(defaultLang, { quiet: true });
   reflow();
   screen.render();
 }, 200);
+
+// ── Network reachability, for the header's [NETWORK ...] chip ──────────────
+// user: "this system will have to run on a wifi. so i'll need to see a wifi
+// connectivity zone... maybe find a better way to call it then on/off."
+// Deliberately NOT a Wi-Fi-specific check (no nmcli/airport/iwgetid shell-
+// out) — this box's actual OS at deploy time isn't pinned down yet, and a
+// platform-specific command silently does nothing useful on the other two.
+// os.networkInterfaces() is built into Node, works identically on Linux/
+// macOS/Windows, and answers the question that actually matters here: is
+// there ANY live, non-loopback interface with an address right now — which
+// covers Wi-Fi or a wired fallback alike, exactly what LINK's UDP peer sync
+// needs regardless of which physical radio carries it. Picks the first
+// non-internal IPv4 it finds; if venues turn out to need to distinguish
+// Wi-Fi from Ethernet specifically, this is the one place that would grow a
+// platform check.
+const NETWORK_POLL_MS = 2000;
+
+// Wi-Fi vs Ethernet label, off the interface NAME os.networkInterfaces()
+// returns (state.network.iface) — user: "if no wifi is available, can an
+// ethernet cable connection still work? so then the network: name will be
+// [ethernet]?" Answer: yes — updateNetworkInfo() below never checked which
+// radio/cable carried the connection, only that SOME non-internal IPv4
+// exists, so a wired link already worked exactly like Wi-Fi did; this just
+// adds the label.
+//
+// Two strategies, since interface naming isn't consistent across
+// platforms:
+//   - Linux: predictable/legacy interface names directly encode the type
+//     (wlan0/wlp2s0/wlx… = Wi-Fi, eth0/enp3s0/eno1/ens33 = wired) — same
+//     assumption the :network command's nmcli call already makes (see its
+//     own comment) — so this is a pure pattern match, no shell-out needed.
+//   - macOS: en0/en1/… tell you nothing on their own (which one is Wi-Fi
+//     vs Ethernet varies by Mac model/dock), so macHardwarePortMap below
+//     is built once at startup from `networksetup -listallhardwareports`,
+//     which macOS itself uses to label each BSD device — definitive,
+//     not a guess, same reasoning as shelling out to nmcli on Linux.
+// Windows names ("Ethernet", "Wi-Fi") aren't handled by either path yet;
+// unrecognized names fall back to showing the plain IP address instead of
+// guessing wrong.
+// (macHardwarePortMap itself is declared near the top of the file — see
+// the comment there — this just populates it.)
+if (process.platform === 'darwin') {
+  execFile('networksetup', ['-listallhardwareports'], { timeout: 5000 }, (err, stdout) => {
+    if (err || !stdout) return; // networksetup missing/failed — classifyIface just falls back to the IP
+    // Output comes in repeated "Hardware Port: X\nDevice: Y\n..." blocks —
+    // pair each Hardware Port line with the Device line directly under it.
+    const lines = stdout.split('\n');
+    let pendingPort = null;
+    for (const line of lines) {
+      const portM = line.match(/^Hardware Port:\s*(.+)$/);
+      if (portM) { pendingPort = portM[1].trim(); continue; }
+      const devM = line.match(/^Device:\s*(.+)$/);
+      if (devM && pendingPort) {
+        const port = pendingPort.toLowerCase();
+        macHardwarePortMap[devM[1].trim()] =
+          /wi-fi|airport/.test(port) ? 'wifi' :
+          /ethernet/.test(port)      ? 'ethernet' : null;
+        pendingPort = null;
+      }
+    }
+    scheduleRender(); // in case the network zone already rendered once with no label yet
+  });
+}
+function classifyIface(name) {
+  if (process.platform === 'darwin') {
+    const mac = macHardwarePortMap[name];
+    if (mac) return mac; // definitive — skip the Linux pattern guess entirely
+  }
+  const n = (name || '').toLowerCase();
+  if (/^wl/.test(n)) return 'wifi';
+  if (/^(eth|en[ops])/.test(n)) return 'ethernet';
+  return null;
+}
+
+function updateNetworkInfo() {
+  const ifaces = os.networkInterfaces();
+  let found = null;
+  for (const iface of Object.keys(ifaces)) {
+    const addr = (ifaces[iface] || []).find(a => a.family === 'IPv4' && !a.internal);
+    if (addr) { found = { iface, address: addr.address }; break; }
+  }
+  state.network = found;
+}
+updateNetworkInfo();
+setInterval(() => { updateNetworkInfo(); scheduleRender(); }, NETWORK_POLL_MS);
+
+// Wi-Fi SSID — user: "show the name of the chosen wifi network". A
+// separate, slower poll from updateNetworkInfo() above on purpose: getting
+// the SSID needs an OS shell-out (there's no SSID field in
+// os.networkInterfaces()), unlike the plain address read, which is free.
+// wifiSsid stays null (renderNetworkInfo falls back to the bare [wifi]
+// label) whenever the active interface isn't Wi-Fi, or the lookup hasn't
+// landed/failed. macOS: networksetup -getairportnetwork <device>, using
+// whichever device macHardwarePortMap identified as Wi-Fi (skip the call
+// entirely if that map hasn't been populated yet, or found no Wi-Fi port).
+// Linux: nmcli's own "active,ssid" table — same nmcli dependency the
+// :network join command already assumes (see its own comment).
+// (wifiSsid itself is declared near the top of the file — see the comment
+// there — this section just polls/assigns it.)
+// Set true for the duration of a :network join attempt, false once it
+// resolves (success/failure/timeout) — read by networkAddrText() to show a
+// spinner frame right in the header itself (user: "dont forget the
+// spinner. for the loading"). The sepBox-based spinner (startSpinner() —
+// see the :network handler) is real too, but it lives inside the
+// collapsible/scrollable chat log area, which isn't always in view; the
+// header's network: line is ALWAYS on screen (row 0, next to the EBYS
+// version badge), so that's the one guaranteed-visible place to show
+// "still connecting" — same spinFrame/SPIN_FRAMES tick startSpinner()
+// already drives, just read from a second spot instead of running a
+// second timer. (wifiConnecting itself is declared near the top of the
+// file — see the comment there — the :network command handler is what
+// actually flips it true/false.)
+const WIFI_SSID_POLL_MS = 5000;
+function updateWifiSsid() {
+  if (!state.network || classifyIface(state.network.iface) !== 'wifi') { wifiSsid = null; return; }
+  if (process.platform === 'darwin') {
+    execFile('networksetup', ['-getairportnetwork', state.network.iface], { timeout: 4000 }, (err, stdout) => {
+      if (err || !stdout) return;
+      const m = stdout.match(/Current Wi-Fi Network:\s*(.+)/);
+      wifiSsid = m ? m[1].trim() : null;
+      scheduleRender();
+    });
+  } else {
+    execFile('nmcli', ['-t', '-f', 'active,ssid', 'dev', 'wifi'], { timeout: 4000 }, (err, stdout) => {
+      if (err || !stdout) return;
+      const line = (stdout.split('\n')).find(l => l.startsWith('yes:'));
+      wifiSsid = line ? line.slice(4) : null;
+      scheduleRender();
+    });
+  }
+}
+updateWifiSsid();
+setInterval(updateWifiSsid, WIFI_SSID_POLL_MS);
 
 // Clock tick — keeps timestamps counting smoothly between Max messages.
 setInterval(() => { peakDecayTick(); scheduleRender(); }, 100);

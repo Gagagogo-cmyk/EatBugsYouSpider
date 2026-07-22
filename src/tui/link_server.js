@@ -9,12 +9,20 @@
 //   node link_server.js --unit A          (this unit = A, peer = B)
 //   node link_server.js --unit B          (this unit = B, peer = A)
 //
+// If your peer's mDNS hostname isn't exactly "unitA.local"/"unitB.local" (see
+// below), override it directly instead of renaming the Mac:
+//   node link_server.js --unit A --peer-host somethingElse.local
+//
 // ── Network topology ─────────────────────────────────────────────────────────
-//   Unit A: 192.168.10.1   →→→  UDP 9000  →→→  Unit B: 192.168.10.2
-//   Unit B: 192.168.10.2   →→→  UDP 9000  →→→  Unit A: 192.168.10.1
+//   Unit A: unitA.local   →→→  UDP 9000  →→→  Unit B: unitB.local
+//   Unit B: unitB.local   →→→  UDP 9000  →→→  Unit A: unitA.local
 //
 //   Both units listen on the same port 9000 for incoming peer packets.
-//   Set your OS network interface to the IP above for your unit letter.
+//   Peers are found by mDNS/Bonjour hostname (<name>.local), NOT a hardcoded
+//   IP — this works over Wi-Fi or a direct ethernet cable exactly the same
+//   way, and keeps working even if DHCP hands out a new IP mid-session. Each
+//   Mac's own "Local Hostname" needs to be set to unitA / unitB respectively:
+//   System Settings → General → Sharing → (i) next to Local hostname → Edit.
 //
 // ── Local IPC (link_server ↔ sdj-tui.js) ────────────────────────────────────
 //   sdj-tui.js  →  link_server   : UDP 127.0.0.1:9001   (TOUCH / MISSILE / etc.)
@@ -54,34 +62,79 @@
 'use strict';
 
 const dgram  = require('dgram');
+const dns    = require('dns');
 const process = require('process');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const UNIT_IPS  = { A: '192.168.10.1',  B: '192.168.10.2' };
+// Peer identified by mDNS/Bonjour hostname, not a hardcoded static IP — see
+// resolvePeer()'s own comment for why this is what actually lets the same
+// code work over either Wi-Fi or a direct ethernet cable. Each unit's Mac
+// needs its own Local Hostname (System Settings → General → Sharing) set to
+// exactly this name so it answers to <name>.local on the network.
+const UNIT_HOSTNAMES = { A: 'unitA.local', B: 'unitB.local' };
 const PEER_PORT = 9000;   // UDP port for peer comms
 const IPC_IN    = 9001;   // sdj-tui.js → link_server (commands)
 const IPC_OUT   = 9002;   // link_server → sdj-tui.js (incoming params)
 const PROTOCOL  = 'EBYS1';
+// How often to re-resolve the peer's hostname to an IP. Not a one-time
+// lookup at startup — DHCP can hand either unit a new address mid-session
+// (rejoining Wi-Fi, router lease renewal, etc.), and re-resolving on a timer
+// is what makes that transparent instead of silently talking to a stale IP.
+const PEER_RESOLVE_INTERVAL = 5000;
 
 // ── Parse args ────────────────────────────────────────────────────────────────
 
 function parseArgs() {
     const args = process.argv.slice(2);
     let unit = 'A';
+    let peerHost = null;
     for (let i = 0; i < args.length; i++) {
-        if (args[i] === '--unit' && args[i+1]) unit = args[++i].toUpperCase();
+        if (args[i] === '--unit'      && args[i+1]) unit     = args[++i].toUpperCase();
+        if (args[i] === '--peer-host' && args[i+1]) peerHost = args[++i];
     }
-    if (!UNIT_IPS[unit]) {
-        console.error(`[LINK] Unknown unit "${unit}". Use --unit A or --unit B`);
+    if (!UNIT_HOSTNAMES[unit] && !peerHost) {
+        console.error(`[LINK] Unknown unit "${unit}". Use --unit A or --unit B (or pass --peer-host <name>.local directly)`);
         process.exit(1);
     }
     const peer = unit === 'A' ? 'B' : 'A';
-    return { unit, peerIp: UNIT_IPS[peer] };
+    return { unit, peerHostname: peerHost || UNIT_HOSTNAMES[peer] };
 }
 
-const { unit, peerIp } = parseArgs();
-console.log(`[LINK] Unit ${unit} — peer at ${peerIp}:${PEER_PORT}`);
+const { unit, peerHostname } = parseArgs();
+console.log(`[LINK] Unit ${unit} — peer hostname "${peerHostname}" (resolving...)`);
+
+// Resolved peer IP, refreshed by resolvePeer() below. Starts null —
+// sendToPeer() just no-ops (see its own guard) until the first successful
+// resolution lands, instead of crashing on a missing address.
+let peerIp = null;
+
+// ── mDNS/Bonjour peer resolution ─────────────────────────────────────────────
+// dns.lookup() on a "<name>.local" hostname delegates to the OS's own mDNS
+// resolver — Bonjour/mDNSResponder on macOS, avahi on Linux if installed —
+// no extra package needed. That's what makes this work identically whether
+// the two units are on the same Wi-Fi network or joined by a direct
+// ethernet cable: mDNS discovery happens over whatever link-local broadcast
+// domain the two machines currently share, and dns.lookup() doesn't need to
+// know or care which physical medium that is. Whatever dynamic IP DHCP (or
+// link-local self-assignment on a cableonly connection, see the file-level
+// comment on that) handed the peer, <name>.local always resolves to it.
+function resolvePeer() {
+    dns.lookup(peerHostname, { family: 4 }, (err, address) => {
+        if (err) {
+            if (peerIp === null) {
+                console.log(`[LINK] Waiting for "${peerHostname}" to appear on the network... (${err.code})`);
+            }
+            return; // keep the last known-good peerIp (if any) on a transient miss
+        }
+        if (address !== peerIp) {
+            console.log(`[LINK] Peer "${peerHostname}" → ${address}` + (peerIp ? ` (was ${peerIp})` : ''));
+            peerIp = address;
+        }
+    });
+}
+resolvePeer();
+setInterval(resolvePeer, PEER_RESOLVE_INTERVAL);
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -118,6 +171,7 @@ const ipcOut = dgram.createSocket('udp4');
 // ── Send helpers ──────────────────────────────────────────────────────────────
 
 function sendToPeer(msg) {
+    if (!peerIp) return; // no peer resolved yet — see resolvePeer()'s own comment
     const buf = Buffer.from(msg + '\n');
     peerSock.send(buf, 0, buf.length, PEER_PORT, peerIp, (err) => {
         if (err) console.error('[LINK] peer send error:', err.message);
@@ -384,4 +438,4 @@ ipcOut.bind(0, () => {
 process.on('SIGINT',  () => { console.log('\n[LINK] Shutting down'); process.exit(0); });
 process.on('SIGTERM', () => { console.log('\n[LINK] Shutting down'); process.exit(0); });
 
-console.log(`[LINK] EBYS LINK ready — Unit ${unit} — peer ${peerIp}`);
+console.log(`[LINK] EBYS LINK ready — Unit ${unit} — peer hostname "${peerHostname}" (IP resolves async, see above)`);

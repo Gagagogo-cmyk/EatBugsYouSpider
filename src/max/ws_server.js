@@ -193,6 +193,26 @@ try {
 
 const clients = new Set();
 
+// Backs the "last TUI disconnected → force Max to stop" logic below (see
+// socket.on('close') and the 'hello' handler). A bare zero-clients check
+// would also fire during the TUI's own watchdog-triggered reconnect (app.js
+// force-closes and reopens its socket after ~20s of no data while
+// state.running is true — "connection likely wedged" — then reconnects a
+// few seconds later from the SAME process), which would otherwise hard-stop
+// a perfectly good live performance just because the WS link hiccuped.
+// app.js tags every connection with a per-process RUN_ID (sent as a 'hello'
+// message right after the socket opens); the reconnecting process's id
+// always matches lastDisconnectedRunId, so that case cancels the pending
+// stop. A genuinely new TUI launch (fresh :logout/:switchSession child, or
+// the user quitting and relaunching by hand) gets a new RUN_ID every time,
+// so it never matches and the stop goes through — immediately, without
+// waiting out the grace window. The timer itself is just a backstop for
+// TUI builds/processes too old to send 'hello' at all, or the rare case
+// where nothing ever reconnects.
+let pendingStopTimer     = null;
+let lastDisconnectedRunId = null;
+const STOP_ON_DISCONNECT_GRACE_MS = 8000;
+
 // ── Chunk stream helpers ──────────────────────────────────────────────────────
 // Every chunked send gets a unique streamId so receivers can detect interleaving.
 // Format: label  streamId  chunkIndex  totalChunks  data
@@ -364,6 +384,10 @@ server.on('upgrade', (req, socket) => {
     );
     clients.add(socket);
     Max.post('ws_server: TUI connected (' + clients.size + ')\n');
+    // NOTE: whether this connection should cancel a pending auto-stop (see
+    // pendingStopTimer's own comment) isn't decided here — it depends on the
+    // RUN_ID carried in this socket's 'hello' message, which hasn't arrived
+    // yet at this point in the handshake. See the 'hello' handler below.
 
     // Send operational state snapshot on connect — match the shape of all other
     // 'state' broadcasts (no stems: TUI has its own defaults and they must not be
@@ -423,6 +447,31 @@ server.on('upgrade', (req, socket) => {
             if (msg === null) { socket.destroy(); break; }
             try {
                 const m = JSON.parse(msg);
+
+                // 'hello' — first message app.js sends after the socket opens, carrying
+                // its per-process RUN_ID (see that constant's own comment in app.js).
+                // Tags this socket with it, then resolves whatever auto-stop is
+                // pending from the last disconnect (see pendingStopTimer's comment
+                // above): the SAME process reconnecting (watchdog-forced socket kill)
+                // cancels it — playback was never really abandoned; anything else
+                // (a fresh launch, :logout's replacement child, a manual restart) is
+                // a genuinely new session, so the previous one's stop fires right now
+                // instead of waiting out the rest of the grace window.
+                if (m.type === 'hello') {
+                    socket.runId = m.runId || null;
+                    if (pendingStopTimer) {
+                        const sameProcess = socket.runId && socket.runId === lastDisconnectedRunId;
+                        clearTimeout(pendingStopTimer);
+                        pendingStopTimer = null;
+                        if (sameProcess) {
+                            Max.post('ws_server: same TUI reconnected — cancelled pending auto-stop\n');
+                        } else {
+                            Max.post('ws_server: new TUI session — stopping previous playback now\n');
+                            Max.outlet('stop');
+                        }
+                    }
+                    continue;
+                }
 
                 // :bake — save training snapshot (intent + Cricket cmds + user corrections + live state)
                 if (m.type === 'bake') {
@@ -1062,7 +1111,9 @@ server.on('upgrade', (req, socket) => {
                                         sourceTrack: st.track,
                                         slot:        st.slot,
                                         descriptors: {
-                                            C: st.C, E: st.E, F: st.F, P: st.P, H: st.H, T: st.T,
+                                            C: st.C, S: st.S, E: st.E, F: st.F, P: st.P, H: st.H, T: st.T,
+                                            tension_C: st.tC, tension_E: st.tE, tension_F: st.tF,
+                                            tension_P: st.tP, tension_H: st.tH, tension_T: st.tT,
                                         },
                                         segmentBars:     state.segBars[s],
                                         pan:             state.ms.joy[s],
@@ -1083,6 +1134,12 @@ server.on('upgrade', (req, socket) => {
                                 ? ' [bake ' + snapshot.bakeSessionId + ' attempt ' + snapshot.bakeAttempt + ']' : '';
                             Max.post('ws_server: ✓ scored ' + score.toFixed(2) + bakeTag + '\n');
                             broadcast({ type: 'sys', msg: '✓ scored ' + score.toFixed(2) + ' — layered combo logged' + bakeTag });
+                            // Tells app.js a real vertical bake just landed on disk, so it can
+                            // re-derive/re-render its bake graph immediately (user: "I want it
+                            // to be automatically drawn when bakes are baked") — a separate,
+                            // structured broadcast rather than app.js pattern-matching the
+                            // human-readable 'sys' string above.
+                            broadcast({ type: 'bakeScored', model: 'vertical' });
                         }
 
                     } else if (atoms[0] === 'tag') {
@@ -1213,7 +1270,11 @@ server.on('upgrade', (req, socket) => {
                                     },
                                     to: {
                                         sourceTrack: st.track, id: st.id,
-                                        descriptors: { C: st.C, E: st.E, F: st.F, P: st.P, H: st.H, T: st.T },
+                                        descriptors: {
+                                            C: st.C, S: st.S, E: st.E, F: st.F, P: st.P, H: st.H, T: st.T,
+                                            tension_C: st.tC, tension_E: st.tE, tension_F: st.tF,
+                                            tension_P: st.tP, tension_H: st.tH, tension_T: st.tT,
+                                        },
                                         section: toSec ? toSec.tag : null,
                                     },
                                 };
@@ -1238,6 +1299,9 @@ server.on('upgrade', (req, socket) => {
                                 fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
                                 Max.post('ws_server: ✓ transition scored ' + score.toFixed(2) + '\n');
                                 broadcast({ type: 'sys', msg: '✓ transition scored ' + score.toFixed(2) + ' — logged' });
+                                // See the 'vertical' bakeScored broadcast above — same reasoning,
+                                // other log file.
+                                broadcast({ type: 'bakeScored', model: 'transition' });
                             }
                         }
 
@@ -1412,6 +1476,29 @@ server.on('upgrade', (req, socket) => {
     socket.on('close', () => {
         clients.delete(socket);
         Max.post('ws_server: TUI disconnected (' + clients.size + ')\n');
+        // Last TUI closed — force Max back to a stopped state instead of
+        // leaving it (and the descriptor visualizer's transport) running
+        // silently in the background. Without this, closing the TUI any way
+        // other than :stop-then-:logout (escape key, Ctrl-C, killing the
+        // terminal, a crash) left slicer.js's `running` flag exactly as it
+        // was, so the NEXT TUI launch would reconnect, get `state.running:
+        // true` in the very first 'state' broadcast, and start rendering
+        // live playback immediately — looking exactly like the visualizer
+        // "started on its own" even though nobody typed :start.
+        //
+        // Debounced via RUN_ID matching (see pendingStopTimer's own comment
+        // above) so this only fires for a real exit, never a same-process
+        // watchdog reconnect. stop() is idempotent (no-ops if already
+        // stopped) and goes through the same quantized-freeze path as a
+        // manual :stop.
+        if (clients.size === 0) {
+            lastDisconnectedRunId = socket.runId || null;
+            if (pendingStopTimer) clearTimeout(pendingStopTimer);
+            pendingStopTimer = setTimeout(() => {
+                pendingStopTimer = null;
+                if (clients.size === 0) Max.outlet('stop');
+            }, STOP_ON_DISCONNECT_GRACE_MS);
+        }
     });
 
     socket.on('error', () => { clients.delete(socket); });
@@ -1950,8 +2037,12 @@ Max.addHandler('desc', (track, C, S, E, F, P, H, T, tC, tE, tF, tP, tH, tT) => {
             sliceStart:  state.stems[track].sliceStart,
             sliceEnd:    state.stems[track].sliceEnd,
             descriptors: {
-                C: state.stems[track].C, E: state.stems[track].E, F: state.stems[track].F,
-                P: state.stems[track].P, H: state.stems[track].H, T: state.stems[track].T,
+                C: state.stems[track].C, S: state.stems[track].S, E: state.stems[track].E,
+                F: state.stems[track].F, P: state.stems[track].P, H: state.stems[track].H,
+                T: state.stems[track].T,
+                tension_C: state.stems[track].tC, tension_E: state.stems[track].tE,
+                tension_F: state.stems[track].tF, tension_P: state.stems[track].tP,
+                tension_H: state.stems[track].tH, tension_T: state.stems[track].tT,
             },
         };
     }

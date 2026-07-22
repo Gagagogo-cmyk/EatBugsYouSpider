@@ -809,12 +809,32 @@ var lastEndDesc = { vocals: null, melody: null, bass: null, drums: null };
 // yet; :score/:scoreTransition logging happens regardless.
 var TRANSITION_BIAS = null;  // { weights: {deltaC,...,absDeltaC,...}, bias, n_samples, r2 } | null
 var VERTICAL_BIAS   = null;  // { weights: {meanC,stdC,...}, bias, n_samples, r2 } | null
+// FIT_SHAPES[label] = 'quadratic' | 'cubic' for any dim :setFitShape flipped
+// up from the default 'linear' — read from learned_bias.json's own
+// dim_shapes field (see loadLearnedBias()), so this always stays in sync
+// with whatever train_bias.py actually fit, with no separate config file
+// read here. 'cubic' implies 'quadratic' too (see train_bias.py's
+// load_fit_shapes() docstring) — a dim flagged cubic gets BOTH the sq<label>
+// and cu<label> terms below, not cu<label> alone.
+var FIT_SHAPES = {};
 
 // Per-stem dial on how much each learned model influences scoreCandidate(),
 // same 0-5 convention as DIR_WEIGHT. 0 = ignore that model entirely even if
 // loaded (useful for A/B'ing whether it's actually helping).
 var LEARNED_TRANS_WEIGHT = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };
 var LEARNED_VERT_WEIGHT  = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };
+
+// Per-stem source: 'remix' (default — pick only real catalog material) or
+// 'generate' (pick only generated candidates). Generated source tracks are
+// identified purely by naming convention — generate_agent.py names them
+// with a "GEN__" prefix before they go through the normal import + Max
+// analysis pipeline, so they land in `arr` exactly like any real track,
+// just distinguishable by sourceTrack name. No schema/index changes needed
+// for this — see filterPoolByAgentMode() below, called right before
+// applyLearnedRefusal()/scoreCandidate() at both selection sites. Neither
+// of those functions, nor next() itself, needs to know this switch exists.
+var AGENT_MODE = { vocals: 'remix', melody: 'remix', bass: 'remix', drums: 'remix' };
+var GENERATED_PREFIX = 'GEN__';
 
 // Predicted quality below this (on the same -1..1 scale as :score/
 // :scoreTransition ratings) gets a candidate HARD-EXCLUDED from the pool
@@ -874,6 +894,7 @@ function biaschunk() {
 function loadLearnedBias() {
     TRANSITION_BIAS = null;
     VERTICAL_BIAS   = null;
+    FIT_SHAPES      = {};
     try {
         // Prefer data received via biaschunk from ws_server (Node resolves
         // paths — proven). Falls back to a direct file read only if chunks
@@ -905,6 +926,21 @@ function loadLearnedBias() {
         if (!data.transition && !data.vertical) {
             post("EBYS Slicer: learned_bias.json present but both models are still "
                  + "null (not enough :score/:scoreTransition data yet)\n");
+        }
+        // dim_shapes — which labels train_bias.py fit extra sq/cu (or
+        // sqMean/cuMean) terms for, per :setFitShape. Straight passthrough
+        // of the {label: 'quadratic'|'cubic'} map train_bias.py wrote (see
+        // its load_fit_shapes()/main()) so predictTransitionQuality/
+        // predictVerticalQuality can check it with a plain property read,
+        // same style as the weight dicts themselves. Old field name was
+        // quadratic_dims (an array) — this replaces it, not just renames it,
+        // since a dim can now be one of two non-linear shapes, not a
+        // yes/no flag.
+        FIT_SHAPES = data.dim_shapes || {};
+        var shapedLabels = [];
+        for (var lbl in FIT_SHAPES) shapedLabels.push(lbl + ':' + FIT_SHAPES[lbl]);
+        if (shapedLabels.length > 0) {
+            post("EBYS Slicer: fit shapes loaded: " + shapedLabels.join(', ') + "\n");
         }
     } catch (e) {
         post("EBYS Slicer: loadLearnedBias — error reading learned_bias.json: " + e.message + "\n");
@@ -940,23 +976,109 @@ function setLearnedWeight(stem, kind, val) {
     }
 }
 
-// predictTransitionQuality — same 6 dims as MATCH_PROB/DIR_PREF. `candidate[d]`
-// is the candidate's own (start-of-slice) descriptor value, `endDesc[d]` is
-// what's currently playing — identical pairing to the transition-match term
-// in scoreCandidate() below, and to how train_bias.py computed deltas from
-// the logged from/to descriptor pairs.
+// setAgentMode <stem|all> <remix|generate>
+// Pure candidate-sourcing switch — does not touch scoreCandidate(),
+// applyLearnedRefusal(), or next()'s playback/sync logic at all. A
+// generated candidate that makes it through the pool filter below is, by
+// this point, just another arr[] entry with real computed descriptors from
+// the normal analysis pipeline — indistinguishable to the scoring code from
+// a real slice.
+function setAgentMode(stem, mode) {
+    var targets = (String(stem) === 'all') ? TRACKS : [String(stem)];
+    var m = String(mode);
+    if (m !== 'remix' && m !== 'generate') {
+        post("EBYS Slicer: setAgentMode — mode must be 'remix' or 'generate', got '" + m + "'\n");
+        return;
+    }
+    for (var i = 0; i < targets.length; i++) {
+        var t = targets[i];
+        if (!AGENT_MODE.hasOwnProperty(t)) continue;
+        AGENT_MODE[t] = m;
+        post("EBYS Slicer: agentMode[" + t + "] = " + m + "\n");
+        outlet(1, "param", "agentMode_" + t, m);
+    }
+}
+
+// filterPoolByAgentMode — narrows an index-into-arr pool down to only the
+// sourceTrack population matching this stem's current AGENT_MODE, BEFORE
+// applyLearnedRefusal()/scoreCandidate() ever see it. If the filter would
+// empty the pool (e.g. mode is 'generate' but no generated clips have been
+// imported yet for this stem), falls back to the unfiltered pool rather
+// than silently stalling playback — same fail-open pattern
+// applyLearnedRefusal() already uses for its own empty-result case.
+function filterPoolByAgentMode(pool, arr, track) {
+    var mode = AGENT_MODE[track] || 'remix';
+    var wantGenerated = (mode === 'generate');
+    var kept = [];
+    for (var i = 0; i < pool.length; i++) {
+        var src = (arr[pool[i]] && arr[pool[i]].sourceTrack) || '';
+        var isGenerated = src.indexOf(GENERATED_PREFIX) === 0;
+        if (isGenerated === wantGenerated) kept.push(pool[i]);
+    }
+    if (kept.length === 0) {
+        post("EBYS Slicer: [" + track + "] agentMode='" + mode + "' has no matching "
+             + "candidates in the pool right now — falling back to the unfiltered pool\n");
+        return pool;
+    }
+    return kept;
+}
+
+// LEARNED_DIMS — mirrors train_bias.py's all_dims_with_keys() exactly: 7
+// level descriptors (own key) + 6 tension descriptors (looked up via
+// 'tension_<letter>', short-labeled 'Tn<letter>' so weight names like
+// 'deltaTnC' don't collide with T=timbre). Both prediction functions below
+// must build features identically to how train_bias.py built them when it
+// wrote learned_bias.json's weight names — this list is the single source
+// of truth for that shape on the runtime side.
+var LEARNED_LEVEL_DIMS   = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
+var LEARNED_TENSION_DIMS = ['C', 'E', 'F', 'P', 'H', 'T'];
+function learnedDims() {
+    var out = [];
+    for (var i = 0; i < LEARNED_LEVEL_DIMS.length; i++) {
+        out.push({ label: LEARNED_LEVEL_DIMS[i], key: LEARNED_LEVEL_DIMS[i] });
+    }
+    for (var i = 0; i < LEARNED_TENSION_DIMS.length; i++) {
+        out.push({ label: 'Tn' + LEARNED_TENSION_DIMS[i], key: 'tension_' + LEARNED_TENSION_DIMS[i] });
+    }
+    return out;
+}
+
+// predictTransitionQuality — `candidate[key]` is the candidate's own
+// (start-of-slice) value, `endDesc[key]` is what's currently playing —
+// identical pairing to the transition-match term in scoreCandidate() below,
+// and to how train_bias.py computed deltas from the logged from/to pairs.
+// Returns null (rather than treating a missing dim as 0) if EITHER side is
+// missing ANY of the 13 keys — a partial read (e.g. tension not populated
+// yet for an older library) should skip prediction, not silently score
+// against a fabricated zero.
 function predictTransitionQuality(candidate, endDesc) {
     if (!TRANSITION_BIAS || !endDesc) return null;
+    var dims = learnedDims();
+    for (var i = 0; i < dims.length; i++) {
+        var key = dims[i].key;
+        if (candidate[key] === undefined || candidate[key] === null) return null;
+        if (endDesc[key]   === undefined || endDesc[key]   === null) return null;
+    }
     var w = TRANSITION_BIAS.weights || {};
-    var dims = ['C', 'E', 'F', 'P', 'H', 'T'];
     var sum = TRANSITION_BIAS.bias || 0;
     for (var i = 0; i < dims.length; i++) {
-        var d = dims[i];
-        var val = (candidate[d] !== undefined) ? candidate[d] : 0;
-        var ref = (endDesc[d]   !== undefined) ? endDesc[d]   : 0;
-        var delta = val - ref;
-        sum += (w['delta' + d] || 0) * delta;
-        sum += (w['absDelta' + d] || 0) * Math.abs(delta);
+        var label = dims[i].label, key = dims[i].key;
+        var delta = candidate[key] - endDesc[key];
+        sum += (w['delta' + label] || 0) * delta;
+        sum += (w['absDelta' + label] || 0) * Math.abs(delta);
+        // Quadratic/cubic opt-in (:setFitShape) — sq<label> = delta*delta,
+        // cu<label> = delta*delta*delta, matching train_bias.py's
+        // build_transition_dataset() exactly. Only present in `w` (and only
+        // added to `sum`) for dims someone deliberately flipped up from
+        // linear; everything else is untouched by this. Cubic implies
+        // quadratic (see FIT_SHAPES' own comment) — both terms fire together.
+        var shape = FIT_SHAPES[label];
+        if (shape === 'quadratic' || shape === 'cubic') {
+            sum += (w['sq' + label] || 0) * (delta * delta);
+        }
+        if (shape === 'cubic') {
+            sum += (w['cu' + label] || 0) * (delta * delta * delta);
+        }
     }
     return Math.max(-1, Math.min(1, sum));
 }
@@ -967,39 +1089,49 @@ function predictTransitionQuality(candidate, endDesc) {
 // train_bias.py's mean/std-across-stems feature exactly, substituting the
 // candidate in for `track`'s own slot instead of its last-played descriptors
 // (which is what a real :score would have captured had this candidate
-// already been playing). Returns null if fewer than 2 stems have any
-// descriptor data yet (mirrors the trainer's own floor for a meaningful std).
+// already been playing). Returns null if fewer than 2 stems have any value
+// for a given dim yet (mirrors the trainer's own floor for a meaningful std).
 function predictVerticalQuality(candidate, track) {
     if (!VERTICAL_BIAS) return null;
-    var dims = ['C', 'E', 'F', 'P', 'H', 'T'];
-    var valsByDim = {};
-    for (var i = 0; i < dims.length; i++) valsByDim[dims[i]] = [];
+    var dims = learnedDims();
+    var valsByLabel = {};
+    for (var i = 0; i < dims.length; i++) valsByLabel[dims[i].label] = [];
     for (var t = 0; t < TRACKS.length; t++) {
         var tr   = TRACKS[t];
         var desc = (tr === track) ? candidate : lastEndDesc[tr];
         if (!desc) continue;
         for (var i = 0; i < dims.length; i++) {
-            var d = dims[i];
-            if (desc[d] !== undefined && desc[d] !== null) valsByDim[d].push(desc[d]);
+            var key = dims[i].key, label = dims[i].label;
+            if (desc[key] !== undefined && desc[key] !== null) valsByLabel[label].push(desc[key]);
         }
     }
     for (var i = 0; i < dims.length; i++) {
-        if (valsByDim[dims[i]].length < 2) return null;
+        if (valsByLabel[dims[i].label].length < 2) return null;
     }
     var w = VERTICAL_BIAS.weights || {};
     var sum = VERTICAL_BIAS.bias || 0;
     for (var i = 0; i < dims.length; i++) {
-        var d = dims[i];
-        var arr = valsByDim[d];
+        var label = dims[i].label;
+        var vals = valsByLabel[label];
         var mean = 0;
-        for (var j = 0; j < arr.length; j++) mean += arr[j];
-        mean /= arr.length;
+        for (var j = 0; j < vals.length; j++) mean += vals[j];
+        mean /= vals.length;
         var variance = 0;
-        for (var j = 0; j < arr.length; j++) variance += (arr[j] - mean) * (arr[j] - mean);
-        variance /= arr.length;
+        for (var j = 0; j < vals.length; j++) variance += (vals[j] - mean) * (vals[j] - mean);
+        variance /= vals.length;
         var std = Math.sqrt(variance);
-        sum += (w['mean' + d] || 0) * mean;
-        sum += (w['std'  + d] || 0) * std;
+        sum += (w['mean' + label] || 0) * mean;
+        sum += (w['std'  + label] || 0) * std;
+        // Quadratic/cubic opt-in — sqMean<label> = mean*mean, cuMean<label> =
+        // mean*mean*mean, matching train_bias.py's build_vertical_dataset()
+        // exactly.
+        var shape = FIT_SHAPES[label];
+        if (shape === 'quadratic' || shape === 'cubic') {
+            sum += (w['sqMean' + label] || 0) * (mean * mean);
+        }
+        if (shape === 'cubic') {
+            sum += (w['cuMean' + label] || 0) * (mean * mean * mean);
+        }
     }
     return Math.max(-1, Math.min(1, sum));
 }
@@ -2299,7 +2431,8 @@ function selectSegment(track) {
     } else if (hasActiveCriteria(track)) {
         // Score every candidate — pick the one with the lowest combined score.
         var endDesc     = getBlendedEndDesc(track);
-        var scoredPool  = applyLearnedRefusal(pool, arr, track, endDesc);
+        var agentPool   = filterPoolByAgentMode(pool, arr, track);
+        var scoredPool  = applyLearnedRefusal(agentPool, arr, track, endDesc);
         var bestScore   = Infinity;
         startIdx = scoredPool[0];
         for (var pi = 0; pi < scoredPool.length; pi++) {
@@ -2416,11 +2549,17 @@ function selectSegment(track) {
     lastEndFrac[track] = endFrac;
     lastSlice = { track: track, time: startSlice.time, dur: totalFrac };
 
-    // Store end-descriptors so next selection can match against them
+    // Store end-descriptors so next selection can match against them.
+    // Tension has no start/end variant (add_tension.py writes one value per
+    // slice, not per boundary) — stored under its own plain key so
+    // predictTransitionQuality() can read it the same way it reads C/S/E/F/P/H/T.
     lastEndDesc[track] = {
         C: startSlice.endC, S: startSlice.endS, E: startSlice.endE,
         F: startSlice.endF, P: startSlice.endP,
-        H: startSlice.endH, T: startSlice.endT
+        H: startSlice.endH, T: startSlice.endT,
+        tension_C: startSlice.tension_C, tension_E: startSlice.tension_E,
+        tension_F: startSlice.tension_F, tension_P: startSlice.tension_P,
+        tension_H: startSlice.tension_H, tension_T: startSlice.tension_T
     };
 
     // Compute actual duration in ms for delay timing in Max (sent on outlet 0)
@@ -3374,7 +3513,8 @@ function loop(track, bars) {
     for (var pi = 0; pi < arr.length; pi++) pool.push(pi);
     var startIdx = hasActiveCriteria(track)
         ? (function() {
-            var scoredPool = applyLearnedRefusal(pool, arr, track, lastEndDesc[track]);
+            var agentPool  = filterPoolByAgentMode(pool, arr, track);
+            var scoredPool = applyLearnedRefusal(agentPool, arr, track, lastEndDesc[track]);
             var best = scoredPool[0], bestSc = Infinity;
             for (var pi = 0; pi < scoredPool.length; pi++) {
                 var sc = scoreCandidate(arr[scoredPool[pi]], lastEndDesc[track], track);
@@ -3745,7 +3885,11 @@ function nextNearest(track, C, E, F, P) {
     var endFrac = Math.min(s.time + totalFrac, 1.0);
     lastSlice   = { track: track, time: s.time, dur: totalFrac };
 
-    lastEndDesc[track] = { C: s.endC, S: s.endS, E: s.endE, F: s.endF, P: s.endP, H: s.endH, T: s.endT };
+    lastEndDesc[track] = {
+        C: s.endC, S: s.endS, E: s.endE, F: s.endF, P: s.endP, H: s.endH, T: s.endT,
+        tension_C: s.tension_C, tension_E: s.tension_E, tension_F: s.tension_F,
+        tension_P: s.tension_P, tension_H: s.tension_H, tension_T: s.tension_T
+    };
 
     var sliceMs = hasDur ? Math.round(s.time * durMs) : 0;
 
