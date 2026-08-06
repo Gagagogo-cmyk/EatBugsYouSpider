@@ -53,3 +53,4 @@ node_modules/
 
 # Archive — kept locally only
 archive/
+src/demucs/genenv/
