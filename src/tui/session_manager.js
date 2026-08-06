@@ -2,7 +2,7 @@
 //
 // A "session" is a named, isolated workspace: its own analysis library
 // (uploaded/analyzed tracks), its own learned "brain" (song-structure tags,
-// vertical/horizontal training logs — everything :score/:tag/:scoreTransition
+// vertical/horizontal training logs — everything :scoreLyr/:tag/:scoreTrs
 // write), its own downbeats/genre databases, and its own Demucs stem output.
 // Everything a session owns lives under data/sessions/<id>/, isolated from
 // every other session. A session MAY be password-protected (hashed with
@@ -45,7 +45,14 @@ const DEFAULT_ID      = 'default';
 const LEGACY_DATA_FILES = [
   'analysis_library.json', 'downbeats.json', 'genres.json', 'stream.txt',
   'song_structure.json', 'training_log.jsonl', 'training_log_vertical.jsonl',
-  'training_log_transition.jsonl',
+  // Both names handled here on purpose: pre-session-system installs may
+  // still have the file under its old name (training_log_transition.jsonl,
+  // from before the transition/vertical pair was renamed to horizontal/
+  // vertical) sitting at the top level — this list matches actual on-disk
+  // filenames from whatever era the install predates, not the current
+  // naming convention, so both need to be listed for the migration to find
+  // either one.
+  'training_log_transition.jsonl', 'training_log_horizontal.jsonl',
 ];
 const LEGACY_DATA_DIRS  = ['stems'];
 const LEGACY_MAX_FILES  = ['ebys_index.json', 'stem_ranges.json', 'umap_coords.json'];

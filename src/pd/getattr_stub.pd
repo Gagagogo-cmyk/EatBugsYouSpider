@@ -1,0 +1,9 @@
+#N canvas 100 100 460 260 12;
+#X obj 40 20 inlet;
+#X msg 40 100 0;
+#X obj 40 180 outlet;
+#X obj 160 180 outlet;
+#X obj 280 180 outlet;
+#X text 160 100 getattr_stub: Max's getattr (queries a buffer~/object attribute\, e.g. sample count) has no Pd equivalent -- attributes aren't a general Pd concept. This stub always reports 0 on outlet 0 and does nothing on outlets 1-2. For buffer sample count specifically\, look at Pd's [soundfiler] instead., f 260;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;

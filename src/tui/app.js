@@ -225,6 +225,34 @@ const state = {
       dirC: 0.0, dirS: 0.0, dirE: 0.0, dirF: 0.0, dirP: 0.0, dirH: 0.0, dirT: 0.0,
       matchProb: 0.9,
       dirWeight: 1.0,
+      // EQ/trim/fader/pitch/formant — confirmed-from-engine readouts for the
+      // new bottom row freed up in each stem's spectrum block (was 7 rows,
+      // now 6 — see EQ_SPEC_ROWS). Defaults match docs/instrument/DEFAULTS.md
+      // where documented (pitchShift/formantShift: 0 semitones) and
+      // DSP-standard unity/flat values elsewhere (0dB EQ gains, 1000Hz mid
+      // freq — matches ws_server.js's own fallback, 0dB trim, 1.0 fader).
+      // Updated by the WS 'param' handler (key: eqLow/eqMid/eqMidFreq/
+      // eqMidQ/eqHigh/trim/fader use msg.value, pitchShift/formantShift use
+      // msg.semitones — see that handler's own comment for why). midQ
+      // default 0.7 matches eq_router.js's own default/fixed-until-now
+      // value — user: "have another setting to make the bell more pointy
+      // or large" → that's Q (quality factor/bandwidth): higher = narrower/
+      // pointier bell, lower = wider/gentler bell.
+      eqLow: 0, eqMid: 0, eqMidFreq: 1000, eqMidQ: 0.7, eqHigh: 0,
+      trim: 0, fader: 1.0, pitchShift: 0, formantShift: 0,
+      // shiftBand/pitchBandOverride/formantBandOverride — confirmed-from-
+      // engine frequency-band limits on the pitch/formant shift above (user:
+      // "dont forget to put these parameters in the eq/gain/pitch/formant"
+      // — :setShiftBand/:setPitchBand/:setFormantBand/:clearPitchBand/
+      // :clearFormantBand/:clearShiftBand, see slot_router.js's own
+      // sharedBand/pitchBandOverride/formantBandOverride for the actual
+      // bin-mask math this mirrors). null = unrestricted (the default —
+      // nothing has ever set a band on this stem); {lo, hi} once one has.
+      // shiftBand is the SHARED band; pitchBandOverride/formantBandOverride
+      // are independent per-effect overrides that win over it when set —
+      // see eqInfoStemLine()'s own pitchBand/formantBand fallback, which
+      // mirrors slot_router.js's effectivePitchBand()/effectiveFormantBand().
+      shiftBand: null, pitchBandOverride: null, formantBandOverride: null,
     });
     return { vocals: mk(), melody: mk(), bass: mk(), drums: mk() };
   })(),
@@ -274,7 +302,7 @@ const state = {
   // the first WS message confirming it arrives (slicer.js re-announces it at
   // :start regardless).
   sourceLock: { vocals: 'melody', melody: null, bass: 'melody', drums: 'melody' },
-  // agentMode[stem] — mirrors slicer.js's AGENT_MODE ('remix' | 'generate').
+  // agentMode[stem] — mirrors slicer.js's AGENT_MODE ('remix' | 'generate' | 'blend').
   // Confirmed values only, via the 'agentMode_<stem>' param broadcast from
   // setAgentMode()'s own outlet(1, "param", ...) call — same one-way
   // confirmation pattern as sourceLock above, no optimistic local echo.
@@ -313,48 +341,60 @@ try {
 
 // ── ANALYSIS LIBRARY (slice counts for :nextTrack) ────────────────────────────
 const LIBRARY_PATH = path.join(DATA_DIR, 'analysis_library.json');
+// In-memory cache, refreshed on a slow timer — same loadX()-once-then-poll
+// convention as stemRanges/waveforms/beatsDb (see loadStemRanges()/
+// loadWaveforms() below). getSliceCountsForTrack() used to open + JSON.parse
+// this file fresh on every single call; that was fine while its only caller
+// was a one-off :nextTrack lookup, but the per-stem waveform info line now
+// calls it once per stem, every render() tick (~10/sec) — see the
+// "slices:" candidate in the stem loop below — so a live sync disk read
+// per call would mean up to 40 blocking file reads/sec. Loaded once at
+// boot, reloaded every ANALYSIS_LIBRARY_POLL_MS instead; analysis_library.json
+// is only ever rewritten by a background analysis pass, not every tick, so a
+// few seconds of staleness here is invisible in practice.
+let analysisLibrary = {};
+const ANALYSIS_LIBRARY_POLL_MS = 10000;
+function loadAnalysisLibrary() {
+  try { analysisLibrary = JSON.parse(fs.readFileSync(LIBRARY_PATH, 'utf8')); }
+  catch (_) { /* not written yet, or mid-write — keep the last good copy */ }
+}
+loadAnalysisLibrary();
+setInterval(loadAnalysisLibrary, ANALYSIS_LIBRARY_POLL_MS);
+
 function getSliceCountsForTrack(trackName) {
   // Returns { vocals, melody, bass, drums } slice counts from analysis_library.json.
   // Keys in library are like "TrackName_vocals.wav" → { vocals: { slices: {...} } }
-  try {
-    const lib = JSON.parse(fs.readFileSync(LIBRARY_PATH, 'utf8'));
-    const stems = { vocals: 0, melody: 0, bass: 0, drums: 0 };
-    const SUFFIXES = { vocals: '_vocals.wav', melody: '_other.wav', bass: '_bass.wav', drums: '_drums.wav' };
-    for (const [fileKey, stemObj] of Object.entries(lib)) {
-      const lk = fileKey.toLowerCase();
-      for (const [stem, suffix] of Object.entries(SUFFIXES)) {
-        if (lk.endsWith(suffix) && fileKey.startsWith(trackName)) {
-          const data = Object.values(stemObj)[0];  // { slices: {...}, metadata: {...} }
-          stems[stem] = data && data.slices ? Object.keys(data.slices).length : 0;
-        }
+  const stems = { vocals: 0, melody: 0, bass: 0, drums: 0 };
+  const SUFFIXES = { vocals: '_vocals.wav', melody: '_other.wav', bass: '_bass.wav', drums: '_drums.wav' };
+  for (const [fileKey, stemObj] of Object.entries(analysisLibrary)) {
+    const lk = fileKey.toLowerCase();
+    for (const [stem, suffix] of Object.entries(SUFFIXES)) {
+      if (lk.endsWith(suffix) && fileKey.startsWith(trackName)) {
+        const data = Object.values(stemObj)[0];  // { slices: {...}, metadata: {...} }
+        stems[stem] = data && data.slices ? Object.keys(data.slices).length : 0;
       }
     }
-    return stems;
-  } catch (_) {
-    return { vocals: 0, melody: 0, bass: 0, drums: 0 };
   }
+  return stems;
 }
 
 // Average slice E (LUFS) per stem for a given track — used in :nextTrack display
 function getSliceLufsForTrack(trackName) {
-  try {
-    const lib = JSON.parse(fs.readFileSync(LIBRARY_PATH, 'utf8'));
-    const result  = { vocals: null, melody: null, bass: null, drums: null };
-    const SUFFIXES = { vocals: '_vocals.wav', melody: '_other.wav', bass: '_bass.wav', drums: '_drums.wav' };
-    for (const [fileKey, stemObj] of Object.entries(lib)) {
-      const lk = fileKey.toLowerCase();
-      for (const [stem, suffix] of Object.entries(SUFFIXES)) {
-        if (lk.endsWith(suffix) && fileKey.startsWith(trackName)) {
-          const data = Object.values(stemObj)[0];
-          if (data && data.slices) {
-            const Es = Object.values(data.slices).map(s => parseFloat(s.E)).filter(v => isFinite(v));
-            if (Es.length > 0) result[stem] = Es.reduce((a, b) => a + b, 0) / Es.length;
-          }
+  const result  = { vocals: null, melody: null, bass: null, drums: null };
+  const SUFFIXES = { vocals: '_vocals.wav', melody: '_other.wav', bass: '_bass.wav', drums: '_drums.wav' };
+  for (const [fileKey, stemObj] of Object.entries(analysisLibrary)) {
+    const lk = fileKey.toLowerCase();
+    for (const [stem, suffix] of Object.entries(SUFFIXES)) {
+      if (lk.endsWith(suffix) && fileKey.startsWith(trackName)) {
+        const data = Object.values(stemObj)[0];
+        if (data && data.slices) {
+          const Es = Object.values(data.slices).map(s => parseFloat(s.E)).filter(v => isFinite(v));
+          if (Es.length > 0) result[stem] = Es.reduce((a, b) => a + b, 0) / Es.length;
         }
       }
     }
-    return result;
-  } catch (_) { return null; }
+  }
+  return result;
 }
 
 // ── BEATS DB ──────────────────────────────────────────────────────────────────
@@ -443,15 +483,47 @@ function updateBeatsForTrack(trackName) {
 // not just for the track the session was loaded on. Returns 0 (not found)
 // rather than throwing so a missing/unanalyzed source track just silently
 // omits the candidate below.
-function getNativeBpmForTrack(trackName) {
-  if (!trackName) return 0;
+// Shared base-name lookup into beatsDb — strips the stem suffix (a track
+// named "song_drums.wav" is analyzed once as "song", not per-stem), then
+// falls back to a case-insensitive key match. Backs getNativeBpmForTrack
+// below plus the per-stem "beats:" tail candidate further down, which
+// needs the same entry's meter/confidence too (user: "add under the
+// waveform another info, the 'beats:' ... for the percentage of the
+// beat ... use the circles again", then "add the infos after beat:. time
+// signature and stuff... with the circles").
+function getBeatsEntryForTrack(trackName) {
+  if (!trackName) return null;
   const base = trackName.replace(/_(vocals|melody|bass|drums|other|melo)(\.\w+)?$/i, '').trim();
   let entry = beatsDb[base];
   if (!entry) {
     const lower = base.toLowerCase();
     entry = Object.entries(beatsDb).find(([k]) => k.toLowerCase() === lower)?.[1];
   }
+  return entry || null;
+}
+
+function getNativeBpmForTrack(trackName) {
+  const entry = getBeatsEntryForTrack(trackName);
   return (entry && entry.bpm) ? entry.bpm : 0;
+}
+
+// 10-dot circle confidence bar — the original per-track style already used
+// by showBrowsedTrack() below, now reused for the per-stem genre/beats tags
+// under each waveform (user: "the header keep the %, but under the
+// waveform is back to circles"). Header's own beatsHeaderLine()/genre
+// header stay on [X %] brackets — untouched, different call sites.
+function dotBar(conf, n) {
+  n = n || 10;
+  const lit = Math.max(0, Math.min(n, Math.round((conf || 0) * n)));
+  // Lit dots explicitly bright-white, unlit explicitly grey — user: "the
+  // probability circles, grey surround when not selected and full white
+  // circles when selected." Lit dots used to carry no color tag at all
+  // (relying on whatever the surrounding text happened to default to,
+  // which was grey wherever this got wrapped in an outer {grey-fg} block —
+  // see descLine's own comment on why that outer wrap is gone now); tagging
+  // both states explicitly means this reads correctly regardless of what
+  // wraps it.
+  return `{bright-white-fg}${'●'.repeat(lit)}{/bright-white-fg}` + '{grey-fg}' + '○'.repeat(n - lit) + '{/grey-fg}';
 }
 
 const DOWNBEAT_MIN_CONF = 0.4;  // must match slicer.js
@@ -459,8 +531,15 @@ const DOWNBEAT_MIN_CONF = 0.4;  // must match slicer.js
 function beatsHeaderLine() {
   const b = state.beats;
   if (!b.meter) return `{grey-fg}beats:{/grey-fg} --`;
-  const confBar = Math.round(b.conf * 10);
-  const bar = '●'.repeat(confBar) + '{grey-fg}' + '○'.repeat(10 - confBar) + '{/grey-fg}';
+  // Back to the 10-dot circle bar — briefly switched to a "[X %]" bracket
+  // readout (user: "in the header, dont use dots for percentages... use
+  // [X %] instead"), then reversed once beatsHeaderLine()/genreHeaderLine()
+  // became master-header-only (their only caller is renderMasterInfo() now):
+  // user, looking at the new master header: "put back the confidence
+  // circles in the master header. white circles and grey empty circles".
+  // Reuses dotBar() — same glyph language showBrowsedTrack()/the per-stem
+  // descriptor tags already use.
+  const bar = dotBar(b.conf);
   // Show globalBPM (playback tempo) in beats line — not the analyzed source BPM
   const displayBpm = state.globalBPM > 0 ? state.globalBPM : b.bpm.toFixed(0);
   return `{grey-fg}beats:{/grey-fg} ${b.meter}/4 ${displayBpm}bpm ${bar}`;
@@ -530,6 +609,7 @@ function browsePrev() {
 
 // ── TAGGER ────────────────────────────────────────────────────────────────────
 let taggerRunning  = false;
+let genRunning     = false;  // read by renderGenPanel() — set/cleared by whatever :gen dispatch ends up wired (see comment near verb === 'genList')
 const SPIN_FRAMES  = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
 let   spinFrame    = 0;
 let   spinInterval = null;
@@ -640,6 +720,132 @@ const STREAM_TXT_PATH = path.join(DATA_DIR, 'stream.txt');
 const ANALYSIS_ENV  = Object.assign({}, process.env, {
   PATH: '/opt/homebrew/bin:/usr/local/bin:' + (process.env.PATH || '')
 });
+
+// GEN_LABELS_PATH — Essentia's own Discogs-400 genre/style taxonomy, the
+// "general genre tags" a :gen sub-command can list to generate from. Same
+// vocabulary genre_tagger.py classifies real tracks into, so a generated
+// clip's tag and a real track's tag are directly comparable later.
+const GEN_LABELS_PATH = path.join(__dirname, '..', 'demucs', 'essentia_models', 'genre_discogs400_labels.json');
+// GENERATED_DIR — where generate_agent.py drops raw clips + its own
+// manifest_*.json (see that script's --out-dir default). NOT session-scoped
+// on purpose — generation is a compute-heavy, session-independent batch
+// step; ingest_generated.py is the separate, deliberate step that attaches
+// a batch to whichever session is active right now.
+const GENERATED_DIR = path.join(__dirname, '..', '..', 'data', 'generated');
+// GENERATE_PY — generate_agent.py needs stable_audio_3/torch, which lives in
+// a SEPARATE uv-managed venv OUTSIDE this repo (Stability AI's own project,
+// not EBYS code — see setup.sh section 4 and docs/instrument/USER_LORA.md
+// for why). STABLE_AUDIO_3_DIR must match wherever setup.sh cloned it to;
+// override the env var of the same name if you keep it somewhere else.
+// (Previously this pointed at src/demucs/genenv, which had
+// stable-audio-tools for the old Stable Audio Open Small integration —
+// generate_agent.py no longer imports that package, so genenv is dead;
+// pointing GENERATE_PY at it now would fail with ModuleNotFoundError.)
+// tag_generated.py and ingest_generated.py are stdlib-only, so any python3
+// works for those — GENERATE_PY is reused for them too rather than
+// introducing a third interpreter constant.
+const STABLE_AUDIO_3_DIR = process.env.STABLE_AUDIO_3_DIR || path.join(os.homedir(), 'stable-audio-3');
+const GENERATE_PY = path.join(STABLE_AUDIO_3_DIR, '.venv', 'bin', 'python3');
+const GENERATE_ENV = Object.assign({}, process.env, {
+  // see generate_agent.py's load_model() — MPS ops without a CPU fallback
+  // abort outright on Apple Silicon otherwise.
+  PYTORCH_ENABLE_MPS_FALLBACK: '1',
+  PATH: '/opt/homebrew/bin:/usr/local/bin:' + (process.env.PATH || ''),
+});
+
+// LORA_DIR — corpus root for the User LoRA pipeline (docs/instrument/
+// USER_LORA.md), driven by the :lora command below. Same "NOT session-scoped"
+// reasoning as GENERATED_DIR just above: prepping/training a personal-style
+// LoRA is a compute-heavy, session-independent batch job, not something tied
+// to whatever session happens to be active right now.
+const LORA_DIR = path.join(__dirname, '..', '..', 'data', 'lora_corpus');
+// LORA_ENV — prep_lora_corpus.py only needs ffmpeg/ffprobe on PATH (see its
+// own docstring — no Python audio libs); mirrors ANALYSIS_ENV's PATH prepend
+// so it finds a homebrew ffmpeg regardless of the shell this got launched
+// from.
+const LORA_ENV = Object.assign({}, process.env, {
+  PATH: '/opt/homebrew/bin:/usr/local/bin:' + (process.env.PATH || ''),
+});
+// LORA_CKPT_DIR / current checkpoint + its invoke phrase — written by
+// watch_lora.py's promote step (or by hand via `:lora train` + a manual
+// copy), read here by runGenerate() below so a live LoRA gets picked up by
+// :gen automatically, no separate "activate" step (Alex: "if possible, no
+// interaction with LoRA... the user would run :gen ... but no interaction
+// with LoRA, this is all backend protocols").
+const LORA_CKPT_DIR = path.join(LORA_DIR, 'checkpoints');
+const LORA_CURRENT_CKPT = path.join(LORA_CKPT_DIR, 'current.safetensors');
+const LORA_CURRENT_INVOKE = path.join(LORA_CKPT_DIR, 'current_invoke.txt');
+// TRAIN_AND_SCORE_SCRIPT — train_and_score_lora.py: train one checkpoint,
+// score it against val/ (up to 3 fresh self-test batches), promote if it
+// clears the bar. :lora train spawns this directly rather than calling
+// train_lora.py itself, so the manual command gets the exact same
+// unattended train→score→promote behavior the automatic daemon used to
+// have — just started by a person instead of a batch+idle gate. Runs
+// under GENERATE_PY since it needs the stable-audio-3 venv for the
+// training/self-test-generation steps it shells out to internally.
+const TRAIN_AND_SCORE_SCRIPT = path.join(__dirname, '..', 'demucs', 'train_and_score_lora.py');
+
+// LORA_LOCK_PATH — shared between :lora train (this file) and watch_lora.py
+// (the automatic daemon): train_lora.py and generate_agent.py's self-test
+// generation both hit this machine's one local GPU, so a manual :lora train
+// and an automatic run must never overlap. Same lock file, same schema,
+// checked/written on both sides — whichever gets there first wins, the
+// other backs off with a message instead of racing the GPU.
+const LORA_LOCK_PATH = path.join(LORA_DIR, '.training.lock');
+// LORA_STATE_PATH — same state file watch_lora.py's own STATE_PATH reads
+// and writes. Shared here for exactly one field: 'caption'. Without this,
+// a manual `:lora build <custom caption>` would get silently clobbered the
+// next time watch_lora.py's automatic pipeline runs its own build step
+// with its hardcoded default — reading/writing the same 'caption' key here
+// means whichever caption was chosen most recently (by either side) is
+// what both sides use next.
+const LORA_STATE_PATH = path.join(LORA_DIR, '.watch_lora_state.json');
+function updateLoraState(patch) {
+  let state = {};
+  try { state = JSON.parse(fs.readFileSync(LORA_STATE_PATH, 'utf8')); } catch (e) {}
+  Object.assign(state, patch);
+  fs.mkdirSync(LORA_DIR, { recursive: true });
+  fs.writeFileSync(LORA_STATE_PATH, JSON.stringify(state, null, 2));
+}
+const LORA_LOCK_STALE_MS = 6 * 60 * 60 * 1000; // 6h — a lock older than this is assumed to be from a crashed/killed process, not a real still-running job
+
+function readLoraLock() {
+  try {
+    const lock = JSON.parse(fs.readFileSync(LORA_LOCK_PATH, 'utf8'));
+    if (Date.now() - (lock.started || 0) > LORA_LOCK_STALE_MS) return null; // treat as abandoned
+    return lock;
+  } catch (e) {
+    return null;
+  }
+}
+function acquireLoraLock(source) {
+  fs.mkdirSync(LORA_DIR, { recursive: true });
+  fs.writeFileSync(LORA_LOCK_PATH, JSON.stringify({ pid: process.pid, source, started: Date.now() }));
+}
+function releaseLoraLock() {
+  try { fs.unlinkSync(LORA_LOCK_PATH); } catch (e) {}
+}
+
+// INSTRUMENT_STATUS_PATH — a tiny "is the instrument actually playing right
+// now" signal, written here and read by watch_lora.py before it lets a
+// multi-hour local GPU training run start (see that script's own docstring
+// for why: train_lora.py shares this machine's one GPU with whatever
+// generate_agent.py/:gen is doing live). NOT session-scoped, same reasoning
+// as LORA_DIR/GENERATED_DIR — playback state isn't a per-session concept.
+const INSTRUMENT_STATUS_PATH = path.join(__dirname, '..', '..', 'data', 'instrument_status.json');
+function writeInstrumentStatus() {
+  try {
+    fs.writeFileSync(INSTRUMENT_STATUS_PATH, JSON.stringify({
+      playing: !playbackStopped,
+      updated: Date.now(),
+    }));
+  } catch (e) {
+    // best-effort — a failed write here should never interrupt playback
+  }
+}
+// NOTE: the initial call + heartbeat interval for this are set up further
+// down, right after `let playbackStopped` is declared — calling it here
+// would read playbackStopped before its own declaration executes (TDZ).
 
 // regenerateStreamTxt — rebuilds data/stream.txt directly from disk (mirrors
 // analyze_reader.js's prepareNextTrack(), but covers every track at once, in
@@ -788,18 +994,20 @@ function genreHeaderLine() {
 
   weighted.sort((a, b) => b.dominance - a.dominance);
 
-  // Dominance-weighted average confidence across stems, same 10-dot circle
-  // style as beatsHeaderLine(). Note: this is a Discogs-EffNet top-1 softmax
-  // probability across ~400 genre classes, so even a clearly-correct call
-  // often sits around 0.1-0.3 — expect the bar to read "low" more often than
-  // the beats-detector's confidence does; that's the nature of the classifier,
-  // not a bug.
+  // Dominance-weighted average confidence across stems — back to the
+  // 10-dot circle bar, same style beatsHeaderLine() uses again (see its own
+  // comment: briefly a "[X %]" bracket readout, reversed once this became
+  // master-header-only — user: "put back the confidence circles in the
+  // master header. white circles and grey empty circles"). Note: this is a
+  // Discogs-EffNet top-1 softmax probability across ~400 genre classes, so
+  // even a clearly-correct call often sits around 0.1-0.3 — expect this to
+  // read "low" more often than the beats-detector's confidence does; that's
+  // the nature of the classifier, not a bug.
   const totalDominance = weighted.reduce((a, x) => a + x.dominance, 0);
   const avgConf = totalDominance > 0
     ? weighted.reduce((a, x) => a + x.conf * x.dominance, 0) / totalDominance
     : 0;
-  const confBar = Math.round(avgConf * 10);
-  const bar = '●'.repeat(confBar) + '{grey-fg}' + '○'.repeat(10 - confBar) + '{/grey-fg}';
+  const bar = dotBar(avgConf);
 
   // Group by parent; strip parent word from sub to get the modifier label
   const groups = {};   // parent → [modifier, ...]
@@ -882,6 +1090,12 @@ const stemLearnedExtra    = {}; // EMA of buffer_manager delay per stem (ms) —
 // 'started'/'resumed' messages and the :start command below — never by the
 // plain 'state' merge.
 let   playbackStopped     = true;
+writeInstrumentStatus(); // initial state, so the file exists before any :start/:stop
+// Heartbeat, not just on-transition — watch_lora.py treats a stale
+// `updated` timestamp (this app not running, or hung) as "can't confirm
+// idle" and skips training rather than trusting a possibly-stale
+// "playing: true" from before a crash.
+setInterval(writeInstrumentStatus, 30000);
 let   playbackRenderTimer = null;  // drives progress-bar animation between WS events
 let   stoppedAtMs         = null;  // Date.now() when the server-confirmed 'stopped'
                                     // message arrived — lets the 'resumed' handler
@@ -918,6 +1132,36 @@ VU_STEMS.forEach(s => {
   vuPeaks[s]  = { FL: null, FR: null, RL: null, RR: null };
 });
 
+// ── EQ SPECTRUM (braille) ────────────────────────────────────────────────────
+// Live per-band levels from patch_eq_spectrum.py's post-everything fixed
+// bandpass taps (see ws_server.js's 'spectrum' handler) — 8 bands per source,
+// low→high, 0-1 linear peak amplitude from peakamp~ 60. Post EVERYTHING
+// (EQ/trim/gain/fader/width/pan/fx-return for stems, post master_gain for
+// master) — user: "the spectrum analyzer is post everything. every change in
+// eq, filter, gain etc should be seen in the spectrum analyzer." Rendered as
+// a bar-graph — braille or Unicode block, see EQ_SPEC_STYLE/renderEqBars()
+// near renderBrailleScatter().
+// 64 (was 8, then 16, then 32 — which caused real-time audio glitching once
+// before at 160 biquad~/peakamp~ pairs; dropped to 16, then cautiously back
+// to 32). Now 64 (320 filters across all 5 sources) per an explicit request
+// that accepted the same CPU/glitch risk doubled — user: "make it 64 and
+// make it cover the whole length of the window lines" — see
+// patch_eq_spectrum.py's own N_BANDS comment for the full history and the
+// regenerate-safe script that keeps the Max-side filterbank in sync with
+// this number. If stuttering shows up, drop both back down together (this
+// constant AND patch_eq_spectrum.py's N_BANDS — they must always match, or
+// the client either truncates real bands or pads the display with silent
+// ones it never receives).
+const EQ_SPEC_BANDS = 64;
+const eqSpectrum = {};
+VU_STEMS.forEach(s => { eqSpectrum[s] = new Array(EQ_SPEC_BANDS).fill(0); });
+// A per-band decaying peak-hold (eqSpecPeaks, mirroring vuPeaks) was tried
+// here — bars rendered off the decayed value instead of the live one, then
+// a hybrid (live fill + decaying cap marker). User: "go back to only raw
+// live reading... no decaying peaks. its too weird." Removed entirely —
+// eqSpecBarLines below reads straight off this live eqSpectrum array again,
+// same as before any of that.
+
 // ── VU BAR ────────────────────────────────────────────────────────────────────
 // level: 0–1 linear peak amplitude (from peakamp~ in Max). Renders through
 // dbMeter() — the exact same system LUFSs/TP use: █ filled / ░ empty, a ▐
@@ -930,6 +1174,9 @@ function levelToDb(level) {
   return level > 1e-7 ? 20 * Math.log10(level) : VU_MIN_DB;
 }
 function vuBar(level, peakDb) {
+  // No explicit fillColor/peakColor — dbMeter's own defaults (white fill,
+  // yellow peak marker) are exactly what this wants now, same as every
+  // other caller (see dbMeter's own comment).
   return dbMeter(levelToDb(level), peakDb === undefined ? null : peakDb, VU_MIN_DB, -3, VU_W);
 }
 // 4 mini bars for one stem: FL FR · RL RR  (front pair | rear pair)
@@ -941,41 +1188,53 @@ function vu4(stem) {
 
 // ── Per-stem row band ─────────────────────────────────────────────────────
 // Each stem's own waveform (the playback progress bar) spans the FULL
-// window width, full stop — nothing shares that row. Directly under it,
-// the descriptor line (C/S/E/F/P/H/T inline range bars) sits above this
-// stem's meters (VU meter, spatial ring, descriptor grid, momentum panel);
-// the meters' own first row is aligned with the "weight" row, not with
-// dirWgt — user: "align the first line of the visualizer with weight or
-// the weight/dir section". weight/dir/dirWgt keep printing on the LEFT
-// (in playBox, indented under the name column) on the same absolute rows
-// the meters occupy on the RIGHT (in their own boxes), so the two never
-// collide — different columns, same rows. Vertical order per stem:
-//   waveform + descriptor line (PRE_METERS_ROWS = 2 rows) — then meters
-//   start, overlapping rows with weight/dir/dirWgt (which keep printing on
-//   the left of playBox for those same rows):
-//   meters: VU | spatial | transitions | momentum (STEM_ROW_BAND_H = 7 rows)
-//   ...then the next stem's waveform starts right after.
-// STEM_ROW_BAND_H = 7 is the tallest of the four meter blocks (descriptor
-// grid / momentum: one row per DIMS entry — ['C','S','E','F','P','H','T']);
-// VU (5 rows) and spatial (5 rows) are simply shorter, not padded — see
-// their own box-array comments below. STEM_BAND_H (9) is the combined
-// height every per-stem column uses so stem N's band always starts at row
-// N * STEM_BAND_H: playBox is ONE box (real content in rows 0-4 — weight/
-// dir/dirWgt still need rows 2-4 even though the meters boxes now also
-// start at row 2 — blank in rows 5-8 where the meters keep going after
-// playBox's own text runs out), but the VU/spatial/descriptor-grid/
-// momentum panels are each an ARRAY of small boxes, one per stem,
-// individually positioned at playTop + i*STEM_BAND_H + PRE_METERS_ROWS
-// with height STEM_ROW_BAND_H — not one tall box with blank filler rows
-// standing in for that gap. A blessed box paints its own background across
-// its FULL declared rectangle regardless of content, so a blank row inside
-// a tall box still erases whatever playBox's full-width waveform drew
-// underneath it at that row — that was the actual bug behind the waveform
-// reading as "cut". A small box confined to just one stem's own row band
-// can't do that to any other stem's waveform.
-const PRE_METERS_ROWS = 2; // waveform, descriptor line — meters start at the weight row
-const STEM_ROW_BAND_H = 7; // meters sub-band height
+// window width, full stop — nothing shares that row (row 0 of the band).
+// Directly under it (row 1), the descriptor line (bars:/stay:/match:/
+// beats:/quant:/key:/slices:/bpm:/track/lock) shares its row with the RIGHT
+// side's own label row — the weight/dir column's title ("weight / dir
+// dirWgt: n.nn") and the per-channel entropy meter both print there too
+// (different columns, same absolute row — see weightDirStemBoxes'/
+// channelEntropyStemBoxes' own comments for why they dock one row ABOVE
+// their graphs instead of sharing row 2 the way VU/spatial/momentum do).
+// Rows 2-8 (STEM_ROW_BAND_H = 7 rows, one per DIMS entry) are where every
+// right-hand meter column's own "graph" lives — VU meter, spatial ring,
+// momentum panel (the descriptor graph), and now the weight/dir column's 7
+// descriptor rows too — plus, on the LEFT (in playBox itself), the EQ
+// spectrum bar, which now gets the full 7 rows since weight/dir/dirWgt no
+// longer print there (they moved out to their own column — see the removed
+// weightLine/dir line's own comment in render()). Different columns, same
+// rows, so nothing collides. Vertical order per stem:
+//   row 0: waveform (full width)
+//   row 1: descriptor line (left) / weight-dir title + entropy meter (right)
+//   rows 2-8: EQ spectrum bar (left) / VU, spatial, momentum, weight-dir
+//             descriptor rows (right) — STEM_ROW_BAND_H = 7 rows
+//   ...then the next stem's waveform starts right after, at row 9.
+const PRE_METERS_ROWS = 2; // waveform, descriptor line — meters start at row 2
+// 7 — matches DIMS.length (C,S,E,F,P,H,T), the momentum panel's own real
+// content height (one row per descriptor, no padding) and now also the
+// weight/dir column's own 7 descriptor rows, and gives the EQ spectrum bar
+// underneath playBox's own text the full 7 rows to fill (see that bar's own
+// comment in render() — "the spectrum analyzer can take the more vertical
+// space under the waveform").
+const STEM_ROW_BAND_H = 7; // meters sub-band height (was 7, then 10, then 9, back to 7 — see comments above)
 const STEM_BAND_H     = PRE_METERS_ROWS + STEM_ROW_BAND_H;
+// EQ_SPEC_ROWS — the EQ spectrum bar's own height, ONE LESS than
+// STEM_ROW_BAND_H (6, not 7). VU/spatial/momentum/weight-dir keep the full
+// STEM_ROW_BAND_H for their own boxes — this only shrinks the spectrum bar
+// itself, freeing exactly the bottom row of ITS space (still inside the same
+// total STEM_BAND_H) for eqInfoStemLine()'s EQ low/mid/midFreq/high, gain,
+// pitch shift, and formant shift readout — user: "I want to liberate one
+// line in that spectrum analyzer space to put eq and pitch/formant shifting
+// data ... the spectrum analyzer will work fine with one less line anyway."
+// Per-stem only — master no longer has a spectrum bar at all (removed
+// along with the waveform, see masterBarBox's own comment for that pivot).
+const EQ_SPEC_ROWS = STEM_ROW_BAND_H - 1;
+// nameW (4) + 6 — the left indent every stem's descriptor line/RMX-GEN tag
+// shares (see spIndent in the stem loop). Used to also line up master's own
+// EQ spectrum box (masterEqSpecBox) at the same column — that box is gone
+// now (master has no spectrum any more, see masterBarBox's own comment), so
+// this is purely a per-stem constant today.
+const STEM_INDENT_W = 10;
 
 // ── VU SIDEBAR — vcl/mel/bas/drm meters, one small box per real stem ────────
 // Each real stem gets its OWN box, exactly STEM_ROW_BAND_H tall, positioned
@@ -991,16 +1250,33 @@ const STEM_BAND_H     = PRE_METERS_ROWS + STEM_ROW_BAND_H;
 // its own small box up in the header area instead (see masterVuBox below),
 // not in this per-stem array.
 const VU_SIDEBAR_STEMS = [
-  { key: 'vocals', label: 'vcl' },
-  { key: 'melody', label: 'mel' },
-  { key: 'bass',   label: 'bas' },
-  { key: 'drums',  label: 'drm' },
+  // All four real-stem labels blanked — each box already sits directly
+  // under that stem's own waveform/name, so "vcl"/"mel"/"bas"/"drm" here
+  // was redundant (user: "remove the vcl tags ... for the VU meters", then
+  // "do the same for mel bas and drm"). master keeps its own 'mst' label
+  // below (VU_MASTER, a separate constant from this array — user: "keep
+  // mst tho"; it has no other row telling you what it is, unlike these
+  // four). Unlike DESC_LABELS, this array has no other reader (no cross-
+  // stem follow-tag lookup uses it), so it's safe to blank right at the
+  // source instead of special-casing every call site.
+  { key: 'vocals', label: '' },
+  { key: 'melody', label: '' },
+  { key: 'bass',   label: '' },
+  { key: 'drums',  label: '' },
 ];
 const VU_MASTER = { key: 'master', label: 'mst' };
 // Fixed-width label column ("vcl " / "    ") guarantees FL/FR/RL/RR and their
 // bars start in the same column on every row, in every block — pad via code
 // rather than hand-counted literal spaces, so it can't drift out of alignment.
-const VU_LABEL_W = 5;
+// 4, was 5 — now that every real stem's own label is blanked (see
+// VU_SIDEBAR_STEMS above) the only text this column ever holds is master's
+// "mst" (3 chars) or a momentum-panel follow-tag "→abc" (also 4: arrow +
+// 3-letter code), so the old 5th spare column was just dead space (user:
+// "move them closer, more compact"). This is the shared single source of
+// truth for VU_SIDEBAR_W → SIDE_TOTAL_W and MOM_W below, so shrinking it
+// here tightens the whole right-hand column stack in one place, same lever
+// MOM_GAP's own "make the visualizers closer" change used.
+const VU_LABEL_W = 4;
 // Fixed-width numeric readout after each bar — the peak-hold dB value shown
 // the same way LUFSs/TP show theirs (fmtMeterDb: "-inf" below VU_MIN_DB,
 // "--" before any signal has arrived). Padded to a constant width so the
@@ -1019,14 +1295,26 @@ function vuSidebarBlock(label, stemKey) {
     return `{grey-fg}${prefix}${c}{/grey-fg} ${vuBar(ch[c], pk[c])} {grey-fg}${num}{/grey-fg}`;
   });
 }
-// Row under each block's FL/FR/RL/RR — was a blank gap row, now carries that
-// stem's pan x / pan y / width numbers (the spatial squares show shape, this
-// is the actual value). Every block gets one, so there's no dangling blank
-// row and the count is uniform.
-function vuSidebarInfoLine(stemKey) {
+// Rows under each block's FL/FR/RL/RR — was a single blank gap row, then one
+// row carrying that stem's pan x / pan y / width numbers bare (no labels,
+// all three crammed onto one line) — now two rows (user: "under the VU
+// meters add X and Y tags for + and - values. Move width value to the next
+// line and add tag width:"): row 1 is "X:"/"Y:" (signed, same +/- format as
+// before, just labeled now instead of two bare numbers side by side), row 2
+// is width on its own line with its own "width:" tag. Every block gets both
+// rows, so there's no dangling blank row and the count stays uniform — see
+// vuStemBoxes'/masterVuBox's own height (bumped 5 -> 6 for the extra row,
+// then 6 -> 7 for the blank separator row now printed before these two —
+// see vuStemLines' own comment — user: "take X, Y and width of each
+// channels and move them down of one row").
+function vuSidebarInfoLines(stemKey) {
   const sp  = state.spatial[stemKey] || { x: 0, y: 0, width: 1 };
   const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(2);
-  return `{grey-fg}${' '.repeat(VU_LABEL_W)}${fmt(sp.x)} ${fmt(sp.y)} ${sp.width.toFixed(2)}{/grey-fg}`;
+  const indent = ' '.repeat(VU_LABEL_W);
+  return [
+    `{grey-fg}${indent}X:{/grey-fg}${fmt(sp.x)} {grey-fg}Y:{/grey-fg}${fmt(sp.y)}`,
+    `{grey-fg}${indent}width:{/grey-fg}${sp.width.toFixed(2)}`,
+  ];
 }
 // One real stem's VU block, padded to STEM_ROW_BAND_H — this is the FULL
 // content of that stem's own small vuStemBoxes[i], no leading gap needed
@@ -1034,18 +1322,39 @@ function vuSidebarInfoLine(stemKey) {
 // stem's waveform (see the box array's own top calc, below).
 function vuStemLines(label, stemKey) {
   // No padding to STEM_ROW_BAND_H anymore — this box is independent of
-  // descGridStemBoxes/momentumStemBoxes now (each stem's meters are
-  // separate boxes, not one shared column), so it's sized to its own real
-  // 5-row content (4 VU rows + 1 info row) instead of match-padded to 7,
-  // which used to leave 2 blank rows of dead space under every VU block.
-  return [...vuSidebarBlock(label, stemKey), vuSidebarInfoLine(stemKey)];
+  // momentumStemBoxes now (each stem's meters are separate boxes, not one
+  // shared column), so it's sized to its own real
+  // 7-row content (4 VU rows + 1 blank + 2 info rows — see
+  // vuSidebarInfoLines()' own comment for the X:/Y:/width: split) instead
+  // of match-padded to 7 for dead space's sake — this now happens to LAND
+  // on exactly STEM_ROW_BAND_H (7) with zero dead rows either way, purely
+  // as a side effect of the blank row below, not a deliberate re-pad.
+  // Blank separator row — user: "take X, Y and width of each channels and
+  // move them down of one row" — a bare blank row (not vuSidebarInfoLines'
+  // own X:/Y:/width: content) so those two rows read as a distinct group
+  // under FL/FR/RL/RR instead of butting directly against them.
+  return [...vuSidebarBlock(label, stemKey), '', ...vuSidebarInfoLines(stemKey)];
 }
+// Master's own row0/row1 moved OUT of this narrow VU_SIDEBAR_W-wide sidebar
+// entirely — user, looking at a screenshot: "look to the left of this
+// channel, that is the master channel... the info is all packed." Cramming
+// "mst :" and a flowing gain/bpm/stems line into a 25-column sidebar (the
+// same width the VU bars themselves use) was never going to read as "one
+// long line, just like the infos under the channel waveforms" — a real
+// channel's own descriptor line spans nearly the FULL terminal width. See
+// masterBarBox/masterInfoBox (full-width boxes, own comment near their
+// declaration) for where this content actually lives now.
 function renderVuSidebar() {
   VU_SIDEBAR_STEMS.forEach((s, i) => {
     vuStemBoxes[i].setContent(vuStemLines(s.label, s.key).join('\n'));
   });
+  // VU_MASTER.label ('mst') is blanked here, not read — masterBarBox's
+  // own row0 already carries "mst" boldly now, so the FL row's old label
+  // prefix would just be a plain-grey duplicate directly underneath it.
   masterVuBox.setContent(
-    [...vuSidebarBlock(VU_MASTER.label, VU_MASTER.key), vuSidebarInfoLine(VU_MASTER.key)].join('\n'));
+    // Same blank separator row vuStemLines() now inserts before X:/Y:/
+    // width: — see that function's own comment.
+    [...vuSidebarBlock('', VU_MASTER.key), '', ...vuSidebarInfoLines(VU_MASTER.key)].join('\n'));
 }
 
 function loadStemRanges() {
@@ -1080,79 +1389,57 @@ loadUmapDb();
 
 const DIMS = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
 
-// Rolling descriptor window — the last DESC_ROLL_PAIRS real transitions per
-// stem, not the whole track. Distinct from state.stems[x].C etc. (the single
-// live cursor value) and from rangeBar/renderStemGraph (which only ever draw
-// that one live point): this is short-term history, one ring-buffer slot per
-// stem per ACTUAL transition — not a time-based sample.
-//
-// Each slot is a PAIR — { out, in } — the two descriptor readings that got
-// glued together at that cut: `out` is the OUTGOING segment's own end state,
-// `in` is the INCOMING segment's start state. ws_server.js already computes
-// this itself: its 'desc' handler snapshots state.stems[track] into
-// state.stems[track].prevSegment right before overwriting it with the new
-// segment's values ("the one point where 'what was just playing' and 'what's
-// about to play' are both still distinguishable" — see that handler's own
-// comment), and that prevSegment rides along on every subsequent broadcast,
-// including the 'stem' message this file's own handler reads. So `out` here
-// is msg.prevSegment.descriptors, not something this file has to derive.
-// `out` is null for a stem's very first transition of a session (no prior
-// segment to snapshot yet).
-//
-// A new pair appears exactly when, and only when, that stem really cuts —
-// slicer.js only ever sends one 'stem' broadcast per real segment start (see
-// the handler's own comment below). A fast-cutting stem (drums) fills and
-// scrolls quickly; a slow one (bass) barely moves — that difference IS the
-// transition-rate signal, not noise to smooth over. Reuses stemRanges for
-// min/max shading, same range the live cursor bars already use.
 const DESC_STEMS      = ['vocals', 'melody', 'bass', 'drums'];
-const DESC_ROLL_PAIRS = 6;   // 6 transitions × {out,in} = 12 columns of data
-const descRollBuffers = { vocals: [], melody: [], bass: [], drums: [] };
-
-// Push one transition's {out, in} pair onto a stem's rolling window,
-// dropping the oldest pair once it's full.
-function descRollPush(stemName, pair) {
-  const buf = descRollBuffers[stemName];
-  if (!buf) return;
-  buf.push(pair);
-  if (buf.length > DESC_ROLL_PAIRS) buf.shift();
-}
+// Was the pair-count for the removed "transition grid" panel (a rolling
+// window of the last DESC_ROLL_PAIRS real cuts, shown as OUT|IN cell pairs —
+// see git history for that panel). The grid itself is gone (user: "remove
+// the transition visualisation"), but MOM_MAX_SAMPLES below still borrows
+// this number purely to keep the momentum panel's own on-screen width
+// exactly what it was before (user: "keep the previous width, it was good").
+const DESC_ROLL_PAIRS = 6;
 
 // ── Momentum panel data — a continuously scrolling strip, not a per-bar one.
-// Width (the meter itself) always stays the same — MOM_MAX_SAMPLES columns,
-// matching the transition grid's own pairs+seams span exactly (see MOM_W
-// below) — user: "the momentum visualization meter should always keep the
-// same length". What's variable is the DISPLAYED length, i.e. how much real
-// playback time those fixed columns represent: user: "it should depend on
-// setSegmentBars [x]. if setSegmentBars 4, the length of the window is 4.
-// if it's chunkMode 0, the length of the window is the whole file." See
-// momentumBarTick()'s spanMs for exactly how that's derived per stem —
-// segDurMs already IS one setSegmentBars-sized segment's real duration (x
-// bars long) once chunked, and durMs is the whole stem's file duration for
-// the chunkMode-0 case, so no separate bars-count math is needed beyond
-// reading whichever of those two applies. Once the strip fills up, it
-// doesn't freeze — each new column shifts the oldest one out and keeps
-// going, so the window always shows roughly the last spanMs of real time.
-// No wipe-on-every-real-transition either (see the 'stemSlice' WS handler
-// above, which used to clear curBarBuffers on every single bar) — that's
-// what made this a "1 bar" window in the first place; removing it is what
-// lets the strip span more than one segment/bar now.
+// Width (the meter itself) always stays the same — MOM_MAX_SAMPLES columns
+// (see MOM_W below) — user: "the momentum visualization meter should always
+// keep the same length". What's variable is the DISPLAYED length, i.e. how
+// much real playback time those fixed columns represent: user: "it should
+// depend on setSegmentBars [x]. if setSegmentBars 4, the length of the
+// window is 4. if it's chunkMode 0, the length of the window is the whole
+// file." See momentumBarTick()'s spanMs for exactly how that's derived per
+// stem — segDurMs already IS one setSegmentBars-sized segment's real
+// duration (x bars long) once chunked, and durMs is the whole stem's file
+// duration for the chunkMode-0 case, so no separate bars-count math is
+// needed beyond reading whichever of those two applies. Once the strip
+// fills up, it doesn't freeze — each new column shifts the oldest one out
+// and keeps going, so the window always shows roughly the last spanMs of
+// real time. No wipe-on-every-real-transition either (see the 'stemSlice'
+// WS handler above, which used to clear curBarBuffers on every single bar)
+// — that's what made this a "1 bar" window in the first place; removing it
+// is what lets the strip span more than one segment/bar now.
 // lastOutDesc[stem] is the snapshot of whatever was playing just before the
-// CURRENT bar (ws_server.js's prevSegment, same source descRollPush's `out`
-// uses) — kept around so momentumBarTick() below can ramp toward the
-// current bar's real descriptor value instead of jumping straight to it,
-// same reasoning the old per-pair interpolation used. Still updated on
-// every transition (just no longer paired with a buffer wipe) since the
-// ramp itself is still a real, useful smoothing within each new bar.
+// CURRENT bar (ws_server.js's prevSegment) — kept around so
+// momentumBarTick() below can ramp toward the current bar's real descriptor
+// value instead of jumping straight to it, same reasoning the old per-pair
+// interpolation used. Still updated on every transition (just no longer
+// paired with a buffer wipe) since the ramp itself is still a real, useful
+// smoothing within each new bar.
 const MOM_CHARS = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-// Same total column count as the grid's own pairs+seams span (DESC_ROLL_PAIRS
-// pairs of 2 cells, plus a seam between each) — not because this panel is
-// pair-structured (it isn't, this is one continuous strip), just so its
-// width matches the transition grid's exactly. See MOM_W below. This is the
-// FIXED meter length — see momentumBarTick() for the variable DISPLAYED
-// length it's stretched or compressed to fit.
+// Same total column count the old transition grid's pairs+seams span used
+// to be (DESC_ROLL_PAIRS pairs of 2 cells, plus a seam between each) — kept
+// purely so the panel's own width doesn't change now that the grid is gone
+// (see DESC_ROLL_PAIRS's own comment). This is the FIXED meter length — see
+// momentumBarTick() for the variable DISPLAYED length it's stretched or
+// compressed to fit.
 const MOM_MAX_SAMPLES = DESC_ROLL_PAIRS * 2 + (DESC_ROLL_PAIRS - 1);
 const lastOutDesc   = { vocals: null, melody: null, bass: null, drums: null };
+// Set true the instant a stem's 'stem' WS message reports a real segment
+// change (see that handler below), cleared once momentumBarTick() consumes
+// it into a seam-marked column — see curBarSeams below. This is the
+// momentum panel's own transition indicator, replacing the '│' seams the
+// removed transition grid used to draw between its OUT|IN cell pairs (user:
+// "add an indication in the momentum visualization that shows when slices
+// are transitioning").
+const pendingSeam = { vocals: false, melody: false, bass: false, drums: false };
 // Wall-clock time each stem's strip last advanced by one column — lets
 // momentumBarTick() (which itself still only ticks once/second, see the
 // setInterval near the bottom of this file) space actual column pushes
@@ -1160,9 +1447,19 @@ const lastOutDesc   = { vocals: null, melody: null, bass: null, drums: null };
 // file in chunkMode 0) is longer than MOM_MAX_SAMPLES seconds.
 const lastMomPush   = { vocals: 0, melody: 0, bass: 0, drums: 0 };
 const curBarBuffers = {};
+// curBarSeams[stem] — parallel boolean ring, same length/scroll behavior as
+// curBarBuffers[stem][dim] (pushed/shifted together, see momentumBarTick()):
+// true at the column where a real transition landed, false everywhere else.
+// A transition affects a whole stem at once (all 7 dims cut together), so
+// this lives once per stem rather than once per dim — momSparkline() reads
+// the SAME curBarSeams[stem][i] for every dim's row, which is what makes the
+// marker read as one vertical seam cutting straight down through all 7
+// rows, the same visual the old transition grid's '│' divider gave.
+const curBarSeams = {};
 DESC_STEMS.forEach(stem => {
   curBarBuffers[stem] = {};
   DIMS.forEach(dim => { curBarBuffers[stem][dim] = []; });
+  curBarSeams[stem] = [];
 });
 
 // Ticks once a second (see setInterval near the bottom of this file), but
@@ -1208,6 +1505,16 @@ function momentumBarTick() {
     const now = Date.now();
     if (now - lastMomPush[stem] < colMs) return; // not time for this stem's next column yet
     lastMomPush[stem] = now;
+    // This column's transition marker — true when a real cut landed for
+    // this stem since the last column was pushed (see pendingSeam's own
+    // comment; the 'stem' WS handler below both sets it and resets
+    // lastMomPush[stem] to 0, forcing this branch to fire on the very next
+    // tick so the marker shows up close to when the cut actually happened
+    // instead of waiting out the rest of a possibly-long colMs interval).
+    const seamBuf = curBarSeams[stem];
+    if (seamBuf.length >= MOM_MAX_SAMPLES) seamBuf.shift();
+    seamBuf.push(pendingSeam[stem]);
+    pendingSeam[stem] = false;
     DIMS.forEach(dim => {
       const buf = curBarBuffers[stem][dim];
       // Window's already full — keep going by dropping the oldest column
@@ -1226,9 +1533,8 @@ function momentumBarTick() {
   });
 }
 
-// Same value→glyph mapping renderDescGrid()'s cellFor() uses (stemRanges
-// min/max, descIsMissing for "no info"), just picking a block-height glyph
-// instead of a density shade.
+// stemRanges min/max + descIsMissing() (same "no info" check used
+// elsewhere), picking a block-height glyph rather than a density shade.
 function momGlyphFor(stem, dim, v) {
   const rng = stemRanges[stem] || {};
   const dimRange = rng[dim];
@@ -1241,23 +1547,51 @@ function momGlyphFor(stem, dim, v) {
 
 // One row = however much of the current bar's strip has filled in so far —
 // samples already taken render as glyphs, seconds still to come render as
-// blank space (the strip visibly growing), no '│' seams anywhere since this
-// is one continuous run, not discrete cut-marked pairs.
+// blank space (the strip visibly growing). Columns where a real transition
+// landed (curBarSeams[stem][i], see its own comment) get highlighted in
+// bold bright-white rather than a plain glyph — this panel's own version of
+// the '│' seam the old (now-removed) transition grid used to draw between
+// its cut pairs, just folded inline into one continuous strip instead of
+// living in a separate column of discrete OUT|IN pairs.
 function momSparkline(stem, dim, maxLen) {
   // maxLen lets a caller shrink the strip below its usual MOM_MAX_SAMPLES —
   // used by momentumStemLines() to make room for the follow-graph tag
   // ("[drm]") inline, without widening the box itself. Defaults to the
   // full strip when omitted.
   maxLen = maxLen == null ? MOM_MAX_SAMPLES : Math.max(0, maxLen);
-  const buf = curBarBuffers[stem][dim];
+  const buf   = curBarBuffers[stem][dim];
+  const seams = curBarSeams[stem];
   let out = '';
   for (let i = 0; i < maxLen; i++) {
     // No sample at this slot yet (i >= buf.length) reads the same as a
     // sample that came back null — both are "no data here", so both fill
     // with the same grey · placeholder instead of one being a blank space.
     if (i >= buf.length) { out += '{grey-fg}·{/grey-fg}'; continue; }
-    const v = buf[i];
-    out += v === null ? '{grey-fg}·{/grey-fg}' : momGlyphFor(stem, dim, v);
+    const v     = buf[i];
+    const glyph = v === null ? '{grey-fg}·{/grey-fg}' : momGlyphFor(stem, dim, v);
+    if (seams && seams[i]) {
+      // Strip any color tag the glyph already carries (the grey "no info"
+      // dot) so the highlight below is the only one applied — the
+      // glyph/character itself (and so the value it encodes) is untouched.
+      // Was '{bright-white-fg}{bold}' — invisible exactly where the graph
+      // was busiest (user: "the cut line is appearing as a bold dot on the
+      // graphs where the unicode rectangles dont show up. but when the
+      // rectangles are filled, the cut line stops appearing"). Root cause:
+      // bold-white on a glyph that's ALREADY plain (uncolored, i.e.
+      // default bright-white text — see momGlyphFor, which returns MOM_CHARS
+      // entries with no color tag at all) is not a real visual change — a
+      // solid block character (█) has no "unbolded" fill to contrast
+      // against, so the marker only ever read as visible against the grey
+      // '·' placeholder (the one glyph that actually WAS a different
+      // color). {inverse} swaps foreground/background for this one cell
+      // instead of just recoloring the foreground — that's visible against
+      // every glyph in MOM_CHARS and the grey dot alike, since it flips the
+      // cell's background too, not just how bright the character itself is.
+      const bare = glyph.replace(/\{[^}]*\}/g, '');
+      out += '{inverse}' + bare + '{/inverse}';
+    } else {
+      out += glyph;
+    }
   }
   return out;
 }
@@ -1270,8 +1604,22 @@ function momSparkline(stem, dim, maxLen) {
 // and peak marker red once the CURRENT value crosses it (both metrics get
 // "hot" near 0 — true-peak because that's clipping, LUFS because a mix
 // sitting that loud has effectively no headroom left either).
-function dbMeter(value, peak, floor, redAt, width) {
+// fillColor/peakColor — optional, default to bright-white fill / yellow peak
+// marker now for EVERY caller (user: "keep the vu meters white with the
+// yellow line. do it for the LUFs meter too" — a green fill was tried first
+// per an earlier ask, then walked back to plain white, with just the peak
+// marker staying colored; making that the shared default means the header's
+// LUFS meter picks it up automatically too, no separate override needed at
+// its own call site). "hot" always wins as red regardless of fillColor/
+// peakColor — clipping/near-clipping is the one state every caller of this
+// function still needs to read the same way.
+function dbMeter(value, peak, floor, redAt, width, fillColor, peakColor) {
   width = width || 10;
+  // fillColor/peakColor params kept for callers that still pass them, but no
+  // longer applied — fill/peak glyphs are plain now (user: "remove the
+  // colors of the vus and spat"). Only the empty track (░) stays grey, same
+  // background-vs-signal convention just settled on for the EQ spectrum's
+  // own reference line (user: "the lines should be grey").
   // Was '·' (U+00B7 MIDDLE DOT) — live-screenshot diagnosis (see the "match
   // row broken" investigation) found this is the ONLY non-ASCII glyph unique
   // to this row's paired left-hand text (envLine), and it's the row that
@@ -1286,13 +1634,12 @@ function dbMeter(value, peak, floor, redAt, width) {
   const frac = v => Math.max(0, Math.min(1, (v - floor) / (0 - floor)));
   const filled   = Math.round(frac(value) * width);
   const peakCell = (peak !== null) ? Math.min(width - 1, Math.round(frac(peak) * width)) : -1;
-  const hot      = value >= redAt;
   let out = '';
   for (let i = 0; i < width; i++) {
     if (i === peakCell) {
-      out += hot ? '{bright-white-fg}{bold}▐{/bold}{/bright-white-fg}' : '{bright-white-fg}▐{/bright-white-fg}';
+      out += '▐';
     } else if (i < filled) {
-      out += hot ? '{bright-white-fg}{bold}█{/bold}{/bright-white-fg}' : '{bright-white-fg}█{/bright-white-fg}';
+      out += '█';
     } else {
       out += '{grey-fg}░{/grey-fg}';
     }
@@ -1300,19 +1647,35 @@ function dbMeter(value, peak, floor, redAt, width) {
   return out;
 }
 
-// Two-tone proportional block bar — solid █ for the DJ/curator's share,
-// ░ for the remainder (the artist pool) — same fill/empty glyph convention
-// dbMeter() above already uses, reused here for a different meaning
-// (proportion of a split, not level-vs-max). Built for the tip equation
-// bar specifically (user: "using unicode blocks to represent the tip
-// scale") — swapped in for the old dash-and-cursor entropyBar() rendering,
-// which read as a range/position control rather than a two-way split.
-function splitBar(djFrac, width) {
+// Range/track bar with a single position dot — user: "the tip equation
+// meter should be a range bar with a dot... and the dj floor of 40% should
+// be demarcated as a grey portion in the line. so the dot never passes
+// that point." Swapped in for the old two-tone solid-fill rendering (████░░
+// — itself a swap-in for the even older dash-and-cursor entropyBar() style)
+// at both its call sites (renderTipInfo's tipBox, renderTipPanel's tip
+// panel). floorFrac gets its own shaded zone (0..floorFrac, ▓) distinct
+// from the open track (░) the dot can travel across — both call sites pass
+// CURATOR_FLOOR (0.40) here, and currentCuratorShare() is ALREADY clamped
+// to never return below it (see :setSplit's own comment: "clamped to
+// [CURATOR_FLOOR, 1]... can only ever raise the DJ's cut above the
+// protocol floor, never drop it below"), so the dot mathematically can't
+// land inside the shaded zone — this is a visual guarantee of that
+// invariant, not just a convention.
+function splitBar(djFrac, floorFrac, width) {
   width = width || 10;
-  const djCells = Math.round(Math.max(0, Math.min(1, djFrac)) * width);
+  const clampedDj    = Math.max(0, Math.min(1, djFrac));
+  const clampedFloor = Math.max(0, Math.min(1, floorFrac || 0));
+  const floorCell = Math.min(width, Math.round(clampedFloor * width));
+  const dotCell   = Math.min(width - 1, Math.round(clampedDj * width));
   let out = '';
   for (let i = 0; i < width; i++) {
-    out += i < djCells ? '{bright-white-fg}█{/bright-white-fg}' : '{grey-fg}░{/grey-fg}';
+    if (i === dotCell) {
+      out += '{bright-white-fg}{bold}●{/bold}{/bright-white-fg}';
+    } else if (i < floorCell) {
+      out += '{grey-fg}{bold}▓{/bold}{/grey-fg}';
+    } else {
+      out += '{grey-fg}─{/grey-fg}';
+    }
   }
   return out;
 }
@@ -1402,7 +1765,7 @@ function renderStemGraph(stemName) {
 // (user: "the chat should occupy the whole width of the screen... so maybe
 // the command list would fit all in one space").
 // Computed, not hand-counted, from the exact pieces vuSidebarBlock() joins:
-// label(5) + channel code "FL"(2) + gap(1) + bar(VU_W) + gap(1) + number(VU_NUM_W).
+// label(VU_LABEL_W) + channel code "FL"(2) + gap(1) + bar(VU_W) + gap(1) + number(VU_NUM_W).
 const VU_SIDEBAR_W = VU_LABEL_W + 2 + 1 + VU_W + 1 + VU_NUM_W;
 // Spatial dock — sits to the RIGHT of the VU sidebar (flush against the
 // screen's right edge), so the VU sidebar itself shifts left by SPATIAL_W +
@@ -1413,9 +1776,8 @@ const SPATIAL_W      = 9;
 // Back to 1 (briefly tried 0 — user: "put more space between the VU meter
 // numbers and the spatialization viewer... like before"). Zero read as too
 // cramped once the VU numbers and the pan-dot grid sat directly adjacent —
-// DESC_GRID_GAP/MOM_GAP (the momentum/transition gaps, a separate ask)
-// stay at 0, this is the one gap that specifically needed breathing room
-// back.
+// MOM_GAP (the momentum gap, a separate ask) stays at 0, this is the one
+// gap that specifically needed breathing room back.
 const VU_SPATIAL_GAP = 1;
 const SIDE_TOTAL_W  = VU_SIDEBAR_W + VU_SPATIAL_GAP + SPATIAL_W;
 const CONTENT_W    = '100%-' + SIDE_TOTAL_W;
@@ -1425,26 +1787,45 @@ function contentW() { return Math.max(20, screen.width - SIDE_TOTAL_W); }
 // shared between render() (which needs them to size playTop) and reflow()
 // (which needs them to actually position the boxes), so both stay in sync.
 // Header row indices (see sLines in render()): 0 = state chips/version,
-// 1 = last touched, 2 = track/key, 3 = win/slices/LUFS/quant, 4 = genre/beats.
+// 1 = last touched. track/key, win/slices/LUFS/quant, and genre/beats used
+// to be rows 2-4 here — moved out entirely, folded into master's own block
+// below the header instead (see renderMasterInfo(w)'s own comment — user:
+// "put all the infos above the mst: waveform, under the mst waveform. just
+// like with all the other channels"), so the header is just these 2 rows
+// now.
 // PEER ONLINE/OFFLINE and NETWORK used to get their own row 2 here — moved
 // back into the icon cluster on row 0 instead (user: "put the [peer
 // offline/online] and the [network] in the menu bar"), so the row indices
 // below are back to what they were before that row existed.
-// Both land on row 3 (win/slices/LUFS/quant, "quant:beat") rather than row
-// 1 ("last touched") — that row flushes ITS OWN text to the true right edge
-// (atCol('', lastTouchLine)), the same column master's right-anchored box
-// paints into, so starting master there would paint straight over that
-// text. Row 2 (track/key) is the first row with empty right-side space,
-// but master and tipBox/bakeInfoBox share ONE row deliberately (different
-// columns, same top) rather than master landing a row earlier than the
-// tip/train column — hence row 3, not 2.
-const MASTER_VU_TOP = 3; // masterVuBox/masterSpatialBox — "closer to last touched" (without covering it)
-const TRAIN_TIP_TOP = 3; // bakeInfoBox/tipBox — "align prmpt: with the row of quant:beat"
+// masterTop USED to be a fixed constant (row 2, "track: key"'s own row) —
+// master's meters lived beside the header's plain text back then, sharing
+// rows with trackKey/env/genre (different columns, no collision). That
+// stopped being true once master's own block grew a full-width row0/row1
+// (see masterBarBox's own comment) plus its EQ spectrum bar moved to align
+// with the channels' own bars (STEM_INDENT_W, near column 0) — both now
+// genuinely overlap the header's plain text at that fixed row instead of
+// sharing it cleanly (confirmed on a screenshot: header rows and master's
+// spectrum/entropy bar were bleeding into each other). masterTop is
+// dynamic now — computed in render() as statusH, directly below the (now
+// 2-row) header, same row learnPanelTop() returns for Train/Gen (user:
+// "move it on row up. so it aligns with GEN and TRAIN") — so master's
+// whole block docks in its own clear space, at the same top edge every
+// other screen starts at. The global entropy meter that used to sit
+// between the header and master (entropyBottom) is
+// retired — see reflow()'s own comment, near entropyBox.hide(). Declared
+// `let`, not `const` (mirrors playTop's own pattern, right above).
+let masterTop = 2;
+const TRAIN_TIP_TOP = 2; // bakeInfoBox/tipBox — "align prmpt: with the row of quant:beat"; unused now both are hidden, left for reference
 // Column where iconCluster (and therefore [REC •], its first element)
 // starts on the title row — recomputed every render() (see withLCR), read
 // by reflow() to line tipBox's own left edge up with it (user: "align the
 // tipping zone with the [REC] box").
 let recColStart = 0;
+// Column where titleCenter (the [EBYS version]/[AGPL] badge) starts on the
+// title row — same recompute-in-withLCR/read-in-reflow pattern as
+// recColStart above, used to line tipBox's own left edge up with it instead
+// (user: "move tips aligned to [EBYS version]").
+let centerColStart = 0;
 // agplColStart (used to line up bakeInfoBox's left edge with the header's
 // [AGPL-3.0] badge) removed along with the badge itself — both bakeInfoBox
 // and the header's version/AGPL center column are gone now (version/AGPL
@@ -1466,8 +1847,9 @@ const playBox = blessed.box({
 });
 // playTop — where the whole per-stem row-band section starts (playback rows
 // AND, beside them, the VU/spatial/descriptor-grid/momentum columns). Always
-// equal to playBox.top (statusH + 1); kept as its own variable so the side
-// columns can read it without depending on playBox's own mutable .top.
+// equal to playBox.top (Math.max(masterColBottom, statusH), see render());
+// kept as its own variable so the side columns can read it without
+// depending on playBox's own mutable .top.
 let playTop  = 3;
 // fixedTop — where sep/menuHeader/lang/cmd/log start, i.e. BELOW the entire
 // per-stem section (playback rows AND the side columns beside them, not just
@@ -1593,18 +1975,438 @@ const logBox = blessed.log({
 // nowhere else. See the comment above VU_SIDEBAR_STEMS for why a single tall
 // box with blank filler rows doesn't work here (it erases the waveform).
 const vuStemBoxes = VU_SIDEBAR_STEMS.map(() => blessed.box({
-  top: playTop, right: SPATIAL_W + VU_SPATIAL_GAP, width: VU_SIDEBAR_W, height: 5,
+  // 7, not 6 — grew back by the blank separator row vuStemLines() now
+  // inserts before X:/Y:/width: (user: "take X, Y and width of each
+  // channels and move them down of one row"). Happens to land exactly on
+  // STEM_ROW_BAND_H again as a side effect — see vuStemLines' own comment.
+  top: playTop, right: SPATIAL_W + VU_SPATIAL_GAP, width: VU_SIDEBAR_W, height: 7,
   tags: true, wrap: false,
   style: { fg: SKIN.fg, bg: SKIN.bg },
 }));
-// master's own VU meter — fixed height (5: 4 VU rows + 1 info row, no
-// padding needed since nothing else has to line up under it), docked in the
-// header area (see reflow()) instead of threaded through the per-stem array.
+// master's own VU meter — plain 7-row block again (4 VU rows + 1 blank +
+// 2 info rows — see vuSidebarInfoLines()' own comment for the X:/Y:/
+// width: split), same shape vuStemBoxes uses. Docked in the header area
+// (see reflow())
+// instead of threaded through the per-stem array (master has no waveform
+// row of its own to align with there). Used to have "mst :" and a
+// gain/bpm/stems info line crammed into its own top 2 rows — moved out to
+// masterBarBox/masterInfoBox instead (see their own comment, near
+// masterBarBox's declaration) — squeezing a full-width-shaped line into
+// this box's narrow VU_SIDEBAR_W column was the actual cause of the
+// "packed" look reported.
 const masterVuBox = blessed.box({
-  top: 0, right: SPATIAL_W + VU_SPATIAL_GAP, width: VU_SIDEBAR_W, height: 5,
+  // 7, not 6 — same blank-separator-row growth as vuStemBoxes, see that
+  // array's own comment.
+  top: 0, right: SPATIAL_W + VU_SPATIAL_GAP, width: VU_SIDEBAR_W, height: 7,
   tags: true, wrap: false,
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
+
+// Master's own row0/row1 — FULL-WIDTH boxes (left:0, width:'100%'), not
+// squeezed into VU_SIDEBAR_W (see masterVuBox's own comment for how that
+// went wrong). Row0 (masterBarBox) used to carry a real waveform + "MST"
+// bracket, built to mirror a per-stem channel's own row0 exactly — user
+// later reversed that call: "remove the waveform for the master channel.
+// and instead of MST write PLAYBACK Master. Just like the TRAIN Training,
+// PLAYBACK Master ... finally i decided that the master wasn't gonna look
+// like the other channels. it's gonna look like a menu header." So row0 is
+// now a plain label row, same shape as reviewHeaderBox's own "TRAIN
+// Training" line (see learnSubMenuLine()) — mode name in caps, bright
+// white, then "Master" as its own bright-white segment, no bracket/bar at
+// all. Row1 (masterInfoBox) is untouched — still the flowing descriptor
+// line (gain/bpm/active-stems/etc, same order every channel's own
+// descriptor line uses) and IS master's own "track infos" the user asked
+// to keep once the spectrum below it was removed (see masterEqSpecBox's
+// removal note near where that box used to live) — nothing needed to move
+// into freed space, it was already right here.
+const masterBarBox = blessed.box({
+  top: 0, left: 0, width: '100%', height: 1,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+// masterLufsBox — the LUFSs mix-loudness meter, moved here from the top
+// status bar's stateChips row (next to [ENG CONN]) — user: "put the LUFSs
+// meter right under PLAYBACK, inbetween tracks and PLAYBACK." Sits in the
+// row that used to be an intentional blank spacer between masterBarBox
+// ("PLAYBACK Master Link", masterTop) and masterInfoBox's own tracks: line
+// (masterTop + 2 — see that spacing's own comment) — masterTop + 1 fills
+// that gap instead of leaving it empty. lufsMeterLine() (below) is the
+// shared content builder — same dbMeter() bar this used to render inline as
+// part of stateChips, just relocated, not reimplemented.
+const masterLufsBox = blessed.box({
+  top: 0, left: 0, width: '100%', height: 1,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+// MASTER_INFO_ROWS — masterInfoBox grew from 1 row (one flowing line) to 4
+// stacked rows — user: "organize master header with tracks: ... genre: ...
+// beats: -- key: -- / slice: --/--/--/-- stay: -- match: -- quant: --."
+// See renderMasterInfo()'s own comment for the per-line breakdown.
+const MASTER_INFO_ROWS = 4;
+const masterInfoBox = blessed.box({
+  top: 0, left: 0, width: '100%', height: MASTER_INFO_ROWS,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+// linkListBox/linkDetailBox — Playback's "Link" sub-view (see
+// playbackLinkView's own comment), replacing masterInfoBox's own
+// tracks:/genre:/beats:/slice: content for as long as Link is the active
+// sub-view — same "one box's content swaps out for another" relationship
+// reviewWaveformBox/playBox have in Train > Review vs Training. User: "Link
+// would keep the waveform layout, just like the training tab. but instead
+// of showing master info, it will show a menu, like the bake menu. this
+// menu will display all the users connected in the system. So the DJ can
+// choose and send link. Last parameter will be shown on this page..."
+//
+// Two boxes, same left/right split reviewListBox/reviewDetailBox use for
+// the bake menu, just scaled down to MASTER_INFO_ROWS (4) instead of a
+// whole panel's height — masterBarBox/masterVuBox/masterSpatialBox all
+// stay exactly as they are (the "waveform layout" the user asked to keep;
+// only masterInfoBox's own 4-row slot is being repurposed):
+//   linkListBox   (left)  — one row per LINK deck slot (LINK_SLOT_COUNT =
+//                  4 today), same ●/○ grey/white/filled glyph language
+//                  linkDotsLine() already uses for the same data (connected/
+//                  selected) — real per-slot data, no invented usernames.
+//                  Only slot 0 has a genuine connectivity signal right now
+//                  (linkSlotConnected()'s own comment) — slots 1-3 show as
+//                  honestly not-yet-connected rather than faking a peer.
+//   linkDetailBox (right) — which deck is the current :link fire target,
+//                  and state.lastCommandTouched — literally "the last
+//                  parameter... sent through the link protocol" the user
+//                  asked to surface, already tracked (linkTouch()) for the
+//                  missile-switch feature, just never shown anywhere before
+//                  now — plus the hand-typed commands that still drive
+//                  selection/fire (:link select <n>, :link fire, :sendLink
+//                  hold) until/unless this menu grows real keyboard nav of
+//                  its own.
+// LINK_LIST_W picked the same way reviewListBox's own listW is (a modest
+// fixed-ish column, not a 50/50 split) — "Deck N" plus its glyph never
+// needs more than a dozen columns, no reason to give it more.
+const LINK_LIST_W = 14;
+const linkListBox = blessed.box({
+  top: 0, left: 0, width: LINK_LIST_W, height: MASTER_INFO_ROWS,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+const linkDetailBox = blessed.box({
+  top: 0, left: LINK_LIST_W + 1, width: '100%', height: MASTER_INFO_ROWS,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+
+// ── BAKE MENU (header) ───────────────────────────────────────────────────────
+// Sits beside masterInfoBox, same MASTER_INFO_ROWS-tall row band, same
+// list(left)/detail(right) shape linkListBox/linkDetailBox already use —
+// user: "I want a menu next to the PLAYBACK infos section ... the idea is to
+// have the bake menu show on the playback. so the user can see which baked
+// configuration is playing." (linkListBox's own comment already anticipated
+// this exact shape by name — "like the bake menu" — before this box existed.)
+// Unlike Link, this doesn't REPLACE masterInfoBox's slot — both are visible
+// at once, so it's docked at a fixed left offset clear of masterInfoBox's own
+// longest line (genreHeaderLine()'s dot bar can run out past 40 cols) rather
+// than splitting the row 50/50.
+//
+// BAKE_MENU_LEFT — used to be a fixed 48 (past masterInfoBox's longest real
+// line, genreHeaderLine()'s ~44-col dot bar). User: "move the menu to the
+// right, align it somewhere next to EBYS version" — now computed live every
+// reflow() tick instead, off centerColStart (the column withLCR() already
+// works out for the centered [EBYS version]/[AGPL] badge in the very top
+// status row — see that variable's own declaration). BAKE_MENU_MIN_LEFT is
+// just the old fixed value, kept as a floor so the menu can't collapse
+// leftward into masterInfoBox's own text on a pathologically narrow
+// terminal where centerColStart ends up small. Whenever centerColStart
+// lands inside masterInfoBox's own line4 span ("quant: beat", ~col 38-50 —
+// see renderMasterInfo()'s own line4), the menu's opaque background paints
+// over it — same z-order convention masterVuBox already uses to sit on top
+// of masterInfoBox's text (see screen.append() order below) — user: "make
+// sure quant:beat is hidden by the new menu." On wide terminals
+// centerColStart sits well clear of that text already, so there's nothing
+// to hide there in the first place.
+const BAKE_MENU_MIN_LEFT = 48;
+// BAKE_LIST_W — was 20, same reasoning LINK_LIST_W uses ("date + name"
+// never needs much) — but "yyyy-mm-dd hh:mm" (16) + the 2-space leading
+// indent added for breathing room (see renderBakeMenu's own listItems
+// comment) already ate 18 of those 20 columns, leaving next to nothing for
+// the actual bake name — user, on a screenshot showing just the date with
+// no name at all: "make the white box longer. horizontally longer. give
+// it more space." Grown to 40 — real room for a real name now, not just
+// a couple of truncated characters. bakeMenuDetailBox (immediately right
+// of this list) shrinks to match automatically, same as every other
+// width in this cluster (see its own `width` formula, in reflow()).
+const BAKE_LIST_W = 40;
+// blessed.list, not blessed.box — user: "the bake menu in the same layout as
+// the training menu, with the white zone and all" (pointing at reviewListBox's
+// own bright-white selected-row bar). A plain box with a manual ●/○ glyph per
+// row read as flat text, nothing like reviewListBox's actual highlighted
+// rectangle — same style object, copied verbatim, same "never .focus()ed,
+// .select() alone drives the highlight" convention reviewListBox's own
+// comment documents (inputBox stays the one focused/keyable widget app-wide).
+// left: BAKE_MENU_MIN_LEFT here is just a harmless placeholder — both boxes'
+// real .left is set every reflow() tick instead (see that function's own
+// bakeMenuListBox/bakeMenuDetailBox block), same "declared value is only a
+// starting point, live value comes from reflow()" convention linkDetailBox's
+// own width already uses.
+const bakeMenuListBox = blessed.list({
+  top: 0, left: BAKE_MENU_MIN_LEFT, width: BAKE_LIST_W, height: MASTER_INFO_ROWS,
+  tags: true, mouse: true,
+  style: {
+    selected: { fg: 'black', bg: 'bright-white' },
+    item:     { fg: SKIN.fg },
+  },
+});
+const bakeMenuDetailBox = blessed.box({
+  top: 0, left: BAKE_MENU_MIN_LEFT + BAKE_LIST_W + 1, width: '100%', height: MASTER_INFO_ROWS,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+
+// bakeMenuStateEntries — recent saved bake states (bake_states.json, the
+// exact same store :bakeState list/apply/drop read), newest first, capped to
+// what the list box can actually show (MASTER_INFO_ROWS rows, no scrolling —
+// this is a glance-at readout, not the full :bakeState list).
+function bakeMenuStateEntries() {
+  const states = loadBakeStates();
+  return Object.keys(states)
+    .map(name => ({ name, ...states[name] }))
+    .sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''))
+    .slice(0, MASTER_INFO_ROWS);
+}
+
+// renderBakeMenu(w) — see activeBakeName/activeBakeOfficial's own comment
+// (near applyBakeState) for what "active" and "official" mean and how a live
+// combination stops being provably one of the saved names below.
+//
+// displayName/usingDefault — user, after seeing this run with 2 real saved
+// bakes and a blank menu: "since there is two baked items in the bake menu,
+// why arent they also in the playback menu?" A menu that goes fully blank
+// whenever nothing's been explicitly :bakeState applied THIS session reads
+// as broken, not honest, the moment any bakes actually exist on disk — so
+// the white selector bar and detail pane now fall back to the most recently
+// SAVED bake (entries[0], bakeMenuStateEntries() is newest-first) whenever
+// nothing real has been applied yet, same "most recent save" default the
+// user picked over "blank" or "nearest param match." Still clearly NOT the
+// same claim as a confirmed live apply — see statusTxt below, which labels
+// this case "default" rather than bright-white-and-certain.
+function renderBakeMenu(w) {
+  const entries = bakeMenuStateEntries();
+
+  // Priority: (1) genuinely applied this session — activeBakeName, whether
+  // still official or since drifted, is the REAL thing that was loaded, so
+  // it stays the display target either way (drift changes the LABEL below,
+  // not which bake gets pointed at). (2) nothing applied at all — fall back
+  // to the most recent save as a default guess.
+  const usingDefault = !activeBakeName;
+  const displayName  = activeBakeName || (entries.length ? entries[0].name : null);
+
+  let activeRow = -1;
+  const listItems = entries.length
+    ? entries.map((e, i) => {
+        if (e.name === displayName) activeRow = i;
+        const when = (e.savedAt || '').slice(0, 16).replace('T', ' ');
+        // No manual ●/○ glyph or color tag any more — the selected row's own
+        // bright-white background bar (below) IS the "this one's active"
+        // signal now, same as reviewListBox's highlight already is for
+        // whichever bake is currently selected there. Plain grey label for
+        // every row, same as reviewListBox's own `item` style. 2-space
+        // leading indent — same fix reviewEntryLabel's own comment already
+        // documents for the identical complaint there: "the selected row's
+        // highlight background used to butt directly against the text with
+        // no breathing room" — user here: "make sure the info in the white
+        // box isnt touching the border of the frame. put a little space."
+        return '{grey-fg}  ' + when + '  ' + e.name + '{/grey-fg}';
+      })
+    : ['{grey-fg}  no saved bakes yet{/grey-fg}'];
+  bakeMenuListBox.setItems(listItems);
+  // activeRow only stays -1 (no white bar at all) when there are genuinely
+  // ZERO saved bakes to point at — any real entry always gets a row now,
+  // confirmed or defaulted alike (see displayName's own comment for why).
+  // Deliberately NOT calling .select(activeRow) — List.prototype.select()
+  // clamps any negative index up to 0, which would highlight the top row
+  // even in the true zero-bakes case. Each item's own highlight is decided
+  // purely by `items[selected] === item` at render time (see List's own
+  // createItem()), so setting .selected directly to -1 genuinely selects
+  // nothing (no real item is ever === items[-1]) without that clamp
+  // getting in the way.
+  bakeMenuListBox.selected = activeRow;
+
+  // Detail pane — whichever state displayName points at (not whichever is
+  // highlighted/selected in some OTHER interactive sense — there's no
+  // cursor here, this is a read-only "what's live, or best guess" readout,
+  // not a picker). intent/track/bpm come from the training-log entry that
+  // originally produced this state (same fallback currentAudioPath()
+  // already uses for its own audio lookup) — saved states themselves carry
+  // no intent/track/bpm of their own, just commands + savedAt/editedAt.
+  const activeState = displayName ? loadBakeStates()[displayName] : null;
+  let srcEntry = null;
+  if (activeState && activeState.sourceBakeSessionId) {
+    srcEntry = loadTrainingLog().find(b => b.bakeSessionId === activeState.sourceBakeSessionId);
+  }
+  // The one place that actually answers "which baked configuration is
+  // playing" — three distinct states, not just on/off:
+  //   confirmed — bright-white name + [manual]/[sequence] tag: still
+  //     provably the exact state that was applied, nothing's drifted since.
+  //   drifted — grey "~ name (inferred — drifted since applied)": THIS
+  //     session genuinely applied that name, but a tracked param has since
+  //     moved (see activeBakeOfficial's own comment for what counts).
+  //   default — grey "~ name (default — most recent save, not confirmed
+  //     live)": nothing was ever applied this session at all; displayName
+  //     is just the newest thing on disk, not a claim about what's playing.
+  const statusTxt = !displayName
+    ? '{grey-fg}no saved bakes yet{/grey-fg}'
+    : activeBakeOfficial
+      ? '{bright-white-fg}' + displayName + '{/bright-white-fg} {grey-fg}[' + (activeBakeSource || 'manual') + ']{/grey-fg}'
+      : usingDefault
+        ? '{grey-fg}~ ' + displayName + '  (default — most recent save, not confirmed live){/grey-fg}'
+        : '{grey-fg}~ ' + displayName + '  (inferred — drifted since applied){/grey-fg}';
+  const appliedTxt = usingDefault ? (activeState && activeState.savedAt) || '--' : (activeBakeAppliedAt || '--');
+  const intentTxt  = (srcEntry && srcEntry.intent) || '(none)';
+  const trackTxt   = (srcEntry && srcEntry.track) || '--';
+  const bpmTxt     = (srcEntry && srcEntry.bpm) || '--';
+
+  const detailLines = [
+    '{grey-fg}bake:{/grey-fg} ' + statusTxt,
+    '{grey-fg}' + (usingDefault ? 'saved:' : 'applied:') + '{/grey-fg} ' + appliedTxt,
+    '{grey-fg}intent:{/grey-fg} ' + intentTxt,
+    '{grey-fg}track:{/grey-fg} ' + trackTxt + '  {grey-fg}bpm:{/grey-fg} ' + bpmTxt,
+  ];
+  bakeMenuDetailBox.setContent(detailLines.join('\n'));
+}
+function renderLinkMenu(w) {
+  const listLines = [];
+  for (let i = 0; i < LINK_SLOT_COUNT; i++) {
+    const selected  = linkSelectedSlot === i;
+    const connected = linkSlotConnected(i);
+    const glyph = selected ? '●' : '○';
+    const color = (selected || connected) ? 'bright-white' : 'grey';
+    const nameColor = selected ? 'bright-white' : 'grey';
+    listLines.push('{' + color + '-fg}' + glyph + '{/' + color + '-fg} '
+      + '{' + nameColor + '-fg}Deck ' + (i + 1) + '{/' + nameColor + '-fg}');
+  }
+  linkListBox.setContent(listLines.join('\n'));
+
+  const targetTxt = linkSelectedSlot !== null
+    ? '{bright-white-fg}Deck ' + (linkSelectedSlot + 1) + '{/bright-white-fg}'
+    + (linkSlotConnected(linkSelectedSlot) ? '' : '  {grey-fg}(not connected yet){/grey-fg}')
+    : '{grey-fg}none — :link select <1-4>{/grey-fg}';
+  const lastTouchTxt = state.lastCommandTouched
+    ? '{bright-white-fg}:' + state.lastCommandTouched.join(' ') + '{/bright-white-fg}'
+    : '{grey-fg}:-- (nothing touched yet this session){/grey-fg}';
+  const detailLines = [
+    '{grey-fg}target:{/grey-fg} ' + targetTxt,
+    '{grey-fg}last param sent:{/grey-fg} ' + lastTouchTxt,
+    '{grey-fg}:link select <1-4>  ·  :link fire  ·  :link on|off{/grey-fg}',
+    '{grey-fg}:sendLink hold — send full state instead of just the last param{/grey-fg}',
+  ];
+  linkDetailBox.setContent(detailLines.join('\n'));
+}
+function renderMasterBar(w) {
+  // "PLAYBACK Master  Link" — used to be a fixed two-segment shape
+  // ('{bright-white-fg}TRAIN{/bright-white-fg}  ' + label) with no
+  // grey/active-inactive split, since master had no second sub-view to
+  // dim. Now it does (user: "add a sub tab in the playback tab: Link ...
+  // PLAYBACK Master Link (link in grey, until it it selected)") — "Master"/
+  // "Link" toggle exactly like learnSubMenuLine()'s own "Training"/"Review"
+  // pair does: whichever one is active prints bright white, the other
+  // grey. "PLAYBACK" itself stays unconditionally bright — it's the SCREEN
+  // name, not a toggle target.
+  const seg = (label, active) => active
+    ? '{bright-white-fg}' + label + '{/bright-white-fg}'
+    : '{grey-fg}' + label + '{/grey-fg}';
+  masterBarBox.setContent(`{bright-white-fg}PLAYBACK{/bright-white-fg}  `
+    + seg('Master', !playbackLinkView) + '  ' + seg('Link', playbackLinkView));
+}
+// lufsMeterLine()/renderMasterLufs(w) — the LUFSs mix-loudness bar, now
+// living in its own row (masterLufsBox, masterTop + 1) instead of the top
+// status bar's stateChips row it used to share with [ENG CONN] — user:
+// "put the LUFSs meter right under PLAYBACK, inbetween tracks and
+// PLAYBACK." Same dbMeter() bar system VU uses (bright fill, yellow
+// peak-hold marker, red once "hot"), floored at LUFS_INF_FLOOR (ITU-R
+// BS.1770's own absolute silence gate) instead of VU_MIN_DB, fed by
+// state.lufs/state.lufsPeak (the WS 'lufs' handler) — nothing about the
+// meter itself changed, only where it's drawn.
+function lufsMeterLine() {
+  return '{grey-fg}LUFSs:{/grey-fg} ' + dbMeter(state.lufs, state.lufsPeak, LUFS_INF_FLOOR, -3, VU_W)
+    + ' {grey-fg}' + fmtMeterDb(state.lufs, LUFS_INF_FLOOR) + '{/grey-fg}';
+}
+function renderMasterLufs(w) {
+  masterLufsBox.setContent(lufsMeterLine());
+}
+// renderMasterInfo(w) — master's own info block. Used to be ONE flowing
+// line mirroring a per-stem descriptor line's own field order ([RMX|GEN]
+// bars: stay: match: name [genre] beats: quant: key: slices: bpm:) —
+// reorganized into MASTER_INFO_ROWS (4) stacked lines instead — user:
+// "remove [RMX | GEN] from the master header ... organize master header
+// with tracks: (hybrid name) / genre: (hybrid genre) / beats: -- key: -- /
+// slice: --/--/--/-- stay: -- match: -- quant: --. remove bpm since it is
+// already in beats." bars:/gain:/stems:/win:/LUFSs — all present in the
+// old single-line version — are dropped too: not part of this new
+// template, and (for the global mirror-to-all values bars:/stay:/match:
+// used to carry) master's LUFS meter in particular was the one place it
+// lived at all ("the LUFSs meter should only show in the mst channel") —
+// if that's still wanted somewhere, it needs a new home, since this
+// function no longer has a slot for it.
+// beats:/genre: reuse the exact same header helpers (beatsHeaderLine()/
+// genreHeaderLine()) the old single-line version called — both already
+// return their own "beats:"/"genre:" label AND already compute a
+// dominance-weighted hybrid across all 4 stems (see genreHeaderLine()'s own
+// comment), so "the mix of genres names into a hybrid genre" was already
+// exactly what that helper does — nothing new to build there.
+function renderMasterInfo(w) {
+  const refName = DESC_STEMS.find(n => !state.mute[n]) || DESC_STEMS[0];
+  const ref = state.stems[refName];
+
+  // tracks: — same "all four stems' own tracks, deduped" fallback the old
+  // unlabeled "name" field used, now with its own explicit label and own
+  // line. Still master's only real equivalent of a per-stem sid() — no
+  // single slice id to show, just which source tracks are feeding it.
+  // Playback-only now at the BOX level (masterInfoBox moved from
+  // MASTER_METER_BOXES to PLAYBACK_HEADER_BOXES — see those arrays' own
+  // comments), so this function itself no longer needs to know appMode;
+  // render() just hides the whole box outside Playback instead.
+  const trackNames = DESC_STEMS.map(n => state.stems[n] && state.stems[n].track).filter(Boolean);
+  const uniqTracks = [...new Set(trackNames)];
+  const trackTxt = uniqTracks.length ? uniqTracks.join(' - ') : (state.track || '');
+  const nameShort = trackTxt.length > 28 ? trackTxt.slice(0, 27) + '…' : trackTxt;
+  const line1 = `{grey-fg}tracks:{/grey-fg} ${nameShort || '--'}`;
+
+  // genre: — genreHeaderLine() already IS the hybrid mix, own line now.
+  const line2 = genreHeaderLine();
+
+  // beats: key: — beatsHeaderLine() already folds bpm into its own text
+  // ("beats: 4/4 120bpm [X%]"), which is the actual mechanism behind
+  // "remove bpm since it is already in beats" — the old separate bpm:
+  // field (playback→native pair) had no equivalent role left once this
+  // was the only bpm reading on the block. key: prefers the reference
+  // stem's own source-track key, same fallback each channel's own qksTxt
+  // candidate uses.
+  const be = ref && getBeatsEntryForTrack(ref.track);
+  const keyTxt = (be && be.key && be.key !== '?') ? be.key : state.key;
+  // LUFSs meter moved back out of this line — was here briefly (user:
+  // "next to key, put back the LUFSs meter"), then moved again into the top
+  // menu row instead, next to [ENG CONN] (user: "put LUFSs meter in
+  // the menu next to engine connected") — see lufsChip in render()'s
+  // stateChips build for where it actually lives now.
+  const line3 = `${beatsHeaderLine()} {grey-fg}key:{/grey-fg} ${keyTxt}`;
+
+  // slice: --/--/--/-- stay: match: quant: — slice: is now a per-stem
+  // breakdown (vocals/melody/bass/drums, DESC_STEMS order — same order
+  // vu4()/vuSidebarBlock()'s own FL/FR/RL/RR readout uses), each stem's own
+  // analyzed slice count for ITS OWN track, not summed into one total the
+  // way the old slices: field was — a "0/0/0/0"-style shape reads more
+  // like the rest of this UI's per-stem breakdowns than a single number
+  // would. stay:/match: are still the GLOBAL mirror-to-all values (see this
+  // function's original comment history in git — user: "the master is the
+  // overall command... its just a short way to align everything to the
+  // same settings"), not per-stem overrides.
+  const sliceStr = DESC_STEMS.map(n => {
+    const s = state.stems[n];
+    const counts = s && getSliceCountsForTrack(s.track);
+    return (counts && counts[n]) || 0;
+  }).join('/');
+  const line4 = `{grey-fg}slice:{/grey-fg} ${sliceStr} {grey-fg}stay:{/grey-fg} ${state.params.stayProb.toFixed(1)} {grey-fg}match:{/grey-fg} ${state.params.matchProb.toFixed(1)} {grey-fg}quant:{/grey-fg} ${quantMode()}`;
+
+  masterInfoBox.setContent([line1, line2, line3, line4].join('\n'));
+}
 
 // ── ZONE 6.5 — Spatial position readout, one frame per VU stem row ───────────
 // Square frame, one per stem, docked right of the VU sidebar. Two live values
@@ -1672,7 +2474,8 @@ const RECIPE_VALUE_W = 8;
 // prefix and a bare "all" target (the common case) to fit the column
 // widths above; a specific stem/dim stays (e.g. "setDirPref all D 1" →
 // "dirPref D"). Numeric values get an explicit sign, matching the +/- style
-// used elsewhere in this file (see fmtDir).
+// used elsewhere in this file for signed params (see wdValueStr's `signed`
+// branch, near weightDirStemBoxes).
 function formatRecipeLine(cmd) {
   const tokens = cmd.trim().split(/\s+/);
   let verb = tokens[0] || '';
@@ -1867,21 +2670,29 @@ function readJsonlSafe(p) {
 
 // extractBakePoints — one (x, y) point per usable bake. `feature` selects
 // which weight this graph actually corresponds to in train_bias.py's real
-// fit — 'delta'/'absDelta' for transition (matches transition_feature_names()'s
+// fit — 'delta'/'absDelta' for horizontal (matches horizontal_feature_names()'s
 // delta<label>/absDelta<label> pair), 'mean'/'std' for vertical (matches
 // build_vertical_dataset()'s mean<label>/std<label> pair). Defaults (delta,
 // mean) match this function's old single-feature behavior exactly, so every
 // existing :showBakeGraph call without a feature arg still renders the same
 // graph it always did.
-function extractBakePoints(dataDir, dim, model, feature) {
+// `highlightId` — a bakeSessionId (see selectedBakeSessionId()) to flag
+// on any point(s) sourced from that same bake, so the caller can render
+// them as the "this is the bake you're currently reviewing" dot (user:
+// "each graph should have one dot highlighted... representing the data of
+// the selected bake"). null/omitted means nothing gets flagged (no bake
+// selected, or the selected entry has no bakeSessionId — e.g. an
+// untagged/pre-bracket :scoreLyr).
+function extractBakePoints(dataDir, dim, model, feature, highlightId) {
   const key = dimLookupKey(dim);
   const points = [];
-  if (model === 'transition') {
+  if (model === 'horizontal') {
     const feat = feature || 'delta';
-    const rows = readJsonlSafe(path.join(dataDir, 'training_log_transition.jsonl'));
+    const rows = readJsonlSafe(path.join(dataDir, 'training_log_horizontal.jsonl'));
     for (const row of rows) {
       const rating = row.rating;
       if (rating === undefined || rating === null) continue;
+      const highlight = !!highlightId && row.bakeSessionId === highlightId;
       const stems = row.stems || {};
       for (const stemKey in stems) {
         const pair = stems[stemKey] || {};
@@ -1890,7 +2701,7 @@ function extractBakePoints(dataDir, dim, model, feature) {
         if (frm[key] === undefined || frm[key] === null) continue;
         if (to[key]  === undefined || to[key]  === null) continue;
         const delta = to[key] - frm[key];
-        points.push({ x: feat === 'absDelta' ? Math.abs(delta) : delta, y: rating });
+        points.push({ x: feat === 'absDelta' ? Math.abs(delta) : delta, y: rating, highlight });
       }
     }
   } else {
@@ -1899,6 +2710,7 @@ function extractBakePoints(dataDir, dim, model, feature) {
     for (const row of rows) {
       const rating = row.rating;
       if (rating === undefined || rating === null) continue;
+      const highlight = !!highlightId && row.bakeSessionId === highlightId;
       const stems = row.stems || {};
       const vals = [];
       for (const stemKey in stems) {
@@ -1909,11 +2721,142 @@ function extractBakePoints(dataDir, dim, model, feature) {
       const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
       if (feat === 'std') {
         const variance = vals.reduce((a, b) => a + (b - mean) * (b - mean), 0) / vals.length;
-        points.push({ x: Math.sqrt(variance), y: rating });
+        points.push({ x: Math.sqrt(variance), y: rating, highlight });
       } else {
-        points.push({ x: mean, y: rating });
+        points.push({ x: mean, y: rating, highlight });
       }
     }
+  }
+  return points;
+}
+
+// selectedBakeSessionId — which bakeSessionId (if any) the Review sub-view
+// currently has selected, so the graphs below can highlight the dot(s) that
+// came from THIS bake. 'bakes' source rows carry their own bakeSessionId
+// directly (see stopBakeLoop()); 'states' rows don't record scoring data of
+// their own (see currentAudioPath()'s own comment on this), so they fall
+// back to sourceBakeSessionId, the bake that produced them. null means
+// nothing to highlight — an empty list, or an entry that predates
+// bakeSessionId tagging.
+function selectedBakeSessionId() {
+  const e = reviewEntries[reviewIndex];
+  if (!e) return null;
+  if (reviewSource === 'bakes') return e.bakeSessionId || null;
+  return e.sourceBakeSessionId || null;
+}
+
+// ── JOINT MODEL (overall predicted-vs-actual) ─────────────────────────────
+// Everything above (extractBakePoints/renderBrailleScatter) fits ONE
+// dimension in isolation, diagnostic-only. This section instead evaluates
+// the REAL trained model — train_bias.py's joint multi-dimension fit,
+// applied at inference time by slicer.js's predictHorizontalQuality()/
+// predictVerticalQuality() — replaying it over every historical training-log
+// row so the picker can show "what the model would have predicted" against
+// "what the human actually rated", i.e. the sum all 7 (or 6, or 13) per-dim
+// weight graphs on a page ultimately collapse into for one real decision.
+
+function loadLearnedBiasSync() {
+  const p = path.join(DATA_DIR, 'learned_bias.json');
+  if (!fs.existsSync(p)) return { horizontal: null, vertical: null };
+  try {
+    const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return { horizontal: data.horizontal || null, vertical: data.vertical || null };
+  } catch (e) {
+    return { horizontal: null, vertical: null };
+  }
+}
+
+// jointHorizontalPoints — mirrors slicer.js's predictHorizontalQuality()
+// exactly (same delta/absDelta/sq/cu terms, same bias, same [-1,1] clamp),
+// replayed over every stem-pair in training_log_horizontal.jsonl instead of
+// one live candidate. x = model's predicted score for that pair, y = the
+// human's actual :scoreTrs rating for that whole bake. `highlightId`
+// — see extractBakePoints()'s own comment; same convention here.
+function jointHorizontalPoints(weights, bias, fitShapes, highlightId) {
+  const dims = LEVEL_DIMS.concat(TENSION_DIMS);
+  const rows = readJsonlSafe(path.join(DATA_DIR, 'training_log_horizontal.jsonl'));
+  const points = [];
+  for (const row of rows) {
+    const rating = row.rating;
+    if (rating === undefined || rating === null) continue;
+    const highlight = !!highlightId && row.bakeSessionId === highlightId;
+    const stems = row.stems || {};
+    for (const stemKey in stems) {
+      const pair = stems[stemKey] || {};
+      const frm = (pair.from && pair.from.descriptors) || {};
+      const to  = (pair.to   && pair.to.descriptors)   || {};
+      let complete = true;
+      for (const label of dims) {
+        const key = dimLookupKey(label);
+        if (frm[key] === undefined || frm[key] === null) { complete = false; break; }
+        if (to[key]  === undefined || to[key]  === null) { complete = false; break; }
+      }
+      if (!complete) continue;
+      let sum = bias || 0;
+      for (const label of dims) {
+        const key = dimLookupKey(label);
+        const delta = to[key] - frm[key];
+        sum += (weights['delta' + label] || 0) * delta;
+        sum += (weights['absDelta' + label] || 0) * Math.abs(delta);
+        const shape = fitShapes[label];
+        if (shape === 'quadratic' || shape === 'cubic') {
+          sum += (weights['sq' + label] || 0) * (delta * delta);
+        }
+        if (shape === 'cubic') {
+          sum += (weights['cu' + label] || 0) * (delta * delta * delta);
+        }
+      }
+      sum = Math.max(-1, Math.min(1, sum));
+      points.push({ x: sum, y: rating, highlight });
+    }
+  }
+  return points;
+}
+
+// jointVerticalPoints — mirrors slicer.js's predictVerticalQuality()
+// exactly (same mean/std/sqMean/cuMean terms), replayed over every bake's
+// full 4-stem mix in training_log_vertical.jsonl. x = model's predicted
+// score for that mix, y = the human's actual :scoreLyr rating for it.
+// `highlightId` — see extractBakePoints()'s own comment; same convention.
+function jointVerticalPoints(weights, bias, fitShapes, highlightId) {
+  const dims = LEVEL_DIMS.concat(TENSION_DIMS);
+  const rows = readJsonlSafe(path.join(DATA_DIR, 'training_log_vertical.jsonl'));
+  const points = [];
+  for (const row of rows) {
+    const rating = row.rating;
+    if (rating === undefined || rating === null) continue;
+    const highlight = !!highlightId && row.bakeSessionId === highlightId;
+    const stems = row.stems || {};
+    const valsByLabel = {};
+    for (const label of dims) valsByLabel[label] = [];
+    for (const stemKey in stems) {
+      const desc = (stems[stemKey] && stems[stemKey].descriptors) || {};
+      for (const label of dims) {
+        const key = dimLookupKey(label);
+        if (desc[key] !== undefined && desc[key] !== null) valsByLabel[label].push(desc[key]);
+      }
+    }
+    let complete = true;
+    for (const label of dims) { if (valsByLabel[label].length < 2) { complete = false; break; } }
+    if (!complete) continue;
+    let sum = bias || 0;
+    for (const label of dims) {
+      const vals = valsByLabel[label];
+      const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const variance = vals.reduce((a, b) => a + (b - mean) * (b - mean), 0) / vals.length;
+      const std = Math.sqrt(variance);
+      sum += (weights['mean' + label] || 0) * mean;
+      sum += (weights['std'  + label] || 0) * std;
+      const shape = fitShapes[label];
+      if (shape === 'quadratic' || shape === 'cubic') {
+        sum += (weights['sqMean' + label] || 0) * (mean * mean);
+      }
+      if (shape === 'cubic') {
+        sum += (weights['cuMean' + label] || 0) * (mean * mean * mean);
+      }
+    }
+    sum = Math.max(-1, Math.min(1, sum));
+    points.push({ x: sum, y: rating, highlight });
   }
   return points;
 }
@@ -1921,19 +2864,19 @@ function extractBakePoints(dataDir, dim, model, feature) {
 // BAKE_GRAPH_LIST — the graph menu (user: "I will need a graph menu to
 // select which graphs I want to view, since there are 50ish possible graph
 // (per weights)"). One entry per real weight train_bias.py actually fits:
-// 13 dims (7 level + 6 tension) × {delta, absDelta} for transition, ×
-// {mean, std} for vertical = 52 entries. Deliberately excludes the sq*/cu*/
+// 14 dims (7 level + 7 tension) × {delta, absDelta} for horizontal, ×
+// {mean, std} for vertical = 56 entries. Deliberately excludes the sq*/cu*/
 // sqMean*/cuMean* non-linear-only terms (see FIT_SHAPES in slicer.js /
 // :setFitShape) — those only exist for whichever dims are opted in, so a
-// fixed 1-52 numbering would shift under the user's feet as fit_shapes.json
+// fixed numbering would shift under the user's feet as fit_shapes.json
 // changes; :showBakeGraph <dim> <model> still reaches those by name.
 // :showBakeGraph <n> below indexes into this list (1-based, matches
 // :listGraphs' printed numbering).
-const BAKE_GRAPH_DIMS = ['C','S','E','F','P','H','T','TnC','TnE','TnF','TnP','TnH','TnT'];
+const BAKE_GRAPH_DIMS = ['C','S','E','F','P','H','T','TnC','TnS','TnE','TnF','TnP','TnH','TnT'];
 function buildBakeGraphList() {
   const list = [];
-  BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'transition', feature: 'delta' }));
-  BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'transition', feature: 'absDelta' }));
+  BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'horizontal', feature: 'delta' }));
+  BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'horizontal', feature: 'absDelta' }));
   BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'vertical', feature: 'mean' }));
   BAKE_GRAPH_DIMS.forEach(dim => list.push({ dim, model: 'vertical', feature: 'std' }));
   return list;
@@ -1944,22 +2887,23 @@ const BAKE_GRAPH_LIST = buildBakeGraphList();
 // (user: "show multiple graph at the same time to reduce the number of
 // options in the menu ... all the descriptor delta graphs on number 1 ...
 // then all the Tn[descriptors] delta on number 2"). Groups BAKE_GRAPH_LIST's
-// existing 52 entries into 8 pages — one per (model, feature) ×
-// {level dims, tension dims} — instead of a flat 1-52 list. Nothing about
-// which underlying graphs EXIST changed (still the same 52 dim×model×
+// entries into 8 pages — one per (model, feature) ×
+// {level dims, tension dims} — instead of a flat list. Nothing about
+// which underlying graphs EXIST changed (still the same dim×model×
 // feature combos, still fit exactly as train_bias.py does), just how many
-// render on screen per pick: a page shows all 7 level dims (or all 6
-// tension dims) for one model/feature stacked together — see
-// refreshSelectedBakePage(). LEVEL_DIMS/TENSION_DIMS split BAKE_GRAPH_DIMS
-// the same way it was already implicitly ordered (level block then tension
-// block within each model×feature run), just made explicit here since a
-// page needs to know its own dims as a real array, not a slice offset.
+// render on screen per pick: a page shows all 7 level dims (or all 7
+// tension dims, now that tension_S exists too — see add_tension.py) for
+// one model/feature stacked together — see refreshSelectedBakePage().
+// LEVEL_DIMS/TENSION_DIMS split BAKE_GRAPH_DIMS the same way it was already
+// implicitly ordered (level block then tension block within each
+// model×feature run), just made explicit here since a page needs to know
+// its own dims as a real array, not a slice offset.
 const LEVEL_DIMS   = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
-const TENSION_DIMS = ['TnC', 'TnE', 'TnF', 'TnP', 'TnH', 'TnT'];
+const TENSION_DIMS = ['TnC', 'TnS', 'TnE', 'TnF', 'TnP', 'TnH', 'TnT'];
 function buildBakeGraphPages() {
   const combos = [
-    ['transition', 'delta'],
-    ['transition', 'absDelta'],
+    ['horizontal', 'delta'],
+    ['horizontal', 'absDelta'],
     ['vertical',   'mean'],
     ['vertical',   'std'],
   ];
@@ -2013,6 +2957,19 @@ function renderBrailleScatter(points, width, height, degree) {
   const xs = points.map(p => p.x), ys = points.map(p => p.y);
   let xMin = Math.min.apply(null, xs), xMax = Math.max.apply(null, xs);
   let yMin = Math.min.apply(null, ys), yMax = Math.max.apply(null, ys);
+  // Pad the range on every side (user: "make sure the graph range is wide
+  // enough to contain all data... this one feels like it's crushing data
+  // to its edges") — without this, the min/max points map exactly to pixel
+  // column/row 0 or subW-1/subH-1, i.e. dead flush against the plot's own
+  // border, which reads as data getting clipped rather than a normal
+  // scatter plot with breathing room around it. 8% of the raw range on
+  // each side; a no-op when range is 0 (all points share one x or y), so
+  // the degenerate-range fallback right below still does its job.
+  const GRAPH_PAD_FRAC = 0.08;
+  const xPad = (xMax - xMin) * GRAPH_PAD_FRAC;
+  const yPad = (yMax - yMin) * GRAPH_PAD_FRAC;
+  xMin -= xPad; xMax += xPad;
+  yMin -= yPad; yMax += yPad;
   if (xMax - xMin < 1e-9) { xMax += 0.5; xMin -= 0.5; }
   if (yMax - yMin < 1e-9) { yMax += 0.5; yMin -= 0.5; }
   // Can't fit a degree-D polynomial with fewer than D+1 points — falls back
@@ -2050,10 +3007,35 @@ function renderBrailleScatter(points, width, height, degree) {
     setDot(px, py, true);
   }
 
+  // Highlight cell(s) — the bake currently selected in Review (user: "each
+  // graph should have one dot highlighted as a slightly bigger dot, that
+  // would represent the data of the selected bake"). Braille sub-dots can't
+  // literally be resized (one Unicode glyph = a fixed 2x4 grid, all cells
+  // rendered at the same character size), so instead the WHOLE character
+  // cell that dot landed in gets swapped for a solid circle glyph — visually
+  // reads as one big dot next to the small braille pixels around it, which
+  // is what "bigger" can actually mean in a terminal grid. Takes over that
+  // cell entirely (even if the fitted line or another point shares it) since
+  // a highlight that only sometimes wins would defeat the point of it.
+  const highlightCells = new Set();
+  for (const p of points) {
+    if (!p.highlight) continue;
+    const px = Math.round(((p.x - xMin) / (xMax - xMin)) * (subW - 1));
+    const py = Math.round((1 - (p.y - yMin) / (yMax - yMin)) * (subH - 1));
+    const cellX = Math.floor(px / 2), cellY = Math.floor(py / 4);
+    if (cellX >= 0 && cellX < width && cellY >= 0 && cellY < height) {
+      highlightCells.add(cellY + ',' + cellX);
+    }
+  }
+
   const lines = [];
   for (let r = 0; r < height; r++) {
     let line = '';
     for (let c = 0; c < width; c++) {
+      if (highlightCells.has(r + ',' + c)) {
+        line += '{bold}{white-fg}●{/white-fg}{/bold}'; // ● — the selected bake
+        continue;
+      }
       if (grid[r][c] === 0) { line += ' '; continue; }
       const ch = String.fromCharCode(BRAILLE_BASE + grid[r][c]);
       line += isPoint[r][c] ? `{white-fg}${ch}{/white-fg}` : `{grey-fg}${ch}{/grey-fg}`;
@@ -2062,18 +3044,166 @@ function renderBrailleScatter(points, width, height, degree) {
   }
   return {
     text: lines.join('\n'), coeffs, degree: usableDegree, n: points.length,
-    xMin, xMax, yMin, yMax,
+    xMin, xMax, yMin, yMax, highlighted: highlightCells.size > 0,
   };
+}
+
+// EQ_SPEC_GRID_FG — the spectrum's background reference-line color (the
+// '▔' glyphs below, one per renderBrailleBars/renderBlockBars). Was plain
+// 'grey-fg' (ANSI grey, quite light against SKIN.bg's near-black color232)
+// — user: "make the spectrum lines of a much darker grey. almost
+// transparent in contrast with the background." First dropped to 235 (3
+// steps up xterm's 232-255 greyscale ramp from SKIN.bg's color232), which
+// read as too close to invisible — user: "make the spectrum line a little
+// more visible. a little paler". 238 (6 steps up) keeps it clearly darker/
+// subtler than the original plain grey while actually being legible as a
+// line rather than needing to squint. Bare number, NOT 'color238' — that's
+// the colors.js style-object spelling (SKIN.bg uses it, but only style:
+// {fg/bg} objects go through colors.convert(), which understands it).
+// blessed's {tag} markup is a different code path (program._attr, see its
+// 256-color branch) that only matches a plain `/^(-?\d+) (fg|bg)$/` —
+// 'color235 fg' doesn't match that regex at all, so program._attr returned
+// null and the tag printed as literal text instead of coloring anything
+// (exactly the "{color235-fg}" garbage that showed up on screen the first
+// time this was tried).
+const EQ_SPEC_GRID_FG = '238';
+
+// renderBrailleBars — the EQ spectrum's braille bar-graph. Briefly replaced
+// with a dot-matrix (●/○, one glyph per character) to chase down the
+// "groups of dots with gaps" complaint — user then asked to go back to
+// braille regardless ("it was better"), so this is that same braille
+// implementation restored. Same dot-packing convention as
+// renderBrailleScatter (BRAILLE_BASE/BRAILLE_BIT, subW=width*2,
+// subH=height*4) but drawn bottom-up as contiguous filled columns instead of
+// a scatter, one sub-column per level (levels.length sub-columns spread
+// evenly across subW, several sub-columns per band so each band reads as a
+// thick bar rather than a single-dot needle). Levels are 0-1 linear
+// (peakamp~ output); converted to dB and normalised against
+// EQ_SPEC_MIN_DB..0 the same way vuBar()/dbMeter() do, so a quiet band still
+// shows *something* instead of linear amplitude crushing everything near
+// the bottom.
+const EQ_SPEC_MIN_DB = -60; // same floor as VU_MIN_DB
+function renderBrailleBars(levels, width, height) {
+  const subW = width * 2, subH = height * 4;
+  const grid = [];
+  for (let r = 0; r < height; r++) grid.push(new Array(width).fill(0));
+  for (let px = 0; px < subW; px++) {
+    const bandIdx = Math.min(levels.length - 1, Math.floor(px * levels.length / subW));
+    const db   = levelToDb(levels[bandIdx] || 0);
+    const norm = Math.max(0, Math.min(1, (db - EQ_SPEC_MIN_DB) / -EQ_SPEC_MIN_DB));
+    const filled = Math.round(norm * subH);
+    for (let dot = 0; dot < filled; dot++) {
+      const py = subH - 1 - dot; // fill bottom-up
+      const cellY = Math.floor(py / 4), cellX = Math.floor(px / 2);
+      const subY = py % 4, subX = px % 2;
+      grid[cellY][cellX] |= BRAILLE_BIT[subY][subX];
+    }
+  }
+  // Level line — user: "add line in the background of the spectrum, that
+  // indicates the levels? and the line gets replaced by the actual block
+  // when audio is louder enough to go above the line." Every row is one
+  // such reference line: any cell the bar hasn't reached yet at that row's
+  // height shows a plain '▔' instead of blank space, so you can see where
+  // each row's threshold sits even in near-silence; wherever the bar DOES
+  // reach, its own glyph is drawn instead, covering the line for that cell
+  // (same idea splitBar() already uses elsewhere in this file — a track
+  // replaced cell-by-cell by whatever's actually filled). '▔' (U+2594
+  // UPPER ONE EIGHTH BLOCK), not '─' — '─' sits vertically centered in the
+  // cell and reads as floating mid-row against the glyphs above/below it;
+  // '▔' sits flush against the cell's top edge, i.e. the actual gap/seam
+  // between this row and the row above (user: "make the lines align with
+  // the in between gap of the unicode blocks"). Dot glyphs stay plain/
+  // uncolored (user: "remove the colors"), but the reference line is
+  // colored — plain 'grey-fg' at first (user: "the lines should be grey"),
+  // then darkened way down (user: "make the spectrum lines of a much
+  // darker grey. almost transparent...") — see EQ_SPEC_GRID_FG.
+  const lines = [];
+  for (let r = 0; r < height; r++) {
+    let line = '';
+    for (let c = 0; c < width; c++) {
+      line += grid[r][c] === 0 ? `{${EQ_SPEC_GRID_FG}-fg}▔{/${EQ_SPEC_GRID_FG}-fg}` : String.fromCharCode(BRAILLE_BASE + grid[r][c]);
+    }
+    lines.push(line);
+  }
+  return lines.join('\n');
+}
+
+// renderBlockBars — same job as renderBrailleBars (EQ spectrum bar-graph),
+// different glyph family: Unicode block elements (▁▂▃▄▅▆▇█, U+2581-2588,
+// eighth-height steps) instead of braille dots. User: "try the unicode
+// block" — offered as the standard alternative most terminal spectrum
+// analyzers (cava, s-tui, etc.) actually use, since each glyph is a SOLID
+// fill spanning the entire character cell edge-to-edge — there's no
+// internal dot texture to clump, so columns butt up against each other the
+// same regardless of font/terminal, unlike braille's glyph-internal padding.
+// Trade-off: a smooth gradient look instead of braille's fine dot texture.
+//
+// One column per band (levels.length sub-columns spread evenly across
+// width, same interpolation as renderBrailleBars). Vertical resolution is
+// height*8 (8 eighth-steps per character row): a column's total eighths-
+// filled is computed once, then spent top-down across the `height` rows —
+// any row entirely below the fill line prints a full █, the one row where
+// the fill line actually lands gets the matching partial glyph, everything
+// above that is blank. Stacking multiple rows still has ordinary terminal
+// line-spacing between them (unavoidable for any multi-row text, same as
+// braille) — but nothing else about this glyph family reintroduces gaps.
+const BLOCK_GLYPHS = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']; // index = eighths filled (0-8)
+function renderBlockBars(levels, width, height) {
+  const lines = [];
+  // eighthsByCol[c] = total eighth-steps filled for that column, 0..height*8
+  const eighthsByCol = new Array(width);
+  for (let c = 0; c < width; c++) {
+    const bandIdx = Math.min(levels.length - 1, Math.floor(c * levels.length / width));
+    const db      = levelToDb(levels[bandIdx] || 0);
+    const norm    = Math.max(0, Math.min(1, (db - EQ_SPEC_MIN_DB) / -EQ_SPEC_MIN_DB));
+    eighthsByCol[c] = Math.round(norm * height * 8);
+  }
+  // Level line in the background — same as renderBrailleBars' own comment
+  // on this: any cell not yet reached by the bar shows a plain reference
+  // line instead of blank space; wherever the bar DOES reach that row, its
+  // own block glyph replaces it. '▔' (U+2594 UPPER ONE EIGHTH BLOCK), not
+  // '─' — '─' sits vertically centered in the cell, which reads as
+  // floating mid-row against the block glyphs (which fill bottom-up); '▔'
+  // sits flush against the TOP edge of the cell, i.e. exactly the gap/seam
+  // between this row and the row above, so the reference line lines up
+  // with the actual row boundaries of the block bars (user: "make the
+  // lines align with the in between gap of the unicode blocks"). Bar
+  // glyphs themselves stay plain/uncolored (user: "remove the colors"),
+  // but the reference line is colored so it still reads as background,
+  // not signal — plain 'grey-fg' at first (user: "the lines should be
+  // grey"), then darkened way down (user: "make the spectrum lines of a
+  // much darker grey. almost transparent...") — see EQ_SPEC_GRID_FG.
+  for (let r = 0; r < height; r++) {
+    const rowFromBottom = height - 1 - r; // row 0 (top) is farthest from the baseline
+    let line = '';
+    for (let c = 0; c < width; c++) {
+      const remaining = Math.max(0, Math.min(8, eighthsByCol[c] - rowFromBottom * 8));
+      line += remaining === 0 ? `{${EQ_SPEC_GRID_FG}-fg}▔{/${EQ_SPEC_GRID_FG}-fg}` : BLOCK_GLYPHS[remaining];
+    }
+    lines.push(line);
+  }
+  return lines.join('\n');
+}
+
+// EQ_SPEC_STYLE — one switch, one place: 'braille' or 'block'. Both
+// renderers stay defined (see their own comments for the back-and-forth
+// that led here) so trying the other one again later is a one-line change
+// instead of rewriting either function from scratch.
+const EQ_SPEC_STYLE = 'block';
+function renderEqBars(levels, width, height) {
+  return EQ_SPEC_STYLE === 'block'
+    ? renderBlockBars(levels, width, height)
+    : renderBrailleBars(levels, width, height);
 }
 
 // featureAxisLabel — what X actually is for a given dim/model/feature combo
 // (user: "add axis to the graph. what x is and what y is"). Y is always
-// the bake rating (-1..1, whatever :score/:scoreTransition logged) — X
+// the bake rating (-1..1, whatever :scoreLyr/:scoreTrs logged) — X
 // changes meaning per feature, same four shapes train_bias.py itself fits:
 // a raw delta (signed, can be negative), an absolute delta (always >= 0),
 // or a cross-stem mean/std at one instant.
 function featureAxisLabel(dim, model, feature) {
-  if (model === 'transition') {
+  if (model === 'horizontal') {
     return feature === 'absDelta' ? '|Δ' + dim + '| = |to − from|' : 'Δ' + dim + ' = to − from';
   }
   return feature === 'std' ? 'std(' + dim + ') across stems' : 'mean(' + dim + ') across stems';
@@ -2195,7 +3325,9 @@ const ENTROPY_MIN_H = 2;
 const ENTROPY_MAX_H = 2;
 // Right column sits ENTROPY_RIGHT_GAP cols past where the left (bar/floor)
 // column's own content ends — see ENTROPY_RIGHT_W below for its width.
-const ENTROPY_RIGHT_GAP = 3;
+// 2, was 3 — user: "make the layout more compact", no functional reason
+// tied to the old width.
+const ENTROPY_RIGHT_GAP = 2;
 const ENTROPY_RIGHT_W   = 26; // fits "match: 0.72 · stay: 0.40" / "dirWgt: 1.15 · bpm: 120"
 const entropyBox = blessed.box({
   top: 0, right: 0, width: SIDE_TOTAL_W + ENTROPY_RIGHT_GAP + ENTROPY_RIGHT_W, height: ENTROPY_MIN_H,
@@ -2383,7 +3515,7 @@ const tipBox = blessed.box({
 // actual line order. Both used to live inlined in the header's title row
 // (row 0, next to the EBYS version badge) instead, but that's "the top
 // menu" the user wants this OUT of; this box (docked beside tipBox at
-// TRAIN_TIP_TOP, header row 3) is "the header section" they want it IN.
+// TRAIN_TIP_TOP, header row 2) is "the header section" they want it IN.
 // Width widened accordingly from the old peer-only box — network's own
 // worst case ("network: [wifi: xxxxxxxxxxxx] 255.255.255.255") is the
 // longest line this box now has to fit, not the short peer-dots row.
@@ -2606,17 +3738,25 @@ function renderTipInfo() {
   // panel now, THEN the DJ/artist equation bar and its floor readout
   // (previously the bar led, with a blank gap row before the per-tip
   // lines) — and no blank row anywhere, everything flush.
-  // sid/up/srv specifically stays on ONE line, fixed — not wrapStatLine's
-  // dynamic width-based wrap, which could push "srv: --" onto its own line
-  // (user: "make sure the -- of srv: stays on the same line"). No
-  // BAKE_INFO_INDENT prefix any more either — tipBox sits flush against
-  // its own left edge now (aligned with [REC •], see reflow() — user:
-  // "align the tip section with REC"), not indented under the VU sidebar
-  // the way training still is.
+  // sid/up used to share this line with srv: too, fixed (no wrap) — that
+  // was safe back when tipBox was the WIDE box, but now that tipBox has
+  // swapped into the NARROW slot next to the VU/spatial sidebar (see
+  // reflow()'s tip/spectrum swap), a fixed un-wrapped "sid: ... · up ... ·
+  // srv: ..." line silently overflowed the box's real width and bled into
+  // the VU meter's own column — reading as "srv: is hidden under the vu
+  // meter" (user's report). srv: moved down to the tip/lvl/ts row instead
+  // (user: "put it next to ts:"), and this line now goes through
+  // wrapStatLine like every other row here, so sid:/up: get the same
+  // width-safety net instead of silently overflowing the same way.
+  // No BAKE_INFO_INDENT prefix — tipBox sits flush against its own left
+  // edge now (aligned with [REC •], see reflow() — user: "align the tip
+  // section with REC"), not indented under the VU sidebar the way training
+  // still is.
   const lines = [];
-  lines.push('{grey-fg}sid:{/grey-fg} ' + sidTxt + ' · '
-    + '{grey-fg}up{/grey-fg} ' + upTxt + ' · '
-    + '{grey-fg}srv:{/grey-fg} ' + srvTxt);
+  lines.push(wrapStatLine([
+    '{grey-fg}sid:{/grey-fg} ' + sidTxt,
+    '{grey-fg}up{/grey-fg} ' + upTxt,
+  ], tipBox.width));
 
   // uid + txn share one row, above tip/ts — who tipped, and the txn it
   // came in on. tip itself is just the dollar amount.
@@ -2627,11 +3767,14 @@ function renderTipInfo() {
 
   // tip is just the dollar amount — who/how much they paid is already
   // covered by uid/txn above; lvl (see tipLevel above) sits right before
-  // ts, which is when it landed.
+  // ts, which is when it landed. srv: (tipping backend reachability) now
+  // trails ts — moved here from the sid/up line above (user: "put it next
+  // to ts:").
   lines.push(wrapStatLine([
     '{grey-fg}tip{/grey-fg} ' + (lastTip ? '$' + lastTip.amount.toFixed(2) : wht('--')),
     '{grey-fg}lvl{/grey-fg} ' + lvlTxt,
     '{grey-fg}ts{/grey-fg} ' + fmtClock(lastTip ? lastTip.ts : null),
+    '{grey-fg}srv:{/grey-fg} ' + srvTxt,
   ], tipBox.width));
 
   // DJ/producer split "equation" bar — always visible, not gated on
@@ -2658,7 +3801,7 @@ function renderTipInfo() {
   // represent the tip scale". █ portion = curator/∫ share, ░ portion =
   // artist pool/aᵢ — editable live via :setSplit (see currentCuratorShare()
   // above), not just a readout anymore.
-  lines.push('{grey-fg}∫{/grey-fg} ' + splitBar(liveCuratorShare, EQ_BAR_W)
+  lines.push('{grey-fg}∫{/grey-fg} ' + splitBar(liveCuratorShare, CURATOR_FLOOR, EQ_BAR_W)
     + ' {grey-fg}aᵢ{/grey-fg}  ' + eqPct
     + (curatorShareOverride !== null ? '  {grey-fg}(:setSplit override){/grey-fg}' : ''));
 
@@ -2770,10 +3913,15 @@ function spatialFrameLines(x, y, width) {
   }
 
   // Logical column c -> actual character column 2c (odd columns stay blank).
+  // Lit dot is plain now (was green, then briefly bright-white) — user:
+  // "remove the colors of the vus and spat". Empty perimeter stays grey,
+  // same background-vs-signal convention used everywhere else (VU/LUFS
+  // track, EQ spectrum reference line). Center pan marker plain+bold too,
+  // no more bright-white-fg.
   SPATIAL_PERIM.forEach(([r, c], i) => {
-    grid[r][c * 2] = lit.has(i) ? '{bright-white-fg}●{/bright-white-fg}' : '{grey-fg}○{/grey-fg}';
+    grid[r][c * 2] = lit.has(i) ? '●' : '{grey-fg}○{/grey-fg}';
   });
-  grid[row][col * 2] = '{bold}{bright-white-fg}●{/bright-white-fg}{/bold}';
+  grid[row][col * 2] = '{bold}●{/bold}';
   return grid.map(rowArr => rowArr.join(''));
 }
 // Width fill is always sp.width directly — NOT derived from pan
@@ -2800,93 +3948,39 @@ function renderSpatial() {
   masterSpatialBox.setContent(spatialFrameLines(sp.x, sp.y, sp.width).join('\n'));
 }
 
-// ── ZONE 6.7 — Descriptor grid: rolling window of real transitions ──────────
-// Middle column: docks its own right edge just left of the VU/spatial/bake/
-// tip/entropy sidebar (SIDE_TOTAL_W + gap from the screen's right edge), same
-// "right:"-anchored convention as vuStemBoxes/spatialStemBoxes above. One
-// small box per stem (descGridStemBoxes), each positioned directly under
-// that stem's own waveform+stats block in playBox — see the comment above
-// VU_SIDEBAR_STEMS for why this is an array of small boxes rather than one
-// tall box with blank filler rows.
-// One block per stem, no separate title row — the stem abbreviation (same
-// vcl/mel/bas/drm labels VU_SIDEBAR_STEMS already uses, same VU_LABEL_W
-// column width) sits on the FIRST dimension row's prefix, blank under it,
-// same convention vuSidebarBlock() uses. Each column is one real slice from
-// that stem's descRollBuffers ring (see its own comment above) — every
-// column boundary IS a transition by construction, so every seam gets the
-// same '│' divider. No grading by how big the jump was: the ask was "mark
-// it when the slice changes," not "mark how much it changed."
-// ░▒▓█ = low→high within that dimension's stemRanges min/max, via density
-// (ink coverage) rather than color — see DESC_SHADES. This replaced an
-// earlier color-lerp version (solid block, hue or lightness read off a
-// gradient): the black end of a lightness gradient is invisible against
-// this box's own black background, and a hex-color approach also turned
-// out to be hitting a real bug in blessed 0.1.81's color cache (see the
-// require('blessed/lib/colors')._cache = {} fix up near the top of this
-// file) — density sidesteps both problems at once, since every shade glyph
-// is legible in a single plain foreground color, nothing ever needs to
-// render as literal black, and there's no hex-to-terminal-color matching
-// involved at all. · (always grey) = no info, full stop — covers both
-// reasons a cell can't be graded: this specific slice has no usable value
-// (FluCoMa reports 0 for unpitched/below-confidence P, and drums has no P
-// at all — see CRICKET.md's descriptor table), or this stem+dimension has
-// no usable stemRanges min/max to grade against (missing entry, or a
-// degenerate/non-finite min===max) — see `rangeUsable` in renderDescGrid()
-// below. Both collapse to the same dot on purpose: which of the two reasons
-// applied doesn't matter. Blank = ring slot not filled yet (fewer than
-// DESC_ROLL_PAIRS real transitions have happened since the buffer was last
-// cleared) — the grid structure itself (labels, dims, '│' seams) is always
-// drawn regardless of whether any real data has arrived yet, see
-// renderDescGrid() below; there's no separate "waiting" placeholder state
-// anymore, an all-blank grid already reads as "nothing here yet."
-// Right-anchored the same distance from the VU sidebar regardless of width,
-// so this can never creep into the VU column.
-// 0, was 1 — user: "make the visualizers closer. less space in between"
-// (horizontal spacing between momentum/transition/vu-spatial specifically).
-const DESC_GRID_GAP  = 0;
+// ── ZONE 6.7 — Descriptor value formatting ──────────────────────────────────
+// Shared bits the momentum panel (ZONE 6.9 below) still needs now that the
+// separate "transition grid" panel — a middle column that used to sit
+// between this and the VU/spatial sidebar, showing a rolling window of real
+// slice-to-slice cuts as OUT|IN density-shaded cell pairs — has been removed
+// (user: "remove the transition visualisation"). Momentum's own panel now
+// docks directly against the VU/spatial sidebar (see MOM_GAP/MOM_W below),
+// and carries its own transition marker inline in the scrolling strip
+// instead (see the seam-marking code in momentumBarTick()/momSparkline()) —
+// so the "when did a slice actually cut" signal the grid used to show is
+// still available, just folded into momentum rather than living in its own
+// column.
 const DESC_LABEL_W   = VU_LABEL_W;   // shares the vcl/mel/bas/drm column width
 const DESC_LABELS    = { vocals: 'vcl', melody: 'mel', bass: 'bas', drums: 'drm' };
-// Trailing numeric readout appended to every row in both the descriptor
-// grid and the momentum panel (see descValueStr() below) — user: "add
-// numbers next to the 2 descriptor visualizations (momentum and
-// transition). so we can see the actual value." Width 7 matches the
+// Trailing numeric readout appended to every row of the momentum panel (see
+// descValueStr() below) — user: "add numbers next to the ... descriptor
+// visualization ... so we can see the actual value." Width 7 matches the
 // widest values the old per-stem range-bar row used to print (F/H can run
 // to "-100.00"/"1413.01") before that row was removed (see the comment
 // near playLines.push, "remove the range bar showing descriptor value
 // under the waveform").
 const DESC_VALUE_GAP = 2;
 const DESC_VALUE_W   = 7;
-// Sized to the grid's actual printed width, not SIDE_TOTAL_W — the box used
-// to be forced as wide as the VU+spatial column, which left dead space
-// between the last colored cell and the VU meters (box background matches
-// the screen background, so that slack was invisible but still pushed the
-// grid visually far from the VU zone). Width = label(1 char, e.g. "C") +
-// its trailing space + DESC_ROLL_PAIRS pairs of 2 cells each, separated by
-// '│' between pairs, all sitting after the DESC_LABEL_W-wide stem-label
-// gutter, plus the value gap+column appended at the end.
-const DESC_GRID_W = DESC_LABEL_W + 2 + (DESC_ROLL_PAIRS * 2 + (DESC_ROLL_PAIRS - 1))
-                   + DESC_VALUE_GAP + DESC_VALUE_W;
-
-// Density, not color: 4 unicode shade glyphs, sparse to solid ink coverage,
-// same reading order as the old lightness gradient (low value = sparse,
-// high value = solid) but every glyph is legible in one plain foreground
-// color — nothing needs a special case for "would be invisible on black."
-const DESC_SHADES = ['░', '▒', '▓', '█'];
-function descShadeFor(t) {
-  t = Math.max(0, Math.min(1, t));
-  const i = Math.min(DESC_SHADES.length - 1, Math.floor(t * DESC_SHADES.length));
-  return DESC_SHADES[i];
-}
 
 // Live numeric value for one stem+dim, appended to the end of that dim's
-// row in both the descriptor grid and the momentum panel (see DESC_VALUE_W
-// above). Reads straight off state.stems — the same live cursor value the
-// old per-stem range-bar row used to print via nC/nE/nF/etc, and the exact
-// value momentumBarTick() samples into curBarBuffers each tick — so this is
-// always "the current value", not a historical one, regardless of which
-// past transitions the grid/sparkline next to it happen to be showing.
+// row in the momentum panel (see DESC_VALUE_W above). Reads straight off
+// state.stems — the same live cursor value the old per-stem range-bar row
+// used to print via nC/nE/nF/etc, and the exact value momentumBarTick()
+// samples into curBarBuffers each tick — so this is always "the current
+// value", not a historical one, regardless of which past samples the
+// sparkline next to it happens to be showing.
 // descIsMissing() (defined below) is reused so "missing" reads identically
-// here as it does for the shade/glyph cells themselves.
+// here as it does for the sparkline glyphs themselves.
 function descValueStr(stem, dim) {
   const s = state.stems[stem];
   const v = s ? s[dim] : null;
@@ -2912,172 +4006,1770 @@ function descValueStr(stem, dim) {
     case 'H':           str = n.toFixed(2); break;
     default:            str = String(Math.round(n)); // C, S, P
   }
-  return '{grey-fg}' + str.padEnd(DESC_VALUE_W) + '{/grey-fg}';
+  // Plain (no {grey-fg} wrap) — user: "the momentum graph numbers must be
+  // white also" — falls through to this box's own default fg (bright
+  // white), same treatment the dim letter already got ("put the descriptor
+  // legend white"). The "--" placeholder above (genuinely no data yet)
+  // stays grey — that's a real "nothing here" signal, not a measured value.
+  return str.padEnd(DESC_VALUE_W);
 }
 
-// Array, not one tall box — same reasoning as vuStemBoxes/spatialStemBoxes:
-// each stem's 7-dim grid gets its own STEM_ROW_BAND_H-tall box, positioned
-// directly under that stem's own waveform block.
-const descGridStemBoxes = DESC_STEMS.map(() => blessed.box({
-  top: playTop, right: SIDE_TOTAL_W + DESC_GRID_GAP, width: DESC_GRID_W, height: STEM_ROW_BAND_H,
-  tags: true, wrap: false,
-  style: { fg: SKIN.fg, bg: SKIN.bg },
-}));
-
-// ── ZONE 6.9 — Momentum panel — docked directly left of the descriptor grid,
-// same array-of-small-boxes convention descGridStemBoxes itself uses, and
-// deliberately the SAME row layout: stem label on the first dim row only,
-// dim letter and its bar on one line (not stacked) so every row lines up
-// 1:1 with the grid's own rows sitting right next to it. No '│' seam against
-// the descriptor grid on purpose — that seam marks "discrete cut boundary"
-// over there; here it would just be visual noise against one continuous strip.
-// Width matches DESC_GRID_W exactly (MOM_MAX_SAMPLES is defined as that same
-// column count above) — same physical width as the transition grid sitting
-// next to it, even though this panel fills one column at a time rather
-// than one pair per real cut. User: "keep the previous width, it was good"
-// (a shorter, decoupled width was tried and reverted — see MOM_MAX_SAMPLES's
-// own comment; what actually changed instead is the strip's fill SPEED and
-// its behavior once full, not its width).
+// ── ZONE 6.9 — Momentum panel — docked directly left of the VU/spatial
+// sidebar (the transition grid that used to sit in between has been
+// removed — see the ZONE 6.7 comment above). Array of small boxes, same
+// convention vuStemBoxes/spatialStemBoxes use: one STEM_ROW_BAND_H-tall box
+// per stem, positioned directly under that stem's own waveform block. Row
+// layout: stem label on the first dim row only, dim letter and its bar on
+// one line (not stacked).
+// Width kept at its old value (MOM_MAX_SAMPLES columns, same formula the
+// removed grid used to size itself with) rather than shrunk now that
+// there's nothing next to it to match — user: "keep the previous width, it
+// was good" (a shorter, decoupled width was tried and reverted once
+// already — see MOM_MAX_SAMPLES's own comment).
 // 0, was 1 — user: "make the visualizers closer. less space in between"
-// (horizontal spacing between momentum/transition/vu-spatial specifically).
+// (horizontal spacing between momentum/vu-spatial specifically).
 const MOM_GAP = 0;
-const MOM_W   = DESC_GRID_W;
-// Array, same reasoning as descGridStemBoxes — one STEM_ROW_BAND_H-tall box
-// per stem, positioned directly under that stem's own waveform block.
-const momentumStemBoxes = DESC_STEMS.map(() => blessed.box({
-  top: playTop, right: SIDE_TOTAL_W + DESC_GRID_GAP + DESC_GRID_W + MOM_GAP,
-  width: MOM_W, height: STEM_ROW_BAND_H,
+// No longer + DESC_LABEL_W + 2 — that space used to hold this box's OWN
+// per-row dim-letter legend (C/S/E/F/P/H/T) plus a blank "own-stem label"
+// prefix that had already been forced empty for every stem (see
+// momentumStemLines()' own comment). Both are gone now: user: "merge the
+// descriptor momentum graph with the weight/dir infos since they use the
+// same layout structure. keep only the descriptor legend for the
+// weight/dir... move the momentum graph closer" — weightDirStemLines()
+// prints the legend once now (see WD_COL_W's own comment), so this box
+// just needs room for the sparkline + trailing value.
+const MOM_W   = MOM_MAX_SAMPLES + DESC_VALUE_GAP + DESC_VALUE_W;
+// momentumStemBoxes — REMOVED as its own box array. Used to be a separate
+// blessed.box per stem, docked flush against weightDirStemBoxes (WD_GAP/
+// MOM_GAP both 0). Being a separate box meant its LEFT edge was fixed to
+// weightDirStemBoxes' own declared WIDTH (WD_COL_W, sized for the "weight /
+// dir  dirWgt: n.nn" title), not to wherever that stem's own dim-row TEXT
+// actually ended (~15 real chars, well short of WD_COL_W=28) — so no matter
+// how the row strings were padded, ~13 columns of dead background sat
+// between the numbers and the sparkline, and the user kept (correctly)
+// reporting a gap that no amount of padding fixed. User, fed up with the
+// back-and-forth: "why cant you move the [descriptor, wgt/dir, momentum] in
+// the same box while keeping the alignment like the previous version? it's
+// so annoying!" Folded into weightDirStemBoxes/weightDirStemLines() below
+// instead — one box, one string per row, so momentum starts the instant the
+// dir value's own last character ends, genuinely flush, while the title's
+// "/"-alignment (a left-side-only concern) is untouched. MOM_W/MOM_GAP
+// above are kept — still used to size/position the merged box and
+// channelEntropyStemBoxes, which stays independent.
+
+// ── ZONE 6.91 — Weight/dir column, one box per stem, docked directly LEFT
+// of the momentum panel. Used to print as 3 horizontal rows (weight/dir/
+// dirWgt, one line each, all 7 descriptors side by side) straight into
+// playBox's own per-stem text, under the waveform — user: "the weight dir
+// parameters ... still show M, why not C? ... I want them to be placed
+// elsewhere [so] the spectrum analyzer can take the more vertical space
+// under the waveform. So the weight/dir/dirwgt should be moved next to it
+// [the momentum column], but stack them vertically ... one descriptor above
+// each other, just like the descriptor graph." Moved out of playBox
+// entirely into its own column, same "STEM_ROW_BAND_H-tall box per stem,
+// positioned directly under that stem's own waveform block" convention
+// vuStemBoxes/spatialStemBoxes/momentumStemBoxes all use (see the comment
+// above VU_SIDEBAR_STEMS for why that's an array of small boxes instead of
+// one tall one). Freeing those 3 playBox rows is what lets the EQ spectrum
+// bar right under them grow from 4 rows to the full STEM_ROW_BAND_H (7) —
+// see that bar's own updated comment in the stem loop.
+// "M:" is gone outright, not just relabeled — the real descriptor set is
+// C/S/E/F/P/H/T (see DIMS) and every row here is built straight off DIMS,
+// so there's no separate "C's header label is M" special case left to keep
+// in sync; this is the actual fix for "they still show M, why not C".
+// Docked one row ABOVE momentumStemBoxes' own top (offset +1 = the
+// waveform's descriptor-line row, not +2 = the weight row) so its title row
+// ("weight / dir  dirWgt: n.nn") lands there instead of eating one of the
+// 7 real descriptor rows — same "borrow the row above the graph for a
+// label" trick channelEntropyStemBoxes (below) uses for its own meter.
+// Total height is therefore 8 (1 title + 7 dims), one more than
+// STEM_ROW_BAND_H (7) — still clear of the NEXT stem's own waveform row,
+// since STEM_BAND_H (9) always leaves a full blank row after
+// STEM_ROW_BAND_H's own 7 today.
+// ── Per-channel entropy meter — a horizontal bar, one box per stem, docked
+// directly above that stem's own VU meter — moved from over the momentum
+// column (user: "align the entropy meter above the VU meters") — was
+// previously over momentumStemBoxes/weightDirStemBoxes' own column
+// (right: SIDE_TOTAL_W + MOM_GAP, width: MOM_W), same row weight/dir's own
+// title row occupies (PRE_METERS_ROWS - 1) either way. `right`/`width` now
+// match vuStemBoxes' own exactly (right: SPATIAL_W + VU_SPATIAL_GAP, width:
+// VU_SIDEBAR_W) instead, so the bar sits flush over the VU column. Back to
+// a horizontal bar (not the momentum column's own shape) after a brief
+// detour as a vertical bar next to weight/dir (user: "can entropy be a
+// vertical line? next to the weight/dir?", then "go back to horizontal
+// entropy bar") — that history is unrelated to which column it docks
+// above, just its own shape. :setEntropy has no per-stem target —
+// slicer.js only ever tracks ONE real entropy value for the whole engine
+// (see state.params.entropy's own comment) — so there's no genuine
+// per-channel entropy SIGNAL to bind these to; every channel's bar mirrors
+// that one real value, same reading as the header's own entropyBox, just
+// redrawn per channel so it reads as live context sitting right over that
+// channel's own VU meter rather than a single faraway header readout.
+// STEM_NAME_TAG_W — the widest stemLockText() ever prints: "[VOCALS] [xxx⚿]"
+// / "[MELODY] [xxx⚿]", both 15 real chars ("[" + 6-letter stem name + "] ["
+// + 3-letter lock abbreviation + lock glyph + "]" — see stemLockText()'s
+// own comment). stemLockBoxes right-aligns that text within its own
+// SIDE_TOTAL_W-wide box (right: 0), so it always occupies the RIGHTMOST 15
+// columns of the whole spatial+VU cluster, regardless of box width. This
+// box shares that exact row (both borrow "the row above the graph" — see
+// this box's own comment above) — user: "make the entropy range bar
+// smaller so it fit above the VU meters. and make sure the stem names are
+// visible and not hidden by the entropy": right/width below now stop
+// STEM_NAME_TAG_W short of the cluster's right edge instead of running the
+// VU column's full width, so this box's own background fill (blessed
+// clears a box's FULL declared rectangle every tick, not just where text
+// sits — shrinking channelEntropyLine()'s own string wasn't enough on its
+// own, since the box was still painting over the tag either way) can't
+// reach into the stem-name/lock tag's own columns at all, regardless of
+// z-order.
+const STEM_NAME_TAG_W = 15;
+const channelEntropyStemBoxes = DESC_STEMS.map(() => blessed.box({
+  top: playTop, right: STEM_NAME_TAG_W,
+  width: SIDE_TOTAL_W - STEM_NAME_TAG_W, height: 1,
   tags: true, wrap: false,
   style: { fg: SKIN.fg, bg: SKIN.bg },
 }));
+// CHANNEL_ENTROPY_BAR_W — fixed short dash-range for the per-channel/master
+// entropy bar, deliberately NOT sized off MOM_W (that would stretch it out
+// to the full momentum-column width, ~22 dashes) — user: "make the entropy
+// bar range narrower. it's too long, it doesnt need to be this long."
+// Shrunk further, 12 -> 6 -> 4 (see ENTROPY_ROW_INDENT's own comment for
+// why the extra trim) — channelEntropyLine()'s full content ("✳ " + bar +
+// " ❄ " + a 4-char value, plus the indent) needs to comfortably fit inside
+// the SIDE_TOTAL_W - STEM_NAME_TAG_W = 20-column box with real margin to
+// spare (this file has been bitten before by glyphs quietly rendering
+// wider than their counted length — see dbMeter()'s own ✳/❄-adjacent
+// U+00B7/⚿ comment — so the margin is deliberate, not just tidy).
+const CHANNEL_ENTROPY_BAR_W = 4;
+// ENTROPY_ROW_INDENT — leading blank columns so the bar itself (not just
+// the box) lines up under vuBar()'s own bar, not just under the box's left
+// edge — user, on a screenshot: "make it fit above the vu meters... you
+// just have to move it a little to the right and its gonna sit right
+// there." vuSidebarBlock()'s own row starts with a VU_LABEL_W-wide label
+// column + the 2-char FL/FR/RL/RR code + 1 space before its bar starts
+// (see that function) — VU_LABEL_W + 2 + 1 columns in. This row's own
+// prefix token is 5 columns before ITS bar now ("gain:" — user: "for gain
+// you wrote g:, but i want gain:", was 2 columns as "g:" before that,
+// originally 2 as "✳ " before that), so it needs (VU_LABEL_W + 3) - 5
+// more columns of indent to land on the same column — 3 fewer than "g:"
+// used, since the label itself grew by 3 characters and the bar's target
+// column didn't move.
+const ENTROPY_ROW_INDENT = ' '.repeat(VU_LABEL_W + 3 - 5);
+// channelEntropyLine()/renderChannelEntropy() — REMOVED. Used to mirror the
+// one real, session-wide entropy value (state.params.entropy — same reading
+// as the header's own entropyBox) onto every stem's box identically, since
+// :setEntropy has no per-channel target. Replaced with a genuinely per-stem
+// GAIN fader instead — user: "remove the entropy fader above the vu meter
+// zone and replace it with the gain fader." (Entropy itself isn't gone from
+// Playback — chInfoStemLines() already prints its own ✳/❄ entropy line in
+// the channel-info column, added earlier this session; this was always the
+// redundant second copy.)
+//
+// channelGainLine(stem) — state.gain[stem], genuinely per-stem (unlike the
+// entropy value this box used to show), unity default 1.0 when nothing's
+// confirmed yet. Displayed against an assumed 0..2 travel (0 = silent, 1.0
+// = unity in the middle, 2.0 = full up) — no :setGain/range is documented
+// anywhere in this file (gain only ever arrives passively off a confirmed
+// gain_<stem> param broadcast, see the WS 'param' handler's own gainMatch),
+// so this is the conventional "unity sits at the middle of the fader"
+// assumption, not a confirmed engine bound. Label spelled out as "gain:"
+// (was the terser "g:", itself standing in for the original "✳ ")  —
+// user: "for gain you wrote g:, but i want gain:." ENTROPY_ROW_INDENT was
+// shrunk by 3 columns to match (see that constant's own comment) so the
+// bar still lines up over vuBar()'s own bar despite the wider label.
+function channelGainLine(stem) {
+  const val   = state.gain[stem];
+  const g     = typeof val === 'number' ? val : 1.0;
+  const bar   = entropyBar(g / 2, CHANNEL_ENTROPY_BAR_W);
+  return ENTROPY_ROW_INDENT + '{grey-fg}gain:{/grey-fg} ' + bar + ' ' + g.toFixed(2);
+}
+function renderChannelGain() {
+  channelEntropyStemBoxes.forEach((b, i) => b.setContent(channelGainLine(DESC_STEMS[i])));
+}
 
-function momentumStemLines(stem) {
-  const label = (DESC_LABELS[stem] || '').padEnd(DESC_LABEL_W, ' ');
-  const blank = ''.padEnd(DESC_LABEL_W, ' ');
-  return DIMS.map((dim, di) => {
-    // Follow-graph tag, right next to the dim letter — user: "when one
-    // descriptor is following another track, i want a tag next to the
-    // momentum visualizer. something like [drms] in grey next to the E of
-    // vocals. any parameter that follows another channel should be tagged
-    // this way. name of the followed channel next to the descriptor in
-    // question." (The descriptor grid already carries a follow indicator
-    // of its own — a shade-glyph separator + gutter abbreviation — but
-    // that's a different panel; this is the momentum panel's own tag.)
-    // Eats into the sparkline's own width rather than widening the box
-    // (tuned flush against the descriptor grid beside it), so this panel's
-    // total row width — and its alignment with that grid — never changes.
+// ── Weight/dir column — one box per stem, docked directly LEFT of the
+// momentum panel (the entropy bar above shares momentum's own column
+// instead of sitting between them — see channelEntropyStemBoxes above).
+// Used to print as 3 horizontal rows (weight/dir/dirWgt, one line each, all
+// 7 descriptors side by side) straight into playBox's own per-stem text,
+// under the waveform — user: "the weight dir parameters ... still show M,
+// why not C? ... I want them to be placed elsewhere [so] the spectrum
+// analyzer can take the more vertical space under the waveform. So the
+// weight/dir/dirwgt should be moved next to it [the momentum column], but
+// stack them vertically ... one descriptor above each other, just like the
+// descriptor graph." Moved out of playBox entirely into its own column,
+// same "STEM_ROW_BAND_H-tall box per stem, positioned directly under that
+// stem's own waveform block" convention vuStemBoxes/spatialStemBoxes/
+// momentumStemBoxes all use (see the comment above VU_SIDEBAR_STEMS for why
+// that's an array of small boxes instead of one tall one). Freeing those 3
+// playBox rows is what lets the EQ spectrum bar right under them grow from
+// 4 rows to the full STEM_ROW_BAND_H (7) — see that bar's own updated
+// comment in the stem loop.
+// "M:" is gone outright, not just relabeled — the real descriptor set is
+// C/S/E/F/P/H/T (see DIMS) and every row here is built straight off DIMS,
+// so there's no separate "C's header label is M" special case left to keep
+// in sync; this is the actual fix for "they still show M, why not C".
+// Docked one row ABOVE momentumStemBoxes' own top (offset +1 = the
+// waveform's descriptor-line row, not +2 = the weight row) so its title row
+// ("weight / dir  dirWgt: n.nn") lands there instead of eating one of the
+// 7 real descriptor rows — same "borrow the row above the graph for a
+// label" trick channelEntropyStemBoxes (above) uses for its own meter.
+// Total height is therefore 8 (1 title + 7 dims), one more than
+// STEM_ROW_BAND_H (7) — still clear of the NEXT stem's own waveform row,
+// since STEM_BAND_H (9) always leaves a full blank row after
+// STEM_ROW_BAND_H's own 7 today.
+// 0, was 2 then briefly 1 — user asked to "move the momentum graph closer"
+// twice; fully flush now, same as MOM_GAP's own precedent (part of merging
+// the momentum panel into this column — see weightDirStemLines()' own
+// comment).
+const WD_GAP   = 0;
+// WD_TITLE_TEXT — the literal "weight / dir" header text, and (once more —
+// this scheme has flip-flopped a few times, worth writing down plainly
+// since the two goals genuinely fight each other) the measuring stick
+// every dim row's own "/" aligns under:
+//   (a) every dim row's own "/" lined up under the title's "/" (column-
+//       matched, left-aligned) — needs the row's own weight field padded
+//       out to "weight".length, which necessarily leaves blank space after
+//       the (much shorter) row before momentum starts.
+//   (b) the row flush against momentumStemBoxes (right-aligned) — needs
+//       the row's START to float, which un-aligns its "/" from the
+//       title's.
+// Went to (b) for a round ("keep the momentum ... close ... align the
+// momentum graph with dirwgt"), then back to (a) — user: "move this block
+// [descriptor, wgt/dir, momentum] to be aligned with the weight/dir label.
+// align the '/'." (a) is what's live now: WD_DIM_PREFIX_W/WD_WEIGHT_FIELD_W
+// below do the column-matching; see weightDirStemLines() for the row side
+// of it. Trade-off accepted this time: a data row's own last character no
+// longer touches momentumStemBoxes (see that box's own comment on why not
+// — title is simply longer than any single dim row, something has to
+// give), in exchange for every "/" genuinely lining up under the title's.
+const WD_TITLE_TEXT     = 'weight / dir';
+const WD_WEIGHT_FIELD_W = WD_TITLE_TEXT.indexOf(' /'); // 6 — "weight".length
+const WD_DIRWGT_LABEL   = 'dirWgt:';
+const WD_DIRWGT_GAP     = '  ';
+const DIRWGT_VALUE_W    = 5; // wdValueStr's own fixed padStart width (title row only — see wdValueStr's own comment)
+// WD_DIM_PREFIX_W — the dim-letter + optional follow-graph-tag column every
+// row starts with, padded to a fixed width so the weight value below always
+// starts at the same column. 2 = 1 dim letter + 1 gap — tight, per user:
+// "tighten the weight/dir with the descriptors column" (a row WITH a follow
+// tag just runs its own value a few chars further right that tick instead
+// of holding a wider reserved column — a rare, minor trade for the normal
+// case staying tight). The title row gets the same indent in front of
+// "weight / dir" — together with WD_WEIGHT_FIELD_W, that's what lines every
+// row's own "/" up under the title's "/" (both sit at column
+// WD_DIM_PREFIX_W + WD_WEIGHT_FIELD_W + 1).
+const WD_DIM_PREFIX_W = 2;
+const WD_COL_W = WD_DIM_PREFIX_W + WD_TITLE_TEXT.length + WD_DIRWGT_GAP.length + WD_DIRWGT_LABEL.length + DIRWGT_VALUE_W; // 28
+// ── CHANNEL INFO / PITCH-FMT columns ────────────────────────────────────────
+// Two more per-stem columns, docked left of weightDirStemBoxes (see
+// chInfoStemBoxes'/pitchFmtStemBoxes' own declarations, right after
+// weightDirStemBoxes below, for exactly where) — user: "a space is gonna be
+// available next to the eq ... this is where i want you to add all the
+// infos related to the channels ... next to it (to its left) I want pitch
+// and formant infos ... then to the left of pitch/fmt zone is the eq." Left
+// to right: EQ | pitch/fmt | channel-info | weight/dir+momentum | VU/spatial.
+// Declared here (before RIGHT_CLUSTER_W) purely so RIGHT_CLUSTER_W's own sum
+// below can include them — every other budget in the file (descLine's
+// `remaining`, the EQ's own eqSpecW) already reads off RIGHT_CLUSTER_W as
+// its one source of truth, so growing it here is the ONLY change needed to
+// make room; nothing downstream needs to know these two columns exist.
+//
+// CHINFO_COL_W — sized for its own longest real line: "beats:4/4 120bpm "
+// + a 10-glyph dotBar() ≈ 27 cols, or "stay:1.0 match:0.9 slices:999" ≈ 29 —
+// 32 leaves a few columns of margin without being wastefully wide.
+// CHINFO_GAP — was 2, shrunk to 1 — user: "reduce the space on either side
+// of the weight/dir/momentum zone." This is that zone's own LEFT-side gap
+// (its right side, against the VU/spatial sidebar, is MOM_GAP — already 0,
+// see that constant's own comment for the earlier "remove the gap" request
+// that set it there, nothing further to give up on that side). 1 still
+// keeps the two columns visually separate, just tighter; the freed column
+// goes back to the spectrum via RIGHT_CLUSTER_W, same as every other
+// compression in this cluster.
+const CHINFO_GAP   = 1;
+const CHINFO_COL_W = 32;
+// PITCHFMT_COL_W — sized for "Band: 20 20000" (14 cols, its own longest
+// line) with a little margin; the slider row (PF_SLIDER_W below) fits
+// comfortably inside the same width.
+const PITCHFMT_GAP   = 2;
+const PITCHFMT_COL_W = 18;
+// Shared by the render loop below (to shrink the descriptor line's own text
+// budget so it stops before this cluster starts, instead of silently
+// running underneath it) and by the EQ spectrum bar (to size itself to
+// exactly the space this cluster leaves free) — one source of truth for
+// "how wide is the whole right-hand meters cluster now". Grew by the two
+// new columns' own width+gap (CHINFO_COL_W+CHINFO_GAP, PITCHFMT_COL_W+
+// PITCHFMT_GAP) — see their own comment just above for why adding them here
+// is the only wiring this needs.
+// WD_MOM_COL_W — the merged box's own true CONTENT width, i.e. the widest
+// line it actually prints. That's a DATA row (rowIndent + dimTag+pad +
+// weight + ' / ' + dir + momPart), NOT the title row (WD_COL_W, "weight /
+// dir  dirWgt: n.nn" — no momentum tail at all, and shorter). Was
+// WD_COL_W+WD_GAP+MOM_W (i.e. sized off the title), which left ~12 blank
+// columns at the box's own right edge — directly against vuStemBoxes' own
+// left edge, so it read as a gap between the weight/dir/momentum cluster
+// and the VU/spatial meters. User: "remove the gap between wgt/dir/
+// momentum and the VU/spat meters." WD_DIR_FIELD_W is fixed at 4 — dirStr
+// is sign+digit+dot+digit ('+0.0'..'-1.0'), since :setDirPref's own range
+// is -1..1 (see its own -r help text). Box stays right-anchored at
+// SIDE_TOTAL_W + MOM_GAP either way — shrinking WIDTH alone (right edge
+// fixed) just pulls the box's LEFT edge in to meet the content, which is
+// exactly what removes the dead space; title (28 cols) still fits fine,
+// just left-aligned inside a now-42-col box instead of a 54-col one.
+const WD_DIR_FIELD_W = 4;
+const WD_MOM_COL_W = WD_DIM_PREFIX_W /* rowIndent */
+  + WD_DIM_PREFIX_W /* dimTag+dimPad */
+  + 1 /* space before weight */
+  + (WD_WEIGHT_FIELD_W - WD_DIM_PREFIX_W - 1) /* weightStr */
+  + 3 /* ' / ' */
+  + WD_DIR_FIELD_W /* dirStr */
+  + 1 /* space before momPart */
+  + MOM_W /* momSparkline + gap + descValueStr */;
+const RIGHT_CLUSTER_W = SIDE_TOTAL_W + MOM_GAP + WD_MOM_COL_W
+  + CHINFO_GAP + CHINFO_COL_W + PITCHFMT_GAP + PITCHFMT_COL_W;
+const weightDirStemBoxes = DESC_STEMS.map(() => blessed.box({
+  top: playTop, right: SIDE_TOTAL_W + MOM_GAP,
+  width: WD_MOM_COL_W, height: STEM_ROW_BAND_H + 1,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+}));
+// chInfoStemBoxes — the channel-info column (see CHINFO_COL_W's own comment
+// for the full "left to right" layout this is part of). Docked immediately
+// left of weightDirStemBoxes' own cluster (SIDE_TOTAL_W + MOM_GAP +
+// WD_MOM_COL_W is that cluster's true left edge — same "right: <sum of
+// everything further right>" convention weightDirStemBoxes itself uses
+// relative to SIDE_TOTAL_W). Same STEM_ROW_BAND_H(7) height and
+// PRE_METERS_ROWS top-offset vuStemBoxes uses — no separate title row of
+// its own (unlike weightDirStemBoxes' +1), since row 0 of its own content
+// IS "[RMX|GEN]", not a header sitting above the real data.
+const CH_INFO_RIGHT = SIDE_TOTAL_W + MOM_GAP + WD_MOM_COL_W + CHINFO_GAP;
+const chInfoStemBoxes = DESC_STEMS.map(() => blessed.box({
+  top: playTop, right: CH_INFO_RIGHT,
+  width: CHINFO_COL_W, height: STEM_ROW_BAND_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+}));
+// pitchFmtStemBoxes — the pitch/formant column, immediately left of
+// chInfoStemBoxes in turn (CH_INFO_RIGHT + CHINFO_COL_W + PITCHFMT_GAP is
+// chInfoStemBoxes' own left edge). Same 7-row height/offset as
+// chInfoStemBoxes — see pitchFmtStemLines() for the exact row breakdown
+// (pitch value/slider/band, a blank spacer row, then the same three for
+// formant — user: "fmt is under pitch, but skip one line in between").
+const PITCHFMT_RIGHT = CH_INFO_RIGHT + CHINFO_COL_W + PITCHFMT_GAP;
+const pitchFmtStemBoxes = DESC_STEMS.map(() => blessed.box({
+  top: playTop, right: PITCHFMT_RIGHT,
+  width: PITCHFMT_COL_W, height: STEM_ROW_BAND_H,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+}));
+// wdValueStr — still used for the title row's own dirWgt readout (a single
+// scalar, not one of the 7 per-dim rows below, so it keeps its old
+// fixed-5-wide signed format). No longer used for the per-dim weight/dir
+// values themselves — see weightDirStemLines()' own comment for their new
+// "X / Y" format instead.
+function wdValueStr(v, signed) {
+  const n = parseFloat(v) || 0;
+  const s = signed ? ((n >= 0 ? '+' : '') + n.toFixed(1)) : n.toFixed(1);
+  return s.padStart(DIRWGT_VALUE_W);
+}
+function weightDirStemLines(stem) {
+  const wp = state.paramsPerStem[stem];
+  // dirWgt folded into the title row instead of getting its own column —
+  // it's a single scalar (state.paramsPerStem[stem].dirWeight), not one
+  // value per descriptor the way weight/dir are, so it doesn't need a row
+  // of its own the way the 7 real dims do.
+  const title = ' '.repeat(WD_DIM_PREFIX_W)
+    + '{grey-fg}' + WD_TITLE_TEXT + '{/grey-fg}' + WD_DIRWGT_GAP
+    + '{grey-fg}' + WD_DIRWGT_LABEL + '{/grey-fg}' + wdValueStr(wp.dirWeight, true);
+  const rows = DIMS.map(dim => {
+    const w = wp['weight' + dim];
+    const d = wp['dir' + dim];
+    // Follow-graph tag — relocated here from the momentum panel's own
+    // (now-removed) per-row legend, since the C/S/E/F/P/H/T dim letter
+    // only prints once per row now, on THIS side — see momentumStemLines()'
+    // own comment for the merge this is half of. Unchanged logic/format
+    // from where it used to live: dominant follow target only, abbreviated
+    // via DESC_LABELS, grey brackets.
     const followMap = (state.followGraph[stem] && state.followGraph[stem][dim]) || {};
     const followEntries = Object.entries(followMap);
     let tag = '';
-    let tagW = 0;
     if (followEntries.length > 0) {
       followEntries.sort((a, b) => b[1] - a[1]); // dominant target first
       const [topTarget] = followEntries[0];
       const abbr = DESC_LABELS[topTarget] || topTarget;
-      tag = '{grey-fg}[' + abbr + ']{/grey-fg} ';
-      tagW = abbr.length + 3; // "[" + abbr + "]" + trailing space
+      tag = ' {grey-fg}[' + abbr + ']{/grey-fg}';
     }
-    return (di === 0 ? label : blank) + dim + ' ' + tag
-      + momSparkline(stem, dim, MOM_MAX_SAMPLES - tagW)
-      + ' '.repeat(DESC_VALUE_GAP) + descValueStr(stem, dim);
+    // Dim letter — grey (user: "put the descriptor row in grey"), now
+    // written "C:" with its own colon and moved to start at the SAME column
+    // "weight" itself starts at in the title row (user: "align the
+    // descriptors [CSEFPHT] of the weight/dir zone under the word weight,
+    // of weight/dir", format confirmed as "C: --"). Previously the letter
+    // sat at column 0 (in the row's own leading margin) while the WEIGHT
+    // VALUE was what actually landed under "weight" — rowIndent below is
+    // the same WD_DIM_PREFIX_W-wide indent the title itself opens with, so
+    // prepending it here shifts the letter into that column instead.
+    // dimTag padded to WD_DIM_PREFIX_W (visWidth-aware — tag carries
+    // {grey-fg} markup that costs zero real columns) so the weight value
+    // still starts at the same column regardless of whether this row has a
+    // follow tag.
+    const rowIndent = ' '.repeat(WD_DIM_PREFIX_W);
+    const dimTag    = '{grey-fg}' + dim + ':{/grey-fg}' + tag;
+    const dimTagVis = visWidth(dimTag.replace(/\{[^}]+\}/g, ''));
+    const dimPad    = ' '.repeat(Math.max(0, WD_DIM_PREFIX_W - dimTagVis));
+    // Weight — unsigned (0..5 per :setWeight), right-padded to land its own
+    // '/' back under the title's own '/' (user: "bring back the / alignment
+    // for the wgt/dir section" — the plain WD_WEIGHT_FIELD_W pad this used
+    // before the "C:"-under-"weight" move landed one column too far right
+    // once rowIndent/the "C: " prefix were added in front of it). Title's
+    // '/' sits at column WD_DIM_PREFIX_W + WD_WEIGHT_FIELD_W + 1 (indent +
+    // "weight" + the space before '/'); this row's own '/' sits at rowIndent
+    // (WD_DIM_PREFIX_W) + dimTag+dimPad (WD_DIM_PREFIX_W) + the 1-space gap
+    // + weightStr's own width + the space before '/' — solving those equal
+    // gives weightStr its width: WD_WEIGHT_FIELD_W - WD_DIM_PREFIX_W - 1.
+    // Weight values are always exactly 3 chars ("0.0".."5.0"), so this
+    // still holds every "/" under the title's with room to spare.
+    const rowWeightFieldW = Math.max(1, WD_WEIGHT_FIELD_W - WD_DIM_PREFIX_W - 1);
+    const weightStr = (parseFloat(w) || 0).toFixed(1).padStart(rowWeightFieldW);
+    const dn        = parseFloat(d) || 0;
+    const dirStr    = (dn >= 0 ? '+' : '') + dn.toFixed(1);
+    // "/" — grey too, user: "the '/' also in grey" (the weight/dir NUMBERS
+    // themselves stay plain/white, unlike the letter and the slash — same
+    // grey-label/white-value split every other row in this UI uses).
+    const wdPart = rowIndent + dimTag + dimPad + ' ' + weightStr + '{grey-fg} / {/grey-fg}' + dirStr;
+    // Momentum sparkline + trailing value, straight-concatenated onto the
+    // weight/dir row's own string — same box, same line now, so there's no
+    // box boundary left for any amount of padding to fight over. See
+    // momentumStemBoxes' own removal comment above for the full reasoning;
+    // this replaces the old separate renderMomentumPanel()/momentumStemBoxes
+    // pairing. Left side (wdPart) keeps its title-column alignment
+    // untouched; momentum now starts the instant dirStr's own last character
+    // ends — genuinely flush, not just "flush modulo a box's declared
+    // width".
+    const momPart = momSparkline(stem, dim, MOM_MAX_SAMPLES) + ' '.repeat(DESC_VALUE_GAP) + descValueStr(stem, dim);
+    // Small 1-space gap between the dir value and the sparkline — user:
+    // "put a little space between the momentum and the dir/weight infos"
+    // (fully flush read as too cramped). Safe against WD_MOM_COL_W — wdPart
+    // is only ~15 real columns of WD_COL_W's own 28, so there's plenty of
+    // slack before this box's declared width.
+    return wdPart + ' ' + momPart;
   });
+  return [title, ...rows];
 }
-function renderMomentumPanel() {
+function renderWeightDir() {
   DESC_STEMS.forEach((stem, i) => {
-    momentumStemBoxes[i].setContent(momentumStemLines(stem).join('\n'));
+    weightDirStemBoxes[i].setContent(weightDirStemLines(stem).join('\n'));
   });
 }
+
+// ── chInfoStemBoxes — channel info column ────────────────────────────────
+// One row each: [RMX|GEN], key, bars+quant, stay+match+slices, entropy,
+// genre[%], beats[%] — user: "I want [RMX|GEN], key, bars, stay, match,
+// slices, entropy, genre [x%] and beats [x%] in one zone." Every value here
+// reads off the exact same confirmed sources the (space-constrained,
+// priority-dropped) descriptor line's own candidates already use, just above
+// this in the render loop — this just gives each one its own row instead of
+// competing for one shared line's budget, so nothing here ever gets dropped
+// for space the way a low-priority descLine candidate can be on a narrow
+// terminal. beats/genre both use the "[label] [X %]" bracket-confidence
+// shape (matching the picture's own "beats:4/4 120bpm [16 %]" / "genre:
+// [Experimental] [16 %]") — NOT the descLine beats candidate's dotBar()
+// circles; user's own list spelled out "genre [x%] and beats [x%]" as a
+// matched pair, so this column keeps that pairing consistent instead of
+// mixing two different confidence styles.
+const CHINFO_ENTROPY_BAR_W = 10;
+function chInfoStemLines(stem) {
+  const s = state.stems[stem];
+  const mode   = state.agentMode[stem];
+  const rmxSeg = (mode === 'generate') ? '{grey-fg}RMX{/grey-fg}' : '{white-fg}RMX{/white-fg}';
+  const genSeg = (mode === 'remix') ? '{grey-fg}GEN{/grey-fg}' : '{white-fg}{bold}GEN{/bold}{/white-fg}';
+  const rmxGenTag = '{grey-fg}[{/grey-fg}' + rmxSeg + '{grey-fg}|{/grey-fg}' + genSeg + '{grey-fg}]{/grey-fg}';
+
+  const be        = getBeatsEntryForTrack(s.track);
+  const keyTxt    = (be && be.key && be.key !== '?') ? be.key : state.key;
+  const sliceN    = getSliceCountsForTrack(s.track)[stem] || 0;
+  const stemMatch = (state.paramsPerStem[stem] && state.paramsPerStem[stem].matchProb) || 0;
+  const barsTxt   = state.playFullFile[stem] ? '[fullfile]' : `[${s.bars}]`;
+
+  const subGenre     = parseGenre(s.genre).sub;
+  const genreConfPct = Math.round((parseFloat(s.genreConf) || 0) * 100);
+  const genreLine    = subGenre
+    ? '{grey-fg}genre:{/grey-fg}[' + subGenre + '] {grey-fg}[' + genreConfPct + ' %]{/grey-fg}'
+    : '{grey-fg}genre:{/grey-fg} --';
+
+  const meterTxt      = be && be.meter ? `${be.meter}/4` : '-/-';
+  const bpmTxt        = String(be && be.bpm ? Math.round(be.bpm) : '--');
+  const beatsConfPct  = Math.round((be ? be.confidence : 0) * 100);
+  const beatsLine     = '{grey-fg}beats:{/grey-fg}' + meterTxt + ' ' + bpmTxt + 'bpm {grey-fg}[' + beatsConfPct + ' %]{/grey-fg}';
+
+  // Entropy — same global value/floor every channel reads (state.params.entropy,
+  // floorWarm/floorCold), same entropyBar() builder channelEntropyLine() uses
+  // for its own (differently-positioned, VU-indented) copy above the VU
+  // meters — this is a fresh, unindented instance sized for THIS column's
+  // own width instead of reusing that one's VU-specific left-indent.
+  const entropyVal = state.params.entropy;
+  const entropyTxt = (typeof entropyVal === 'number') ? entropyVal.toFixed(2) : '--';
+  const entropyLine = '{grey-fg}' + ENTROPY_GLYPH_LEFT + '{/grey-fg} '
+    + entropyBar(entropyVal, CHINFO_ENTROPY_BAR_W, undefined, floorWarm, floorCold)
+    + ' {grey-fg}' + ENTROPY_GLYPH_RIGHT + '{/grey-fg} ' + entropyTxt;
+
+  return [
+    rmxGenTag,
+    '{grey-fg}key:{/grey-fg}' + keyTxt,
+    '{grey-fg}bars:{/grey-fg}' + barsTxt + ' {grey-fg}quant:{/grey-fg}' + quantMode(),
+    '{grey-fg}stay:{/grey-fg}' + s.stay.toFixed(1) + ' {grey-fg}match:{/grey-fg}' + stemMatch.toFixed(1) + ' {grey-fg}slices:{/grey-fg}' + sliceN,
+    entropyLine,
+    genreLine,
+    beatsLine,
+  ];
+}
+function renderChInfo() {
+  DESC_STEMS.forEach((stem, i) => {
+    chInfoStemBoxes[i].setContent(chInfoStemLines(stem).join('\n'));
+  });
+}
+
+// ── pitchFmtStemBoxes — pitch/formant column ─────────────────────────────
+// pitch: value, its own horizontal fader, then its effective band range;
+// one blank spacer row; then the same three rows for formant — user: "pitch
+// and formant infos. pitch: +0.0st, then under the horizontal fader. and
+// again under, the band selection for the pitch shifting protocol. Same UI
+// for the fmt protocol. fmt is under pitch, but skip one line in between."
+// Reuses entropyBar() for the fader glyph itself (same "──────●──────"
+// style already built for the entropy range bar — no reason to invent a
+// second slider renderer) and the exact effectivePitchBand/
+// effectiveFormantBand fallback order eqInfoStemLine() already established
+// (override → shared shiftBand → default) — unlike that compact line, which
+// stays blank with nothing set, this column always shows a Band row, so the
+// default is a real value: {lo:20,hi:20000}, the same "full audible range"
+// label EQ16_FREQS' own endpoints already use elsewhere in this file.
+const PF_SLIDER_RANGE_ST = 24; // ±2 octaves — a musical DISPLAY range, not a
+                                // real limit: slot_router.js's pitchShift/
+                                // formantShift take any semitone value with
+                                // no server-side clamp found. Same reasoning
+                                // EQ16_RANGE_DB picks ±18dB over the EQ's
+                                // true -96..+24dB range for its own display.
+const PF_DEFAULT_BAND = { lo: 20, hi: 20000 };
+function pfSlider(semitones) {
+  const norm = Math.max(0, Math.min(1, ((semitones || 0) + PF_SLIDER_RANGE_ST) / (2 * PF_SLIDER_RANGE_ST)));
+  return entropyBar(norm, PITCHFMT_COL_W - 2);
+}
+function pitchFmtStemLines(stem) {
+  const p = state.paramsPerStem[stem] || {};
+  const sgn = n => (typeof n === 'number' ? (n >= 0 ? '+' : '') + n.toFixed(1) : '+0.0');
+  const pitchBand   = p.pitchBandOverride   || p.shiftBand || PF_DEFAULT_BAND;
+  const formantBand = p.formantBandOverride || p.shiftBand || PF_DEFAULT_BAND;
+  return [
+    '{grey-fg}pitch:{/grey-fg} ' + sgn(p.pitchShift) + 'st',
+    pfSlider(p.pitchShift),
+    '{grey-fg}Band:{/grey-fg} ' + Math.round(pitchBand.lo) + ' ' + Math.round(pitchBand.hi),
+    '',
+    '{grey-fg}fmt:{/grey-fg}   ' + sgn(p.formantShift) + 'st',
+    pfSlider(p.formantShift),
+    '{grey-fg}Band:{/grey-fg} ' + Math.round(formantBand.lo) + ' ' + Math.round(formantBand.hi),
+  ];
+}
+function renderPitchFmt() {
+  DESC_STEMS.forEach((stem, i) => {
+    pitchFmtStemBoxes[i].setContent(pitchFmtStemLines(stem).join('\n'));
+  });
+}
+
+// ── stemLockBoxes — track name + lock indicator, one small box per stem,
+// right-anchored at right:0, on the SAME row weightDirStemBoxes'/
+// channelEntropyStemBoxes' own title row occupies (one row above the
+// waveform's own meters, i.e. the row directly under that stem's waveform
+// + timestamp). Master used to have the analogous masterLockBox for its own
+// row — removed, user: "remove the locksource on the master, it doesnt
+// make sense" (master doesn't itself follow a lock source the way a real
+// stem does — it was showing whichever stem happened to be the reference
+// for master's own now-also-removed timestamp, not a genuine "master is
+// locked to X" relationship). This per-stem version is unaffected — real
+// stems genuinely do lock to each other via :lockSource.
+// User: "put name of track and locksource state to the right side of the
+// info section, under the timestamp... do this for all channels" — a
+// previous attempt at this lived INSIDE playBox's own per-stem text,
+// right-aligned within that row's own budget (w - RIGHT_CLUSTER_W), which
+// never actually reached the true right edge the timestamp sits at, since
+// that whole zone left of RIGHT_CLUSTER_W is reserved for weightDir/
+// momentum/channelEntropy. This row's OWN right:0..SIDE_TOTAL_W strip is
+// free of any box though — vuStemBoxes/spatialStemBoxes don't start until
+// one row further down (PRE_METERS_ROWS, not PRE_METERS_ROWS - 1), and
+// weightDirStemBoxes/channelEntropyStemBoxes start at
+// right: SIDE_TOTAL_W + MOM_GAP, i.e. to the LEFT of this box, not
+// underneath it — so a dedicated right:0 box here collides with nothing.
+const stemLockBoxes = DESC_STEMS.map(() => blessed.box({
+  top: 0, right: 0, width: SIDE_TOTAL_W, height: 1,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+}));
+// stemLockText() — "[trackname] [locksource]", always both brackets (user:
+// "also put the locksource tag. [trackname] [locksource]") — unlike the
+// old inline candidate this replaces, track name is no longer skipped when
+// it matches sid(s.id): this box is now the one dedicated, reliable place
+// to read it, not one of several fields fighting over a shared text
+// budget, so there's no more scarcity reason to hide it.
+// Widest real output here is 15 chars ("[VOCALS] [xxx⚿]"/"[MELODY] [xxx⚿]")
+// — channelEntropyStemBoxes' own STEM_NAME_TAG_W constant hardcodes that
+// number so its box can stay clear of this text's own columns (see that
+// constant's own comment). If this format ever grows past 15 real chars,
+// STEM_NAME_TAG_W needs to grow with it.
+function stemLockText(stem) {
+  // Stem name (VOCALS/MELODY/BASS/DRUMS), not the source track's own
+  // filename — user, looking at a screenshot showing a truncated real
+  // filename here ("ESRGDT"): "replace the track name (ESRGDT) by the
+  // actual stem name, such as [VOCALS]. do it for all channels." The real
+  // track filename is still readable elsewhere (e.g. the tail row's own
+  // fields); this box's whole point now is "which of the 4 fixed channels
+  // is this", not "which file is loaded".
+  const trackTxt = stem.toUpperCase();
+  const lockTo    = state.sourceLock[stem];
+  const lockPlain = lockTo ? `${lockTo.slice(0, 3)}⚿` : '--';
+  const text = '{grey-fg}[{/grey-fg}' + trackTxt + '{grey-fg}]{/grey-fg} '
+    + '{grey-fg}[{/grey-fg}{bright-white-fg}' + lockPlain + '{/bright-white-fg}{grey-fg}]{/grey-fg}';
+  // Right-align within the box's own width — blessed left-aligns content by
+  // default, so on a box this wide (SIDE_TOTAL_W, sized for the longest
+  // realistic track name) shorter content just sat left inside it instead
+  // of flush against the window's true right edge the box itself IS
+  // anchored to (right:0) — user: "really align the lock source to the
+  // right side of the window." Manual leading-space pad instead of
+  // blessed's own `align` box option, matching the file's existing
+  // convention of computing visible width by hand everywhere else (no
+  // other box in this file uses `align`, and mixing conventions risks a
+  // subtler bug with the {tag} markup than just padding a string does).
+  const vis = visWidth(text.replace(/\{[^}]+\}/g, ''));
+  const pad = Math.max(0, SIDE_TOTAL_W - vis);
+  return ' '.repeat(pad) + text;
+}
+function renderStemLock() {
+  DESC_STEMS.forEach((stem, i) => {
+    stemLockBoxes[i].setContent(stemLockText(stem));
+  });
+}
+
+// ── ZONE 6.92 — Tip panel (^V) — a second overlay, same "independent of
+// appMode, one SCREEN VISIBILITY block decides show/hide" convention chat's
+// own overlay uses (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES).
+// User: "the panel should come from the right side of the screen [and]
+// stop right after the descriptor transition meters" — so its WIDTH is
+// right-anchored (right: 0) and sized to cover the VU/spatial cluster it
+// docks on top of. Narrowed back down from an earlier pass that also
+// swallowed the momentum panel — user: "dont make it open to the
+// descriptor visualization, but to the description transition visualizer.
+// so the window will be a little shorter." The transition grid this used to
+// stop right after has since been removed outright, so TIP_PANEL_W now just
+// covers the VU/spatial sidebar (SIDE_TOTAL_W) — momentumStemBoxes, one
+// column further left, stays clear either way, keeping the same "panel
+// never covers momentum" behavior that was explicitly asked for. Height is
+// a separate ask, overriding the first attempt at this (which also stopped
+// it vertically right after the meter cluster, at playTop + 4*STEM_BAND_H)
+// — user: "tip panel should cover the whole height of the window" — so it
+// covers everything in its (narrower) column top to bottom, INCLUDING the
+// master VU/spatial/EQ readouts that otherwise live in that same column —
+// same way chat's own overlay covers its full column when maximized.
+// top: 2, not 0 — user: "move TIP 2 rows down. so the menu can be visible
+// even if the tip window is open. the menu should always be visible." —
+// statusBox (the header/menu row) sits at top: 0; leaving 2 rows clear
+// above the panel keeps it on screen instead of getting painted over.
+// bottom: 0 (no explicit height) lets blessed compute the panel's real
+// height as whatever's left below those 2 rows, same as top+bottom pairs
+// elsewhere in this file — avoids hand-tracking screen.height here. Doesn't
+// reach inputBox/peekBox/footerBox etc. either way; those are appended
+// AFTER this box (see the screen.append() list below, and its own comment
+// on why tipPanelBox has to sit BEFORE the review* boxes there too — the
+// "glitching" background bug) so they still paint on top and stay usable
+// regardless of tipPanelBox's own height.
+const TIP_PANEL_W = SIDE_TOTAL_W;
+const tipPanelBox = blessed.box({
+  top: 2, bottom: 0, right: 0, width: TIP_PANEL_W,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+let tipPanelOpen = false;
+
+// genListBox/genDetailBox/genAnalysisBox — the Gen SCREEN's body, toggled
+// by its own ^G (see toggleGen() — briefly merged onto Train's ^T as one
+// shared control tab, since split back apart). NOT an overlay like
+// tip/chat — user: "gen
+// opens like train opens. its the whole width of the window. not a panel.
+// only tip is the panel." So this is a full appMode ('gen'), sharing the
+// same "hide PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES, shrink statusH
+// to a 2-row header, reclaim the space" treatment Learn/Train already gets
+// (see switchScreen()/reflowGen()) — mutually exclusive with 'learn', NOT
+// with the tip panel (tip stays a true overlay, independent of appMode,
+// exactly like it already floats over Learn).
+//
+// Used to be a single scrolling genPanelBox with everything crammed into
+// one text column. Split into three boxes instead — user: "the gen menu
+// needs to use this layout," pointing at Train > Review's own
+// reviewListBox/reviewDetailBox/reviewRegressionBox split (see those three
+// boxes' own creation comments, right below this) — so these three mirror
+// that trio exactly, field-for-field on the styling, just populated from
+// genEntries instead of reviewEntries:
+//   genListBox     — one row per generated clip (mirrors reviewListBox —
+//                    see genEntryLabel()/renderGenScreen()).
+//   genDetailBox   — the selected clip's full readout (mirrors
+//                    reviewDetailBox/renderReviewDetail() — see
+//                    renderGenDetail()).
+//   genAnalysisBox — NEW section reviewRegressionBox doesn't have an
+//                    equivalent of on the Train side (user: "I will need a
+//                    sub section for analysis... since the generations
+//                    need to be analyzed in order to be classified good or
+//                    bad... this section will be the toss or keep answers
+//                    per generated track") — a full per-track keep/toss/
+//                    score report, not a navigation widget, so it doesn't
+//                    duplicate genListBox's job even though both read off
+//                    genEntries. Sized/positioned the same "takes whatever
+//                    reviewRegressionBox would" way in reflowGen().
+// left:0/width:100%/height here are all placeholders — reflowGen() sets
+// the real geometry off contentW()/reviewStackBottom(), same pattern
+// reviewListBox/reviewDetailBox/reviewRegressionBox use.
+const genListBox = blessed.list({
+  left: 0, width: 40, height: 10,
+  tags: true, mouse: true,
+  // Never .focus()ed — inputBox stays the one focused/keyable widget the
+  // whole app relies on (see CURSOR-AWARE INPUT EDITING below), same as
+  // reviewListBox — .select() just drives the highlight to match genIndex,
+  // every Gen-screen action is still a typed :gen command or the ^D/^K
+  // quick-nav keys (see stepGen()/stepGenKey()), never a direct list click.
+  style: {
+    selected: { fg: 'black', bg: 'bright-white' },
+    item:     { fg: SKIN.fg },
+  },
+});
+const genDetailBox = blessed.box({
+  left: 41, width: '100%', height: 10,
+  tags: true, wrap: true,
+  scrollable: true, alwaysScroll: true, mouse: true,
+  style: { fg: SKIN.fg, bg: SKIN.bg, scrollbar: { bg: 'grey' } },
+});
+const genAnalysisBox = blessed.box({
+  left: 0, width: '100%', height: 10,
+  tags: true, wrap: true,
+  scrollable: true, alwaysScroll: true, mouse: true,
+  style: { fg: SKIN.fg, bg: SKIN.bg, scrollbar: { bg: 'grey' } },
+});
+
+// genHeaderBox — Gen's own page title row, sitting at the SAME top slot
+// reviewHeaderBox occupies for Train (learnPanelTop(), i.e. statusH — see
+// reflowGen()), not buried as the first line of genPanelBox's own scrollable
+// content the way it used to be (user: "make GEN cover the whole page too.
+// not the menu. but it should go above train"). "GEN" itself renders plain
+// bright-white, no {bold} — user: "dont make gen bold. just keep it CAPS
+// and white" — same weight TRAIN's own header text uses (see
+// renderTrainingView()'s reviewHeaderBox.setContent calls), just the other
+// screen's name. Content is set in renderGenPanel(), same call site that
+// used to build this as genPanelBox's own first line.
+const genHeaderBox = blessed.box({
+  left: 0, width: '100%', height: 1,
+  tags: true, wrap: false,
+  style: { fg: SKIN.fg, bg: SKIN.bg },
+});
+
+// genLog — recent :gen spawn output, kept short (this is "what just
+// happened", not a scrollback replacement — logSys() already puts the same
+// lines on whichever real log surface is visible, peekBox/logBox, same as
+// every other spawn-based command). Redraws the panel immediately if it's
+// currently the active screen, so progress is visible without needing chat
+// open too.
+const GEN_LOG_MAX = 8;
+let genLog = [];
+function genLogPush(line) {
+  genLog.push(line);
+  if (genLog.length > GEN_LOG_MAX) genLog.shift();
+  if (appMode === 'gen') { renderGenPanel(); screen.render(); }
+}
+
+// ── GEN BROWSE/LISTEN/SCORE ──────────────────────────────────────────────────
+// user: "I want a little menu with a stem filter to be able to listen to
+// the generated files. Then a protocol that scores it according to the
+// taste model... and the possibility to allow it even if the taste model
+// blocks it."
+//
+// Data source is generated_manifest.json (per session, written by
+// ingest_generated.py — see that script's update_generated_manifest_log())
+// rather than ebys.db directly: app.js has no sqlite client at all (only
+// blessed+ws are dependencies — see package.json), it only ever reads JSON.
+// generated_manifest.json already has exactly what a browse list needs
+// (track_name, stem, genre, bpm, filename, timestamps) with zero new
+// dependencies.
+let genFilter      = 'all'; // 'all' | 'vocals' | 'melody' | 'bass' | 'drums'
+let genEntries     = [];    // current filtered/sorted list — see refreshGenEntries()
+let genIndex       = 0;     // selection into genEntries
+let genAudioProc   = null;
+let genPlayStart   = 0;
+// genRowContentLines — this file's equivalent of reviewBakeContentLines
+// (see that variable's own comment): drives ONLY the browse row's height
+// in reflowGen(), set in renderGenScreen() to max(detail lines, entry
+// count) so the row grows to fit whichever needs more room, same pattern
+// the Train side already uses.
+let genRowContentLines = 6;
+
+function genManifestLogPath() { return path.join(DATA_DIR, 'generated_manifest.json'); }
+function genOverridesPath()   { return path.join(DATA_DIR, 'gen_overrides.json'); }
+
+function loadGenManifestLog() {
+  try { return JSON.parse(fs.readFileSync(genManifestLogPath(), 'utf8')); }
+  catch (e) { return {}; }
+}
+
+let genOverrides = null; // lazy-loaded, see loadGenOverrides()
+function loadGenOverrides() {
+  if (genOverrides) return genOverrides;
+  try { genOverrides = JSON.parse(fs.readFileSync(genOverridesPath(), 'utf8')); }
+  catch (e) { genOverrides = {}; }
+  return genOverrides;
+}
+function saveGenOverrides() {
+  try {
+    fs.writeFileSync(genOverridesPath(), JSON.stringify(loadGenOverrides(), null, 2));
+  } catch (e) { logSys('gen: could not save gen_overrides.json — ' + e.message); }
+}
+
+// genDecisionFor()/setGenDecision() — a REAL keep/toss flag per entry, not
+// just a one-directional block-override (user: "I will need to see, in the
+// gen menu, whether the generations get kept or tossed"). Mirrors train
+// review's :train approve/:train exclude (mutateCurrentBakeEntry() setting
+// e.excluded — see that pair's own comments), except three-state instead of
+// boolean: unlike a bake entry, a gen entry already HAS an automatic
+// recommendation (scoreGenEntry(), off the taste model), so "no manual
+// decision yet" is a real, useful third state — not just "excluded=false by
+// default" — that means "still deferring to the score," distinct from
+// "I looked at this and specifically want it kept/tossed regardless of
+// what the score says."
+//   null    — no manual decision; renderGenPanel() falls back to
+//             scoreGenEntry()'s unscored/ok/blocked read.
+//   'keep'  — force it into the kept bucket, even if the score blocks it
+//             (what :gen allow used to do, alone, one-directional).
+//   'toss'  — force it OUT, even if the score likes it — this direction
+//             didn't exist before (:gen disallow only ever cleared an
+//             allow; there was no way to reject something that scored ok).
+// gen_overrides.json previously stored `{ trackName: true }` for "allowed"
+// — genDecisionFor() still reads `true` as 'keep' so nothing already
+// written to that file breaks.
+function genDecisionFor(trackName) {
+  const v = loadGenOverrides()[trackName];
+  if (v === true || v === 'keep') return 'keep';
+  if (v === 'toss') return 'toss';
+  return null;
+}
+function setGenDecision(trackName, decision) {
+  const overrides = loadGenOverrides();
+  if (decision === 'keep' || decision === 'toss') overrides[trackName] = decision;
+  else delete overrides[trackName];
+  saveGenOverrides();
+}
+
+// refreshGenEntries() — rebuild genEntries from generated_manifest.json,
+// applying genFilter, newest-ingested first. Called on enterGenMode(), on
+// :gen filter, and right after a fresh ingest so a just-generated batch
+// shows up without needing to reopen the screen.
+function refreshGenEntries() {
+  const log = loadGenManifestLog();
+  const all = Object.keys(log).map(trackName => {
+    const rec = log[trackName] || {};
+    return {
+      trackName,
+      stem: rec.stem,
+      genre: rec.genre,
+      bpm: rec.bpm,
+      filename: rec.filename,
+      path: path.join(HTDEMUCS_ROOT, trackName, rec.filename || ''),
+      ingestedAt: rec.ingested_at || '',
+    };
+  });
+  all.sort((a, b) => b.ingestedAt.localeCompare(a.ingestedAt));
+  genEntries = (genFilter === 'all') ? all : all.filter(e => e.stem === genFilter);
+  if (genIndex >= genEntries.length) genIndex = Math.max(0, genEntries.length - 1);
+  if (genIndex < 0) genIndex = 0;
+}
+
+// genSlicesForTrack() — this track's own slice descriptors, straight out of
+// analysis_library.json (same file/lookup convention getSliceCountsForTrack()
+// above already uses — fileKey like "TrackName_drums.wav"), sorted by
+// time_frac. Empty until the Max/FluCoMa analysis pass has actually run on
+// this track (see ingest_generated.py's own closing message) — that's a
+// real gate, not a bug, same as any newly-added real track.
+const GEN_STEM_SUFFIX = { vocals: '_vocals.wav', melody: '_other.wav', bass: '_bass.wav', drums: '_drums.wav' };
+function genSlicesForTrack(trackName, stem) {
+  const suffix = GEN_STEM_SUFFIX[stem];
+  if (!suffix) return [];
+  try {
+    const lib = JSON.parse(fs.readFileSync(LIBRARY_PATH, 'utf8'));
+    for (const [fileKey, stemObj] of Object.entries(lib)) {
+      if (fileKey.toLowerCase().endsWith(suffix) && fileKey.startsWith(trackName)) {
+        const data = Object.values(stemObj)[0];
+        const slices = (data && data.slices) || {};
+        return Object.values(slices).sort((a, b) => (a.time || 0) - (b.time || 0));
+      }
+    }
+  } catch (e) { /* analysis_library.json missing/unreadable — no slices yet */ }
+  return [];
+}
+
+// Same LEARNED_REFUSE_THRESHOLD slicer.js's applyLearnedRefusal() uses (see
+// that file) — kept as a literal copy, not a shared import, since app.js and
+// slicer.js are separate runtimes (Node TUI vs. Max JS object) that never
+// load each other's code, same reasoning dimLookupKey()'s own comment gives.
+const GEN_REFUSE_THRESHOLD = -0.5;
+
+// scoreGenEntry() — applies the SAME horizontal-model weights/bias/shapes
+// slicer.js's predictHorizontalQuality() uses (see jointHorizontalPoints()
+// above for the identical delta/absDelta/sq/cu formula, lifted verbatim),
+// but against this track's OWN consecutive slice-to-slice transitions
+// instead of a live "candidate vs currently-playing" pair — there IS no
+// live pair for a file sitting in a static browse list (applyLearnedRefusal
+// needs `endDesc`, the engine's current end-of-slice state, which only
+// exists during live playback). Averaging the model's prediction across a
+// track's own internal transitions is a genuinely different question than
+// "would the live engine refuse this candidate right now" — it answers
+// "does this clip's own internal movement look like the kind of movement
+// the taste model has learned to like" — but it's built from the identical
+// weights, so it's not an arbitrary substitute either. Returns
+// { score, refused, n } or null if fewer than 2 slices exist yet (not
+// analyzed) or no horizontal model has been trained yet.
+function scoreGenEntry(entry) {
+  const bias = loadLearnedBiasSync();
+  const model = bias.horizontal;
+  if (!model) return null;
+  const slices = genSlicesForTrack(entry.trackName, entry.stem);
+  if (slices.length < 2) return null;
+  let dimShapes = {};
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'learned_bias.json'), 'utf8'));
+    dimShapes = raw.dim_shapes || {};
+  } catch (e) { /* fine — treat every dim as linear */ }
+  const dims = LEVEL_DIMS.concat(TENSION_DIMS);
+  const weights = model.weights || {};
+  const scoreBias = model.bias || 0;
+  let total = 0, n = 0;
+  for (let i = 1; i < slices.length; i++) {
+    const frm = slices[i - 1], to = slices[i];
+    let sum = scoreBias;
+    for (const label of dims) {
+      const key = dimLookupKey(label);
+      const fv = frm[key], tv = to[key];
+      if (fv === undefined || fv === null || tv === undefined || tv === null) continue;
+      const delta = tv - fv;
+      sum += (weights['delta' + label] || 0) * delta;
+      sum += (weights['absDelta' + label] || 0) * Math.abs(delta);
+      const shape = dimShapes[label];
+      if (shape === 'quadratic' || shape === 'cubic') sum += (weights['sq' + label] || 0) * (delta * delta);
+      if (shape === 'cubic') sum += (weights['cu' + label] || 0) * (delta * delta * delta);
+    }
+    sum = Math.max(-1, Math.min(1, sum));
+    total += sum; n++;
+  }
+  if (n === 0) return null;
+  const score = total / n;
+  return { score, refused: score < GEN_REFUSE_THRESHOLD, n };
+}
+
+function genPlay() {
+  const entry = genEntries[genIndex];
+  if (!entry) { logSys('gen: no entry selected — :gen filter/:gen next first'); return; }
+  if (!fs.existsSync(entry.path)) { logSys('gen: audio file missing on disk — ' + entry.path); return; }
+  genStop();
+  const player = process.platform === 'darwin' ? 'afplay'
+               : process.platform === 'linux'  ? 'aplay'
+               : null;
+  if (!player) { logSys('gen: audio playback isn\'t supported on this platform'); return; }
+  try {
+    genAudioProc = spawn(player, [entry.path]);
+    genPlayStart = Date.now();
+    genAudioProc.on('exit', () => { genAudioProc = null; if (appMode === 'gen') renderGenPanel(); });
+    genAudioProc.on('error', e => { logSys('gen: playback failed — ' + e.message); genAudioProc = null; });
+    logSys('▶ playing ' + entry.trackName + ' (' + entry.stem + ')');
+  } catch (e) {
+    logSys('gen: playback failed — ' + e.message);
+    genAudioProc = null;
+  }
+  if (appMode === 'gen') renderGenPanel();
+}
+
+function genStop() {
+  if (!genAudioProc) return;
+  try { genAudioProc.kill(); } catch (e) {}
+  genAudioProc = null;
+  if (appMode === 'gen') renderGenPanel();
+}
+
+// stepGen() — shared by :gen next/prev AND stepGenKey() below (same "typed
+// command and key share one definition" pattern stepGraph()/stepGraphKey()
+// already use for Train > Review's picker — see that pair's own comments).
+// Works regardless of appMode, same as the typed command always has — only
+// re-renders if the Gen screen happens to be the one currently up. delta:
+// +1 = next (down), -1 = prev (up).
+function stepGen(delta) {
+  refreshGenEntries();
+  if (!genEntries.length) { logSys('gen: nothing in the list — :gen filter all, or generate something first'); return; }
+  genIndex = Math.max(0, Math.min(genEntries.length - 1, genIndex + delta));
+  genStop();
+  if (appMode === 'gen') { renderGenPanel(); screen.render(); }
+}
+
+// stepGenKey() — the ^D/^K quick-nav keys' own entry point, Gen-screen-only
+// (mirrors stepGraphKey()'s identical guard) — there's nothing to step
+// through, and no feedback to show, on Playback/Train, and the footer chip
+// (see renderFooter()'s genNavChips) only shows here anyway. The typed
+// :gen next/prev command bypasses this guard on purpose — it calls
+// stepGen() directly, same as it always has — so it still works from
+// anywhere, same as ^N/^U's typed sibling :graphNext/:graphPrev does.
+function stepGenKey(delta) {
+  if (appMode !== 'gen') return;
+  stepGen(delta);
+}
+
+// runGenerate() — spawns generate_agent.py in genenv (see GENERATE_PY's own
+// comment), streams its output to genLogPush() (so the Gen screen's
+// "recent" tail updates live, same as logSys does for peekBox/logBox
+// elsewhere), and hands the manifest path it printed to runIngestGenerated()
+// below. One :gen command, genre tag to "sitting in the browse list."
+function runGenerate(stem, genre, count, duration, onDone) {
+  genRunning = true;
+  if (appMode === 'gen') renderGenPanel();
+  genLogPush(`$ gen ${stem} ${count} ${duration} ${genre}`);
+  logSys(`→ generating: stem=${stem}  genre="${genre}"  count=${count}  duration=${duration}s …`);
+  const script = path.join(__dirname, '..', 'demucs', 'generate_agent.py');
+  const args = [script, '--stem', stem, '--genre', genre, '--bpm', '120',
+                '--count', String(count), '--duration', String(duration),
+                '--out-dir', GENERATED_DIR];
+  // Silent LoRA pickup (Alex: "no interaction with LoRA, this is all backend
+  // protocols") — if watch_lora.py (or a manual :lora promote) has left a
+  // current.safetensors, every :gen call uses it automatically from here on,
+  // no flag or command needed. Absent that file, this is exactly the plain
+  // base-model call it always was — generate_agent.py's own docstring says
+  // --lora-ckpt-path is optional, so nothing here changes behavior before a
+  // LoRA exists.
+  if (fs.existsSync(LORA_CURRENT_CKPT)) {
+    args.push('--lora-ckpt-path', LORA_CURRENT_CKPT);
+    let invokePhrase = null;
+    try { invokePhrase = fs.readFileSync(LORA_CURRENT_INVOKE, 'utf8').trim() || null; } catch (e) {}
+    if (invokePhrase) args.push('--invoke-phrase', invokePhrase);
+    genLogPush(`  (using live LoRA: current.safetensors${invokePhrase ? `, invoke "${invokePhrase}"` : ''})`);
+  }
+  const proc = spawn(GENERATE_PY, args, { env: GENERATE_ENV });
+  let manifestPath = null;
+  const onLine = l => {
+    l = l.trim();
+    if (!l) return;
+    genLogPush(l);
+    // generate_agent.py's final line is exactly "wrote <manifest path>" (no
+    // leading "  -> ", unlike its per-clip "  -> wrote <wav>" lines).
+    const m = /^wrote (.+\.json)$/.exec(l);
+    if (m) manifestPath = m[1];
+  };
+  proc.stdout.on('data', d => d.toString().split('\n').forEach(onLine));
+  proc.stderr.on('data', d => d.toString().split('\n').forEach(onLine));
+  proc.on('error', err => {
+    genLogPush(`generate_agent error: ${err.message} (stable-audio-3 venv missing at ${STABLE_AUDIO_3_DIR}? see GENERATE_PY's own comment)`);
+    genRunning = false;
+    if (appMode === 'gen') renderGenPanel();
+    if (onDone) onDone(-1, null);
+  });
+  proc.on('close', code => {
+    if (code !== 0) genLogPush(`generate_agent exited with code ${code}`);
+    else if (!manifestPath) genLogPush('generate_agent finished but no manifest path was parsed — check the log above');
+    if (onDone) onDone(code, manifestPath);
+  });
+}
+
+// runIngestGenerated() — wraps ingest_generated.py: stream output, then
+// refresh the browse list and re-render so the new batch shows up without
+// reopening the screen.
+function runIngestGenerated(manifestPath, onDone) {
+  genLogPush(`$ ingest ${path.basename(manifestPath)}`);
+  const script = path.join(__dirname, '..', 'demucs', 'ingest_generated.py');
+  const proc = spawn(GENERATE_PY, [script, '--manifest', manifestPath], { env: GENERATE_ENV });
+  proc.stdout.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) genLogPush(l.trim()); }));
+  proc.stderr.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) genLogPush(l.trim()); }));
+  proc.on('error', err => { genLogPush(`ingest error: ${err.message}`); genRunning = false; if (appMode === 'gen') renderGenPanel(); if (onDone) onDone(-1); });
+  proc.on('close', code => {
+    genRunning = false;
+    if (code === 0) {
+      reloadGenreDb(); reloadBeatsDb();
+      refreshGenEntries();
+      genLogPush('✓ ingest done — tagged source=generated, waiting on Max/FluCoMa for slice descriptors');
+    } else {
+      genLogPush(`ingest exited with code ${code}`);
+    }
+    if (appMode === 'gen') renderGenPanel();
+    screen.render();
+    if (onDone) onDone(code);
+  });
+}
+
+// TIP_PANEL_PAD — breathing room between tipPanelBox's own edges and the
+// text inside it, on both sides (left AND right, not just an indent) —
+// user: "put space between the side of the tip box and the actual infos.
+// cause right now it's all stuck together." No blessed `padding` option
+// here — this file never uses that (see BAKE_INFO_INDENT's own comment
+// block for the established convention instead): every line gets
+// TIP_PANEL_PAD literal leading spaces, and wrapStatLine's own wrap width
+// is narrowed by 2×TIP_PANEL_PAD so wrapped rows leave the same gap on the
+// right edge too, not just the left.
+const TIP_PANEL_PAD = 2;
+
+// renderTipPanel() — leads with the exact same session/tip readout tipBox
+// already shows (sid/up/srv, uid/txn, tip/lvl/ts, the ∫/aᵢ split bar, floor
+// row), just at the panel's own much wider width, then a clearly labeled
+// blank section below reserved for the real payout equation — user: "i'll
+// add the equation in this tab". Nothing here guesses at that shape; it's
+// just reserved space plus a reminder of the entry points that already
+// feed lastTip/currentCuratorShare() (:tipOpen/:tip/:setSplit — see
+// renderTipInfo() above, which this mirrors).
+function renderTipPanel() {
+  const w = tipPanelBox.width - TIP_PANEL_PAD * 2;
+  const sidTxt = state.session.sessionId || wht('--');
+  const srvTxt = state.tipBackendUp === true ? '{bright-white-fg}ok{/bright-white-fg}'
+    : state.tipBackendUp === false ? '{bright-white-fg}{bold}offline{/bold}{/bright-white-fg}' : wht('--');
+  const uidTxt = lastTip ? lastTip.username : wht('--');
+  const upTxt  = fmtDuration(
+    (state.session.active && state.session.openedAt) ? Date.now() - state.session.openedAt : null);
+  const tipLevel = !state.session.active ? null
+    : state.session.mode === 'web' ? 1
+    : state.session.mode === 'venue' ? (state.session.deck === 'direct' ? 3 : 2)
+    : null;
+  const lvlTxt = tipLevel ? '{bright-white-fg}' + tipLevel + '/3{/bright-white-fg}' : wht('--');
+  const liveCuratorShare = currentCuratorShare();
+  const eqPct = Math.round(liveCuratorShare * 100) + '/' + Math.round((1 - liveCuratorShare) * 100);
+
+  const lines = [];
+  lines.push('{bright-white-fg}TIP{/bright-white-fg}  {grey-fg}^V to close · :tipOpen/:tip/:setSplit feed this{/grey-fg}');
+  lines.push(wrapStatLine([
+    '{grey-fg}sid:{/grey-fg} ' + sidTxt,
+    '{grey-fg}up{/grey-fg} ' + upTxt,
+    '{grey-fg}srv:{/grey-fg} ' + srvTxt,
+  ], w));
+  lines.push(wrapStatLine([
+    '{grey-fg}uid:{/grey-fg} ' + uidTxt,
+    '{grey-fg}txn:{/grey-fg} ' + (lastTip ? lastTip.txnId : wht('--')),
+  ], w));
+  lines.push(wrapStatLine([
+    '{grey-fg}tip{/grey-fg} ' + (lastTip ? '$' + lastTip.amount.toFixed(2) : wht('--')),
+    '{grey-fg}lvl{/grey-fg} ' + lvlTxt,
+    '{grey-fg}ts{/grey-fg} ' + fmtClock(lastTip ? lastTip.ts : null),
+  ], w));
+  lines.push('{grey-fg}∫{/grey-fg} ' + splitBar(liveCuratorShare, CURATOR_FLOOR, EQ_BAR_W)
+    + ' {grey-fg}aᵢ{/grey-fg}  ' + eqPct
+    + (curatorShareOverride !== null ? '  {grey-fg}(:setSplit override){/grey-fg}' : ''));
+  lines.push(wrapStatLine([
+    '{grey-fg}floor ∫:{/grey-fg} ' + (floorDj !== null ? (floorDj * 100).toFixed(0) + '%' : wht('--')),
+    '{grey-fg}floor aᵢ:{/grey-fg} ' + (floorArtist !== null ? (floorArtist * 100).toFixed(0) + '%' : wht('--')),
+  ], w));
+  lines.push('');
+  lines.push('{grey-fg}── equation ' + '─'.repeat(Math.max(0, w - 14)) + '{/grey-fg}');
+  lines.push('{grey-fg}(reserved — add the payout equation here){/grey-fg}');
+
+  // TIP_PANEL_PAD applied per PHYSICAL row, not per pushed line — some of
+  // the lines above (the wrapStatLine() calls) can themselves already be
+  // two rows internally (a real session id/username/txn id running long
+  // enough to wrap — see renderTipInfo()'s own comment on this), so pad
+  // has to go on after the final split, not before it.
+  const content = lines.join('\n')
+    .split('\n')
+    .map(l => ' '.repeat(TIP_PANEL_PAD) + l)
+    .join('\n');
+  tipPanelBox.setContent(content);
+  return content.split('\n').length;
+}
+
+// genEntryLabel() — one genListBox row per generated clip, same shape as
+// reviewEntryLabel()'s bake branch (see that function's own comment for
+// the field-by-field reasoning — this mirrors it exactly): a small leading
+// indent, timestamp, a flag glyph, then the label. "intent" has no direct
+// equivalent for a generated clip, so genre stands in for it (the
+// creative direction it was asked for) with stem prefixed, since scanning
+// by instrument matters at least as much here. flag mirrors reviewEntryLabel's
+// ✗-if-excluded convention, generalized to Gen's three-state decision (see
+// genDecisionFor()): ✗ if it's out of the generate pool right now (tossed,
+// or auto-blocked with no override), ✓ if manually kept despite a block,
+// space otherwise (kept by default, or scored ok).
+function genEntryLabel(e) {
+  const decision = genDecisionFor(e.trackName);
+  const sc = scoreGenEntry(e);
+  const flag = decision === 'toss' ? '✗'
+             : (decision === 'keep' && sc && sc.refused) ? '✓'
+             : (!decision && sc && sc.refused) ? '✗'
+             : ' ';
+  const when  = (e.ingestedAt || '').slice(0, 16).replace('T', ' ');
+  const label = (e.stem || '?') + ': ' + (e.genre || '(no genre)').replace(/\s+/g, ' ').slice(0, 32);
+  return `  ${when}  ${flag} ${label}`;
+}
+
+// renderGenDetail() — mirrors renderReviewDetail() field-for-field (see
+// that function's own comment): a bold headline (genre stands in for
+// intent, same reasoning as genEntryLabel() above), a grey metadata line
+// (timestamp/stem/bpm, same three-fields-on-one-line shape track/genre/bpm
+// uses), a status line (kept/tossed/ok/blocked/unscored — see
+// genDecisionFor()/scoreGenEntry() — playing whether the transport's
+// current audio is this clip's WAV — and an analyzed readout, since unlike
+// a bake entry a generated clip has a real prerequisite step before it can
+// be judged at all: genSlicesForTrack() coming back empty means the Max/
+// FluCoMa pass hasn't run on this WAV yet, see GENERATIVE_LAYER.md), then
+// the track/file identity.
+function renderGenDetail(e) {
+  if (!e) {
+    return '{grey-fg}nothing generated yet for this filter — :gen <vocals|melody|bass|drums> [count] [duration] <genre...>'
+      + ' to make some (:genList to browse genre tags first){/grey-fg}';
+  }
+  const lines = [];
+  lines.push('{bright-white-fg}genre:{/bright-white-fg}  ' + (e.genre || '(none)'));
+  lines.push('{grey-fg}' + (e.ingestedAt || '') + '   stem: ' + (e.stem || '--')
+    + '   bpm: ' + (e.bpm || '--') + '{/grey-fg}');
+
+  const decision = genDecisionFor(e.trackName);
+  const sc = scoreGenEntry(e);
+  const slices = genSlicesForTrack(e.trackName, e.stem);
+  const analyzedTxt = !slices.length ? 'not analyzed yet'
+    : (sc ? slices.length + ' slice(s), scored' : slices.length + ' slice(s), no taste model trained yet');
+
+  const scoreSuffix = sc ? ' (' + sc.score.toFixed(2) + ')' : '';
+  let statusPlain;
+  if (decision === 'keep') statusPlain = '✓ kept' + scoreSuffix + (sc && sc.refused ? ' — override' : '');
+  else if (decision === 'toss') statusPlain = '✗ tossed' + scoreSuffix + (sc && !sc.refused ? ' — override' : '');
+  else if (!sc) statusPlain = 'unscored';
+  else if (sc.refused) statusPlain = '✗ blocked' + scoreSuffix;
+  else statusPlain = '✓ ok' + scoreSuffix;
+  const statusColored = (decision || (sc && sc.refused)) ? '{bright-white-fg}' + statusPlain + '{/bright-white-fg}' : statusPlain;
+
+  lines.push('{grey-fg}status: ' + statusColored
+    + '{grey-fg}   audio: ' + (genAudioProc ? '▶ playing' : '(stopped)')
+    + '   analyzed: ' + analyzedTxt + '{/grey-fg}');
+  lines.push('');
+  lines.push('{bright-white-fg}track:{/bright-white-fg}  ' + e.trackName);
+  lines.push('{grey-fg}file: ' + (e.filename || '--') + '{/grey-fg}');
+  lines.push('');
+  lines.push('{grey-fg}^D/^K or :gen next/prev · :gen play/stop · :gen keep/toss/clear{/grey-fg}');
+  return lines.join('\n');
+}
+
+// renderGenAnalysisLines() — the analysis section's content (user: "I will
+// need a sub section for analysis... since the generations need to be
+// analyzed in order to be classified good or bad... this section will be
+// the toss or keep answers per generated track"). Distinct from
+// genListBox above it: the list is a navigation widget (one line, for
+// selecting), this is a report — every entry in the current filter, its
+// analyzed/scored state, and its keep-or-toss verdict, plus the per-stem
+// remix/generate mode (state.agentMode, off setAgentMode()'s WS handler)
+// and a tail of whatever :gen/:genList has actually logged this session
+// (genLog — fed by genLogPush() calls in runGenerate()/
+// runIngestGenerated(), so the tail updates without needing chat open).
+function renderGenAnalysisLines(w) {
+  const lines = [];
+  const modeLine = ['vocals', 'melody', 'bass', 'drums'].map(s => {
+    const m = (state.agentMode && state.agentMode[s]) || 'remix';
+    const label = m === 'generate' ? '{bright-white-fg}{bold}generate{/bold}{/bright-white-fg}'
+      : m === 'blend' ? '{bright-white-fg}{bold}blend{/bold}{/bright-white-fg}'
+      : wht('remix');
+    return '{grey-fg}' + s + ':{/grey-fg} ' + label;
+  }).join('  ');
+  lines.push(wrapStatLine([modeLine], w));
+  lines.push('');
+
+  lines.push('{grey-fg}── analysis ' + '─'.repeat(Math.max(0, w - 13)) + '{/grey-fg}');
+  lines.push('{grey-fg}each clip needs a live Max/FluCoMa analysis pass before the taste model can score it — see GENERATIVE_LAYER.md{/grey-fg}');
+
+  if (!genEntries.length) {
+    lines.push(wht('  (nothing generated yet for this filter)'));
+  } else {
+    let nAnalyzed = 0, nKept = 0, nTossed = 0, nBlocked = 0, nOk = 0, nUnscored = 0;
+    const rows = genEntries.map(e => {
+      const slices = genSlicesForTrack(e.trackName, e.stem);
+      const sc = scoreGenEntry(e);
+      const decision = genDecisionFor(e.trackName);
+      if (slices.length) nAnalyzed++;
+      if (decision === 'keep') nKept++;
+      else if (decision === 'toss') nTossed++;
+      else if (!slices.length || !sc) nUnscored++;
+      else if (sc.refused) nBlocked++;
+      else nOk++;
+
+      const scoreSuffix = sc ? ' (' + sc.score.toFixed(2) + ')' : '';
+      let verdict;
+      if (decision === 'keep') verdict = '{bright-white-fg}{bold}kept{/bold}{/bright-white-fg}' + scoreSuffix;
+      else if (decision === 'toss') verdict = '{grey-fg}{bold}tossed{/bold}{/grey-fg}' + scoreSuffix;
+      else if (!slices.length) verdict = wht('not analyzed');
+      else if (!sc) verdict = wht('unscored');
+      else if (sc.refused) verdict = '{grey-fg}blocked{/grey-fg}' + scoreSuffix;
+      else verdict = 'ok' + scoreSuffix;
+      return '  ' + e.stem.padEnd(7) + '  ' + (e.genre || '?').padEnd(24)
+        + '  ' + String(e.bpm || '?').padStart(3) + ' bpm  ' + verdict;
+    });
+    lines.push('{grey-fg}' + nAnalyzed + '/' + genEntries.length + ' analyzed  ·  '
+      + nKept + ' kept  ·  ' + nTossed + ' tossed  ·  ' + nOk + ' ok  ·  '
+      + nBlocked + ' blocked  ·  ' + nUnscored + ' unscored{/grey-fg}');
+    lines.push('');
+    rows.forEach(r => lines.push(r));
+  }
+  lines.push('');
+  lines.push('{grey-fg}── recent ' + '─'.repeat(Math.max(0, w - 11)) + '{/grey-fg}');
+  if (!genLog.length) {
+    lines.push(wht('(nothing run yet this session)'));
+  } else {
+    genLog.forEach(l => lines.push(l));
+  }
+  return lines;
+}
+
+// renderGenPanel() — top-level Gen-screen render, called from every
+// :gen/:genList mutation and the two reflow()/render() tick spots (same
+// "keep it live" reasoning renderTipPanel() has — see those call sites'
+// own comments). Populates all four boxes (see their shared creation
+// comment for what each one is): genHeaderBox (position readout, mirrors
+// reviewHeaderBox's source/session line), genListBox + genDetailBox (the
+// browse row, mirrors reviewListBox/reviewDetailBox — user: "the gen menu
+// needs to use this layout"), genAnalysisBox (the keep/toss report — see
+// renderGenAnalysisLines()' own comment). Kept as one function (not split
+// per-box) so nothing can update only half the screen and drift stale.
+function renderGenPanel() {
+  refreshGenEntries();
+
+  genHeaderBox.setContent('{bright-white-fg}GEN{/bright-white-fg}  {grey-fg}filter:{/grey-fg} ' + genFilter
+    + '  {grey-fg}clip{/grey-fg} ' + (genEntries.length ? (genIndex + 1) : 0) + '/' + genEntries.length
+    + (genRunning ? '  {bright-white-fg}● generating…{/bright-white-fg}' : '')
+    + (genAudioProc ? '  {bright-white-fg}▶ playing{/bright-white-fg}' : ''));
+
+  const items = genEntries.map(e => genEntryLabel(e));
+  genListBox.setItems(items.length ? items : ['{grey-fg}  (none yet){/grey-fg}']);
+  if (genEntries.length) genListBox.select(genIndex);
+
+  const detailContent = renderGenDetail(genEntries[genIndex]);
+  genDetailBox.setContent(detailContent);
+  genRowContentLines = Math.max(detailContent.split('\n').length, items.length);
+
+  const analysisLines = renderGenAnalysisLines(genAnalysisBox.width);
+  genAnalysisBox.setContent(analysisLines.join('\n'));
+}
+
+// ── ZONE 6.95 — EQ spectrum (braille) ────────────────────────────────────────
+// Per-stem is NOT a floating box any more — user pointed at the weight/dir/
+// dirWgt block itself and asked for the bar to sit right under it, matching
+// that block's own width, so it's now pushed straight into playBox's per-
+// stem text (see the render() block right after the dirWgt line push) instead
+// of a separate box off in the meters sidebar. eqSpecBarLines() below is the
+// shared line-builder — used only by that per-stem text now.
+//
+// Master USED to keep its own small floating spectrum box (masterEqSpecBox)
+// in the same column, mirroring the per-stem bar exactly — that was in
+// service of "the master UI must be a replica of all the other channels."
+// User later reversed that call: "remove the spectrum for the master ...
+// finally i decided that the master wasn't gonna look like the other
+// channels. it's gonna look like a menu header." masterEqSpecBox,
+// renderEqSpectrum(), and eqInfoMasterLine() were all removed along with it
+// — master's own "track infos" already live on masterInfoBox (row1, see its
+// own comment), so nothing needed to move into the freed space.
+
+// masterEntropyBox / renderMasterEntropy() — master's own horizontal
+// entropy range bar, same column channelEntropyStemBoxes uses. Removed —
+// user: "also remove entropy range bar from the master header."
+//
+// masterEntropyFloorBox / renderMasterEntropyFloor() — the floor(warm)/
+// floor(cold) readout that used to sit directly under it — also removed
+// now, user: "remove this info from the header" (pointing at a screenshot
+// of exactly this "floor(✳): -- floor(❄): --" line), together with "move
+// all the channels one row up so the gap between the vocals channel and
+// the master header is smaller" — see masterColBottom's own comment for
+// how removing this row's reservation shrinks the header cluster.
+
+// masterLockBox / renderMasterLock() — used to show a lock-source icon +
+// stem name on master's row1, right side. Removed — user: "remove the
+// locksource on the master, it doesnt make sense." It was never a genuine
+// "master is locked to X" relationship (master itself has no :lockSource
+// concept — only real stems do); it was just echoing whichever stem
+// happened to be renderMasterBar()'s own reference for its timestamp,
+// which read as a real lock indicator but wasn't one.
+
+// EQ_SPEC_SCALE_W — reserved left-hand column for a small dB ruler beside
+// the spectrum bars (user: "put a little metering to the left of the
+// spectrum. in db. like -60, -20, -10, 0?"). 4 = "-60".length (3, the
+// widest label anything here ever produces) + 1 space separator before the
+// bar itself.
+const EQ_SPEC_SCALE_W = 4;
+// eqSpecDbLabel(row, height) — the dB value printed beside bar row `row`
+// (0 = top). Every row prints its own TOP boundary — the exact eighthsByCol
+// threshold (see renderBlockBars) at which that row goes from not-fully-lit
+// to fully-lit, given the same EQ_SPEC_MIN_DB..0 normalisation. Used to
+// special-case the LAST row to force it to print the true floor
+// (EQ_SPEC_MIN_DB, -60) instead of its own top boundary, so both 0 and -60
+// always appeared — but user: "make sure the metering next to the spectrum
+// actually matches the db levels", and it didn't: for height=4 that row's
+// real top boundary is -45 (it fills solid well before -60), so the printed
+// "-60" sat beside a row that was already lit 15dB early. Every row now uses
+// the identical plain formula, no exception — labels come out evenly
+// spaced (0, -15, -30, -45 at height=4; 0, -10, ..., -50 at height=6) and
+// each one is exactly where its row actually lights up. Trade-off: the true
+// floor -60 is no longer printed as its own label (it's implicit — below
+// the bottom row's own -45/-50/etc. threshold), which is the one thing this
+// version gives up relative to the original ask.
+function eqSpecDbLabel(row, height) {
+  const db = Math.round(EQ_SPEC_MIN_DB * row / height);
+  const txt = String(db).padStart(EQ_SPEC_SCALE_W - 1, ' ');
+  return `{grey-fg}${txt}{/grey-fg}`;
+}
+// eqSpecBarLines — a `rows`-tall braille bar for `name`, colW characters
+// wide (INCLUDING the dB scale column), returned as an array of already-
+// joined-per-row strings (length === rows). Used by playBox's per-stem
+// block (render()) — was also shared with master's own spectrum box before
+// that was removed (see masterBarBox's own comment). Reads straight off the
+// live eqSpectrum reading — no peak-hold/decay here (see eqSpectrum's own
+// comment for that history).
+function eqSpecBarLines(name, colW, rows) {
+  const levels = eqSpectrum[name] || new Array(EQ_SPEC_BANDS).fill(0);
+  const h = rows || 1;
+  const barW = Math.max(1, colW - EQ_SPEC_SCALE_W);
+  const barLines = renderEqBars(levels, barW, h).split('\n');
+  // No color tag on the label any more — user: "remove the colors".
+  return barLines.map((line, r) => `${eqSpecDbLabel(r, h)} ${line}`);
+}
+
+// ── 16-BAND EQ REPRESENTATION (decorative, not a control) ───────────────────
+// A purely visual read of the 3-band (low shelf / mid bell / high shelf) EQ
+// that's ALREADY the one real, usable EQ (:eqLow/:eqMid/:eqMidFreq/:eqMidQ/
+// :eqHigh, see eqHeaderStemLine's own numbers above this bar) — user: "update the
+// TUI with a 16 band eq. dont make it actually usable... the 16 band is a
+// representation of the settings of the low mid high eq. so the user sees
+// visually how much gain is applied per frequency region." Sits directly
+// beside the real spectrum bar (eqSpecBarLines) in the per-stem block below
+// — user: "the eq is represented by the 16 faders next to the spectrum
+// region." Nothing here sends or reads a single command; it's math run
+// purely client-side over state.paramsPerStem[stem]'s existing confirmed
+// values, the same values eqInfoStemLine() already prints as text.
+//
+// EQ16_RANGE_DB — the ±dB span the 16 "faders" saturate at. eqLow/eqMid/
+// eqHigh can technically run -96..+24 (eq_router.js's own real range,
+// -96 = kill), but that whole span is dominated by kill territory nobody
+// rides day to day — capping the display at a musical ±18 dB spends the
+// bar's actual row height on the range this is meant to communicate at a
+// glance, same reasoning EQ_SPEC_MIN_DB caps the real spectrum's floor
+// rather than showing the true noise floor.
+const EQ16_RANGE_DB = 18;
+const EQ16_BANDS    = 16;
+// EQ16_COL_W — was 2 (1 track/cap character + 1 blank column) when this bar
+// was purely decorative. Grew to 5, then 6 once frequency labels needed
+// room (each up to 5 columns wide, e.g. "20.0K" — see the toPrecision(3)
+// era of eq16FreqLabel's own comment). Now 4 — eq16FreqLabel was
+// simplified to whole-number/whole-K labels (user: "simplify the numbers
+// in the eq so the eq takes less horizontal space"), so the widest label
+// is only 3 columns now ("126" "200" "317" "502" "796" "13K" "20K"). 4
+// still guarantees at least 1 real blank column after every label, no
+// matter how wide it is, same "content + trailing blank(s)" shape
+// EQ16_COL_W always had. eqSpecW (the real spectrum's own width, computed
+// off RIGHT_CLUSTER_W minus this) shrinks automatically to make room —
+// same single-source-of-truth pattern that's compressed it before, just
+// the other direction this time (freed columns go back to the spectrum).
+const EQ16_COL_W = 4;
+const EQ16_W     = EQ16_BANDS * EQ16_COL_W;
+// EQ16_GAP — breathing room between the real spectrum and this bar, same
+// role VU_SPATIAL_GAP plays between the VU sidebar and the spatial ring —
+// without it the two bars visually fuse into one at a glance. 1, was 2 —
+// user: "compress the tui the most possible so the spectrum can have more
+// room ... because now the eq is really large" — still enough of a seam to
+// read as two separate bars, just tighter.
+const EQ16_GAP = 1;
+// EQ16_SCALE_W — a small dB ruler to the LEFT of the 16 fader tracks, same
+// role EQ_SPEC_SCALE_W plays for the real spectrum bar right next to it —
+// user: "add a dB scale for the eq [16-band] zone" (until now the only
+// anchor was the "┼" 0 dB tick baked into the bars themselves, no actual
+// numbers). Bipolar (±EQ16_RANGE_DB), unlike the real spectrum's own
+// unipolar 0..EQ_SPEC_MIN_DB scale — see eq16DbLabel() just below. Already
+// includes the 1-column separating space eq16BarLines() joins with (label
+// padStart's to EQ16_SCALE_W-1, then +1 literal space = EQ16_SCALE_W back
+// out) — same convention EQ_SPEC_SCALE_W uses for the real spectrum right
+// beside it, so EQ16_TOTAL_W below must NOT add another +1 on top of this
+// (an earlier version did — a genuine wasted column, caught while
+// compressing this zone down as far as it'll go).
+const EQ16_SCALE_W = 4;
+// EQ16_TOTAL_W — the bar's full on-screen footprint: the scale column
+// (already includes its own separating space — see EQ16_SCALE_W's own
+// comment) plus the 16 fader tracks themselves. This, not the bare
+// EQ16_W, is what eqSpecW's own budget must subtract so the real spectrum
+// stops short of the scale column too, not just the fader tracks.
+const EQ16_TOTAL_W = EQ16_SCALE_W + EQ16_W;
+// Center frequencies for the 16 bands — log-spaced 20 Hz .. 20 kHz, the same
+// audible-range endpoints the real spectrum's own frequency-scale row below
+// it already labels (20 / 200 / 2.00k / 12.6k / 20k).
+const EQ16_FREQS = Array.from({ length: EQ16_BANDS }, (_, i) =>
+  20 * Math.pow(1000, i / (EQ16_BANDS - 1)));
+const EQ16_SR = 44100; // matches eq_router.js's own SR — used only for this
+                        // client-side magnitude-response estimate, never
+                        // sent anywhere or fed back into real DSP.
+
+// RBJ Audio EQ Cookbook biquad math — same formulas eq_router.js's own
+// lowShelf()/highShelf()/peak() use (kept in sync deliberately: this is a
+// client-side READ of what those functions would compute for the CURRENT
+// confirmed gain/freq values, not a second copy that drives any audio).
+function eq16LowShelfCoefs(fc, gainDB, Q) {
+  const A = Math.pow(10, gainDB / 40), w0 = 2 * Math.PI * fc / EQ16_SR;
+  const cw = Math.cos(w0), sw = Math.sin(w0), al = sw / (2 * Q), sA = Math.sqrt(A);
+  const b0 = A * ((A + 1) - (A - 1) * cw + 2 * sA * al);
+  const b1 = 2 * A * ((A - 1) - (A + 1) * cw);
+  const b2 = A * ((A + 1) - (A - 1) * cw - 2 * sA * al);
+  const a0 = (A + 1) + (A - 1) * cw + 2 * sA * al;
+  const a1 = -2 * ((A - 1) + (A + 1) * cw);
+  const a2 = (A + 1) + (A - 1) * cw - 2 * sA * al;
+  return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0];
+}
+function eq16HighShelfCoefs(fc, gainDB, Q) {
+  const A = Math.pow(10, gainDB / 40), w0 = 2 * Math.PI * fc / EQ16_SR;
+  const cw = Math.cos(w0), sw = Math.sin(w0), al = sw / (2 * Q), sA = Math.sqrt(A);
+  const b0 = A * ((A + 1) + (A - 1) * cw + 2 * sA * al);
+  const b1 = -2 * A * ((A - 1) + (A + 1) * cw);
+  const b2 = A * ((A + 1) + (A - 1) * cw - 2 * sA * al);
+  const a0 = (A + 1) - (A - 1) * cw + 2 * sA * al;
+  const a1 = 2 * ((A - 1) - (A + 1) * cw);
+  const a2 = (A + 1) - (A - 1) * cw - 2 * sA * al;
+  return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0];
+}
+function eq16PeakCoefs(fc, gainDB, Q) {
+  const A = Math.pow(10, gainDB / 40), w0 = 2 * Math.PI * fc / EQ16_SR;
+  const cw = Math.cos(w0), al = Math.sin(w0) / (2 * Q);
+  const b0 = 1 + al * A, b1 = -2 * cw, b2 = 1 - al * A;
+  const a0 = 1 + al / A, a1 = -2 * cw, a2 = 1 - al / A;
+  return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0];
+}
+// Magnitude response (dB) of a normalized biquad [b0,b1,b2,a1,a2] (a0 already
+// divided out, same shape eq_router.js hands to biquad~) at frequency f.
+function eq16MagDB(coefs, f) {
+  const b0 = coefs[0], b1 = coefs[1], b2 = coefs[2], a1 = coefs[3], a2 = coefs[4];
+  const w = 2 * Math.PI * f / EQ16_SR;
+  const c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
+  const numRe = b0 + b1 * c1 + b2 * c2, numIm = -b1 * s1 - b2 * s2;
+  const denRe = 1 + a1 * c1 + a2 * c2, denIm = -a1 * s1 - a2 * s2;
+  const num = Math.hypot(numRe, numIm), den = Math.hypot(denRe, denIm) || 1e-9;
+  return 20 * Math.log10(Math.max(num / den, 1e-6));
+}
+// eq16CurveDB(p) — one summed dB value per band for a stem's current low/
+// mid/high settings (p = state.paramsPerStem[stem]). Cascaded biquads
+// multiply in the linear domain, i.e. ADD in dB — same way the real signal
+// chain's own low→mid→high biquad~ cascade (eq_router.js's signal-chain
+// comment) combines, just computed analytically here instead of measured.
+function eq16CurveDB(p) {
+  const low  = eq16LowShelfCoefs(80, p.eqLow || 0, 0.7);
+  // Mid Q now reads the live, per-stem, user-adjustable value (:eqMidQ,
+  // confirmed-from-engine via p.eqMidQ) instead of the fixed 0.7 every band
+  // used before — user: "have another setting to make the bell more pointy
+  // or large ... help me figure it out" → that's Q; wired up end to end
+  // (eq_router.js/ws_server.js/this file) once the terminology was
+  // confirmed. Low/high shelves stay fixed at 0.7 — only the mid bell's
+  // width is adjustable, matching eq_router.js's own eqMidQ scope.
+  const mid  = eq16PeakCoefs(p.eqMidFreq || 1000, p.eqMid || 0, p.eqMidQ || 0.7);
+  const high = eq16HighShelfCoefs(10000, p.eqHigh || 0, 0.7);
+  return EQ16_FREQS.map(f => eq16MagDB(low, f) + eq16MagDB(mid, f) + eq16MagDB(high, f));
+}
+
+// renderEq16Bars — 16 actual vertical fader tracks, `rows` tall, one column
+// per band. A first pass drew this as a bipolar bar chart (fill growing out
+// from a shared center line) — user, looking at it running: "it doesnt look
+// at all like an eq... i need 16 fader looking rows." A full-width bar chart
+// at rest (every band at 0 dB) is one solid line end to end — nothing reads
+// as 16 SEPARATE anything until values diverge. This version draws every
+// band as its own always-visible vertical track (a thin grey line running
+// the full row height, like a mixer channel strip's fader slot) with a
+// solid, uncolored "cap" (█) at the row matching that band's CURRENT dB
+// value — so even at dead flat, you see 16 distinct capped tracks lined up
+// in a row, not one bar. A "┼" marks each track's own 0 dB rest position
+// (grey, same EQ_SPEC_GRID_FG reference-line convention the real spectrum's
+// own idle cells use) whenever the cap isn't already sitting there.
+// eq16CellPad(visLen) — shared centering math for anything drawn inside an
+// EQ16_COL_W-wide band column: the fader glyph itself (renderEq16Bars) and
+// the frequency label underneath it (eq16FreqRow) both call this so they're
+// guaranteed to center on the exact same column, not just "close enough" by
+// coincidence — user: "can you center them under the faders of the eq?"
+// (this replaced an earlier left-aligned version, tried first because
+// right-aligning caused two consecutive full-width labels to run together
+// — see eq16FreqRow's own history — left-aligning fixed that but visually
+// drifted the glyph off to one side of its own label).
+function eq16CellPad(visLen) {
+  const total = Math.max(0, EQ16_COL_W - visLen);
+  const left  = Math.floor(total / 2);
+  return { left: ' '.repeat(left), right: ' '.repeat(total - left) };
+}
+function renderEq16Bars(dbValues, rows) {
+  // zeroRow — fixed for every column: the row nearest exact-center (rows-1
+  // is odd*2... concretely 2 or 3 for rows=6 depending on rounding, doesn't
+  // matter which — what matters is it's the SAME row for all 16 tracks, so
+  // the "0 dB" ticks visually line up into their own faint horizontal row).
+  const zeroRow = Math.round((rows - 1) / 2);
+  const lines = [];
+  for (let r = 0; r < rows; r++) {
+    let line = '';
+    for (let c = 0; c < dbValues.length; c++) {
+      const dbClamped = Math.max(-EQ16_RANGE_DB, Math.min(EQ16_RANGE_DB, dbValues[c]));
+      // norm: 0 at the top row (+EQ16_RANGE_DB) .. 1 at the bottom row
+      // (-EQ16_RANGE_DB) — same top-is-positive orientation the real
+      // spectrum's own dB scale (eqSpecDbLabel) uses.
+      const norm = (EQ16_RANGE_DB - dbClamped) / (2 * EQ16_RANGE_DB);
+      const thumbRow = Math.round(norm * (rows - 1));
+      let cell;
+      if (r === thumbRow) {
+        cell = '█'; // the actual current value — plain/uncolored, same
+                     // "no color on real content" convention the real
+                     // spectrum's own filled cells use.
+      } else if (r === zeroRow) {
+        cell = `{${EQ_SPEC_GRID_FG}-fg}┼{/${EQ_SPEC_GRID_FG}-fg}`; // 0 dB rest tick
+      } else {
+        cell = `{${EQ_SPEC_GRID_FG}-fg}│{/${EQ_SPEC_GRID_FG}-fg}`; // fader track
+      }
+      const pad = eq16CellPad(1); // glyph is always exactly 1 visible column
+      line += pad.left + cell + pad.right;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+// eq16DbLabel(row, rows) — this bar's own version of eqSpecDbLabel, bipolar
+// instead of unipolar: +EQ16_RANGE_DB at row 0 down to -EQ16_RANGE_DB at the
+// bottom row, evenly spaced across `rows`, same "every row gets a real
+// number, not just top/mid/bottom" convention eqSpecDbLabel uses. Explicit
+// '+' sign above the mid line (unlike eqSpecDbLabel, whose scale is never
+// positive) so a glance at the label alone — no need to check the "┼" tick
+// — says whether that row reads as boost or cut; 0 itself prints bare.
+function eq16DbLabel(row, rows) {
+  const db = Math.round(EQ16_RANGE_DB - (row * 2 * EQ16_RANGE_DB) / Math.max(1, rows - 1));
+  const txt = (db > 0 ? '+' : '') + db;
+  return `{grey-fg}${txt.padStart(EQ16_SCALE_W - 1, ' ')}{/grey-fg}`;
+}
+// eq16BarLines(dbValues, rows) — renderEq16Bars' own bars with eq16DbLabel's
+// scale column prepended, same split eqSpecBarLines()/eqSpecDbLabel() use
+// for the real spectrum right beside this one.
+function eq16BarLines(dbValues, rows) {
+  return renderEq16Bars(dbValues, rows).map((line, r) => `${eq16DbLabel(r, rows)} ${line}`);
+}
+// eq16FreqLabel(hz)/EQ16_FREQ_LABELS — one label per band, EQ16_FREQS
+// itself (the exact same log-spaced 20 Hz..20 kHz center frequencies
+// eq16CurveDB() already places every band at). Was 3-significant-figure
+// (toPrecision(3): "20.0 31.7 50.2 79.6 126 200 317 502 796 1.26K 2.00K
+// 3.17K 5.02K 7.96K 12.6K 20.0K") — user: "simplify the numbers in the eq
+// so the eq takes less horizontal space? like 3.17k can become 3k." Now
+// plain Math.round(): whole Hz under 1000 ("20 32 50 80 126 200 317 502
+// 796"), whole K with a "K" suffix at 1000+ ("1K 2K 3K 5K 8K 13K 20K") —
+// max label width drops from 5 columns to 3, so EQ16_COL_W (below) shrinks
+// to match, handing the freed columns back to the real spectrum.
+function eq16FreqLabel(hz) {
+  return hz >= 1000 ? Math.round(hz / 1000) + 'K' : String(Math.round(hz));
+}
+const EQ16_FREQ_LABELS = EQ16_FREQS.map(eq16FreqLabel);
+// eq16FreqRow() — formats EQ16_FREQ_LABELS, one label per band, CENTERED
+// per EQ16_COL_W-wide column via eq16CellPad() — same helper (and same
+// column) renderEq16Bars' own fader glyph centers in, so every label sits
+// directly under its own fader — user: "center them under the faders of
+// the eq." Right-aligning was tried first and failed (several of the
+// widest labels — "1.26K"/"2.00K"/"3.17K"/"5.02K"/"7.96K" — land on
+// consecutive bands and ran together with zero gap); left-aligning fixed
+// that but visually drifted off-center from the glyph above it.
+// eq16CellPad guarantees the same 1-column minimum gap either way — even
+// the widest label ("20.0K", 5 columns) still gets EQ16_COL_W(6) - 5 = 1
+// full blank column split around it — while actually landing centered.
+function eq16FreqRow() {
+  return EQ16_FREQ_LABELS.map(t => {
+    const pad = eq16CellPad(t.length);
+    return pad.left + t + pad.right;
+  }).join('');
+}
+
+// eqInfoStemLine(stem) — the row freed up by shrinking the spectrum bar from
+// STEM_ROW_BAND_H to EQ_SPEC_ROWS (see that constant's own comment) — user:
+// "use that bottom newly freed line to insert all the data relative to EQ
+// low/mid/midfreq/high, gain, pitch shift, formant shift, etc." Confirmed-
+// from-engine values (state.paramsPerStem[stem], populated by the WS
+// 'param' handler above for eqLow/eqMid/eqMidFreq/eqHigh/trim/fader/
+// pitchShift/formantShift — no optimistic client-side guessing, same
+// pattern weight/dir/match already use). "gain" is state.gain[stem], the
+// existing per-stem fader control (separate from the trim/fader DSP-stage
+// fields above), matching how it's tracked everywhere else in this file.
+// Per-stem only now — this used to also have a master-side twin
+// (eqInfoMasterLine()), but master's own spectrum bar (and this row
+// alongside it) was removed entirely; see masterEqSpecBox's removal note.
+// eqInfoStemLine() — REMOVED. Used to print eqL/eqM/eqH/trim/gain/pitch/fmt
+// as one flowing line on the freed row under the spectrum. Every piece has
+// its own dedicated home now: eqL/eqM/eqH/trim moved to eqHeaderStemLine()
+// (just below), printed ABOVE the EQ16 zone instead of below the spectrum —
+// user: "move the eqL eqM @ and eqH over the eq zone ... integrate trim
+// into that same row". gain moved into channelEntropyStemBoxes, replacing
+// the entropy fader that used to live there — user: "remove the entropy
+// fader ... and replace it with the gain fader" (see that box's own render
+// function for the new content). pitch/fmt were already fully duplicated by
+// pitchFmtStemBoxes (added earlier this session) by the time this was
+// written, so they're not printed anywhere new — nothing lost, just no
+// longer said twice.
+//
+// eqHeaderStemLine(stem) — eqL/eqM/eqH/trim, positioned directly ABOVE the
+// 16-band EQ zone (not the real spectrum) — user: "justify the information
+// so they align with the left and right side of the eq zone" — eqL left-
+// justified to the zone's own left edge (column 0 of the 16 fader tracks
+// themselves, i.e. past eq16DbLabel's own scale column — same "align with
+// where the lines start, not the label" convention eqInfoStemLine used to
+// follow for the real spectrum).
+// trim used to print right after eqH using room measured out to the true
+// window width — which let it (and eqH, to make room for it) drift past
+// EQ16_W entirely, landing over the pitch/fmt column instead of the bands
+// — user, on a screenshot: "trim is above pitch, but i want it above the
+// eq bands. basically where eqH is. so move eqH to the left. align
+// everything above the eq bands." Fixed by keeping trim's own room INSIDE
+// EQ16_W; then, on a follow-up screenshot of that fix: "justify them.
+// equal space between them. except for mid and @ cause they belong to the
+// same concept." So this is now 3 blocks, not eqL/eqM/eqH/trim as 4
+// independent items — [eqL] / [eqM incl. @Hz and Q, one unit] /
+// [eqH + trim, one unit] — evenly spaced: the gap before the middle block
+// equals the gap after it, and the two outer blocks still sit flush
+// against EQ16_W's own left/right edges same as before (0 and EQ16_W).
+// If eqH+trim together don't fit at all (extreme values on every field at
+// once), trim is dropped and eqH becomes its own right block instead —
+// same "don't spill past the bands" fallback as before, just re-run
+// against the new 2-block-vs-3-block choice.
+function eqHeaderStemLine(stem) {
+  const p = state.paramsPerStem[stem] || {};
+  const sgn = n => (typeof n === 'number' ? (n >= 0 ? '+' : '') + n.toFixed(1) : '--');
+  const vis = t => visWidth(t.replace(/\{[^}]+\}/g, ''));
+  const eqLTxt = '{grey-fg}eqL:{/grey-fg}' + sgn(p.eqLow);
+  // Space before '@' — user: "put a space between eqM:+0.0 and @1000Hz"
+  // (read solid together before, "eqM:+0.0@1000Hz"). Trailing " Q:0.70" —
+  // user: "have another setting to make the bell more pointy or large" —
+  // that's Q (quality factor/bandwidth); now that :eqMidQ is a real,
+  // confirmed-from-engine value (p.eqMidQ), it gets its own live readout
+  // right here alongside the freq it shapes, same row eqL/eqH already live
+  // on. 2 decimals, not 1 — Q's own useful range (0.1–10) needs the extra
+  // digit to distinguish e.g. 0.70 from 0.75 the way 1-decimal gain/freq
+  // values never need to.
+  const eqMTxt = '{grey-fg}eqM:{/grey-fg}' + sgn(p.eqMid) + ' {grey-fg}@{/grey-fg}' + Math.round(p.eqMidFreq || 0) + '{grey-fg}Hz {/grey-fg}'
+    + '{grey-fg}Q:{/grey-fg}' + (typeof p.eqMidQ === 'number' ? p.eqMidQ.toFixed(2) : '0.70');
+  const eqHTxt = '{grey-fg}eqH:{/grey-fg}' + sgn(p.eqHigh);
+  const trimTxt = '{grey-fg}trim:{/grey-fg}' + sgn(p.trim);
+  const eqLVis = vis(eqLTxt), eqMVis = vis(eqMTxt), eqHVis = vis(eqHTxt), trimVis = vis(trimTxt);
+  // Right block is "eqH trim" (one unit) when it fits, else just "eqH" —
+  // same fallback the old trimRoom-based version used, re-expressed for
+  // the 3-block layout: with the 2 required gaps (>=1 each) added in,
+  // does eqL + eqM + "eqH trim" still fit inside EQ16_W?
+  const showTrim = eqLVis + eqMVis + (eqHVis + 1 + trimVis) + 2 <= EQ16_W;
+  const rightVis = showTrim ? eqHVis + 1 + trimVis : eqHVis;
+  // Equal-space justify: eqL flush to column 0, the right block flush to
+  // EQ16_W's own right edge (both unchanged from before), eqM's block
+  // placed so the gap in front of it equals the gap behind it — user:
+  // "justify them. equal space between them." totalGap is what's left
+  // over after all 3 blocks' own content; split as evenly as an integer
+  // column count allows (off-by-one, if any, goes to the leading gap).
+  const totalGap = Math.max(2, EQ16_W - eqLVis - eqMVis - rightVis);
+  const gap1 = Math.max(1, Math.round(totalGap / 2));
+  const gap2 = Math.max(1, totalGap - gap1);
+  let row = eqLTxt
+    + ' '.repeat(gap1)
+    + eqMTxt
+    + ' '.repeat(gap2)
+    + eqHTxt;
+  if (showTrim) row += ' ' + trimTxt;
+  return row;
+}
+
+// momentumStemLines()/renderMomentumPanel() — REMOVED. Folded directly into
+// weightDirStemLines()/renderWeightDir() (see momentumStemBoxes' own removal
+// comment, back near MOM_W/WD_MOM_COL_W) — the sparkline+value string this
+// used to build is now just the tail end of each weight/dir row's own
+// string, concatenated in-line rather than set on a separate box.
 
 function descIsMissing(v, dim) {
   if (v === null || v === undefined || (typeof v === 'number' && isNaN(v))) return true;
   if (dim === 'P' && v === 0) return true;
   return false;
 }
-
-// One stem's 7-dim grid — the FULL content of that stem's own small
-// descGridStemBoxes[i], no leading gap needed since the box itself is
-// already positioned to start right under that stem's own waveform.
-function descGridStemLines(stem) {
-  if (Object.keys(stemRanges).length === 0) loadStemRanges();
-
-  // No more "waiting for slice transitions…" placeholder state — the grid
-  // structure (stem labels, dimension rows, '│' seams) always renders, same
-  // shape whether it's full of real data or completely empty. An empty
-  // buffer just means every pair falls into the `i >= buf.length` blank
-  // branch below, so the row prints as its label/dims with nothing but
-  // blanks and seams — reads as "nothing here yet" on its own, no separate
-  // message needed.
-  const lines = [];
-  const buf   = descRollBuffers[stem];
-  const rng   = stemRanges[stem] || {};
-  const label = (DESC_LABELS[stem] || '').padEnd(DESC_LABEL_W, ' ');
-  const blank = ''.padEnd(DESC_LABEL_W, ' ');
-
-  DIMS.forEach((dim, di) => {
-    const dimRange = rng[dim];
-    // No info = no info, regardless of which of the two reasons caused it
-    // (this specific slice has no usable value, vs. this stem+dimension
-    // has no computed range to grade against) — both render as the same
-    // dot.
-    const rangeUsable = dimRange && isFinite(dimRange.min) && isFinite(dimRange.max)
-      && dimRange.max !== dimRange.min;
-    const cellFor = v => {
-      if (descIsMissing(v, dim) || !rangeUsable) return '{grey-fg}·{/grey-fg}';
-      const t = Math.max(0, Math.min(1, (v - dimRange.min) / (dimRange.max - dimRange.min)));
-      return descShadeFor(t);
-    };
-    // Each pair renders as OUT immediately followed by IN — no gap between
-    // them, since those two cells are the actual glue point of one real
-    // cut. The '│' only goes BETWEEN different transitions.
-    const pairs = [];
-    for (let i = 0; i < DESC_ROLL_PAIRS; i++) {
-      // No transition recorded at this slot yet — same "no data" dot as a
-      // recorded transition whose value is missing (see cellFor above),
-      // instead of a blank space.
-      if (i >= buf.length) { pairs.push('{grey-fg}··{/grey-fg}'); continue; }
-      const p = buf[i];
-      pairs.push((p.out ? cellFor(p.out[dim]) : ' ') + cellFor(p.in[dim]));
-    }
-    // followStem indicator — this dimension isn't reading its own
-    // descriptor, it's blended from another stem (see :followStem).
-    // Two things mark it, both reusing existing width rather than
-    // widening the box (which is tuned flush against the VU sidebar):
-    //   1. The separator between the dim letter and its cells swaps from
-    //      a plain space to a shade glyph, picked by descShadeFor() off
-    //      the SAME follow weight the audio engine actually blends by —
-    //      a 50% follow reads as a mid shade, 100% reads solid, so the
-    //      glyph itself communicates how strongly it's being pulled, not
-    //      just that it is.
-    //   2. The target's abbreviation (vcl/mel/bas/drm) fills the
-    //      left-hand label gutter on rows 2–7, which is otherwise always
-    //      blank there (row 1 keeps the stem's own label — the one
-    //      unavoidable collision is C specifically being followed, where
-    //      the shade-glyph separator is the only indicator since that
-    //      gutter slot is already the stem name).
-    const followMap = (state.followGraph[stem] && state.followGraph[stem][dim]) || {};
-    const followEntries = Object.entries(followMap);
-    let sep = ' ';
-    let leftGutter = di === 0 ? label : blank;
-    if (followEntries.length > 0) {
-      followEntries.sort((a, b) => b[1] - a[1]); // dominant target first
-      const [topTarget, topWeight] = followEntries[0];
-      sep = descShadeFor(topWeight);
-      if (di !== 0) {
-        leftGutter = ('→' + (DESC_LABELS[topTarget] || topTarget)).padEnd(DESC_LABEL_W, ' ');
-      }
-    }
-    const prefix = leftGutter + dim + sep;
-    lines.push(prefix + pairs.join('{grey-fg}│{/grey-fg}')
-      + ' '.repeat(DESC_VALUE_GAP) + descValueStr(stem, dim));
-  });
-  return lines;
-}
-function renderDescGrid() {
-  DESC_STEMS.forEach((stem, i) => {
-    descGridStemBoxes[i].setContent(descGridStemLines(stem).join('\n'));
-  });
-}
-
 
 // ── ZONE R — the training screen (hidden until ^T / :train) ──────────────────
 // The training screen, the peer of playback (see the SCREEN MODEL comment
@@ -3086,7 +5778,10 @@ function renderDescGrid() {
 // section, right after stopBakeLoop, for the full picture). reviewListBox is
 // only used by the 'review' view (hidden in 'training', where
 // reviewDetailBox takes the full width) — see reflowLearn(). All three
-// start hidden — enterLearnMode()/exitLearnMode() toggle them directly.
+// start hidden — switchScreen('learn') shows reviewHeaderBox/reviewDetailBox
+// directly, and render()'s SCREEN VISIBILITY block hides all five again
+// (reviewHeaderBox/reviewListBox/reviewDetailBox/reviewRegressionBox/
+// reviewOverallBox) whenever appMode isn't 'learn'.
 const reviewHeaderBox = blessed.box({
   left: 0, width: '100%', height: 1,
   tags: true, wrap: false,
@@ -3118,8 +5813,14 @@ const reviewDetailBox = blessed.box({
 // which of the two is shown every tick (see playTop's own comment block) —
 // this box itself never needs positioning from reflowLearn(), same as
 // playBox is only ever positioned inside render().
+// height: 6 — was 2 (user: "make more room for the recording section of
+// the review tab. add a couple rows, like 3-4 rows"), +4. Fixed at box
+// creation, same as before — reflowLearn() reads it back out at render time
+// (RECORDING_H = reviewWaveformBox.height, see that function's own
+// 'Recording' step) rather than hardcoding the number a second time, so
+// regressionH/recordingTop there both pick up the extra rows automatically.
 const reviewWaveformBox = blessed.box({
-  left: 0, width: '100%', height: 2,
+  left: 0, width: '100%', height: 6,
   tags: true, wrap: false,
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
@@ -3141,7 +5842,42 @@ const reviewRegressionBox = blessed.box({
   scrollable: true, alwaysScroll: true, mouse: true,
   style: { fg: SKIN.fg, bg: SKIN.bg, scrollbar: { bg: 'grey' } },
 });
-[reviewHeaderBox, reviewListBox, reviewDetailBox, reviewWaveformBox, reviewRegressionBox].forEach(b => b.hide());
+
+// reviewOverallBox — pinned sidebar, originally "Overall quality" (user:
+// "pin horizontal sum and vertical sum on the right side of the screen,
+// under the VU meter, but aligned vertically with the regression section").
+// Had a third "combined" card pooling both models' points together, but
+// that got removed (user: "so remove the combined all") once it was clear
+// it could be read as the real accept/reject decision weight when it
+// wasn't one, then the vertical ∑/horizontal ∑ content itself got pulled
+// (user: "remove the content of the overall quality section, but keep the
+// section") pending a replacement. That became the :tag tally
+// (tagsSummaryLines(), now gone — see git history), which was itself
+// replaced (user: "replace the tag sub section by the LoRA subsection")
+// by loraSummaryLines(): pipeline status for the User LoRA (raw/clean/
+// train/val/ckpt/gen counts, busy/idle, live checkpoint) — see that
+// function's own comment. Still lives in the same right-hand column
+// masterVuBox/masterSpatialBox already reserve (SIDE_TOTAL_W — see
+// reflowLearn()), which sits empty below row 8 in Learn mode, so this
+// doesn't take space from anything else.
+// REVIEW_GAP_W — user: "make sure they are aligned and have a small gap
+// between them, they shouldn't share the same line, it should cut in
+// between." Without this, reviewOverallBox's left edge sits EXACTLY at
+// reviewRegressionBox's right edge (contentW()) — zero columns of actual
+// screen between them — so each box's own horizontal rule, independently
+// drawn, lands flush against the other's and reads as one unbroken line
+// spanning the whole screen instead of two separate panels. Trimmed off
+// this box's own width (not reviewRegressionBox's — that width feeds
+// contentW()-based sizing other things share) so the gap is blank screen,
+// not blank content inside either box.
+const REVIEW_GAP_W = 2;
+const reviewOverallBox = blessed.box({
+  right: 0, width: SIDE_TOTAL_W - REVIEW_GAP_W, height: 10,
+  tags: true, wrap: true,
+  scrollable: true, alwaysScroll: true, mouse: true,
+  style: { fg: SKIN.fg, bg: SKIN.bg, scrollbar: { bg: 'grey' } },
+});
+[reviewHeaderBox, reviewListBox, reviewDetailBox, reviewWaveformBox, reviewRegressionBox, reviewOverallBox].forEach(b => b.hide());
 
 // ── ZONE F — Footer shortcut bar, pinned to the very bottom, both modes ──────
 // Mirrors sdj-tui.js's login-screen footer: inverse-video key "chip"
@@ -3158,16 +5894,46 @@ const footerBox = blessed.box({
 // chip — Chat/Learn are toggles ON a base playback state, not destinations
 // you navigate between, so the chip's own name never changes, just whether
 // it's currently on.
+// FOOTER_LABEL_PAD — right-pads a handful of toggle labels (Chat/Close,
+// Gen/Close, Link/Master, Review/Training, Stop/Start, Tip/Close) to
+// whichever one of the pair is longer, so the SAME chip never changes
+// width depending on state — user: "make sure the tab shortcuts align
+// with other tabs... same with start, train/gen, training/review and
+// tip." Without this, e.g. ^R's own label alone ("Training" vs "Review",
+// 8 vs 6 columns) shifted Tip — and everything after it — by 2 columns
+// just from switching Train's own sub-view, even with the row's overall
+// gap math already fixed (see footerGroupRow's own comment). Train/Start
+// don't need entries — each is already the longer half of its own pair
+// (Train ties Close at 5; Start beats Stop by 1; Training already covers
+// Review here too, listed once).
+const FOOTER_LABEL_PAD = { Chat: 5, Close: 5, Gen: 5, Link: 6, Master: 6, Review: 8, Stop: 5, Tip: 5 };
 function footerChip(key, label) {
-  return `{inverse} ${key} {/inverse} ${label}`;
+  const w = FOOTER_LABEL_PAD[label];
+  return `{inverse} ${key} {/inverse} ${w ? label.padEnd(w, ' ') : label}`;
 }
-// ^T switches between the two SCREENS (playback/Learn) — the label names
-// wherever it's about to take you, same "destination, not a dot" idea as
-// before. ^C is a pure overlay toggle now, independent of which screen is
-// active (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES) — closing
-// it doesn't land you on any one particular screen, it just returns to
-// whichever one was already underneath, so "Close" instead of naming a
-// destination that isn't always the same one.
+// ^P/Playback dropped from this row entirely — user: "remove the playback
+// tab since it is the baseline... playback is the normal basic mode of the
+// system. train taste and train gen are 'windows' to open." Playback isn't
+// a destination any more, it's just whatever's left once nothing else is
+// open — so it doesn't get a chip of its own. It briefly had a dedicated
+// "[PLAYBACK]" badge in the menu header row too, but that was removed as
+// pure duplication of [START]/[STOP] (was [RUNNING]/[STOPPED]; see render()'s own comment,
+// user: "remove the [PLAYBACK] tag in the menu next to the [session] tag.
+// there is already another tag doing the same job"). ^T and ^G are the only two real
+// "windows" now, each independent (user: "separate Train and Gen from the
+// same tab. Use a separate tab for each") — renamed back down to plain
+// "Train"/"Gen" per the same request that dropped ^P (were briefly "Train
+// taste"/"Train gen" to disambiguate from Playback sitting right next to
+// them — with Playback gone from this row, the longer names stopped
+// earning their space). Both still close back to Playback the exact same
+// way they always did — toggleTrain()/toggleGen() switchScreen() to
+// 'playback' when pressed on their own already-open screen — that logic is
+// untouched, only togglePlayback()/^P itself (the dedicated "jump to
+// Playback directly" control) is gone, since every open window already
+// closes back to it on its own key. ^C is a pure overlay toggle,
+// independent of which screen is active (see the SCREEN MODEL comment
+// above CHAT_OVERLAY_BOXES) — closing it doesn't land you on any one
+// particular screen either, so "Close" for the same reason.
 // ^L — moved to the right-flushed side (user: "move log out tab control to
 // the right side of the screen") — always shown there, both screens, same
 // as it always fired from either. ^R/^B — training-screen sub-navigation,
@@ -3177,14 +5943,76 @@ function footerChip(key, label) {
 // enters Learn mode first), but the chips stay hidden until you're
 // actually there. ^L sits outermost/rightmost either way, since it's the
 // one action here that isn't training-specific.
-function renderFooter() {
-  const leftChips = [
-    footerChip('^C', chatMaximized ? 'Close' : 'Chat'),
-    footerChip('^T', appMode === 'learn' ? 'Playback' : 'Train'),
-  ];
-  const leftStr = '  ' + leftChips.join('   ');
+// footerGroupRow(groups, weights) — Playback's own footer layout (see the
+// original user quote below), now shared by every screen instead of just
+// Playback — user, after a fixed-column attempt at cross-tab alignment
+// read as a regression: "no its not good. the playback tab had the good
+// layout. now you just reverted to the previous version. I want every tab
+// window to have that grouping concept." "^C chat stays where it is. It is
+// its own group. Then a little further away is another group, ^T train
+// and ^G gen. they are closer together. Then much further away is the
+// link/tip group... Then further away is the ^S start... and finally ^L
+// log out also in its own group, the furthest most right." Each group's
+// OWN chips join tight (3-space FOOTER_TIGHT_GAP), but the GAP BETWEEN
+// groups is proportioned by `weights` (weights.length === groups.length -
+// 1) so the whole row spreads across the available width the same way
+// Playback's always did. Chat's group sits flush left, Log out's flush
+// right (FOOTER_EDGE_PAD margin) — both ends anchor exactly where they
+// always did.
+// Empty groups (e.g. Train's own Bake/Graph slot, which Playback/Gen have
+// nothing for) are filtered out here rather than left in renderFooter()'s
+// own group list, merging that slot's own two flanking weights into one
+// combined weight first — so a screen with fewer populated groups still
+// reproduces the exact same boundary proportions a screen with all of them
+// filled would use, instead of a stray double-gap or a shifted layout.
+// This is also what keeps Chat/Train+Gen/Start/Log out landing in close to
+// the same place across screens without needing a separate fixed-column
+// scheme: their SHARED boundaries (chat|trainGen, ...|start, start|logout)
+// use the same weights regardless of how many screen-specific groups sit
+// between them.
+const FOOTER_EDGE_PAD = 2;
+function footerGroupRow(groups, weights) {
   const vis = s => s.replace(/\{[^}]+\}/g, '').length;
-
+  const outGroups = [];
+  const outWeights = [];
+  let carry = 0;
+  for (let i = 0; i < groups.length; i++) {
+    const wBefore = i > 0 ? weights[i - 1] : 0;
+    if (groups[i].length === 0) { carry += wBefore; continue; }
+    if (outGroups.length > 0) outWeights.push(wBefore + carry);
+    carry = 0;
+    outGroups.push(groups[i]);
+  }
+  const groupStrs = outGroups.map(g => g.join('   '));
+  const contentW  = groupStrs.reduce((sum, g) => sum + vis(g), 0);
+  const totalW    = outWeights.reduce((a, b) => a + b, 0) || 1;
+  const available = Math.max(outWeights.length, screen.width - FOOTER_EDGE_PAD * 2 - contentW);
+  // Gaps rounded individually except the LAST one, which instead absorbs
+  // whatever's left over — guarantees sum(gaps) === available exactly,
+  // with no per-gap Math.round() drift accumulating, so the row's total
+  // length always lands on the exact same column regardless of screen and
+  // Log out (right after the final gap) never shifts between tabs — user,
+  // on a screenshot: "log out is moving a little bit from one window to
+  // the other." Before this, two screens with different total content
+  // width could round their own gaps to slightly different sums, so the
+  // row came out a column or two short/long of screen.width on one but
+  // not the other, even with identical weights.
+  const gaps = [];
+  let gapSum = 0;
+  outWeights.forEach((wgt, i) => {
+    if (i === outWeights.length - 1) { gaps.push(Math.max(1, available - gapSum)); return; }
+    const g = Math.max(1, Math.round(available * wgt / totalW));
+    gaps.push(g);
+    gapSum += g;
+  });
+  let out = ' '.repeat(FOOTER_EDGE_PAD);
+  groupStrs.forEach((g, i) => {
+    out += g;
+    if (i < gaps.length) out += ' '.repeat(gaps[i]);
+  });
+  return out + ' '.repeat(FOOTER_EDGE_PAD);
+}
+function renderFooter() {
   // [^Q]/[^A] — shortcut tabs for :commands/:language, chat-only — user:
   // "I want them as tabs at the bottom of the screen" (moved here after an
   // earlier attempt as a clickable tag up on menuHeaderBox — "thats not
@@ -3205,7 +6033,17 @@ function renderFooter() {
   // same as they always visually were. See footerChip() calls below and
   // toggleCommandsPanel()/toggleLanguagePanel() for the matching real
   // bindings.
-  const cmdLangChips = chatMaximized ? [footerChip('^Q', '⌘'), footerChip('^A', '文')] : [];
+  // Reserved to a fixed width the same way bakeGraphGroup/navPrimaryPadded
+  // are below, rather than just being an empty array when chat is closed —
+  // user: "same for the chat window. things are unaligned." Splicing these
+  // straight into navTipGroup only when chatMaximized changed that group's
+  // own content width (2 fewer chips + 1 fewer separator when absent),
+  // which shifted contentW/available for the WHOLE row and dragged
+  // Chat/Train+Gen/Start/Tip/Log out sideways any time chat opened or
+  // closed — not just this slot. cmdLangSlot is always exactly one string
+  // of fixed width so the join-separator count in navTipGroup never
+  // changes either, whether chat is open or not.
+  const cmdLangReal = [footerChip('^Q', '⌘'), footerChip('^A', '文')];
 
   // Log out (^L) is always the LAST entry in rightChips in both branches,
   // and rightStr is right-flushed all the way to screen.width below (same
@@ -3213,40 +6051,128 @@ function renderFooter() {
   // regardless of whatever else sits in this row (user: "make sure log out
   // is always at the most right side of the screen"). cmdLangChips sits
   // right before it in both branches (see comment above).
-  // Bake chip (^B/^D) — always shown on the training screen (stepBake()
-  // cold-starts into Review from either sub-view, so both keys always do
-  // SOMETHING here, unlike the graph chip below). Collapsed back down to
-  // ONE chip covering both directions (user: "put them in the same tab,
-  // cause its taking a lot of space for something not so important") —
-  // arrows instead of two separate "(up)"/"(down)" chips. Still reads
-  // "^B/^D", not "^B/^H" — Ctrl+H is the one request this file can't
-  // actually honor: confirmed live (see the mode-toggles comment block
-  // above) that it arrives as a plain Backspace keystroke, not a
-  // distinguishable Ctrl combo, so the label would be lying about what key
-  // to press if it said H.
-  const bakeChips = [footerChip('^B/^D', '↑↓ Bake')];
-  // Graph chip (^P/^N) — same "only shown where the key actually does
+  // Tip chip — moved here from leftChips (user: "move the tip tab next to
+  // log out"), then rebound from ^P to ^V once ^P was needed for Playback's
+  // own new chip (leftChips, above) — same key, new home, see the ^V entry
+  // in the key-bindings comment near toggleTipPanel()'s own binding for why
+  // ^V specifically. Sits immediately before Log out in BOTH branches, same
+  // "always shown regardless of appMode" treatment cmdLangChips' neighbor
+  // slot gets, just one step further out (cmdLangChips is chat-only; this
+  // isn't). Chip label follows the same active-state convention as ^T/^P in
+  // leftChips — independent toggle, not mutually exclusive with either
+  // (see toggleTipPanel()'s own comment).
+  const tipChip = [footerChip('^V', tipPanelOpen ? 'Close' : 'Tip')];
+  // Bake chip (^B/^Y) — used to show on the whole training screen
+  // regardless of sub-view (stepBake() cold-starts into Review from
+  // either one, so the key always did SOMETHING) — narrowed to Review
+  // only now, same gate graphChips already uses — user: "make sure Bake
+  // shortcut only appears on review tab." Collapsed down to ONE chip
+  // covering both directions (user: "put them in the same tab, cause its
+  // taking a lot of space for something not so important") — arrows
+  // instead of two separate "(up)"/"(down)" chips. Went through ^B/^D,
+  // then briefly ^B/^H (^H rejected — indistinguishable from plain
+  // Backspace, see stepBake()'s own comment), now ^B/^Y — ^Y is a clean
+  // ctrl+letter byte with no such collision, so the chip is honest again.
+  const bakeChips = (appMode === 'learn' && learnView === 'review')
+    ? [footerChip('^B/^Y', '↑↓ Bake')]
+    : [];
+  // Graph chip (^N/^U) — same "only shown where the key actually does
   // something" rule ^R/^B already follow, just one level narrower (review
   // sub-view specifically, not the whole training screen) since stepGraph()
   // itself is a no-op outside Train > Review (see stepGraphKey()). Same
-  // one-chip collapse as bakeChips above, same reasoning.
+  // one-chip collapse as bakeChips above, same reasoning. Went through
+  // ^P/^N, then briefly ^N/^J (^J rejected — indistinguishable from Enter,
+  // see stepGraphKey()'s own comment), now ^N/^U for the same reason as
+  // the bake chip's ^Y switch above.
   const graphChips = (appMode === 'learn' && learnView === 'review')
-    ? [footerChip('^P/^N', '↑↓ Graph')]
+    ? [footerChip('^N/^U', '↑↓ Graph')]
     : [];
-  const rightChips = appMode === 'learn'
-    ? [footerChip('^R', learnView === 'training' ? 'Review' : 'Training'),
-       ...bakeChips,
-       ...graphChips,
-       ...cmdLangChips,
-       footerChip('^L', 'Log out')]
-    : [...cmdLangChips, footerChip('^L', 'Log out')];
-  const rightStr = rightChips.join('   ') + '  ';
-  // EBYS version + AGPL badge moved back up to the header's title row
-  // (user: "put back ebys version and agpl license at the top of the
-  // screen") — see titleCenter in render()'s withLCR call. This row is
-  // just the shortcut chips again, left and right.
-  const gap = Math.max(1, screen.width - vis(leftStr) - vis(rightStr));
-  footerBox.setContent(leftStr + ' '.repeat(gap) + rightStr);
+  // Gen nav chip (^D/^K) — same "only shown where the key actually does
+  // something" rule bakeChips/graphChips already follow, one level UP from
+  // graphChips' though: shown for the whole Gen screen, not a sub-view of
+  // it (Gen has no training/review split the way Train does), so this
+  // mirrors bakeChips' "always shown on the training screen" reasoning
+  // rather than graphChips' narrower one. See stepGenKey()'s own comment.
+  const genNavChips = (appMode === 'gen') ? [footerChip('^D/^K', '↑↓ Gen')] : [];
+
+  // Every screen's footer now shares ONE footerGroupRow() call — 6 group
+  // slots, always in this order: Chat | Train,Gen | Bake+Graph | Training+
+  // Tip(+Link/GenNav) | Start | Log out. Chat/Train+Gen/Start/Log out are
+  // byte-identical across every appMode. The Bake+Graph slot is Train-only
+  // — empty everywhere else, which footerGroupRow's own empty-group
+  // handling folds cleanly into the surrounding gap (see that function's
+  // own comment) rather than leaving a stray double-space. The
+  // Training-slot's OWN content still swaps by screen (Training on Train,
+  // Link on Playback, Gen's ↑↓ nav on Gen) since that's genuinely
+  // screen-specific — user: "put Training next to Tip and move Bake and
+  // Graph to their own sub group, in between Gen and Training."
+  const chatGroup      = [footerChip('^C', chatMaximized ? 'Close' : 'Chat')];
+  const trainGenGroup  = [
+    footerChip('^T', appMode === 'learn' ? 'Close' : 'Train'),
+    footerChip('^G', appMode === 'gen' ? 'Close' : 'Gen'),
+  ];
+  // bakeChips/graphChips already self-gate (Review sub-view only, for
+  // both — see their own comments). Reserved to a FIXED width instead of
+  // just being empty elsewhere — user: "make sure the tab shortcuts align
+  // with other tabs... doesnt move around too much." An empty group's own
+  // weight folds into its neighbors (see footerGroupRow's own comment),
+  // which keeps OTHER screens' overall spread matching Playback's, but it
+  // still meant the navTipGroup right after it landed at a different
+  // column on Train>Review (content present) vs Train>Training/Playback/
+  // Gen (content absent). Padding this slot to the width its own real
+  // content needs — blank when not on Train>Review — removes that source
+  // of drift too, same fixed-width idea FOOTER_LABEL_PAD applies to
+  // individual chip labels just above.
+  const vis = s => s.replace(/\{[^}]+\}/g, '').length;
+  const bakeGraphReal  = [footerChip('^B/^Y', '↑↓ Bake'), footerChip('^N/^U', '↑↓ Graph')];
+  const bakeGraphW     = vis(bakeGraphReal.join('   '));
+  const bakeGraphGroup = (bakeChips.length || graphChips.length)
+    ? bakeGraphReal
+    : [' '.repeat(bakeGraphW)];
+  // navTipGroup — same fixed-width reservation, one level up: the
+  // "primary" chip here is a genuinely different shortcut per screen
+  // (^R Train, ^O Playback, ^D/^K Gen), not just a differently-labeled
+  // toggle, so it can't be solved with FOOTER_LABEL_PAD alone — ^D/^K
+  // alone is 3 columns wider than ^R or ^O. Padded to the widest of the
+  // three (computed from all three, not hand-counted) so Tip — and Start/
+  // Log out right after it — land in the same place regardless of screen.
+  const navPrimary = appMode === 'learn'
+    ? footerChip('^R', learnView === 'training' ? 'Review' : 'Training')
+    : appMode === 'gen'
+    ? footerChip('^D/^K', '↑↓ Gen')
+    : footerChip('^O', playbackLinkView ? 'Master' : 'Link');
+  const navPrimaryW = Math.max(
+    vis(footerChip('^R', 'Training')),
+    vis(footerChip('^D/^K', '↑↓ Gen')),
+    vis(footerChip('^O', 'Link'))
+  );
+  const navPrimaryPadded = navPrimary + ' '.repeat(Math.max(0, navPrimaryW - vis(navPrimary)));
+  const cmdLangJoined = cmdLangReal.join('   ');
+  const cmdLangW = vis(cmdLangJoined);
+  const cmdLangSlot = chatMaximized ? cmdLangJoined : ' '.repeat(cmdLangW);
+  const navTipGroup = [navPrimaryPadded, cmdLangSlot, ...tipChip];
+  const startGroup  = [footerChip('^S', playbackStopped ? 'Start' : 'Stop')];
+  const logOutGroup = [footerChip('^L', 'Log out')];
+  // FOOTER_GROUP_WEIGHTS — same 4 boundary FEELS as the original
+  // Playback-only version (1 / 3 / 1.5 / 1.5 — "a little further away" /
+  // "much further away" / "further away" / whatever's left before Log
+  // out), the one "much further away" gap (3) just split across TWO
+  // boundaries (2 + 1) to make room for the Bake+Graph slot in between.
+  // Every group (including Bake+Graph and the nav slot) is now reserved to
+  // a FIXED width whether or not it's actually showing real content on
+  // this screen (see bakeGraphGroup/navPrimaryPadded above) — so unlike
+  // the very first version of this scheme, no group is ever truly empty
+  // any more and footerGroupRow's own empty-group weight-merging never
+  // triggers here in practice; contentW comes out identical on every
+  // screen, which is what actually pins Chat/Train+Gen/Start/Log out (and
+  // now Tip too) to the same columns everywhere — user: "make sure the
+  // tab shortcuts align with other tabs... same with start, train/gen,
+  // training/review and tip."
+  const FOOTER_GROUP_WEIGHTS = [1, 2, 1, 1.5, 1.5];
+  footerBox.setContent(footerGroupRow(
+    [chatGroup, trainGenGroup, bakeGraphGroup, navTipGroup, startGroup, logOutGroup],
+    FOOTER_GROUP_WEIGHTS
+  ));
 }
 
 // ── INPUT ────────────────────────────────────────────────────────────────────
@@ -3339,19 +6265,98 @@ screen.append(langBox);
 screen.append(cmdBox);
 screen.append(logBox);
 vuStemBoxes.forEach(b => screen.append(b));
+// masterBarBox/masterInfoBox — the mst: row0/row1 that used to be
+// squeezed inside the narrow masterVuBox column (VU_SIDEBAR_W wide);
+// pulled out full-width so master's info line can "spread on a long
+// line, just like the other stem channels" (user) instead of wrapping/
+// packing. See masterTop's own comment for where these dock now.
+screen.append(masterBarBox);
+screen.append(masterLufsBox);
+screen.append(masterInfoBox);
+// bakeMenuListBox/bakeMenuDetailBox — appended AFTER masterInfoBox for the
+// same z-order reason masterVuBox is appended after it too (see that box's
+// own comment): masterInfoBox is a full-width box, so anything meant to show
+// up inside its row band has to paint on top of it, not before it.
+screen.append(bakeMenuListBox);
+screen.append(bakeMenuDetailBox);
+screen.append(linkListBox);
+screen.append(linkDetailBox);
+// masterVuBox appended AFTER masterInfoBox on purpose — masterInfoBox is a
+// full-width box that shares rows with masterVuBox's own column (see
+// masterVuBox.top's own comment, same "opaque box painted over the right
+// edge of a full-width text row" pattern vuStemBoxes/playBox use below).
+// blessed draws later-appended boxes on top, so masterVuBox has to come
+// AFTER masterInfoBox or masterInfoBox's background paints over it and it
+// never actually shows — user: "and keep the master VU meter. you removed
+// it." (it was never removed, just buried under masterInfoBox's z-order).
 screen.append(masterVuBox);
 spatialStemBoxes.forEach(b => screen.append(b));
 screen.append(masterSpatialBox);
 screen.append(entropyBox);
 screen.append(tipBox);
+// Hidden for good — the header's tip zone is gone (user: "remove the tip
+// zone in the header. keep it for the tip tab"); tipBox is left
+// appended-but-hidden rather than deleted, same convention networkBox right
+// below uses, in case this needs to come back.
+tipBox.hide();
 screen.append(networkBox);
-descGridStemBoxes.forEach(b => screen.append(b));
-momentumStemBoxes.forEach(b => screen.append(b));
+// Hidden for good — network/peer moved into the menu row (stateChips, see
+// withLCR in render()) instead of this standalone zone (user: "put network
+// in the menu next to [CONNECTED] ... add peer to the menu too"). Left
+// appended (not removed outright) rather than deleted wholesale, in case
+// this needs to come back.
+networkBox.hide();
+weightDirStemBoxes.forEach(b => screen.append(b));
+chInfoStemBoxes.forEach(b => screen.append(b));
+pitchFmtStemBoxes.forEach(b => screen.append(b));
+// channelEntropyStemBoxes appended AFTER stemLockBoxes now (was before) —
+// user: "align the entropy meter above the VU meters" moved this box's own
+// right/width to sit over the VU column (see its own declaration comment),
+// which is fully inside stemLockBoxes' span (right:0, width:SIDE_TOTAL_W —
+// covers BOTH the spatial-ring AND VU columns, same row). Append order is
+// z-order here (later = painted on top) — with entropy appended BEFORE
+// stemLockBoxes, stemLockBoxes' own background fill painted over it every
+// tick and the meter effectively vanished (user: "entropy disapeared...").
+// Swapped so entropy wins the overlap instead, same "later box wins" fix
+// this file's own SCREEN VISIBILITY setFront() calls rely on elsewhere.
+stemLockBoxes.forEach(b => screen.append(b));
+channelEntropyStemBoxes.forEach(b => screen.append(b));
 screen.append(reviewHeaderBox);
 screen.append(reviewListBox);
 screen.append(reviewDetailBox);
 screen.append(reviewWaveformBox);
 screen.append(reviewRegressionBox);
+screen.append(reviewOverallBox);
+// tipPanelBox appended here, AFTER every background box its own column
+// overlaps (masterVuBox/masterSpatialBox above, the review* boxes here) —
+// blessed paints later-appended boxes on top, so this is what actually
+// makes the panel cover them instead of them glitching through it. Was
+// appended too early once (right after momentumStemBoxes, ABOVE the
+// meters) — user: "make sure the TIP infos are not glitching with the
+// background and visible" — MASTER_METER_BOXES is shown unconditionally on
+// every tick regardless of tipPanelOpen (see the SCREEN VISIBILITY block in
+// render()), so with the old order it kept painting on top of the panel's
+// text whenever both were up at once. Still appended BEFORE inputBox/peekBox/
+// inputRuleBox/suggestBox/footerBox/spinnerBox below, so those stay usable
+// on top of it while the panel's open.
+screen.append(tipPanelBox);
+// Gen's four boxes appended right after tipPanelBox — same "still before
+// inputBox/peekBox/etc." rule, even though Gen is now a full SCREEN (see
+// enterGenMode()) rather than a same-footprint overlay like tipPanelBox.
+// Append order vs. tipPanelBox DOES matter for raw paint order (later
+// wins) — Gen's boxes being appended after tipPanelBox means Gen would
+// paint over an open tip panel without help — but the SCREEN VISIBILITY
+// block's tipPanelOpen setFront() call (see render(), right before the
+// chat overlay's own setFront() block) puts tip back on top every tick
+// regardless, so tip still floats over Gen exactly like it already does
+// over Learn (user: "make sure the TIP panel shows well above the GEN
+// panel"). Order among the four themselves doesn't matter — reflowGen()
+// never overlaps them with each other, only genListBox/genDetailBox share
+// a row (side by side, not stacked).
+screen.append(genHeaderBox);
+screen.append(genListBox);
+screen.append(genDetailBox);
+screen.append(genAnalysisBox);
 screen.append(inputBox);
 screen.append(peekBox);
 screen.append(inputRuleBox);
@@ -3360,19 +6365,40 @@ screen.append(footerBox);
 screen.append(spinnerBox);
 
 // ── SCREEN MODEL ─────────────────────────────────────────────────────────────
-// There are exactly two main SCREENS — playback (appMode 'playback') and
-// training (appMode 'learn', ^T toggles between them) — plus exactly one
-// OVERLAY, chat (^C), which can toggle on top of whichever screen is
-// currently active without changing it. Nothing here is mutually exclusive
-// with anything else anymore: ^T keeps working while chat is open (the
-// overlay just follows you to the new screen), and ^C keeps working
-// regardless of which screen you're on. See the SCREEN VISIBILITY block in
-// render() for the one place that actually applies these rules — every box
-// group below is just data, not its own show()/hide() logic, specifically
-// so two different toggle functions never independently disagree about the
-// same box again (that pattern — enterLearnMode/exitLearnMode/
-// toggleChatMaximize each separately forcing overlapping box sets — was the
-// root cause of several rounds of "X bled into Y" bugs).
+// There are exactly three main SCREENS — playback (appMode 'playback'),
+// training/taste (appMode 'learn'), and Gen (appMode 'gen') — but Playback
+// is the baseline, not a peer window like the other two (user: "playback is
+// the normal basic mode of the system. train taste and train gen are
+// 'windows' to open"). Train and Gen each have their own dedicated tab/key
+// — ^T (Train), ^G (Gen) — no key opens Playback directly any more, since
+// there's nothing to open: it's just what's showing when nothing else is.
+// This used to be a two-layer model (Train/Gen sharing one ^T toggle
+// underneath a Playback "page" — see git history on this comment and on
+// baseLayer/toggleTrainGen() for that design) — user: "separate Train and
+// Gen from the same tab. Use a separate tab for each," so that's undone: no
+// shared baseLayer any more, each screen toggles independently. Closing
+// Train or Gen (pressing their own key again) always returns to Playback
+// specifically — Playback is the resting/default screen (appMode starts
+// there), not something either of the other two "cover" or "reveal".
+// switchScreen() is the one function that actually moves appMode between
+// all three; toggleTrain()/toggleGen()/enterLearnMode()/enterGenMode() all
+// funnel through it. Separately, there are exactly two OVERLAYS, chat (^C)
+// and the tip panel (^V, see TIP_PANEL_BOXES below), either of which can
+// toggle on top of whichever SCREEN is currently active (Train, Gen, or
+// Playback) without changing it. ^T/^G keep working while chat/tip are
+// open (the overlay just follows you to the new screen), and ^C/^V keep
+// working regardless of which screen you're on — including each other:
+// chat and tip are fully independent, either/both/neither can be open at
+// once (see toggleTipPanel()'s own comment — it used to also exclude Gen,
+// back when Gen was a same-footprint overlay rather than a screen; not any
+// more).
+// See the SCREEN VISIBILITY block in render() for the one place that
+// actually applies show/hide rules — every box group below is just
+// data, not its own show()/hide() logic, specifically so two different
+// toggle functions never independently disagree about the same box again
+// (that pattern — enterLearnMode/exitLearnMode/toggleChatMaximize each
+// separately forcing overlapping box sets — was the root cause of several
+// rounds of "X bled into Y" bugs).
 
 // CHAT_OVERLAY_BOXES — the separator, the :language/:commands hint row, the
 // two panels themselves, and the actual chat log. All five exist ONLY
@@ -3394,33 +6420,136 @@ const CHAT_OVERLAY_BOXES = [sepBox, menuHeaderBox, langBox, cmdBox, logBox];
 // boxes below don't need that same margin, since mTop always docks them
 // below master's row band rather than beside it (see the CONTENT_W/
 // contentW() comment above VU_SIDEBAR_W).
+// masterEqSpecBox used to be deliberately excluded from this array (it had
+// its own separate Playback-only visibility rule) — moot now, that box was
+// removed entirely along with master's waveform (see masterBarBox's own
+// comment on that pivot: master no longer replicates the per-channel
+// layout, it reads as a plain menu-header row instead).
+// masterBarBox/masterInfoBox — NOT in this array (despite both being
+// "master's own" boxes too) — user: "under TRAIN, hide tracks: it belong
+// in the playback tab but it bleeding on other tabs", then, pointing at the
+// same bleed-through on the beats: line right under it: "its the a of
+// beat:". Both boxes dock at masterTop/statusH — the EXACT same top-of-
+// screen rows Train's own reviewHeaderBox/reviewListBox/reviewDetailBox
+// start at (see learnPanelTop()) — so leaving them in the "always shown"
+// set here meant their text (tracks:/genre:/beats:/key:/slice:...) kept
+// painting UNDER Train's header every tick, with whatever Train didn't
+// fully overwrite (a stray glyph from "beats:", one of the confidence
+// dots...) showing through instead of Train's own content winning
+// outright. This array's own doc comment above already only ever
+// justified VU/spatial staying up on both screens ("the master meters just
+// reflect the audio actually coming out of the engine") — bar/info are
+// track-identity text, not meters, so they never actually fit that
+// reasoning; they just rode along in the same array. Moved to
+// PLAYBACK_HEADER_BOXES below instead, which already hides its contents
+// outside Playback for exactly this reason.
 const MASTER_METER_BOXES = [masterVuBox, masterSpatialBox];
 
 // PLAYBACK_HEADER_BOXES — the REST of playback's own header-cluster readouts
-// (tip/entropy — bake used to be here too, see the ZONE 6.6 comment above
-// for why it isn't any more). The direct analog of Learn's own header
-// cluster (reviewHeaderBox/reviewListBox/reviewDetailBox, see
+// (entropy — bake/tip used to be here too, see the ZONE 6.6 comment above
+// for bake, and tipBox's own comment for tip). The direct analog of Learn's
+// own header cluster (reviewHeaderBox/reviewListBox/reviewDetailBox, see
 // enterLearnMode()): visible for as long as the playback screen is active,
 // chat overlay or not — it's what the overlay docks under (see
 // headerClusterBottom in reflow()). Hidden only when the OTHER screen
 // (Learn) is active.
-const PLAYBACK_HEADER_BOXES = [entropyBox, tipBox, networkBox];
+// networkBox dropped from this list — network/peer now live in the menu
+// row (stateChips, see withLCR) instead of their own zone, so there's
+// nothing left to show/hide it for; it's hidden once for good, right after
+// screen.append(networkBox) below. tipBox dropped too — user: "remove the
+// tip zone in the header. keep it for the tip tab" — the header's small
+// prmpt:/stat:/rcp: readout is gone; the full tip panel (^V, tipPanelBox,
+// its own independent overlay — see the ZONE 6.92 comment) is untouched and
+// still the one place tip info actually lives now. tipBox itself is left
+// appended-but-hidden rather than deleted outright (same "kept in place in
+// case this needs to come back" convention networkBox already uses, right
+// above), and renderTipInfo() (its old content builder) is unused but left
+// defined for the same reason. entropyBox (this array's last member) is
+// gone the same way now too — its bar moved to masterEntropyBox and its
+// floor readout to masterEntropyFloorBox, both since removed in turn (user:
+// "remove entropy range bar from the master header", then "remove this
+// info from the header" pointing at the floor readout) — everything else
+// it used to show (match:/stay:/dirWgt:/bpm:) already lives per-stem — see
+// reflow()'s own comment, near entropyBox.hide(). Was an empty array for a
+// while (everything that used to live here got removed one piece at a
+// time); masterBarBox now fills the slot instead — moved over from
+// MASTER_METER_BOXES (see that array's own comment) so it actually goes
+// through the same Playback-only show/hide this array already applies,
+// instead of bleeding under Train/Gen's own header. masterInfoBox itself
+// (the tracks:/genre:/beats:/key:/slice:... text) used to sit right here
+// too, but was pulled back out again once it needed a THIRD state, not
+// just "show in Playback, hide elsewhere" — it now shares a slot with
+// linkListBox/linkDetailBox (Playback's own "Link" sub-view, see
+// playbackLinkView's own comment) and needs to hide even WITHIN Playback
+// whenever Link is the active sub-view, which this array's flat
+// "!inLearn && !inGen" rule can't express. render()'s own
+// masterInfoBox.top assignment block owns all three boxes' visibility
+// directly now instead.
+const PLAYBACK_HEADER_BOXES = [masterBarBox];
 
-// PLAYBACK_CHANNEL_BOXES — the per-stem VU/spatial/descriptor-grid/momentum
-// boxes, "channel content" for whichever screen currently has a LIVE
-// 4-stem waveform up (playBox's own per-stem waveform rows are the other
-// half of this, handled directly in render() since they're shared between
-// Playback and Learn's training sub-view). Up on both Playback and the
-// training screen's 'training' sub-view now (user: "add the visualizations
-// in the training tab too") — hidden only during the training screen's
-// 'review' sub-view (reviewWaveformBox there is one recorded clip, not
-// four live stems) or while chat is maximized on top of either screen —
-// see the SCREEN VISIBILITY block in render().
+// PLAYBACK_CHANNEL_BOXES — the per-stem VU/spatial/momentum boxes, "channel
+// content" for whichever screen currently has a LIVE 4-stem waveform up
+// (playBox's own per-stem waveform rows are the other half of this, handled
+// directly in render() since they're shared between Playback and Learn's
+// training sub-view). Up on both Playback and the training screen's
+// 'training' sub-view now (user: "add the visualizations in the training
+// tab too") — hidden only during the training screen's 'review' sub-view
+// (reviewWaveformBox there is one recorded clip, not four live stems) or
+// while chat is maximized on top of either screen — see the SCREEN
+// VISIBILITY block in render().
 const PLAYBACK_CHANNEL_BOXES = [
   ...vuStemBoxes,
   ...spatialStemBoxes,
-  ...descGridStemBoxes, ...momentumStemBoxes,
+  // weightDirStemBoxes, not momentumStemBoxes — momentum's own box was
+  // merged into weightDirStemBoxes (see that box's own removal comment);
+  // this keeps the exact same hide/show behavior the momentum content used
+  // to get here (hidden during review/gen/chat-maximized), just off the
+  // box that now actually carries it.
+  ...weightDirStemBoxes,
+  // chInfoStemBoxes/pitchFmtStemBoxes — same "live per-stem channel content"
+  // reasoning as everything else in this array: docked directly under the
+  // live waveform, nothing to align with once there's no live 4-stem
+  // waveform up (Review, Gen, chat-maximized).
+  ...chInfoStemBoxes,
+  ...pitchFmtStemBoxes,
+  // stemLockBoxes — the "[VOCALS] [mel⚿]"-style per-stem name/locksource
+  // tag. Missing from this array originally (it's a separate box, added
+  // later, right:0-anchored — see its own declaration comment), so it never
+  // got hidden during review the way the rest of this cluster does — user,
+  // looking at a Train > Review screenshot with "[VOCALS] [mel⚿]" floating
+  // over the regression section: "hide the [VOCALS] and the [locksource]."
+  // Same reasoning as weightDirStemBoxes right above: this genuinely is
+  // "live per-stem channel content", nothing for it to align with once
+  // there's no live 4-stem waveform up.
+  ...stemLockBoxes,
+  // channelEntropyStemBoxes — same exact gap stemLockBoxes had right above
+  // (also its own separate box, also missing from this array originally),
+  // caught the same way — user: "hide the entropy range bars from the
+  // review tab." It's docked above vuStemBoxes now (see its own declaration
+  // comment), so it makes exactly as little sense floating over Review's
+  // regression section as the VU meters themselves would.
+  ...channelEntropyStemBoxes,
 ];
+
+// TIP_PANEL_BOXES — the second overlay (see the SCREEN MODEL comment above
+// CHAT_OVERLAY_BOXES). Just tipPanelBox itself right now — one box is
+// enough for the readout + reserved equation space (see its own zone
+// comment) — but kept as an array, same convention CHAT_OVERLAY_BOXES
+// uses, in case this grows a header/separator of its own later. ^V alone
+// controls it, regardless of which screen is underneath or whether chat is
+// also open.
+const TIP_PANEL_BOXES = [tipPanelBox];
+
+// GEN_PANEL_BOXES — the Gen SCREEN's four boxes: genHeaderBox (the page
+// title row, aligned with reviewHeaderBox), genListBox/genDetailBox (the
+// browse row, mirrors reviewListBox/reviewDetailBox), and genAnalysisBox
+// (the keep/toss report, mirrors reviewRegressionBox's row — see
+// reflowGen()). NOT part of the "overlay, regardless of which screen is
+// underneath" group above (chat/tip) — this is gated on appMode === 'gen'
+// in the SCREEN VISIBILITY block below, same as reviewHeaderBox/
+// reviewDetailBox are gated on appMode === 'learn'. ^G (toggleGen())
+// switches appMode itself, exactly like ^T (toggleTrain()) does for 'learn'.
+const GEN_PANEL_BOXES = [genHeaderBox, genListBox, genDetailBox, genAnalysisBox];
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
@@ -3550,6 +6679,14 @@ function waveGlyphs(env, fromCol, toCol, totalW) {
   return s;
 }
 
+// masterWaveformBar() — used to build master's own combined-envelope
+// waveform for masterBarBox's row0. Removed — user: "remove the waveform
+// for the master channel ... the master wasn't gonna look like the other
+// channels. it's gonna look like a menu header." renderMasterBar() now just
+// prints a "PLAYBACK Master" label + timestamp, no bar. See git history on
+// this comment for the removed implementation if the combined-envelope
+// approach is ever needed again.
+
 function pad(str, len) {
   return (str + ' '.repeat(len)).slice(0, len);
 }
@@ -3644,7 +6781,11 @@ function buildLangList() {
 }
 
 const MIN_LOG_H = 5; // always reserve this many lines for chat
-const LOG_GAP   = 1; // blank row between the :commands line and the chat log
+// 0, was 1 — user: "make the layout more compact" (a general pass; this
+// blank separator row between the :commands line and the chat log had no
+// content-dependent reason to exist, unlike VU_SPATIAL_GAP which was
+// explicitly put back after a similar try — see that constant's own note).
+const LOG_GAP   = 0;
 
 function reflow() {
   // w = screen.width, not contentW() — lang/cmd (and the rest of the chat
@@ -3718,14 +6859,16 @@ function reflow() {
     // cluster (waveform + list/detail together), same as the training
     // sub-view. No more "+1+2" tacked on for the waveform's old spot below
     // the panel.
-    const headerClusterBottom = appMode === 'learn'
+    const headerClusterBottom = (appMode === 'learn' || appMode === 'gen')
       ? learnPanelBottom()
       : Math.max(
           statusH + 1,
-          masterVuBox.top      + masterVuBox.height,
-          masterSpatialBox.top + masterSpatialBox.height,
-          tipBox.top            + tipBox.height,
-          entropyBox.top        + entropyBox.height
+          masterBarBox.top          + masterBarBox.height,
+          masterInfoBox.top         + masterInfoBox.height,
+          masterVuBox.top           + masterVuBox.height,
+          masterSpatialBox.top      + masterSpatialBox.height
+          // entropyBox dropped — retired, see reflow()'s own comment near
+          // entropyBox.hide().
         );
     const mTop = headerClusterBottom + 1; // one blank row of breathing room
     sepBox.top = mTop;
@@ -3779,8 +6922,8 @@ function reflow() {
   }
 
 
-  // VU meters / spatial rings / descriptor grid / momentum panel — one small
-  // box per real stem, each positioned directly under THAT stem's own
+  // VU meters / spatial rings / momentum panel — one small box per real
+  // stem, each positioned directly under THAT stem's own
   // waveform+descriptor-line+weight+dir+dirWgt block (top: playTop +
   // i*STEM_BAND_H + PRE_METERS_ROWS, height STEM_ROW_BAND_H). See the
   // comment above VU_SIDEBAR_STEMS for why these are arrays of small boxes
@@ -3791,92 +6934,195 @@ function reflow() {
   spatialStemBoxes.forEach((b, i) => { b.top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS; });
   renderSpatial();
 
+  // Weight/dir column (momentum's sparkline+value merged in as the tail end
+  // of each row — see momentumStemBoxes' own removal comment) — docked one
+  // row ABOVE where momentum's own top used to sit (PRE_METERS_ROWS - 1, the
+  // descriptor-line row) so the title row lands there instead of eating one
+  // of the 7 real descriptor rows below it — see weightDirStemBoxes' own
+  // comment for the full reasoning.
   DESC_STEMS.forEach((stem, i) => {
-    descGridStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS;
-    momentumStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS;
+    weightDirStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS - 1;
   });
-  renderDescGrid();
-  renderMomentumPanel();
+  renderWeightDir();
 
-  // master's own VU meter + spatial ring — docked right at "last touched"
-  // (header row MASTER_VU_TOP = 1), not all the way below the whole header
-  // any more — user: "put master VU meter closer to last touched". Not
-  // threaded through the per-stem arrays above since master has no
-  // waveform row of its own to align with. Right-anchored same as always;
-  // shares rows with trackKey/env/genre on the left (different columns,
-  // same rows — no collision, same reasoning as the per-stem meters/weight
-  // overlap elsewhere in this file).
-  masterVuBox.top      = MASTER_VU_TOP;
-  masterSpatialBox.top = MASTER_VU_TOP;
+  // Channel-info / pitch-fmt columns — same "directly under that stem's own
+  // waveform+descriptor-line block" offset vuStemBoxes/spatialStemBoxes use
+  // (PRE_METERS_ROWS, no title-row offset — see both boxes' own declaration
+  // comment for why they don't need weightDirStemBoxes' "- 1").
+  DESC_STEMS.forEach((stem, i) => {
+    chInfoStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS;
+  });
+  renderChInfo();
+  DESC_STEMS.forEach((stem, i) => {
+    pitchFmtStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS;
+  });
+  renderPitchFmt();
 
-  // Network + tip zones, same top (TRAIN_TIP_TOP, header row 3, "quant:
-  // beat"'s own row). No longer anchored to recColStart (the [REC] column)
-  // — that pinned both zones far into the same tight corner the icon
-  // cluster already occupies, which is what squeezed tipBox down to almost
-  // nothing (user: "move the zones so tip has enough space to sit
-  // correctly. now its all packed up in a corner."). Anchored from the
-  // RIGHT instead: masterColLeft is the one hard boundary that actually
-  // matters (one column short of master's own VU/spatial column — user:
-  // "make sure the master VU meter and spat viewer dont get written over
-  // by the tip and network zone") — the pair sizes itself to its full
-  // desired width (networkBox's NETWORK_ZONE_W + gap + tipBox's own
-  // SIDE_TOTAL_W) flush against that boundary, and only starts eating into
-  // either zone's width if the terminal is genuinely too narrow to fit
-  // both at their natural size. No minimum-width floor overrides that
-  // clamp either — a zone shrinks toward 0 in a real space crunch rather
-  // than ever overlapping master.
-  const masterColLeft = w - SIDE_TOTAL_W - 1;
-  const zonesDesiredW = NETWORK_ZONE_W + NETWORK_ZONE_GAP + SIDE_TOTAL_W;
-  const zonesLeft     = Math.max(0, masterColLeft - zonesDesiredW);
+  // Per-channel entropy meter — same "one row above the graph" trick,
+  // directly over the merged weight/dir+momentum column (see its own
+  // comment for why).
+  DESC_STEMS.forEach((stem, i) => {
+    channelEntropyStemBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS - 1;
+  });
+  renderChannelGain();
 
-  // Back to TRAIN_TIP_TOP, beside tipBox — row 0 (tried per an earlier
-  // "align it with ebys version" request) turned out to only be safe in
-  // theory: zonesLeft is anchored off masterColLeft, a boundary that means
-  // something for rows 3+ (clearing the master VU/spatial column) but has
-  // no real relationship to where titleCenter's CENTERED text actually
-  // sits on row 0 — on a typical terminal width the two spans genuinely
-  // overlapped, and the floating box (drawn after statusBox in z-order)
-  // covered the version/AGPL badge. Fixed properly now by moving the
-  // network ADDRESS text into titleCenter itself (see networkAddrText()'s
-  // own comment) — that's what's actually "aligned with ebys version" —
-  // and letting this box go back to being just the peer dots, back in its
-  // own free row where it isn't fighting anything else for space.
-  networkBox.right = undefined;
-  networkBox.left  = zonesLeft;
-  networkBox.top   = TRAIN_TIP_TOP;
-  networkBox.width = Math.max(0, Math.min(NETWORK_ZONE_W, masterColLeft - zonesLeft));
-  renderNetworkInfo();
+  // Track name + lock indicator — same row as weightDir's/channelEntropy's
+  // own title row (PRE_METERS_ROWS - 1), but right:0 instead of docked in
+  // their column — see stemLockBoxes' own comment for why that row's true
+  // right edge is free to use.
+  DESC_STEMS.forEach((stem, i) => {
+    stemLockBoxes[i].top = playTop + i * STEM_BAND_H + PRE_METERS_ROWS - 1;
+  });
+  renderStemLock();
 
-  // Tips — left edge is networkBox's own right edge plus a gap (0 if
-  // networkBox itself got clamped to nothing). left/right reassigned every
-  // call since this box was originally created right-anchored.
-  // bakeInfoBox — the training-zone panel that used to sit beside this —
-  // was removed from the playback screen entirely (user: "remove the
-  // training zone indicator in the playback tab. this should all go in
-  // the training tab" — its content, bakeInfoLines(), is already shown in
-  // full on the training screen's own 'training' sub-view, so showing it
-  // here too was pure duplication).
-  const tipLeft = zonesLeft + networkBox.width + (networkBox.width > 0 ? NETWORK_ZONE_GAP : 0);
-  tipBox.right = undefined;
-  tipBox.left  = tipLeft;
-  tipBox.top   = TRAIN_TIP_TOP;
-  tipBox.width = Math.max(0, Math.min(SIDE_TOTAL_W, masterColLeft - tipLeft));
-  const tipRows = renderTipInfo();
-  tipBox.height = Math.min(TIP_MAX_H, Math.max(TIP_MIN_H, tipRows));
+  // Tip panel (^V) — top/height are fixed (0/'100%', set once at creation
+  // — see its own zone comment), nothing to reposition here each tick;
+  // just keep its content current.
+  renderTipPanel();
+  // Gen panel (^T toggles to it, alongside Train) — same "fixed geometry,
+  // just refresh content" deal as the tip panel right above.
+  renderGenPanel();
 
-  // Entropy meter — below genre (header's last row), flush to the left
-  // edge of the window (user: "really stick entropy to the side of the
-  // window") and one row further down than statusH (user: "move entropy
-  // one space downward") — now that it hugs the left edge instead of
-  // centering, it no longer shares horizontal space with the training/tips
-  // cluster (which now hangs off recColStart, well to the right), so it
-  // doesn't need to clear that cluster's bottom, just the header's own
-  // last row plus the extra row of breathing room.
-  entropyBox.right = undefined;
-  entropyBox.left  = 0;
-  entropyBox.top   = statusH + 1;
-  const entropyRows = renderEntropyMeter();
-  entropyBox.height = Math.min(ENTROPY_MAX_H, Math.max(ENTROPY_MIN_H, entropyRows));
+  // Master's own block — docks right below the global entropy meter (see
+  // masterTop's own comment for why it's dynamic now, not a fixed row 2
+  // shared with the header's plain text). Row0 (masterBarBox) is now a
+  // plain "PLAYBACK Master" label row, no waveform/bar of its own any more
+  // — user: "remove the waveform for the master channel ... it's gonna
+  // look like a menu header" (see masterBarBox's own comment for the full
+  // pivot). Row1 (masterInfoBox: flowing gain/bpm/stems line, IS master's
+  // "track infos") still spans the full width, same as playBox's own
+  // descriptor-line row.
+  masterBarBox.top = masterTop;
+  renderMasterBar(w);
+  // masterTop + 1 — used to be a deliberate blank spacer row between
+  // "PLAYBACK Master" (masterBarBox) and masterInfoBox's own tracks: line;
+  // now filled by masterLufsBox instead — user: "put the LUFSs meter right
+  // under PLAYBACK, inbetween tracks and PLAYBACK." Doesn't change
+  // masterInfoBox's own top (still masterTop + 2, see that assignment's own
+  // comment for the row-budget math) or masterColBottom/playTop below it —
+  // this just paints real content into a row that was always reserved,
+  // never actually shrinks or grows anything.
+  masterLufsBox.top = masterTop + 1;
+  renderMasterLufs(w);
+  // masterTop + 2, not + 1 (user, in Playback: "move this zone one row
+  // down" — pointing at masterInfoBox's own tracks:/genre:/beats:/slice:
+  // block) — leaves a blank row between "PLAYBACK Master" (masterBarBox)
+  // and this block instead of sitting flush under it. Doesn't push
+  // masterColBottom/playTop down a matching row — masterVuBox (top:
+  // masterTop, height 6 now — see its own comment) already reaches
+  // masterTop + 6, exactly matching masterInfoBox's new bottom
+  // (masterTop + 2 + MASTER_INFO_ROWS(4) = masterTop + 6), so it's already
+  // the taller of the two either way.
+  masterInfoBox.top = masterTop + 2;
+  renderMasterInfo(w);
+
+  // linkListBox/linkDetailBox — same top as masterInfoBox (masterTop + 2,
+  // right above), same MASTER_INFO_ROWS-tall envelope, just split
+  // list(left)/detail(right) instead of masterInfoBox's own single
+  // full-width block — see their own declaration comment for the whole
+  // "Link" sub-view. Width recomputed every tick off `w` the same way
+  // reviewDetailBox's own width is in reflowLearn() (declared '100%' at
+  // creation only as a harmless placeholder — real width is always this
+  // one, whichever box is actually visible this tick).
+  linkListBox.top      = masterTop + 2;
+  linkDetailBox.top    = masterTop + 2;
+  linkDetailBox.width  = w - LINK_LIST_W - 1;
+  renderLinkMenu(w);
+
+  // bakeMenuListBox/bakeMenuDetailBox — same MASTER_INFO_ROWS-tall row band
+  // as masterInfoBox, docked beside it rather than replacing it (see the
+  // boxes' own declaration comment). Left edge now follows centerColStart
+  // (set moments ago by render()'s own withLCR(stateChips, titleCenter, ...)
+  // call, well before reflow() runs — see that variable's declaration) —
+  // user: "move the menu to the right, align it somewhere next to EBYS
+  // version." Floored at BAKE_MENU_MIN_LEFT so it can't collapse back onto
+  // masterInfoBox's own text on a narrow terminal where centerColStart ends
+  // up small. Detail width recomputed every tick off `w`, same reasoning
+  // linkDetailBox's own width is — stretches to just short of the meters
+  // cluster (SIDE_TOTAL_W, right-anchored at 0) instead of a hardcoded
+  // number that would either clip on a narrow terminal or leave dead space
+  // on a wide one.
+  const bakeMenuLeft      = Math.max(BAKE_MENU_MIN_LEFT, centerColStart);
+  bakeMenuListBox.top     = masterTop + 2;
+  bakeMenuListBox.left    = bakeMenuLeft;
+  bakeMenuDetailBox.top   = masterTop + 2;
+  bakeMenuDetailBox.left  = bakeMenuLeft + BAKE_LIST_W + 1;
+  bakeMenuDetailBox.width = Math.max(10, w - (bakeMenuLeft + BAKE_LIST_W + 1) - SIDE_TOTAL_W - 1);
+  renderBakeMenu(w);
+
+  // masterInfoBox and linkListBox/linkDetailBox share the exact same slot —
+  // only one shows at a time, switched by playbackLinkView (see that var's
+  // own comment). Gated the same "Playback only" way the rest of
+  // PLAYBACK_HEADER_BOXES already is, just one level narrower (which of
+  // the two sub-views, not just which screen) — computed directly off
+  // appMode here rather than reading inLearn/inGen, since those aren't
+  // computed yet this far up in render() (see the SCREEN VISIBILITY block
+  // below). masterInfoBox itself was pulled OUT of PLAYBACK_HEADER_BOXES
+  // (see that array's own comment) specifically so its forEach() down there
+  // can't blindly re-show() it over top of this and fight this block for
+  // the last word every tick — this is now the ONE place that owns
+  // masterInfoBox's visibility, same as it's the one place that owns
+  // linkListBox's/linkDetailBox's. bakeMenuListBox/bakeMenuDetailBox follow
+  // masterInfoBox's own branch exactly (hidden, not just overlapped, in Link
+  // view — Link's own menu takes over that whole row, "the bake menu" is
+  // specifically a Master-view readout) rather than getting a third branch
+  // of their own.
+  // masterLufsBox follows masterInfoBox's own branch too — it's master-level
+  // "what's actually coming out of the engine" info, same category
+  // masterVuBox/masterSpatialBox are in, and Link's own menu takes over this
+  // whole row band while it's active (same reasoning bakeMenuListBox/
+  // bakeMenuDetailBox already follow).
+  const inPlaybackNow = appMode !== 'learn' && appMode !== 'gen';
+  if (inPlaybackNow && playbackLinkView) {
+    masterInfoBox.hide();
+    masterLufsBox.hide();
+    bakeMenuListBox.hide();
+    bakeMenuDetailBox.hide();
+    linkListBox.show();
+    linkDetailBox.show();
+  } else {
+    linkListBox.hide();
+    linkDetailBox.hide();
+    if (inPlaybackNow) {
+      masterInfoBox.show();
+      masterLufsBox.show();
+      bakeMenuListBox.show();
+      bakeMenuDetailBox.show();
+    } else {
+      masterInfoBox.hide();
+      masterLufsBox.hide();
+      bakeMenuListBox.hide();
+      bakeMenuDetailBox.hide();
+    }
+  }
+
+  // master's own VU meter + spatial ring — not threaded through the
+  // per-stem arrays above since master has no waveform row of its own to
+  // align with there. Right-anchored same as always, same columns the
+  // per-stem VU/spatial boxes use. Sat at masterTop + 3 until the row0
+  // timestamp and row1 lock indicator were both removed (user: "remove the
+  // master locksource and timestamp and move the master vu 2 rows up"), then
+  // masterTop + 1; one more row up now — user: "move master VU/spat meter
+  // ... one row up" — so it docks flush with masterBarBox's own row
+  // (masterTop). This overlaps masterBarBox's/masterInfoBox's own rows in
+  // the terminal columns VU/spatial occupy — same "opaque box painted over
+  // the right edge of a full-width text row" pattern the per-stem
+  // vuStemBoxes/spatialStemBoxes already use one row below their own
+  // descriptor line, just here it shares rows with masterBarBox/
+  // masterInfoBox's own multi-line block (see MASTER_INFO_ROWS).
+  masterVuBox.top      = masterTop;
+  masterSpatialBox.top = masterTop;
+
+  // Master entropy RANGE BAR (masterEntropyBox, "✳ ──●── ❄ 0.35") and its
+  // FLOOR readout (masterEntropyFloorBox, "floor(✳): -- floor(❄): --",
+  // directly under it) both used to dock here, same column
+  // channelEntropyStemBoxes uses — both removed now, user: "also remove
+  // entropy range bar from the master header" then, on a screenshot of the
+  // floor line specifically: "remove this info from the header. and move
+  // all the channels one row up so the gap between the vocals channel and
+  // the master header is smaller" — see masterColBottom's own comment for
+  // the second half of that ask (playTop shifting up).
+  entropyBox.hide();
 }
 
 function setLangContent(text) {
@@ -3907,13 +7153,44 @@ function render() {
   const w = screen.width;
 
   // Status
-  const conn  = state.connected ? '{bright-white-fg}[CONNECTED]{/bright-white-fg}' : '{grey-fg}[DISCONNECTED]{/grey-fg}';
-  const run   = state.running   ? '{bright-white-fg}[RUNNING]{/bright-white-fg}' : '{grey-fg}[STOPPED]{/grey-fg}';
-  const sl    = state.slices.join('/');
-  const p = state.params;
-  const fmtDir = v => (v >= 0 ? '+' : '') + (parseFloat(v) || 0).toFixed(1);
-  const fmtM   = v => (' ' + (parseFloat(v) || 0).toFixed(1)).slice(-4);
-  const genreLine = genreHeaderLine();
+  // "[ENG CONN]"/"[ENG DISCONN]" — was "[ENGINE CONNECTED]"/"[ENGINE
+  // DISCONNECTED]" (user: "rename menu [ENGINE CONNECTED] by [ENG CONN]"),
+  // itself a rename of the original bare "[CONNECTED]"/"[DISCONNECTED]"
+  // (user, earlier: "for the [CONNECTED]. i'll need precisions. like
+  // connected to what? ... its connected to the engine"). state.connected
+  // reflects the WebSocket link to ws_server.js/Max (the audio engine), not
+  // network/wifi — sitting directly next to the real network address
+  // (networkChip, same row back then) made that ambiguity worse, not
+  // better, so the label still spells out WHAT it's connected to, just
+  // abbreviated now that the disambiguation itself is established.
+  // networkChip has since moved out of this row entirely, into titleCenter
+  // next to the version/AGPL badge (user: "put the network: wifi menu tag
+  // next to [AGPL ...]") — the two aren't even neighbors anymore, but the
+  // clearer label stands on its own regardless.
+  const conn  = state.connected ? '{bright-white-fg}[ENG CONN]{/bright-white-fg}' : '{grey-fg}[ENG DISCONN]{/grey-fg}';
+  // "[START]"/"[STOP]" — was "[RUNNING]"/"[STOPPED]" (user: "[START] [STOP]
+  // for [RUNNING] [STOPPED]") — matches the actual :start/:stop command
+  // names (and the ^S footer chip's own Start/Stop labels) instead of a
+  // separate state-adjective vocabulary for the same on/off condition.
+  const run   = state.running   ? '{bright-white-fg}[START]{/bright-white-fg}' : '{grey-fg}[STOP]{/grey-fg}';
+  // pb chip (a separate "[PLAYBACK]" badge next to [SESSION]) removed —
+  // user: "remove the [PLAYBACK] tag in the menu next to the [session] tag.
+  // there is already another tag doing the same job" — [START]/[STOP]
+  // (`run`, right above; was [RUNNING]/[STOPPED] at the time) already
+  // reports engine/playback state, so the
+  // dedicated badge was pure duplication. Playback-as-a-screen (vs
+  // Train/Gen) has no visible indicator any more, same as it has no footer
+  // chip (see renderFooter()'s own comment on ^P/togglePlayback() removal).
+  // fmtDir/fmtM used to format the per-stem weight/dir/dirWgt rows that
+  // printed straight into playBox here — both rows moved out to their own
+  // column (see weightDirStemBoxes/wdValueStr, near momentumStemBoxes) and
+  // took their own formatting helper with them, so these two are gone
+  // rather than left behind unused. envLine/genreBeatsLine/trackKeyLine/
+  // lufsMeter/genreLine (win:/slices:/LUFSs/quant:/genre:/beats:/track:/
+  // key:, all previously built here for the header's own rows) are gone
+  // too — folded down into renderMasterInfo(w) instead, see its own
+  // comment (user: "put all the infos above the mst: waveform, under the
+  // mst waveform. just like with all the other channels").
 
   // Fixed-column layout for the right-hand block (last touched / weight /
   // dir / dirWgt): each row is now independently right-flushed so its own
@@ -3933,6 +7210,10 @@ function render() {
   // right-flush against an inner boundary instead (no longer needed for the
   // header rows now that master's column docks below the header rather than
   // beside it — see reflow() — but the param stays available for future use).
+  // No call sites left at all now that lastTouchLine (its last user) moved
+  // into titleCenter instead (user: "put last touched in the menu next to
+  // the peers circles" — see sLines' own comment) — kept anyway, same
+  // "available for future use" reasoning as the edge param just above.
   const atCol = (left, right, edge) => {
     if (edge === undefined) edge = w - 1;
     const rightVis = strip(right).length;
@@ -3967,15 +7248,6 @@ function render() {
   // removed: the VU sidebar already gives true peak per channel, with its
   // own peak-hold, which is strictly more useful than one global dBFS
   // number duplicating what those meters already show.
-  const lufsMeter = dbMeter(state.lufs, state.lufsPeak, -40, -3, 10);
-  // Numeric readout shows the PEAK (the yellow/red ▐ marker's value), not the
-  // live instantaneous level — matches the hardware-meter convention of a
-  // numeric peak readout next to a live bar. The bar's fill still shows the
-  // current level; peakDecay() (below) keeps this number sliding back down
-  // toward reality instead of sitting pinned at an old high forever.
-  const envLine   = `{grey-fg}win:{/grey-fg} ${p.envelope}   {grey-fg}slices:{/grey-fg} ${sl}   ` +
-    `{grey-fg}LUFSs{/grey-fg} ${lufsMeter} ${fmtMeterDb(state.lufsPeak, LUFS_INF_FLOOR)}   {grey-fg}quant:{/grey-fg} ${quantMode()}`;
-  const genreBeatsLine = `${genreLine}   ${beatsHeaderLine()}`;
 
   // Header indicators — persistent LED-style, always visible (not
   // appearing/disappearing like the old statusIcons row) so they read like
@@ -3983,12 +7255,13 @@ function render() {
   //   • record   — small dot, sits on the title row next to [CONNECTED]/
   //                [DISCONNECTED]. Red when state.recording, grey otherwise.
   //   [TIP OPEN]/[TIP CLOSED] — white when a tipping session is open, grey otherwise.
-  //   [LINK ON]/[LINK OFF] — briefly flips to cyan ("pale blue") when a LINK missile
+  //   [LINK ON]/[FIRE LINK] — briefly flips to cyan ("pale blue") when a LINK missile
   //                fires (this deck's own :link fire OR a remote deck's — ws_server.js
   //                broadcasts 'linkMissile'/'fire_executed' to everyone),
-  //                fades back to grey after LINK_FLASH_MS. No extra timer
-  //                needed — the existing 100ms render tick (bottom of file)
-  //                naturally re-evaluates this on every tick.
+  //                fades back to grey ("[FIRE LINK]", idle) after
+  //                LINK_FLASH_MS. No extra timer needed — the existing
+  //                100ms render tick (bottom of file) naturally
+  //                re-evaluates this on every tick.
   //   Both TIP/LINK sit right-aligned on their own row, directly above
   //   "last touched" (see sLines below).
   const LINK_FLASH_MS = 1500;
@@ -4008,8 +7281,15 @@ function render() {
   const linkFiring  = state.linkFiredAt > 0 && (Date.now() - state.linkFiredAt < LINK_FLASH_MS);
   // cyan reads as "pale blue" in this terminal palette — same convention
   // already used for the source-lock indicator.
+  // "[FIRE LINK]" — was "[LINK OFF]" (user: "rename [LINK OFF] by [FIRE
+  // LINK]") — the idle state isn't really "off" (LINK itself has its own
+  // separate on/off via :link on/off — see that command's own comment),
+  // it's just "nothing fired recently"; naming it after the ACTION that
+  // lights it up (a missile firing — :link fire / :sendLink, see the new
+  // Link sub-view, ^O) reads clearer than an on/off pair that doesn't
+  // actually track a real on/off state at all.
   const linkLabel   = linkFiring
-    ? `{bright-white-fg}[LINK ON]{/bright-white-fg}` : `{grey-fg}[LINK OFF]{/grey-fg}`;
+    ? `{bright-white-fg}[LINK ON]{/bright-white-fg}` : `{grey-fg}[FIRE LINK]{/grey-fg}`;
   // PEER/NETWORK used to be chips in this cluster (and before that, a row
   // positioned under one of them) — pulled out entirely now into their own
   // dedicated zone box, networkBox, docked next to tipBox (user: "i want
@@ -4039,6 +7319,8 @@ function render() {
   // on/off distinction in favor of both states just being white always.
   const modeLabel = appMode === 'learn'
     ? `{bright-white-fg}[TRAINING MODE]{/bright-white-fg}`
+    : appMode === 'gen'
+    ? `{bright-white-fg}[GEN MODE]{/bright-white-fg}`
     : `{bright-white-fg}[PLAYBACK MODE]{/bright-white-fg}`;
   // Order: REC, TIP, MODE, LINK. NETWORK/PEER no longer chips in here —
   // they're networkBox now, a standalone zone docked beside tipBox (see
@@ -4055,8 +7337,6 @@ function render() {
     : `{grey-fg}:--{/grey-fg}`;
   const lastTouchLine = `{grey-fg}last touched:{/grey-fg} ${lastTouchStr}`;
 
-  // Separator is '-' not '·' — see the dbMeter() comment on the U+00B7 width bug.
-  const trackKeyLine = `{grey-fg}track:{/grey-fg} ${(() => { const names = ['vocals','melody','bass','drums'].map(n => state.stems[n] && state.stems[n].track).filter(Boolean); const uniq = [...new Set(names)]; return uniq.length ? uniq.join('{grey-fg} - {/grey-fg}') : state.track; })()}   {grey-fg}key:{/grey-fg} ${state.key}`;
 
   // Stacked block: icon cluster / last touched / weight / dir / dirWgt, each
   // independently right-flushed to the true right edge (see atCol), icon
@@ -4080,8 +7360,38 @@ function render() {
     const gap1 = Math.max(1, Math.floor((total - cV) / 2) - lV);
     const gap2 = Math.max(1, total - rV - (lV + gap1 + cV));
     recColStart = lV + gap1 + cV + gap2;
+    centerColStart = lV + gap1;
     return left + ' '.repeat(gap1) + center + ' '.repeat(gap2) + right;
   };
+  // Network + peer — was in the menu row's LEFT cluster (this stateChips
+  // row), next to [CONNECTED] (user: "put network in the menu next to
+  // [CONNECTED] ... add peer to the menu too") — moved again, out to the
+  // CENTER segment instead, next to the version/AGPL badge (user: "put the
+  // network: wifi menu tag next to [AGPL ...]"). Reasoning for the earlier
+  // "next to [CONNECTED]" placement stopped applying once [CONNECTED]
+  // itself got renamed to [ENG CONN] (originally [ENGINE CONNECTED])
+  // specifically to stop reading as network/wifi status (see that chip's
+  // own comment) — sitting right beside a badge about the audio engine was
+  // the wrong neighborhood for "network:" all along. networkBox itself is
+  // still hidden for good — see its own comment near
+  // PLAYBACK_HEADER_BOXES/reflow(). Peer has no "peer:" label of its own —
+  // just the 4 dots tacked directly onto the end of the network address
+  // (user: "dont write peer, just put the 4 dots after the ip address").
+  const networkChip = `{grey-fg}network:{/grey-fg} ${networkAddrText()} ${linkDotsLine()}`;
+  // lastTouchLine tacked on right after networkChip — user: "put last
+  // touched in the menu next to the peers circles" (linkDotsLine(), tacked
+  // onto the end of networkChip just above — see its own comment for why
+  // there's no separate "peer:" label). Used to be its own dedicated
+  // right-flushed row in sLines below (see that array's own comment for
+  // the history there); that row is gone now, folded in here instead.
+  // LUFSs meter — moved OUT of this row (was here, next to [ENG CONN],
+  // "put LUFSs meter in the menu next to engine connected" — see the git
+  // history on this comment for that stop and the one before it, next to
+  // key: in the master header) — now lives in its own row, masterLufsBox,
+  // directly under "PLAYBACK Master Link" — user: "put the LUFSs meter
+  // right under PLAYBACK, inbetween tracks and PLAYBACK." See
+  // lufsMeterLine() (near masterLufsBox's own declaration) for the shared
+  // content builder — same dbMeter() bar, just relocated, not reimplemented.
   const stateChips = `${sessionLabel}   ${run}   ${conn}`;
   // EBYS version + AGPL badge — briefly moved down to the footer, back up
   // here now (user: "put back ebys version and agpl license at the top of
@@ -4094,43 +7404,35 @@ function render() {
   // where network/ethernet/peer all live now, stacked in that one box.
   const versionLabel = `{grey-fg}[EBYS 0.1.19]{/grey-fg}   `;
   const agplLabel    = `{grey-fg}[{bold}🄯{/bold} AGPL-3.0]{/grey-fg}`;
-  const titleCenter  = versionLabel + agplLabel;
-  // These five rows used to share their row-band with masterVuBox/
-  // masterSpatialBox (both docked at top:0 back then), so they flushed
-  // against an inner boundary short of the true right edge to leave room
-  // for that column. Master now docks BELOW the header instead (see
-  // reflow()), so nothing else occupies these rows on the right any more —
-  // flush straight to the true right edge (atCol's/withLCR's default edge,
-  // w-1) again.
-  // Learn mode: track/key/win/slices/LUFSs/quant/genre/beats all describe
-  // whatever's CURRENTLY loaded live — irrelevant noise while training or
-  // paging through PAST bake sessions (each one may even be a different
-  // track). Drop those rows entirely rather than blank them, so statusH
-  // shrinks and the Learn panel (see LEARN MODE / reflowLearn()) climbs up
-  // into the reclaimed space instead of sitting below a gap. The panel
-  // itself takes over that space — see renderTrainingView()/reflowLearn().
-  const sLines = appMode === 'learn' ? [
+  const titleCenter  = versionLabel + agplLabel + '   ' + networkChip + '   ' + lastTouchLine;
+  // Used to also carry track/key, win/slices/LUFSs/quant, and genre/beats
+  // as three more rows here (flush to the true right edge, atCol's/
+  // withLCR's default edge w-1) — moved out entirely now, folded down into
+  // renderMasterInfo(w) under the mst: waveform instead — user: "put all
+  // the infos above the mst: waveform, under the mst waveform. just like
+  // with all the other channels." That also made the old Learn/Gen-mode
+  // special case (those three rows described whatever's CURRENTLY loaded,
+  // irrelevant noise while training/paging past bakes, so they used to be
+  // dropped entirely in that mode) moot — both branches were already just
+  // [stateChips row, lastTouchLine row] once those three were gone. Down to
+  // ONE row now — lastTouchLine's own dedicated row is gone too, folded
+  // into titleCenter instead, right after the peer circles (see
+  // networkChip's own comment) — user: "put last touched in the menu next
+  // to the peers circles."
+  const sLines = [
     withLCR(stateChips, titleCenter, iconCluster),
-    atCol('', lastTouchLine),
-  ] : [
-    withLCR(stateChips, titleCenter, iconCluster),
-    atCol('', lastTouchLine),
-    atCol(trackKeyLine, ''),
-    atCol(envLine, ''),
-    atCol(genreBeatsLine, ''),
   ];
   statusH = sLines.reduce((h, l) =>
     h + Math.max(1, Math.ceil(visWidth(l.replace(/\{[^}]+\}/g,'')) / Math.max(1, w))), 0);
   statusBox.height = statusH;
   statusBox.setContent(sLines.join('\n'));
 
-  // Below the header, several blocks now dock AT specific header rows
-  // rather than stacking below the header as one column (see reflow() for
-  // where each is actually positioned; MASTER_VU_TOP/TRAIN_TIP_TOP are the
-  // shared anchors both this and reflow() use): master's VU+spatial column
-  // starts at MASTER_VU_TOP ("closer to last touched"), training+tips start
-  // side by side at TRAIN_TIP_TOP ("align prmpt: with quant:beat"), and the
-  // entropy meter starts at statusH ("below genre", the header's last row).
+  // Below the (now 2-row) header, master's whole block (row0/row1/floor,
+  // VU+spatial, spectrum, entropy bar) docks right below it, at masterTop
+  // (= statusH) — see masterTop's own comment for why this is dynamic
+  // instead of a fixed shared row, why it's the SAME row learnPanelTop()
+  // returns, and for why there's no separate global entropy meter row in
+  // between any more.
   // playTop (where playBox and every per-stem column start) has to clear
   // the lowest bottom edge among all of these. Rendered here (not just left
   // to reflow(), which runs later and re-renders these same boxes anyway)
@@ -4140,28 +7442,76 @@ function render() {
   // wrapped multi-tip readout, etc.) — using the real count instead of
   // always the max is what keeps this gap tight instead of permanently
   // reserving room for content that isn't there most of the time.
-  const tipH       = Math.min(TIP_MAX_H,       Math.max(TIP_MIN_H,       renderTipInfo()));
-  const masterColBottom = MASTER_VU_TOP + 5; // master's own VU+spatial height
-  const tipBottom       = TRAIN_TIP_TOP + tipH; // beside training, same top
-  // No separate networkBottom candidate needed below — networkBox starts
-  // at this same TRAIN_TIP_TOP and is fixed at NETWORK_ZONE_H (2) rows
-  // (network/peer — see renderNetworkInfo()), still shorter than tipH's
-  // own floor (TIP_MIN_H = 5), so tipBottom already covers it.
-  // Entropy docks at statusH + 1 (left-edge column, no longer sharing
-  // horizontal space with the training/tips cluster — see reflow()'s own
-  // entropyBox.top) — mirrored here so playTop reserves the same real
-  // space instead of guessing independently.
-  const entropyH       = Math.min(ENTROPY_MAX_H, Math.max(ENTROPY_MIN_H, renderEntropyMeter()));
-  const entropyBottom  = statusH + 1 + entropyH;
-  // Learn mode: master/bake/tip/entropy are all hidden (PLAYBACK_HEADER_BOXES) —
-  // their bottoms above are still computed (harmless, cheap) but shouldn't
-  // reserve any space. The Learn panel occupies that space instead — see
-  // learnPanelHeight()'s own comment, right above reflowLearn() — so
-  // playBox starts below IT instead of below the (invisible) usual cluster.
-  // One blank row between whichever block is lowest and the progression bars.
-  playTop = appMode === 'learn'
+  // renderTipInfo()/tipBox no longer feed playTop at all — the header's tip
+  // zone is gone (user: "remove the tip zone in the header. keep it for the
+  // tip tab"), so there's no tip block height left to reserve room for here.
+  // renderTipPanel() re-run here (not just in reflow(), which only runs on
+  // resize/a handful of explicit spots) so the ^V overlay's own content
+  // doesn't go stale between those ticks (the panel would open showing
+  // whatever was true back at boot/last resize — user: "make sure infos is
+  // visible in the tip box cause right now its broken"); render() itself
+  // runs on every scheduleRender() tick (100ms clock, every WS message,
+  // etc.).
+  renderTipPanel();
+  // Same live-freshness reasoning for the gen panel — genLog can update
+  // between reflow() calls (mid-spawn spinner output), so this needs the
+  // same every-tick refresh tipPanelBox gets right above.
+  renderGenPanel();
+  // Master's own block docks at statusH + 1 — back to the "+1" that was
+  // deliberately dropped once before (see the git history on this comment:
+  // user, back then, "rename mst for MST and move it on row up. so it
+  // aligns with GEN and TRAIN" — statusH alone matched learnPanelTop()
+  // exactly, no gap). Re-added now — user: "move PLAYBACK header one row
+  // down" — but applied to learnPanelTop() too (see that function's own
+  // one-line body, just below in this file) so Playback/Train/Gen all
+  // still share the exact same top edge and switching screens still never
+  // shifts anything, same invariant as before, just one row lower now.
+  // Recomputed every tick, same as playTop itself.
+  masterTop = statusH + 1;
+  // masterColBottom — the true bottom of master's whole block, computed
+  // from each box's own real top+height (masterBarBox, masterInfoBox,
+  // masterVuBox, masterSpatialBox) rather than a hand-tracked constant.
+  // Used to be a hardcoded "masterTop + 3 + tallest(VU, spatial)" — a
+  // holdover from when masterInfoBox was a single flowing line and a 3rd
+  // fixed row was reserved for masterEntropyFloorBox — that arithmetic
+  // silently went stale once masterInfoBox grew to MASTER_INFO_ROWS (4)
+  // and masterEntropyFloorBox was removed outright (see masterBarBox's own
+  // comment on both), overshooting the real bottom by 2 whole rows. That
+  // overshoot was the actual cause of user: "the gap between the vocals
+  // channel and the master header" being bigger than it should — "move all
+  // the channels one row up" turned into two, once measured properly
+  // instead of guessed.
+  const masterColBottom = Math.max(
+    masterBarBox.top     + masterBarBox.height,
+    masterInfoBox.top    + masterInfoBox.height,
+    masterVuBox.top      + masterVuBox.height,
+    masterSpatialBox.top + masterSpatialBox.height
+  );
+  // No separate networkBottom/tipBottom candidates needed below — networkBox
+  // is hidden for good (network/peer moved into the menu row, stateChips —
+  // see withLCR/reflow()) and tipBox no longer occupies any header space
+  // (see this block's own comment above), nothing left in either zone to
+  // reserve space for. entropyBox is retired too now (no candidate needed
+  // for it either) — masterColBottom is always statusH + 3 + something
+  // positive, so it already dominates on its own.
+  // Learn mode: master/entropy are all hidden (PLAYBACK_HEADER_BOXES/
+  // MASTER_METER_BOXES-adjacent) — their bottoms above are still computed
+  // (harmless, cheap) but shouldn't reserve any space. The Learn panel
+  // occupies that space instead — see learnPanelHeight()'s own comment,
+  // right above reflowLearn() — so playBox starts below IT instead of below
+  // the (invisible) usual cluster.
+  // One blank row between whichever header block is lowest (master's own
+  // block, masterColBottom above) and the channels section in playback mode
+  // — user: "put one row space between the master header and the channels
+  // section" (playBox's first stem row is always vocals — see
+  // PLAYBACK_STEMS/the per-stem loop order — so this is the
+  // header-to-vocals seam). Previously flush against it (0 gap, user: "remove
+  // the gap in between the header and the vocal waveform") — reinstated as
+  // a single row, not that old multi-row gap. Learn mode already had its
+  // own blank row below learnPanelBottom(), untouched by this ask.
+  playTop = (appMode === 'learn' || appMode === 'gen')
     ? learnPanelBottom() + 1
-    : Math.max(masterColBottom, tipBottom, entropyBottom, statusH) + 1;
+    : Math.max(masterColBottom, statusH) + 1;
   playBox.top = playTop;
 
   // ── SCREEN VISIBILITY ──────────────────────────────────────────────────
@@ -4176,10 +7526,25 @@ function render() {
   // mode...). Re-evaluated every render() tick — cheap, and blessed's
   // show()/hide() are no-ops when already in that state.
   const inLearn  = appMode === 'learn';
+  const inGen    = appMode === 'gen'; // full screen, same treatment as inLearn — see GEN_PANEL_BOXES' own comment
   const inReview = inLearn && learnView === 'review'; // training sub-view: everything below falls through to the playback-shaped rules, since a live bracket uses playBox the same way playback does
 
-  // The chat overlay — same 5 boxes regardless of which screen is underneath.
+  // The chat overlay — same 5 boxes regardless of which screen is underneath
+  // (playback, Learn, or Gen).
   CHAT_OVERLAY_BOXES.forEach(b => chatMaximized ? b.show() : b.hide());
+
+  // The tip overlay (^V) — same "regardless of which screen is underneath"
+  // rule chat's own overlay follows, and fully independent of chatMaximized
+  // AND of appMode/Gen too — either, both, or neither can be open at once
+  // (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES). No longer
+  // exclusive with Gen — Gen is a full screen now, not a same-footprint
+  // overlay, so there's nothing left for tip to collide with.
+  TIP_PANEL_BOXES.forEach(b => tipPanelOpen ? b.show() : b.hide());
+
+  // The Gen SCREEN (^T toggles Train ⇄ Gen) — gated on appMode, same as
+  // reviewHeaderBox/reviewDetailBox are gated on inLearn, NOT an overlay
+  // any more (see GEN_PANEL_BOXES' own comment and switchScreen()).
+  GEN_PANEL_BOXES.forEach(b => inGen ? b.show() : b.hide());
 
   // inputRuleBox — only while chat is CLOSED (user: "remove the line we
   // just added to demarcate the chat box. the line must exist only when
@@ -4192,27 +7557,80 @@ function render() {
   chatMaximized ? inputRuleBox.hide() : inputRuleBox.show();
   chatMaximized ? peekBox.hide()      : peekBox.show();
 
+  // Force the tip overlay above whatever screen is underneath it — user:
+  // "make sure the TIP panel shows well above the GEN panel." z-order was
+  // purely append-order-based here (Gen's four boxes append AFTER
+  // tipPanelBox — see the screen.append() list above CHAT_OVERLAY_BOXES),
+  // so Gen's boxes painted OVER an open tip panel instead of the other way
+  // around without help. setFront() re-asserts tip on top every render() tick
+  // regardless of append order, same mechanism the chat block right below
+  // uses. Runs BEFORE that chat block, not after — if chat is ALSO open,
+  // chat's own setFront() should still win and stay the one true top layer
+  // (its own "always above everything else" guarantee), so it needs the
+  // last word.
+  if (tipPanelOpen) {
+    TIP_PANEL_BOXES.forEach(b => b.setFront());
+    inputBox.setFront();
+    suggestBox.setFront();
+    footerBox.setFront();
+    spinnerBox.setFront();
+  }
+
+  // Force the chat overlay to the very top of the z-order while it's open
+  // (user: "make sure chat always opens above everything else in the
+  // TUI") — up to now z-order was purely a function of screen.append()
+  // order (CHAT_OVERLAY_BOXES are appended early, near statusBox/playBox,
+  // long before the meter/review/tip-panel boxes below — see the
+  // screen.append() list above CHAT_OVERLAY_BOXES), so anything appended
+  // after them that isn't perfectly hidden would paint over the open chat
+  // log instead of the other way around. setFront() re-asserts the
+  // correct order every render() tick regardless of append order or any
+  // show()/hide() gap elsewhere, same "cheap, re-evaluated every tick"
+  // reasoning the rest of this block already relies on. inputBox and its
+  // sibling chrome are re-fronted right after so they stay usable on top
+  // of chat itself — same relationship they already have with the tip
+  // panel (see the screen.append() comment above CHAT_OVERLAY_BOXES).
+  if (chatMaximized) {
+    CHAT_OVERLAY_BOXES.forEach(b => b.setFront());
+    inputBox.setFront();
+    suggestBox.setFront();
+    footerBox.setFront();
+    spinnerBox.setFront();
+  }
+
   // Master VU/spatial — up on BOTH screens (see MASTER_METER_BOXES), so
   // just always shown here regardless of inLearn/chatMaximized (mirrors how
   // the chat overlay itself keeps running "regardless of which screen is
   // underneath" per the SCREEN MODEL comment above).
   MASTER_METER_BOXES.forEach(b => b.show());
+  // Master EQ spectrum used to have its own Playback-only show/hide rule
+  // here (a dynamic-row box that bled into Learn's differently-shaped
+  // header cluster — user, looking at a screenshot: "remove the 0 with the
+  // line. it belong to the spectrum analyzer"). Moot now — that box was
+  // removed entirely along with master's waveform (see masterBarBox's own
+  // comment on that pivot: master is a plain menu-header row now, no
+  // spectrum to hide/show at all).
+  // masterEntropyBox (the range bar) and masterEntropyFloorBox (the
+  // floor(warm)/floor(cold) readout under it) are both removed entirely
+  // now — user: "remove entropy range bar from the master header", then
+  // "remove this info from the header" pointing at the floor readout.
 
   // Playback's own remaining header cluster (bake/tip/entropy) — stays up
   // for as long as the playback screen is active, chat overlay or not
-  // (mirrors the Learn panel's own always-up-in-Learn behavior).
-  PLAYBACK_HEADER_BOXES.forEach(b => !inLearn ? b.show() : b.hide());
-  // Per-stem "channel content" (VU, spatial, descriptor grid/momentum) —
+  // (mirrors the Learn panel's own always-up-in-Learn behavior). Gen is a
+  // full screen too now, same treatment.
+  PLAYBACK_HEADER_BOXES.forEach(b => (!inLearn && !inGen) ? b.show() : b.hide());
+  // Per-stem "channel content" (VU, spatial, momentum) —
   // user: "dont forget to add the visualizations in the training tab too.
   // descriptor graphs (momentum and transition) and vu/spat graphs." These
   // used to hide whenever inLearn, full stop — now they follow playBox's
   // OWN visibility instead (see the inReview branch right below): up
   // whenever there's a live per-stem waveform to sit next to, whether
   // that's plain Playback or the training screen's own 'training'
-  // sub-view, and hidden only during 'review' (reviewWaveformBox there is
-  // a single recorded clip, not four live stems — nothing for these to
-  // align with) or while chat is maximized on top of either screen.
-  PLAYBACK_CHANNEL_BOXES.forEach(b => (!inReview && !chatMaximized) ? b.show() : b.hide());
+  // sub-view, and hidden during 'review' (reviewWaveformBox there is a
+  // single recorded clip, not four live stems), Gen (full screen, nothing
+  // to align with either), or while chat is maximized on top of any screen.
+  PLAYBACK_CHANNEL_BOXES.forEach(b => (!inReview && !inGen && !chatMaximized) ? b.show() : b.hide());
 
   // playBox/reviewWaveformBox — the two screens' shared "channel content"
   // slot. playBox serves playback AND Learn's training sub-view (a live
@@ -4237,9 +7655,37 @@ function render() {
     playBox.hide();
     reviewWaveformBox.show();
     updateReviewWaveformBox(reviewWaveformBox.width || w);
+  } else if (inGen) {
+    // Gen has no live-engine or recorded-clip waveform to show — just hide
+    // both, same "nothing for these to align with" reasoning inReview uses.
+    playBox.hide();
+    reviewWaveformBox.hide();
   } else {
     reviewWaveformBox.hide();
     if (!chatMaximized) playBox.show(); else playBox.hide();
+  }
+
+  // reviewHeaderBox/reviewListBox/reviewDetailBox/reviewRegressionBox/
+  // reviewOverallBox (Train review's own boxes, including the pinned
+  // "lora" sidebar — see loraSummaryLines()) — unlike reviewWaveformBox
+  // above, these used to only be shown/hidden by enterLearnMode()/
+  // exitLearnMode()/reflowLearn(). ^G can now reach Gen directly off
+  // Train's review sub-view (see toggleGen(), and note there's no ^P any
+  // more to reach Playback the same way — closing Train's own key gets you
+  // there instead), so gating this on inGen alone (its original,
+  // narrower fix — user: "make sure the tags section doesnt appear in the
+  // gen tab of the TUI") missed the exact same bleed-through into
+  // Playback. Gated on !inLearn instead — the one condition that's true
+  // for every screen besides Train itself — so it can't happen again no
+  // matter which screen ^T/^P/switchScreen() lands on next. inLearn's own
+  // review branch in reflowLearn() still owns show() for these the rest of
+  // the time.
+  if (!inLearn) {
+    reviewHeaderBox.hide();
+    reviewListBox.hide();
+    reviewDetailBox.hide();
+    reviewRegressionBox.hide();
+    reviewOverallBox.hide();
   }
 
   // Playback bars — full window width again. The VU/spatial/descriptor-grid/
@@ -4254,15 +7700,22 @@ function render() {
   // important in the design. i want it to be written: vocs, mels, bass,
   // drms", then shortened again (user: "rename the channels vocs, melo,
   // bass, drums by vcl, mel, bas, drm").
-  const STEM_ROW_LABEL = { vocals: 'vcl', melody: 'mel', bass: 'bas', drums: 'drm' };
-  // nameW trimmed to 4 (was 5, back when labels were 4 chars each — see
-  // above) — all four labels are 3 chars now, so this is still a single
-  // trailing space before pinMark/tMark, same "reduce the space between the
-  // label and the waveform" request as before, just re-tightened to match.
-  const nameW  = 4;
+  // STEM_ROW_LABEL/nameW ("vcl"/"mel"/"bas"/"drm", padded to 4) — REMOVED.
+  // Used to prefix every waveform row, pushing the bracket itself ~8 columns
+  // in from the true left edge — user, looking at a screenshot: "instead of
+  // saying vcl : [waveform], make the waveform start aligned with [RMX|GEN]
+  // and remove the vcl title... the waveform fills the whole width of the
+  // window." [RMX|GEN] (leadPad, the tail row directly under this one)
+  // already starts at column 0 (STEM_INDENT_W's own comment) — dropping the
+  // label/colon here lines the waveform bracket up with it, just past the
+  // pin/trigger indicator (pinMark/tMark, kept — genuine per-stem state, not
+  // a title).
   const TS_W   = 8;
-  const barW   = Math.max(4, w - nameW - 4 - TS_W);   // VU moved to header — reclaim width
-  // +1 for the pin indicator column (was 3 = tMark + ": ", now 4 = pinMark + tMark + ": ")
+  // barW reclaims the freed columns: was `w - nameW(4) - 4 - TS_W`, now just
+  // pinMark(1) + tMark(1) + TS_W(8, already covers the space-before-
+  // timestamp + the 7-char timestamp itself) reserved, everything else goes
+  // to the bar.
+  const barW   = Math.max(4, w - 2 - TS_W);
   const fmtN   = v => String(Math.round(parseFloat(v) || 0)).padStart(5);
   const sid    = id => String(id || '--').replace('slice_', '#').slice(0, 6).padEnd(6);
   const fmtF   = v => (parseFloat(v) || 0).toFixed(2).padStart(5);
@@ -4280,8 +7733,13 @@ function render() {
         : Math.round(s.pos * s.bars * 4 * 60000 / Math.max(1, state.bpm)));
     const posMs     = Math.max(0, state.running ? baseMs + (Date.now() - s.lastPosTime) : baseMs);
     const tsStr     = fmtMs(posMs).padStart(TS_W - 1);
-    const subGenre  = parseGenre(s.genre).sub;
-    const trackShort = s.track.length > 16 ? s.track.slice(0, 15) + '…' : s.track;
+    // subGenre/genre/beats/quant/key/slices/bpm — no longer read here; the
+    // old tail row that used them is gone (see its own removal comment
+    // below), and chInfoStemLines() now computes its own copies of these
+    // straight from state, independently.
+    // Full track name now only shown in stemLockBoxes (right:0, its own
+    // dedicated box) — no more truncated inline copy needed in this row's
+    // own text budget.
 
     // Row 0 — progress bar + timestamp (VU meters moved to sidebar)
     // Trigger mode indicator replaces the space before ':':
@@ -4296,186 +7754,179 @@ function render() {
     // terminals and silently break every fixed-width alignment downstream of
     // it, the same class of bug already fought in the VU sidebar this session.
     const pinMark = s.pinnedSource ? `{bright-white-fg}•{/bright-white-fg}` : ' ';
-    playLines.push(`${pad(STEM_ROW_LABEL[name] || name, nameW)}${pinMark}${tMark}: ${b} ${tsStr}`);
+    // No more label/colon prefix — see barW's own comment above. Bracket
+    // starts right after the 2-column pin/trigger indicator now, lined up
+    // with leadPad's own column-0 start on the tail row directly below.
+    playLines.push(`${pinMark}${tMark}${b} ${tsStr}`);
 
-    // Tail row — bars/stay/match/sid/genre/track/lock, right under the
-    // waveform row. Used to be preceded by a 7-dim C/S/E/F/P/H/T range-bar
-    // block (M↑━━●━━ nnnnn …) on this same line — removed (user: "remove
-    // the range bar showing descriptor value under the waveform. now we
-    // have the visualization that does a better job" — the descriptor grid
-    // and momentum panels, docked beside the VU sidebar, show the same
-    // dimensions with actual history instead of one static snapshot; see
-    // descGridStemLines()/momentumStemLines(), which now print the live
-    // value alongside each of their own rows too, per dim, so nothing
-    // that was readable here is actually lost). This is the last row
-    // before the meters start (see PRE_METERS_ROWS) — weight/dir/dirWgt
-    // below still print on the SAME rows as the meters (left column vs.
-    // right-anchored boxes), not above them, so the meters' own first row
-    // lines up with "weight".
-    // nameW + 4 lines this row's start up with where the waveform bracket
-    // itself starts one row up: pad(name, nameW) + pinMark(1) + tMark(1) +
-    // ": "(2) = nameW + 4 before `b` (user: "align the infos, such as
-    // bars:x with the start of the waveform").
-    // Row 1 lead-in — used to be blank padding under the name; now carries
-    // this stem's remix/generate mode, stacked directly under STEM_ROW_LABEL
-    // on the row above (user: "integrate the gen/remix indicator under the
-    // channels name. vcl, mel, bas, drm..."). Sourced from
-    // state.agentMode[name], which only ever updates from a confirmed
-    // agentMode_<stem> param broadcast off slicer.js's setAgentMode() — see
-    // the WS handler above, no optimistic local echo.
-    // Both "rmx" and "gen" are always shown together now (user: "I want to
-    // see them both, all the time" — a single tag that swapped text was
-    // read as one indicator disappearing/changing rather than two fixed
-    // options with one currently selected). Both render in grey; whichever
-    // one matches the live mode switches to bold white (user: "the selected
-    // rmx or gen becomes white"). Fills the full nameW+4 lead width itself
-    // (7 visible cols: "rmx" + "/" + "gen", padded 1) — no separate blank
-    // pad(''), unlike the single-tag version this replaces.
-    const isGen  = state.agentMode[name] === 'generate';
-    const rmxSeg = isGen ? '{grey-fg}rmx{/grey-fg}' : '{white-fg}{bold}rmx{/bold}{/white-fg}';
-    const genSeg = isGen ? '{white-fg}{bold}gen{/bold}{/white-fg}' : '{grey-fg}gen{/grey-fg}';
-    const leadPad     = rmxSeg + '{grey-fg}/{/grey-fg}' + genSeg + ' ';
-    // Visible width, not leadPad.length — leadPad carries blessed
-    // {tag}...{/tag} color markup (see rmxSeg/genSeg above), which adds
-    // characters that cost zero real screen columns; .length would
-    // overcount and starve the tail-item budget below (same class of bug
-    // the candidates[] `len` field further down exists to avoid). Visible
-    // width is 8 (3 + 1 + 3 + 1), matching nameW + 4 exactly, same as the
-    // plain-blank leadPad this replaces.
-    const preLockVis  = nameW + 4;
-    let   remaining   = Math.max(0, w - 1 - preLockVis);
+    // Tail row — REMOVED. Used to print bars:/stay:/match:/sid/genre/beats/
+    // quant:/key:/slices:/bpm: (plus the "[RMX|GEN]" tag) as one flowing,
+    // priority-dropped text line directly under the waveform. Every one of
+    // those values now has a permanent, non-dropping home in the channel-
+    // info column instead (chInfoStemBoxes/chInfoStemLines — [RMX|GEN], key,
+    // bars, stay, match, slices, entropy, genre[%], beats[%], all stacked
+    // one-per-row rather than fighting for space on a single line) — user:
+    // "remove the infos that are displayed under the waveform bar since
+    // they are now all organized within the channel-info column." This row
+    // is now the eqL/eqM/eqH/trim header, printed just below — see
+    // eqHeaderStemLine()'s own comment for why it moved here.
 
-    // Tail items, highest priority first — each only gets appended if it
-    // still fits within whatever room is left, so the row NEVER exceeds `w`
-    // regardless of terminal size; lowest-priority items (genre, then
-    // track) are the ones that get dropped first on a narrow terminal.
-    const lockTo    = state.sourceLock[name];
-    // "⚿" (SQUARED KEY, U+26BF). blessed's internal width table
-    // (node_modules/blessed/lib/unicode.js) classifies this as width 1, but
-    // a live screenshot showed it actually rendering as a tofu box on this
-    // system's terminal font (no native glyph → fallback substitution),
-    // which draws as 2 columns wide — the candidate below accounts for that
-    // real on-screen width, not blessed's count, when budgeting remaining
-    // space (see the lockTo candidate's `len` further down).
-    const lockPlain = lockTo ? `${lockTo.slice(0, 3)}⚿` : '';
-    // { text: what actually gets appended (may include color tags), len: its
-    //   VISIBLE width (tags stripped) — kept separate since tags cost zero
-    //   real screen columns but do add characters that would otherwise
-    //   throw the budget off. }
-    const candidates = [];
-    // match — moved here from the header: matchProb is genuinely per-stem,
-    // so it belongs next to this
-    // stem's own bars/stay rather than a single "representative" header row.
-    const stemMatch = (state.paramsPerStem[name] && state.paramsPerStem[name].matchProb) || 0;
-    // No leading literal spaces here any more — leadPad (nameW + 4) already
-    // supplies the full offset needed to line "bars:" up with where `b`
-    // (the waveform bracket) starts one row up.
-    // bars: value — [fullfile] when this stem is in whole-file mode
-    // (state.playFullFile[name], mirrors slicer.js's PLAY_FULL_FILE),
-    // otherwise the actual segment bar count in brackets. Used to be a
-    // header-wide [CHUNK MODE ON/OFF] chip (true if ANY stem was chunked) —
-    // removed in favor of this, since chunk mode is genuinely per-stem and
-    // this is already the per-stem row (user: "remove [CHUNK MODE] from
-    // the menu. instead, when chunk mode is on, we see it in the infos
-    // under the waveform. we see the [x] numbers of bars. and when chunk
-    // mode is off, the bar number becomes [fullfile]").
-    const barsTxt = state.playFullFile[name] ? '[fullfile]' : `[${s.bars}]`;
-    const barsStay = `bars:${barsTxt}  stay:${s.stay.toFixed(1)}  match:${stemMatch.toFixed(1)}`;
-    candidates.push({ text: barsStay, len: barsStay.length });
-    const sidTxt = `  ${sid(s.id)}`;
-    candidates.push({ text: sidTxt, len: sidTxt.length });
-    // Genre + classifier confidence, e.g. "[house 82%]" — was just the
-    // sub-genre label with no sense of how sure the classifier actually is
-    // (user: "the sub-genre label but not how confident the classifier is
-    // — could go [house 82%]").
-    if (subGenre) {
-      const t = `  [${subGenre} ${Math.round((parseFloat(s.genreConf) || 0) * 100)}%]`;
-      candidates.push({ text: t, len: t.length });
+    // Weight/dir/dirWgt used to print here too, as 3 more horizontal rows
+    // (weight, dir, dirWgt) directly in playBox, sharing rows with that
+    // stem's meters box. Moved out entirely into their own vertical column
+    // (weightDirStemBoxes, docked left of the momentum panel) — user: "the
+    // weight dir parameters ... still show M, why not C? ... place them
+    // elsewhere so the spectrum analyzer can take more vertical space under
+    // the waveform ... stack them vertically ... one descriptor above each
+    // other, just like the descriptor graph." See weightDirStemLines() near
+    // momentumStemBoxes for the real per-stem values (still read straight
+    // from state.paramsPerStem[name], same confirmed-from-slicer.js values
+    // as before — nothing about WHERE the data comes from changed, only
+    // where it's drawn) and weightDirStemLines' own comment for why "M:" is
+    // gone for good (every row there is built off DIMS' real letters now,
+    // no separate C-is-secretly-labeled-M special case left to keep in
+    // sync).
+
+    // EQ spectrum — used to be sized to match the (now-removed) weight/dir
+    // text's own width ("place it under the weight/dir section, make it fit
+    // the width of the weight/dir zone"). That anchor is gone now that
+    // weight/dir lives in its own column instead of playBox's text, so this
+    // stretches to fill whatever's actually free on this row instead:
+    // everything from the TRUE left edge of the window (user: "move the
+    // spectrum analyzer layout so it is aligned with the left border of the
+    // window. no gap before it" — eqIndent used to be spIndent, the same
+    // blank indent the "bars:/stay:/match:" text row starts with, which
+    // left a STEM_INDENT_W-wide gap in front of the bar for no reason of
+    // its own — it's a full-width graph, not text that needs to line up
+    // under leadPad's "[RMX|GEN]" tag) up to where the right-hand meters
+    // cluster begins (RIGHT_CLUSTER_W — the same budget `remaining` above
+    // respects too, so the bar and the descriptor line's own tail text
+    // share one consistent right boundary).
+    const eqIndent = '';
+    // eqSpecW — narrowed by the 16-band representation's own FULL footprint
+    // (EQ16_TOTAL_W — the fader tracks AND their own eq16DbLabel scale
+    // column now, not just EQ16_W — see EQ16_TOTAL_W's own comment) plus
+    // EQ16_GAP, so the two bars share the exact same right boundary
+    // (RIGHT_CLUSTER_W) real spectrum + fake 16-band curve always have.
+    // Used to compress further, toward the old tail row's own "quant:"
+    // column (quantCol) — user: "compress the spectrum to the left so the
+    // eq can be aligned closer to quant: beat." That row (and quantCol with
+    // it) is gone now (see the tail row's own removal comment above), so
+    // there's no longer a text column to hug — back to simply filling
+    // everything left of the 16-band EQ, same as before that compression
+    // was ever added.
+    const eqSpecW = Math.max(8, (w - RIGHT_CLUSTER_W) - 1 - EQ16_GAP - EQ16_TOTAL_W);
+    // eqHeaderStemLine's own row — printed here (not down by the spectrum)
+    // since it has to land exactly one row ABOVE eqSpecBarLines'/
+    // eq16BarLines' own output — user: "move the eqL eqM @ and eqH over the
+    // eq zone." Indented past the real spectrum (eqSpecW) + EQ16_GAP + the
+    // dB-scale column (EQ16_SCALE_W, which already includes its own
+    // separating space) so eqL/eqM/eqH justify against the 16 fader tracks
+    // themselves, same left edge eq16BarLines' own bars start at below.
+    // trim's own room used to be measured against the true window width
+    // `w` instead of EQ16_W, letting it spill out past the bands into the
+    // pitch/fmt column beside them — user: "trim is above pitch, but i
+    // want it above the eq bands ... align everything above the eq bands."
+    // eqHeaderStemLine now keeps trim inside EQ16_W on its own (see that
+    // function's own comment), so there's nothing left for this call site
+    // to measure or pass in.
+    // eqZoneIndent — hoisted out of a one-off block (not block-scoped) since
+    // eq16FreqRow's own row, pushed further down after the bars, reuses this
+    // exact same indent to line its numbers up under the same bars this
+    // header row justifies against. No extra "+1" here — EQ16_SCALE_W
+    // already includes its own separating space (see that constant's own
+    // comment); adding another one used to leave this indent 1 column too
+    // wide, an actual wasted column caught while compressing this zone.
+    const eqZoneIndent = ' '.repeat(eqSpecW + EQ16_GAP + EQ16_SCALE_W);
+    // trackLabelTxt — the REAL source track/file name actually playing on
+    // this channel right now, not the stem/channel name — user, correcting
+    // the first pass at this (which used DESC_LABELS' vcl/mel/bas/drm):
+    // "no track name. not channel name. ESRGDtb932892323.... for instance.
+    // use the actual track name" / "that is being played in that channel."
+    // s.track || state.track is the same fallback trackKeyLine's own
+    // waveform lookup already uses (see that comment for why the fallback
+    // is needed: s.track only gets populated once slicer.js has actually
+    // picked a segment for THIS stem, so a near-silent stem with nothing
+    // analyzed yet would otherwise read blank even while a track is
+    // genuinely loaded and playing everywhere else). Truncated to fit
+    // eqZoneIndent's own width (real filenames run longer than this
+    // narrow left strip) — same manual visWidth-based truncate-and-pad
+    // convention the rest of this file uses instead of blessed's `align`.
+    // Built as its own indent variant, NOT eqZoneIndent itself — eq16FreqRow
+    // reuses eqZoneIndent verbatim further down and must stay blank, or the
+    // name would print a second time there too.
+    const trackNameRaw  = s.track || state.track || '(no track)';
+    const trackLabelFit = trackNameRaw.length > eqZoneIndent.length
+      ? trackNameRaw.slice(0, Math.max(0, eqZoneIndent.length - 1)) + '…'
+      : trackNameRaw;
+    const trackLabelTxt = '{bright-white-fg}' + trackLabelFit + '{/bright-white-fg}';
+    const trackLabelVis = visWidth(trackLabelTxt.replace(/\{[^}]+\}/g, ''));
+    const eqHeaderIndent = trackLabelTxt + ' '.repeat(Math.max(1, eqZoneIndent.length - trackLabelVis));
+    playLines.push(`${eqIndent}${eqHeaderIndent}${eqHeaderStemLine(name)}`);
+    // Row-count history: 3 rows showed a seam cutting across the peak
+    // (terminal line-spacing becoming visible wherever a column got tall
+    // enough to cross a row boundary — not a fill bug, renderBlockBars fills
+    // strictly monotonically bottom-to-top). Dropped to 1 row to kill the
+    // seam outright, but user: "now i dont see shit. i need more range for
+    // the spectrum height" — 1 row (8 eighth-steps) genuinely read as too
+    // flat to be useful. Grew from there to 6 rows, then 4 (to vertically
+    // align its bottom with the momentum panel's own T row, back when
+    // weight/dir/dirWgt still ate 3 of this stem's rows above it — see the
+    // git history on this comment for that math). Grew again to the FULL
+    // STEM_ROW_BAND_H (7) once weight/dir/dirWgt moved out of playBox
+    // entirely — then back down to EQ_SPEC_ROWS (6), ONE LESS than
+    // STEM_ROW_BAND_H, to free that bottom row for eqInfoStemLine()'s EQ/
+    // gain/pitch/formant readout (see EQ_SPEC_ROWS' own comment) — user:
+    // "the spectrum analyzer will work fine with one less line anyway."
+    // Still the same total STEM_BAND_H either way (PRE_METERS_ROWS +
+    // STEM_ROW_BAND_H) — the freed row goes straight to the new info line
+    // below instead of sitting unused.
+    // Used to be hidden specifically in Learn's 'training' sub-view (user
+    // back then: "remove the bar that comes from the spectrum analyzer
+    // too") — reversed now, user: "make sure the eq and the spectrum are
+    // visible on the training tab too." playBox's content is identical
+    // across Playback and Train > Training again; nothing left that
+    // differs by screen here.
+    {
+      // The 16-band curve (renderEq16Bars) is computed once per stem here,
+      // off this stem's own confirmed-from-engine EQ values (same source
+      // eqInfoStemLine() already reads below) — NOT off the real spectrum's
+      // levels, which is a different, unrelated signal (see that section's
+      // own comment for why this is purely a representation, not a second
+      // reading of the same data).
+      // Computed once, shared by the bars (eq16BarLines) and the numeric
+      // readout row right under them (eq16FreqRow) — both are two different
+      // views of this exact same array, never two separate reads.
+      const eq16Values = eq16CurveDB(state.paramsPerStem[name] || {});
+      // eq16BarLines(), not the bare renderEq16Bars() — wraps each row with
+      // eq16DbLabel's own scale column now (see EQ16_TOTAL_W's comment for
+      // why eqSpecW already budgets for that extra width).
+      const eq16Lines = eq16BarLines(eq16Values, EQ_SPEC_ROWS);
+      const eq16Gap = ' '.repeat(EQ16_GAP);
+      eqSpecBarLines(name, eqSpecW, EQ_SPEC_ROWS).forEach((row, r) => {
+        playLines.push(`${eqIndent}${row}${eq16Gap}${eq16Lines[r]}`);
+      });
+      // eqInfoStemLine()'s old row — REMOVED (see that function's own
+      // removal comment: eqL/eqM/eqH/trim moved above the EQ16 zone, gain
+      // moved to channelEntropyStemBoxes, pitch/fmt were already duplicated
+      // by pitchFmtStemBoxes). Replaced with eq16FreqRow() instead — each
+      // band's own fixed center frequency (EQ16_FREQ_LABELS), same every
+      // stem/tick — NOT read off eq16Values, on purpose (see
+      // EQ16_FREQ_LABELS' own comment). Same eqZoneIndent the header row
+      // above uses, for the same reason: justify against the 16 bars
+      // themselves, past the scale column.
+      playLines.push(`${eqIndent}${eqZoneIndent}${eq16FreqRow()}`);
     }
-    // Native (analyzed) BPM of this stem's own source track next to the
-    // current global/fallback playback BPM — shows how much pitch-shift is
-    // actually being applied (user: "the source track's native BPM next to
-    // your current global/fallback BPM"). playback→native, dropped
-    // entirely when the source track hasn't been analyzed yet.
-    const nativeBpm = getNativeBpmForTrack(s.track);
-    if (nativeBpm > 0) {
-      const playbackBpm = state.globalBPM > 0 ? state.globalBPM : (state.bpm || 0);
-      const t = `  bpm:${playbackBpm}→${Math.round(nativeBpm)}`;
-      candidates.push({ text: t, len: t.length });
-    }
-    // Skip when s.track is literally the same string as s.id (already shown
-    // a few candidates back via sid(s.id), just truncated differently — 6
-    // chars there vs. up to 16 here, so the SAME identifier appeared to
-    // repeat on screen, e.g. "ESRGDt ... ESRGDtb923043@$…" — user: "make
-    // sure the name of the track doesnt get written twice."). This happens
-    // when a stem's real 'stemTrack' name hasn't arrived/been set yet and
-    // whatever populated s.track fell back to the same raw id string in the
-    // meantime — once a genuine, distinct track name comes in this check
-    // stops suppressing it and both fields show their own real values.
-    if (s.track && s.track !== s.id) { const t = `  ${trackShort}`; candidates.push({ text: t, len: t.length }); }
-    // Lock indicator — LAST, lowest priority, instead of a fixed slot
-    // reserved up front. It used to sit first with a fixed-width reserved
-    // slot (blank-padded when unlocked) specifically so bars:/stay:/match:
-    // that follow would always start at the same column — but that fixed
-    // slot itself was the thing throwing rows off (the "⚿" key glyph draws
-    // 2 columns wide on this terminal despite blessed counting it as 1, see
-    // the width-bug note above). Appended last instead: nothing follows it,
-    // so its own presence/width can no longer misalign anything else, and
-    // an unlocked stem no longer needs a blank placeholder at all.
-    if (lockTo) {
-      const t = `  {bright-white-fg}${lockPlain}{/bright-white-fg}`;
-      candidates.push({ text: t, len: 2 + lockPlain.length + 1 }); // +1 for ⚿'s real 2-col width vs its 1-char string length
-    }
 
-    let tail = '';
-    for (const c of candidates) {
-      if (c.len <= remaining) {
-        tail += c.text;
-        remaining -= c.len;
-      }
-      // else: dropped — not enough room left, skip to the next (lower-
-      // priority) candidate rather than truncating mid-item.
-    }
-    const descLine = leadPad + tail;
-    playLines.push(`{grey-fg}${descLine}{/grey-fg}`);
-
-    // This stem's own weight/dir/dirWgt — right under the descriptor line;
-    // shares its rows with that stem's meters box (which starts here too —
-    // see PRE_METERS_ROWS), so "weight" lines up with the meters' own first
-    // row. These used to live once in the header as a
-    // single "[wmdScope]"-representative row (see weightStr/dirStr/
-    // dirWgtStr above in this same function), which could only ever show
-    // one stem's values as a stand-in for all four. Reading straight from
-    // state.paramsPerStem[name] here means every stem shows its own real
-    // values side by side, not a proxy — state.paramsPerStem is genuinely
-    // per-stem storage (see its own comment near state.paramsPerStem's
-    // definition), and only ever gets written by the per-stem WS feedback
-    // handler above ("weightC_vocals" etc, confirmed values straight from
-    // slicer.js — no optimistic local echo), so these numbers are already
-    // wired to whatever this actual stem is doing, not a shared/global
-    // value. The bracket label WAS still a copy-pasted "[all]" though — a
-    // leftover from the old single representative header row — which read
-    // as if every stem were showing the same "all stems" value even though
-    // the numbers themselves were already stem-specific; user: "make sure
-    // the [all] is set to the actual stem". Now uses that stem's own
-    // 3-letter code (same abbreviation the descriptor grid/VU sidebar use),
-    // same 5-char width as "[all]" so nothing shifts.
-    const spWp     = state.paramsPerStem[name];
-    // nameW + 4, same offset as leadPad above — lines weight/dir/dirWgt up
-    // with where the waveform bracket itself starts (was nameW + 3, one
-    // column short; user: "align weight/dir/dirwgt with the start of the
-    // waveform").
-    const spIndent = pad('', nameW + 4);
-    const spLabel  = '[' + (DESC_LABELS[name] || name.slice(0, 3)) + ']';
-    playLines.push(`${spIndent}{grey-fg}weight ${spLabel}{/grey-fg} {grey-fg}M:{/grey-fg}${fmtM(spWp.weightC)} {grey-fg}E:{/grey-fg}${fmtM(spWp.weightE)} {grey-fg}F:{/grey-fg}${fmtM(spWp.weightF)} {grey-fg}P:{/grey-fg}${fmtM(spWp.weightP)} {grey-fg}H:{/grey-fg}${fmtM(spWp.weightH)} {grey-fg}T:{/grey-fg}${fmtM(spWp.weightT)}`);
-    playLines.push(`${spIndent}{grey-fg}dir    ${spLabel}{/grey-fg} {grey-fg}M:{/grey-fg}${fmtDir(spWp.dirC)} {grey-fg}E:{/grey-fg}${fmtDir(spWp.dirE)} {grey-fg}F:{/grey-fg}${fmtDir(spWp.dirF)} {grey-fg}P:{/grey-fg}${fmtDir(spWp.dirP)} {grey-fg}H:{/grey-fg}${fmtDir(spWp.dirH)} {grey-fg}T:{/grey-fg}${fmtDir(spWp.dirT)}`);
-    playLines.push(`${spIndent}{grey-fg}dirWgt:{/grey-fg}${fmtM(spWp.dirWeight)}`);
-
-    // Blank rows under the text block — the meters boxes (which start
-    // earlier, at the weight row — see PRE_METERS_ROWS) keep going past
-    // dirWgt down to STEM_ROW_BAND_H's full 7 rows; these blank playBox
-    // rows just reserve that same space on the left so the next stem's
-    // waveform starts exactly at row N * STEM_BAND_H.
+    // Blank rows under the text block — the meters boxes (VU/spatial/
+    // momentum/weight-dir, which start one or two rows earlier — see
+    // PRE_METERS_ROWS) keep going down to their own full height; these
+    // blank playBox rows just reserve that same space on the left so the
+    // next stem's waveform starts exactly at row N * STEM_BAND_H. (With the
+    // EQ bar now filling all of that space itself, this loop is a no-op in
+    // practice — kept as the safety net it always was in case the bar's own
+    // line count ever falls short of the budget for some name/width
+    // combination.)
     while ((playLines.length % STEM_BAND_H) !== 0) playLines.push('');
   });
 
@@ -4529,7 +7980,7 @@ const COMMANDS = new Set([
   // audio — master
   'master',
   // audio — EQ
-  'eqLow', 'eqMid', 'eqMidFreq', 'eqHigh',
+  'eqLow', 'eqMid', 'eqMidFreq', 'eqMidQ', 'eqHigh',
   // audio — spatial
   'width', 'joystick', 'masterJoystick', 'pan', 'analysisMode', 'monoSend',
   // audio — FX + outputs
@@ -4543,18 +7994,20 @@ const COMMANDS = new Set([
   // (that's :switchSession / :logout). tip* are the preferred names;
   // session* are kept as aliases so nothing already wired to them breaks.
   'tipOpen', 'tipClose', 'sessionOpen', 'sessionClose',
-  // training — vertical (score the current layered combo, instant, no session).
-  // Horizontal training is :bake (sequence of moves over a loop, see below)
-  // and :scoreTransition (did THIS cut flow well, see below). Named "score"
-  // rather than "rate" to avoid reading like a speed/tempo parameter next to
-  // all the audio-rate terminology elsewhere in the system.
-  'score', 'scoreTransition',
+  // training — layering (score the current layered combo, instant, no
+  // session). Transition training is :bake (sequence of moves over a loop,
+  // see below) and :scoreTrs (did THIS cut flow well, see below).
+  // Named "scoreLyr"/"scoreTrs" rather than "rate" to avoid reading like a
+  // speed/tempo parameter next to all the audio-rate terminology elsewhere
+  // in the system. Both send a matching wire command to ws_server.js
+  // ('scoreLyr' / 'scoreTrs' respectively).
+  'scoreLyr', 'scoreTrs',
   // song structure — tag the bar-range currently playing on a stem with a
   // structural label (verse/chorus/build/drop/etc); intensity is computed
   // automatically. Stored canonically (song_structure.json), not a training
   // log — :listSections reviews what's stored for a track.
   'tag', 'listSections',
-  // learned bias — closes the loop from the score/scoreTransition logs above
+  // learned bias — closes the loop from the scoreLyr/scoreTrs logs above
   // back into slicer.js's live candidate scoring. trainBias is TUI/Node-only
   // (spawns train_bias.py, then tells Max to reloadBias on success) so it's
   // intercepted by its own handler before ever reaching Max; reloadBias and
@@ -4568,7 +8021,13 @@ const COMMANDS = new Set([
   // fit shape — TUI/Node-only, same shape as trainBias: writes fit_shapes.json
   // and returns, never reaches Max. Doesn't retrain anything by itself —
   // :trainBias reads the file on its next run to actually refit.
-  'setFitShape', 'showBakeGraph', 'listGraphs', 'graphs', 'fakeBakes', 'graphNext', 'graphPrev',
+  'setFitShape', 'showBakeGraph', 'listGraphs', 'graphs', 'fakeBakes', 'removeFakeBakes', 'graphNext', 'graphPrev',
+  // genre correction — TUI/Node-only, same shape as setFitShape: writes
+  // genres.json directly and returns, never reaches Max (setGenreFilter
+  // above is a different thing entirely — that's a live playback filter
+  // forwarded to slicer.js, this is fixing the LIBRARY data genre_tagger.py
+  // got wrong/underconfident on).
+  'setGenre',
   // TUI-only
   'showState', 'showCommands', 'chat', 'language',
   'nextTrack', 'prevTrack',
@@ -4771,7 +8230,7 @@ let bakeComportment  = []; // the live, editable, resolved recipe for a single-c
 // something like "rise for 4 bars then drop for 4" — that's two DIFFERENT
 // comportments handed off at a boundary, not one. So instead of trying to
 // bake the whole transition in one shot, train each state on its own (open a
-// normal :bake bracket, correct + :score it until it reliably feels like
+// normal :bake bracket, correct + :scoreLyr it until it reliably feels like
 // "rising" or "dropping"), save it under a name with :bake end <name>, then
 // assemble named states into a timed sequence with :bake sequence — see
 // startBakeSequence below. The commands are what's reusable; the audio each
@@ -4800,10 +8259,41 @@ function saveBakeState(name, commands, sourceBakeSessionId) {
     }
 }
 
+// ── ACTIVE BAKE TRACKING (header bake menu) ─────────────────────────────────
+// Nothing tracked "what's actually live" before this — applyBakeState() just
+// fired the commands and returned; no record of "and THIS is now the active
+// preset" was ever kept anywhere. Added for the header's bake menu
+// (bakeMenuListBox/bakeMenuDetailBox, see their own comment) — user: "the
+// idea is to have the bake menu show on the playback. so the user can see
+// which baked configuration is playing."
+//
+// activeBakeOfficial answers the follow-up the user asked directly:
+// "sometimes the system will infer something out of the learned bakes that
+// isn't something that was officially baked. then, how would that show in
+// the menu?" — it goes false the moment any live LINK_TRACKED_VERBS command
+// (the same curated "these params define the current mix comportment" set
+// LINK's own missile-switch already uses — setWeight/setDirPref/eqLow/etc)
+// fires from ANYWHERE other than applyBakeState's own replay below (guarded
+// by applyingBakeState) — a hand-typed correction, a LINK peer SET, a
+// learned-bias auto-adjustment, all funnel through the same sendToMax choke
+// point (see noteBakeDrift there). Once a single tracked param has moved off
+// the saved state's own values, the combination actually playing is no
+// longer provably that named preset — the menu stops claiming it is (falls
+// back to an explicit "inferred" line) instead of quietly leaving the old
+// name attached to different numbers.
+let activeBakeName      = null;  // last state name applied via :bakeState apply or a sequence handoff
+let activeBakeAppliedAt = null;  // ISO timestamp of that apply
+let activeBakeSource    = null;  // 'manual' (:bakeState apply) | 'sequence' (:bake sequence handoff)
+let activeBakeOfficial  = false; // false once any tracked param has drifted since activeBakeAppliedAt
+let applyingBakeState   = false; // true only while applyBakeState()'s own commands are being sent —
+                                  // stops that very replay from immediately marking itself drifted
+
 // Applies a saved state's commands live, immediately — no bracket needed.
 // Returns the command list applied (so sequence mode can log it), or null if
-// the name doesn't exist.
-function applyBakeState(name) {
+// the name doesn't exist. `source` is 'manual' or 'sequence' — see
+// activeBakeSource's own comment; defaults to 'manual' since that's every
+// caller except the sequence handoff, which passes 'sequence' explicitly.
+function applyBakeState(name, source) {
     const states = loadBakeStates();
     const st = states[name];
     if (!st) {
@@ -4812,7 +8302,13 @@ function applyBakeState(name) {
                + (known.length ? '  — known: ' + known.join(', ') : '  — none saved yet, use :bake end <name> after a bracket'));
         return null;
     }
+    applyingBakeState = true;
     st.commands.forEach(cmd => sendToMax(cmd));
+    applyingBakeState = false;
+    activeBakeName      = name;
+    activeBakeAppliedAt = new Date().toISOString();
+    activeBakeSource    = source || 'manual';
+    activeBakeOfficial  = true;
     return st.commands;
 }
 
@@ -4873,9 +8369,9 @@ function upsertComportment(cmd) {
 // checkpoint/handoff is a genuinely live pass: slicer.js keeps picking new
 // slices under whatever comportment currently applies. The commands are
 // what's held constant (single mode) or scheduled (sequence mode); the audio
-// is always different. That's also what makes :score meaningful — it rates
+// is always different. That's also what makes :scoreLyr meaningful — it rates
 // an actual distinct live-generated layering — and what makes
-// :scoreTransition meaningful in sequence mode — it rates the actual cut at
+// :scoreTrs meaningful in sequence mode — it rates the actual cut at
 // a state handoff, not a replayed one.
 let bakeLoopBars     = 4;      // checkpoint window in bars (set by :bakeloop) — single-comportment mode only
 let bakeSessionActive = false; // true while a training bracket is open
@@ -4884,8 +8380,8 @@ let bakeAttempt      = 0;      // how many checkpoints/handoffs have passed this
 let bakeEndQueued    = false;  // :bake end called mid-window — close at next boundary
 let bakeSessionLabel = '';     // NL prompt (single mode) or "name:bars → name:bars" spec (sequence mode)
 let bakeFirstCmds    = null;   // commands from Cricket's first attempt (single mode only)
-let bakeSessionId    = null;   // stable id for the open bracket — lets a :score called
-                                // mid-window (see verb === 'score' below) be traced back to
+let bakeSessionId    = null;   // stable id for the open bracket — lets a :scoreLyr called
+                                // mid-window (see verb === 'scoreLyr' below) be traced back to
                                 // which bake session + which attempt it happened during
 let bakeEndSaveName  = null;   // set by ":bake end <name>" — save final_cmds as a reusable state
 let bakeSeqSteps     = null;   // [{name, bars}] — non-null only while a sequence bracket is open
@@ -4894,8 +8390,8 @@ let bakeSeqLog       = [];     // flattened "# state: x" + commands, in handoff 
                                 // final_cmds for the Cricket training example on close, so a
                                 // scored-well sequence doubles as an (intent → assembled
                                 // multi-phase command timeline) example, not just a live jam aid
-let bakeScoreCount   = 0;      // :score + :scoreTransition calls tagged to this bracket
-let bakeLastScore    = null;   // { type: 'score'|'transition', value } — most recent of either
+let bakeScoreCount   = 0;      // :scoreLyr + :scoreTrs calls tagged to this bracket
+let bakeLastScore    = null;   // { type: 'score'|'horizontal', value } — most recent of either
 let bakeTag          = null;   // label from the most recent :tag typed during this bracket —
                                 // structural context (verse/chorus/build/drop/etc, see
                                 // ws_server.js's :tag handler) so a bracket also records what
@@ -4950,7 +8446,7 @@ function stopBakeRecording(store) {
 // Most recent SIMULATED incoming tip (":tip <username> <amount>") — there's
 // no real Stripe→ws_server.js bridge yet (see src/backend/routes/tips.js,
 // which is a separate, unconnected server), so this is a manual trigger for
-// the tipping panel, same pattern as :score/:tag feeding the training panel.
+// the tipping panel, same pattern as :scoreLyr/:tag feeding the training panel.
 // { username, amount, curator, stems: {vocals,melody,bass,drums}, ts, txnId }
 let lastTip = null;
 
@@ -5031,7 +8527,7 @@ function startBakeLoop(label) {
     bakeTag           = null;
     // bakeScoreCount/bakeLastScore deliberately NOT reset here — they're a
     // running tally for the whole TUI session (mirrors how training_log_
-    // vertical/transition.jsonl just keep growing across brackets), not
+    // vertical/horizontal.jsonl just keep growing across brackets), not
     // scoped to one bracket. See renderBakeInfo, where "sc" is shown
     // regardless of bakeSessionActive for the same reason.
     startBakeRecording();   // see its own comment — no-op if already recording
@@ -5039,7 +8535,7 @@ function startBakeLoop(label) {
     const ms = bakeLoopMs();
     logSys('✓ bake: bracket open — "' + label + '"  checkpoint every ' + bakeLoopBars + ' bars @ '
            + (state.bpm || 120) + ' BPM  (' + Math.round(ms / 1000) + 's) — audio keeps generating live,'
-           + ' :score whatever just played, tweak comportment any time');
+           + ' :scoreLyr whatever just played, tweak comportment any time');
 
     bakeLoopTimer = setInterval(() => {
         bakeAttempt++;
@@ -5058,7 +8554,7 @@ function startBakeLoop(label) {
 
         // No audio reset — playback just keeps running under the current
         // comportment. This tick only marks a new checkpoint boundary so
-        // bakeAttempt (and therefore any :score tagged during the next
+        // bakeAttempt (and therefore any :scoreLyr tagged during the next
         // window) advances.
         logSys('↻ bake: checkpoint ' + bakeAttempt + ' — still generating live, comportment unchanged');
     }, ms);
@@ -5086,7 +8582,7 @@ function startBakeSequence(steps, label) {
     logSys('✓ bake: sequence bracket open — ' + steps.map(s => s.name + ':' + s.bars).join(' → ')
            + '  (loops until :bake end) — applying "' + steps[0].name + '" now');
 
-    const applied = applyBakeState(steps[0].name);
+    const applied = applyBakeState(steps[0].name, 'sequence');
     if (applied) { bakeSeqLog.push('# state: ' + steps[0].name); bakeSeqLog.push(...applied); }
 
     const scheduleNext = () => {
@@ -5097,10 +8593,10 @@ function startBakeSequence(steps, label) {
 
             bakeSeqIndex = (bakeSeqIndex + 1) % bakeSeqSteps.length;
             const next = bakeSeqSteps[bakeSeqIndex];
-            const cmds = applyBakeState(next.name);
+            const cmds = applyBakeState(next.name, 'sequence');
             if (cmds) { bakeSeqLog.push('# state: ' + next.name); bakeSeqLog.push(...cmds); }
             logSys('↻ bake: checkpoint ' + bakeAttempt + ' — handed off to state "' + next.name
-                   + '"  (' + next.bars + ' bars) — :scoreTransition rates this cut, :score rates the state');
+                   + '"  (' + next.bars + ' bars) — :scoreTrs rates this cut, :scoreLyr rates the state');
 
             scheduleNext();
         }, barsToMs(bars));
@@ -5134,9 +8630,13 @@ function stopBakeLoop(store) {
             final_cmds:       [...bakeSeqLog, ...resolveComportment(bakeUserCmds)],
             attempts:         bakeAttempt,
             audioFile:        audioFile,   // recorded clip of this bracket, or null — see LEARN MODE
+            tag:              bakeTag,     // most recent :tag typed during this bracket, or null —
+                                            // still written to training_log.jsonl (the sidebar tally
+                                            // that used to read it, tagsSummaryLines(), is gone — see
+                                            // git history / loraSummaryLines() for what replaced it)
         } : {
             bakeSessionId:    bakeSessionId,   // joins this Cricket example to any
-                                                // :score entries logged during the
+                                                // :scoreLyr entries logged during the
                                                 // same bracket (training_log_vertical.jsonl)
             intent:           bakeSessionLabel,
             cricket_cmds:     bakeFirstCmds || bakeCricketCmds.slice(),   // raw, unresolved — the
@@ -5151,6 +8651,10 @@ function stopBakeLoop(store) {
             final_cmds:       bakeComportment.slice(),
             attempts:         bakeAttempt,
             audioFile:        audioFile,   // recorded clip of this bracket, or null — see LEARN MODE
+            tag:              bakeTag,     // most recent :tag typed during this bracket, or null —
+                                            // still written to training_log.jsonl (the sidebar tally
+                                            // that used to read it, tagsSummaryLines(), is gone — see
+                                            // git history / loraSummaryLines() for what replaced it)
         };
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'bake', ...snapshot }));
@@ -5174,7 +8678,7 @@ function stopBakeLoop(store) {
     } else {
         logSys('bake aborted — nothing stored');
     }
-    bakeSessionId = null;   // any :score after this point is untagged, same as pre-bracket
+    bakeSessionId = null;   // any :scoreLyr after this point is untagged, same as pre-bracket
     bakeEndSaveName = null;
     bakeSeqSteps    = null;
     bakeSeqLog      = [];
@@ -5221,7 +8725,31 @@ function stopBakeLoop(store) {
 const TRAINING_LOG_PATH = path.join(DATA_DIR, 'training_log.jsonl');
 const RECORDINGS_DIR    = path.join(DATA_DIR, 'recordings');
 
-let appMode        = 'playback'; // 'playback' | 'learn'
+let appMode        = 'playback'; // 'playback' | 'learn' | 'gen' — whichever SCREEN is actually on
+                                  // screen right now (see switchScreen()). Starts on 'playback' —
+                                  // user: "keep Playback on startup".
+// Three screens — 'playback', 'learn' (Train), 'gen' (Gen) — but Playback
+// is the baseline, not a window like the other two (user: "playback is the
+// normal basic mode of the system. train taste and train gen are 'windows'
+// to open"), so only Train and Gen have their own dedicated key (^T/^G,
+// see toggleTrain()/toggleGen()); Playback is always the fallback each of
+// the other two closes back to, with no key of its own to open it directly
+// any more (nothing to open). This used to be a two-axis model (a shared
+// baseLayer var toggled between 'learn'/'gen' underneath a Playback
+// "page" — user: "put Train and Gen on the same control tab") — undone per
+// a later ask: "separate Train and Gen from the same tab. Use a separate
+// tab for each." No baseLayer any more; switchScreen() just moves appMode
+// directly between the three.
+// playbackLinkView — Playback's own sub-view toggle, same shape learnView
+// gives Train (see that var's own comment right below) — user: "add a sub
+// tab in the playback tab: Link. just like the training and review." false
+// = the normal "Master" view (masterInfoBox, tracks:/genre:/beats:/key:/
+// slice: — unchanged); true = the new "Link" view (linkListBox/
+// linkDetailBox instead — see those boxes' own declaration comment, and
+// toggleLinkView()/screen.key(['C-o'], ...) near the other Ctrl bindings).
+// Only meaningful while appMode === 'playback' — Train/Gen have their own
+// unrelated sub-views (learnView above / no sub-view at all).
+let playbackLinkView = false;
 let learnView       = 'review';   // 'training' | 'review' — sub-menu within Learn mode
 let reviewSource    = 'bakes';    // 'bakes' | 'states' — only meaningful in the 'review' view
 let reviewIndex     = 0;          // index into reviewEntries
@@ -5266,37 +8794,69 @@ let selectedPageIdx = pageIndexForDim('E', 'vertical', 'mean');
 // :showBakeGraph/:graphNext/:graphPrev (user changed the selection),
 // :fakeBakes (synthetic data just landed), and the WS 'bakeScored' handler
 // (user: "I want it to be automatically drawn when bakes are baked" — a
-// REAL :score/:scoreTransition just got logged by ws_server.js).
+// REAL :scoreLyr/:scoreTrs just got logged by ws_server.js).
 function refreshSelectedBakePage() {
   const page = BAKE_GRAPH_PAGES[selectedPageIdx - 1];
   if (!page) return;
+  // Which bake's dot(s), if any, get the "you're looking at this one right
+  // now" highlight below (user: "highlight the actual dots... related to
+  // the selected bake"). Captured once here so every graph on the page —
+  // per-dim AND overall — highlights the SAME bake, not independently
+  // re-derived per graph.
+  const highlightId = selectedBakeSessionId();
   // Width source is reviewRegressionBox now, not reviewDetailBox — the
   // regression graph moved into its own full-width box (see reflowLearn()'s
   // review branch), so sizing off reviewDetailBox's now-much-narrower
   // column would squeeze the plot down to a sliver of the space it
-  // actually has. Cap raised from 64 to 96 to make use of that extra width
-  // instead of leaving it mostly blank on a wide terminal.
-  const fullW = Math.max(24, Math.min(96, (reviewRegressionBox.width || 48) - 2));
+  // actually has. No cap anymore (user: "make the graphs occupy the width
+  // of the screen, I want them bigger") — previously capped at 96 on the
+  // theory that more Braille columns doesn't help a small scatter, but the
+  // user wants the real screen width used, so this now tracks the box's
+  // full actual width whatever that is.
+  const fullW = Math.max(24, (reviewRegressionBox.width || 48) - 2);
   // GRID_ROWS fixed at 2 (user: "put them on two rows, not only one, so
-  // everything can fit in one page") — cols is whatever spreads this
-  // page's dims (7 for level, 6 for tension) across exactly 2 rows, not a
-  // straight-down stack of one graph per row. That's what keeps a 7-graph
-  // page to ~2 rows of cards instead of ~7, so the whole page (menu +
-  // every graph) fits on screen without scrolling, at the cost of each
-  // individual graph being narrower.
+  // everything can fit in one page") — cols spreads this page's cards
+  // (7 real dims + 1 combined "∑" card — see below, user: "should the
+  // overall quality be simply a final graph in the descriptor graphs?")
+  // across exactly 2 rows. ∑, not ε: this card IS the sum (bias +
+  // Σ weight×feature) printed in its own caption, not a residual/error
+  // term — ε would mean the opposite of what's actually being shown. Now
+  // that tension has 7 dims too (tension_S — see add_tension.py), every
+  // page is 7+1=8 cards, so cols works out to 4 uniformly across all 8
+  // pages, not 4 for level / 3 for tension like before.
   const GRID_ROWS = 2;
   const CARD_GAP  = 2; // spaces between adjacent cards in the same row
-  const cols = Math.ceil(page.dims.length / GRID_ROWS);
+  const totalCards = page.dims.length + 1; // + the ∑ "overall" card
+  const cols = Math.ceil(totalCards / GRID_ROWS);
   const colW = Math.max(12, Math.floor((fullW - CARD_GAP * (cols - 1)) / cols));
-  // Each mini-graph is only 3 rows tall (vs. the old single graph's 12) —
-  // that's what makes fitting up to 7 of them on one page readable instead
-  // of requiring 7x the scrolling (user: "can you fit 7 graphs under the
-  // regression section and still keep them readable?"). 3 rows still gives
-  // 12 sub-dot rows of real Braille resolution (3 × 4), plenty to see a
-  // trend/scatter shape at a glance even at colW's narrower width.
-  const MINI_H = 3;
+  // MINI_H — how many text rows tall each mini scatter is. USED to be a
+  // flat 6 (user: "I want them bigger" — was 3 before that). Now RESPONSIVE
+  // to the box's actual height instead (user: "adapt the size of the graph
+  // depending on the size of the window. make it responsive") — a flat
+  // constant either left a tall terminal's extra room completely unused
+  // below the cards, or forced heavy scrolling on a short one regardless of
+  // how little space was actually available. Solves for the largest MINI_H
+  // that lets BOTH grid rows (each 1 header + MINI_H + 1 x-range + 1 blank
+  // separator = MINI_H+3 lines) fit inside whatever's left after the fixed
+  // header block above them — blank/title/rule/menu-intro/menu itself/
+  // blank/y-axis note/∑-caption, +1 more if a bake is highlighted (mirrors
+  // appendBakeGraphLines()'s own push order exactly, same reasoning as
+  // overallQualityLines()'s firstRowTarget math). Clamped to [3, 12] — 3
+  // (12 sub-dot rows) stays readable on a genuinely tiny terminal, 12 (48
+  // sub-dot rows) stops a single card from ballooning absurdly tall on a
+  // huge one. Box stays scrollable regardless (scrollable: true on
+  // reviewRegressionBox) — this is a "use the space well" target, not a
+  // hard must-fit guarantee, since whether the legend row actually appears
+  // depends on the graphs THIS function is still about to build below.
+  const menuW      = reviewRegressionBox.width || contentW();
+  const menuRows   = bakeGraphMenuLines(menuW).length;
+  const legendRows = highlightId ? 1 : 0;
+  const headerLines = 4 + menuRows + 3 + legendRows; // blank+title+rule+menu-intro(4) + menu + blank+yaxis+sumcaption(3) + legend
+  const boxH = reviewRegressionBox.height || 30;
+  const availableForGraphs = Math.max(0, boxH - headerLines);
+  const MINI_H = Math.max(3, Math.min(12, Math.floor(availableForGraphs / GRID_ROWS) - 3));
   const graphs = page.dims.map(dim => {
-    const points = extractBakePoints(DATA_DIR, dim, page.model, page.feature);
+    const points = extractBakePoints(DATA_DIR, dim, page.model, page.feature, highlightId);
     // Degree comes from fit_shapes.json (see fitDegreeForDim()) — this is
     // what keeps the preview honest about whatever :setFitShape last set
     // for THIS dim, instead of always defaulting to a straight line. Each
@@ -5325,7 +8885,69 @@ function refreshSelectedBakePage() {
       empty: true,
     };
   });
-  lastBakePage = { model: page.model, feature: page.feature, kind: page.kind, cols, colW, graphs };
+  // ∑ card — the REAL joint model (train_bias.py's actual multivariate
+  // fit, replayed via jointHorizontalPoints()/jointVerticalPoints()), NOT
+  // another per-dim graph — appended as the LAST card in the grid rather
+  // than a separate section below it (user: "should the overall quality
+  // be simply a final graph in the descriptor graphs?"). ∑, not ε: this
+  // card literally IS the sum (bias + Σ weight×feature) captioned above
+  // it, not a residual/error term — ε would say the opposite of what's
+  // actually plotted here. Every page sharing page.model (pages 1-4 =
+  // horizontal, 5-8 = vertical) gets the identical card, since it's the
+  // one real number all of that page's per-dim weight graphs sum into
+  // (see slicer.js's scoreCandidate()/predictHorizontalQuality()/
+  // predictVerticalQuality()), not a per-page subset of it. x = model's
+  // predicted score, y = the human's actual rating for that same bake —
+  // a calibration plot: a trained model should cluster near the y=x
+  // diagonal. Sized exactly like the other cards (colW × MINI_H) now
+  // that it lives in the grid, not full-width/double-height like before.
+  const biasData = loadLearnedBiasSync();
+  const modelFit = biasData[page.model]; // {weights, bias, n_samples, r2, trained_at} | null
+  // '∑ trs' / '∑ lyr' — which model this sum actually is, not just "∑" on
+  // its own (see MODEL_SHORT's own comment). Computed once here since all
+  // three branches below (real fit, too-few-points, no-model-yet) need it.
+  const sumDim = '∑ ' + (MODEL_SHORT[page.model] || page.model);
+  let sumCard;
+  if (modelFit) {
+    const fitShapes = loadFitShapesSync();
+    const jointPoints = page.model === 'horizontal'
+      ? jointHorizontalPoints(modelFit.weights || {}, modelFit.bias || 0, fitShapes, highlightId)
+      : jointVerticalPoints(modelFit.weights || {}, modelFit.bias || 0, fitShapes, highlightId);
+    if (jointPoints.length >= 3) {
+      const result = renderBrailleScatter(jointPoints, colW, MINI_H, 1);
+      sumCard = {
+        dim: sumDim, text: result.text, coeffs: result.coeffs, degree: result.degree, n: result.n,
+        xMin: result.xMin, xMax: result.xMax, yMin: result.yMin, yMax: result.yMax,
+        empty: false, isOverall: true, r2: modelFit.r2, nSamples: modelFit.n_samples,
+      };
+    } else {
+      const blankRow = ' '.repeat(colW);
+      sumCard = {
+        dim: sumDim, text: Array.from({ length: MINI_H }, () => blankRow).join('\n'),
+        coeffs: [0], degree: 1, n: jointPoints.length,
+        xMin: 0, xMax: 0, yMin: -1, yMax: 1,
+        empty: true, isOverall: true, r2: modelFit.r2, nSamples: modelFit.n_samples,
+      };
+    }
+  } else {
+    const blankRow = ' '.repeat(colW);
+    sumCard = {
+      dim: sumDim, text: Array.from({ length: MINI_H }, () => blankRow).join('\n'),
+      coeffs: [0], degree: 1, n: 0,
+      xMin: 0, xMax: 0, yMin: -1, yMax: 1,
+      empty: true, isOverall: true, r2: null, nSamples: 0,
+    };
+  }
+  graphs.push(sumCard);
+  // boxW/boxH — the reviewRegressionBox dimensions THIS page was actually
+  // built against (colW/MINI_H above are both derived from them). Recorded
+  // so appendBakeGraphLines() can tell a resized terminal apart from an
+  // unrelated re-render and re-derive the page — see its own staleness
+  // check, same reasoning as the existing highlightId comparison there.
+  lastBakePage = {
+    model: page.model, feature: page.feature, kind: page.kind, cols, colW, graphs, highlightId,
+    boxW: reviewRegressionBox.width, boxH: reviewRegressionBox.height,
+  };
 }
 // NOT called eagerly here — reviewRegressionBox.width isn't reliably
 // resolved yet this early in module load (before the screen/box tree is
@@ -5419,16 +9041,41 @@ function computeWavInfo(filePath, buckets) {
 
 // Refreshes reviewWaveformCache to match whatever currentAudioPath() returns
 // right now — no-ops (cheap) once it's already loaded for that path, so this
-// is safe to call every render() tick as well as on entry change.
+// is safe to call every render() tick as well as on entry change. Rendering
+// never waits on playback — this runs regardless of reviewAudioProc, so a
+// waveform appears the moment an entry with a real recording is selected,
+// not only once :train play is used (user: "probably waiting for it to
+// play, but i want to see smt anyway" — it wasn't actually gated on that;
+// see `reason` below for why a given entry might genuinely have nothing to
+// show instead).
+//
+// `reason` distinguishes the three ways this can come up empty, since
+// "(no recorded audio for this entry)" alone didn't say which:
+//   'none'        — this bake/state has no audioFile at all (e.g. a full-set
+//                   :record was already running when the bracket opened —
+//                   see startBakeRecording()'s own comment — so it never got
+//                   its own clip; nothing missing, nothing to show)
+//   'missing'     — audioFile is set but the .wav isn't on disk (deleted,
+//                   moved session, etc.)
+//   'unparseable' — the file's there but computeWavInfo() couldn't read it
+//                   (not a RIFF/WAVE file, or a chunk layout it doesn't handle)
 function loadReviewWaveform() {
     const p = currentAudioPath();
     if (p === reviewWaveformCache.path) return;
-    reviewWaveformCache = { path: p, env: null, durationMs: 0 };
-    if (!p || !fs.existsSync(p)) return;
+    reviewWaveformCache = { path: p, env: null, durationMs: 0, reason: null };
+    if (!p) { reviewWaveformCache.reason = 'none'; return; }
+    if (!fs.existsSync(p)) { reviewWaveformCache.reason = 'missing'; return; }
     try {
         const info = computeWavInfo(p, REVIEW_WAVE_BUCKETS);
         if (info) { reviewWaveformCache.env = info.env; reviewWaveformCache.durationMs = info.durationMs; }
-    } catch (e) { /* leave env null — falls back to the flat placeholder line */ }
+        else { reviewWaveformCache.reason = 'unparseable'; }
+    } catch (e) { reviewWaveformCache.reason = 'unparseable'; }
+}
+
+function reviewWaveformMissingText(reason) {
+    if (reason === 'missing')     return '(recording file missing on disk)';
+    if (reason === 'unparseable') return '(couldn\'t read this recording — unsupported/corrupt file)';
+    return '(no recorded audio for this entry)';
 }
 
 // One continuous timeline, played portion in bright-white, the rest grey —
@@ -5448,13 +9095,14 @@ function recordingWaveformLine(env, progress, width) {
 // advances smoothly without a dedicated interval of its own.
 function updateReviewWaveformBox(width) {
     loadReviewWaveform();
-    const { env, durationMs } = reviewWaveformCache;
+    const { env, durationMs, reason } = reviewWaveformCache;
     const elapsedMs = reviewAudioProc ? Math.min(durationMs, Date.now() - reviewPlayStartTime) : 0;
     const progress  = durationMs > 0 ? elapsedMs / durationMs : 0;
     const status = !env
-        ? '{grey-fg}(no recorded audio for this entry){/grey-fg}'
+        ? '{grey-fg}' + reviewWaveformMissingText(reason) + '{/grey-fg}'
         : (reviewAudioProc ? '{bright-white-fg}▶ playing{/bright-white-fg}' : '{grey-fg}stopped{/grey-fg}')
-          + '  {grey-fg}' + fmtMs(elapsedMs) + ' / ' + fmtMs(durationMs) + '{/grey-fg}';
+          + '  {grey-fg}' + fmtMs(elapsedMs) + ' / ' + fmtMs(durationMs) + '{/grey-fg}'
+          + '  {grey-fg}:train play to listen{/grey-fg}';
     reviewWaveformBox.setContent(
         '{bright-white-fg}recording{/bright-white-fg}   ' + status + '\n' +
         recordingWaveformLine(env, progress, Math.max(4, width))
@@ -5552,14 +9200,26 @@ function mutateCurrentBakeEntry(mutator) {
 function reviewEntryLabel(e) {
     if (reviewSource === 'bakes') {
         const flag   = e.excluded ? '✗' : ' ';
-        const aud    = e.audioFile ? '♪' : ' ';
         const when   = (e.timestamp || '').slice(0, 16).replace('T', ' ');
         const intent = (e.intent || '(no intent)').replace(/\s+/g, ' ').slice(0, 40);
-        return `${flag}${aud} ${when}  ${intent}`;
+        const tag    = e.tag ? ' [' + e.tag + ']' : '';
+        // Small leading indent — the selected row's highlight background
+        // used to butt directly against the text with no breathing room
+        // (user: "put a little more space between the side of the white
+        // rectangle and the actual info"). This nudges the date 2 cols off
+        // column 0, giving up the older exact "date lines up under TRAIN"
+        // alignment (both text, not box padding, so the gap actually falls
+        // INSIDE the highlighted rectangle rather than before it) — flag
+        // glyph moved from the front to right after it, tag appended in
+        // brackets after the intent (user: "add tags in []"). No audio ♪
+        // glyph here (user: "dont use this... keep it simple") — audioFile
+        // presence is still visible in the detail pane's audio: line if
+        // it's ever needed.
+        return `  ${when}  ${flag} ${intent}${tag}`;
     }
     const aud  = e.sourceBakeSessionId ? '♪' : ' ';
     const when = (e.savedAt || '').slice(0, 16).replace('T', ' ');
-    return `${aud} ${when}  ${e._name}`;
+    return `  ${aud} ${when}  ${e._name}`;
 }
 
 // Resolves the actual audio file for whatever's currently selected. States
@@ -5709,10 +9369,23 @@ function renderReviewDetail(e) {
     const lines = [];
     if (reviewSource === 'bakes') {
         lines.push('{bright-white-fg}intent:{/bright-white-fg}  ' + (e.intent || '(none)'));
+        // track: → genre: → bpm:, all on one line, in that order (user: "put
+        // genre next to track: in the review mode. and bpm next to genre.").
+        // genre isn't stored on the bake entry itself — looked up the same
+        // way the per-stem tail candidates do, via genreDb keyed off the
+        // track name (getGenreForTrack/parseGenre), not a field on `e`.
+        const genreEntry = getGenreForTrack(e.track);
+        const genreTxt    = genreEntry.genre ? parseGenre(genreEntry.genre).sub : '--';
         lines.push('{grey-fg}' + (e.timestamp || '') + '   track: ' + (e.track || '--')
-            + '   bpm: ' + (e.bpm || '--') + '   attempts: ' + (e.attempts == null ? '--' : e.attempts) + '{/grey-fg}');
-        lines.push('{grey-fg}status: ' + (e.excluded ? '{/grey-fg}{bright-white-fg}✗ excluded from training{/bright-white-fg}' : '{/grey-fg}✓ kept for training')
-            + '{grey-fg}   audio: ' + (e.audioFile ? e.audioFile : '(none recorded)') + '{/grey-fg}');
+            + '   genre: ' + genreTxt + '   bpm: ' + (e.bpm || '--') + '{/grey-fg}');
+
+        const statusPlain   = e.excluded ? '✗ excluded from training' : '✓ kept for training';
+        const statusColored = e.excluded ? ('{bright-white-fg}' + statusPlain + '{/bright-white-fg}') : statusPlain;
+        const attemptsVal   = String(e.attempts == null ? '--' : e.attempts);
+        lines.push('{grey-fg}status: ' + statusColored
+            + '{grey-fg}   audio: ' + (e.audioFile ? e.audioFile : '(none recorded)')
+            + '   tag: ' + (e.tag || '(none)')
+            + '   attempts: ' + attemptsVal + '{/grey-fg}');
         lines.push('');
         // cricket's attempt + your corrections share one row (":train"
         // panel real estate is tight) — each is usually 0-1 short commands,
@@ -5770,6 +9443,11 @@ function renderTrainingView() {
         // Live bracket view — reviewListBox has nothing to list here (see
         // reflowLearn(), which hides it and gives reviewDetailBox the full
         // width instead), so this only touches header + detail.
+        // "how to open a bracket" hint — briefly moved onto the header row
+        // next to [no bracket open], but user: "find another place to put
+        // the explanation text" (that row was getting crowded once the
+        // header's blank row came back). Back to living here, under
+        // bakeInfoLines(), same as it did originally.
         const status = bakeSessionActive
             ? '{bright-white-fg}[BRACKET OPEN]{/bright-white-fg}'
             : '{grey-fg}[no bracket open]{/grey-fg}';
@@ -5799,7 +9477,7 @@ function renderTrainingView() {
         + (reviewAudioProc ? '  {bright-white-fg}▶ playing{/bright-white-fg}' : '')
     );
     const items = reviewEntries.map(e => reviewEntryLabel(e));
-    reviewListBox.setItems(items.length ? items : ['{grey-fg}(none yet){/grey-fg}']);
+    reviewListBox.setItems(items.length ? items : ['{grey-fg}  (none yet){/grey-fg}']);
     if (total) reviewListBox.select(reviewIndex);
     // Three separate sections now, stacked top to bottom (user: "the order
     // must be: bake menu with its own menu to its right ... then under it
@@ -5817,6 +9495,12 @@ function renderTrainingView() {
     const regressionLines = [];
     appendBakeGraphLines(regressionLines);
     reviewRegressionBox.setContent(regressionLines.join('\n'));
+    // Pinned sidebar (see loraSummaryLines()'s own comment) — filled
+    // every render alongside regression, same lifecycle, so it stays fresh
+    // off the same triggers (navigation, :trainBias completing, a real
+    // bakeScored event, a fresh :bake end, a :lora train starting/finishing)
+    // without needing its own separate refresh path.
+    reviewOverallBox.setContent(loraSummaryLines(reviewOverallBox.width).join('\n'));
     // reviewBakeContentLines drives ONLY the bake row's height now (see
     // reflowLearn()) — needs enough rows to show every list entry too, not
     // just whatever the detail text needs, same reasoning as before, just
@@ -5846,7 +9530,39 @@ const FEATURE_GLYPH = { delta: 'Δ', absDelta: '|Δ|', mean: 'avg', std: 'σ' };
 // KIND_LABEL — 'level' page shows C/S/E/F/P/H/T, 'tension' shows the Tn*
 // six — short words used in both the page menu and each page's own header.
 const KIND_LABEL = { level: 'level', tension: 'tension' };
-const MODEL_LABEL = { transition: 'trans', vertical: 'vert' };
+// TUI-facing model vocabulary: users read/type "transition"/"layering" (the
+// DJ metaphor: transition = does a cut flow, layering = do the 4 stems sit
+// together) but the internal identifier stays "horizontal"/"vertical"
+// everywhere it's shared with another process — learned_bias.json,
+// training_log_horizontal/vertical.jsonl, slicer.js's
+// predictHorizontalQuality()/predictVerticalQuality(), ws_server.js's
+// scoreTrs handler, train_bias.py. This dictionary (and
+// internalModelWord() below) is the ONLY place that boundary is crossed —
+// it translates what a human reads/types into the internal key and back,
+// so none of those other files needed to change for this rename.
+const MODEL_LABEL = { horizontal: 'trans', vertical: 'layer' };
+const MODEL_WORD  = { horizontal: 'transition', vertical: 'layering' };
+// MODEL_SHORT — same vocabulary again, abbreviated to 3 letters specifically
+// for the ∑ card's own subtitle in the regression grid (user: "adapt the
+// subtitle ∑ to what it actually is... ∑ trs or ∑ lyr"). That card used to
+// just say "∑" regardless of which model's page it was on — technically
+// correct (it IS the sum on every page) but didn't say sum OF WHAT, unlike
+// every other card in the grid whose header names its own dim. colW here is
+// the same cramped per-card width MODEL_LABEL's 5-letter "trans"/"layer"
+// would crowd next to the card's n=/R² status, so this gets its own
+// shorter form — matches DESC_LABELS' 3-letter vcl/mel/bas/drm convention.
+const MODEL_SHORT = { horizontal: 'trs', vertical: 'lyr' };
+// internalModelWord — 'transition'/'horizontal' → 'horizontal',
+// 'layering'/'vertical' → 'vertical'. Accepts the old words too so nothing
+// already typed from muscle memory (or stored in a baked comportment) stops
+// working. Unrecognized input passes through unchanged so callers' own
+// usage-error checks still fire.
+function internalModelWord(w) {
+  const s = (w || '').toLowerCase();
+  if (s === 'transition' || s === 'horizontal') return 'horizontal';
+  if (s === 'layering'   || s === 'vertical')   return 'vertical';
+  return s;
+}
 
 // bakeGraphMenuLines — the page picker (user originally: "dont forget the
 // submenu that shows the graph attributed to each possible weight of this
@@ -5924,8 +9640,25 @@ function composeGridRow(cards, colW, gap) {
 // full), the mini scatter itself, then its own x-range (the numeric range
 // varies per dim even though every card shares the same y meaning — see
 // the shared y note printed once above the grid instead of per-card).
+// g.isOverall (the ∑ card — see refreshSelectedBakePage()) gets a
+// different header: n + the REAL model's R², not a per-dim fit shape,
+// since ∑ isn't a diagnostic single-dim fit — it's the actual trained
+// model's predicted-vs-actual calibration. g.dim carries which model this
+// sum actually is ('∑ trs' / '∑ lyr' — see MODEL_SHORT), not a bare "∑" —
+// used to be hardcoded here regardless of g.dim, silently ignoring it.
 function buildGraphCard(g) {
   const lines = [];
+  if (g.isOverall) {
+    const status = g.r2 === null
+      ? '{grey-fg}no model yet{/grey-fg}'
+      : g.empty
+        ? '{grey-fg}n=' + g.n + ' (need more){/grey-fg}'
+        : '{grey-fg}n=' + g.n + ' R²=' + g.r2.toFixed(2) + '{/grey-fg}';
+    lines.push('{bold}{white-fg}' + g.dim + '{/white-fg}{/bold} ' + status);
+    lines.push(...g.text.split('\n'));
+    lines.push(g.empty ? '{grey-fg}—{/grey-fg}' : '{grey-fg}[' + g.xMin.toFixed(2) + '..' + g.xMax.toFixed(2) + ']{/grey-fg}');
+    return lines;
+  }
   const shapeShort = DIM_SHAPE_SHORT[g.degree] || 'lin';
   lines.push('{bold}{white-fg}' + g.dim + '{/white-fg}{/bold} '
     + (g.empty ? '{grey-fg}no data{/grey-fg}' : '{grey-fg}n=' + g.n + ' ' + shapeShort + '{/grey-fg}'));
@@ -5939,8 +9672,25 @@ function appendBakeGraphLines(lines) {
     // own comment on why calling it eagerly at parse time isn't safe (box
     // sizing not resolved yet). By the time anything actually renders the
     // training screen, reviewRegressionBox is definitely sized, so this is
-    // safe.
-    if (!lastBakePage) refreshSelectedBakePage();
+    // safe. ALSO re-derives whenever the selected bake has changed (user
+    // paged reviewIndex up/down) even if lastBakePage already exists — the
+    // page picker isn't the only thing that can go stale now that the
+    // graphs highlight a specific bake's dot; without this, navigating
+    // between bakes would leave the highlight stuck on whichever bake was
+    // selected the last time the page itself changed. ALSO re-derives on a
+    // terminal resize (user: "adapt the size of the graph depending on the
+    // size of the window. make it responsive") — colW/MINI_H inside
+    // refreshSelectedBakePage() are both sized off reviewRegressionBox's
+    // CURRENT width/height, but nothing recomputes them just because the
+    // box itself got resized; the resize handler already calls
+    // reflowLearn() (which updates reviewRegressionBox.width/.height) then
+    // renderTrainingView() (which reaches this same check), so comparing
+    // against the box size lastBakePage was actually built against catches
+    // exactly that case, same pattern as the highlightId comparison above.
+    if (!lastBakePage || lastBakePage.highlightId !== selectedBakeSessionId()
+        || lastBakePage.boxW !== reviewRegressionBox.width || lastBakePage.boxH !== reviewRegressionBox.height) {
+      refreshSelectedBakePage();
+    }
     if (!lastBakePage) return;
     // Same subtitle-over-a-rule header reviewWaveformBox uses for
     // "recording" (user: "use the layout of the recording section, with
@@ -5963,8 +9713,8 @@ function appendBakeGraphLines(lines) {
     const fullW = reviewRegressionBox.width || contentW();
     const kindWord = lastBakePage.kind === 'level'
       ? 'level (C S E F P H T)'
-      : 'tension (TnC TnE TnF TnP TnH TnT)';
-    const status = '{grey-fg}' + lastBakePage.model + ' ' + lastBakePage.feature
+      : 'tension (TnC TnS TnE TnF TnP TnH TnT)';
+    const status = '{grey-fg}' + (MODEL_WORD[lastBakePage.model] || lastBakePage.model) + ' ' + lastBakePage.feature
       + ' · ' + kindWord + '{/grey-fg}';
     lines.push('');
     lines.push('{bright-white-fg}regression{/bright-white-fg}   ' + status);
@@ -5972,7 +9722,7 @@ function appendBakeGraphLines(lines) {
     // Menu right under the header, ABOVE the graphs (user: "put the graph
     // menu above the graph, right under the regression section") — was
     // graphs-then-menu for one release; this is the correction back.
-    lines.push('{grey-fg}^P/^N to page through, or :showBakeGraph <n> / :graphNext / :graphPrev{/grey-fg}');
+    lines.push('{grey-fg}^N/^U to page through, or :showBakeGraph <n> / :graphNext / :graphPrev{/grey-fg}');
     bakeGraphMenuLines(fullW).forEach(r => lines.push(r));
     lines.push('');
     // Shared axis notes — every graph on a page plots the SAME thing on y
@@ -5981,20 +9731,152 @@ function appendBakeGraphLines(lines) {
     // verbatim on every card (user: "add axis to the graph. what x is and
     // what y is", amortized now that up to 7 graphs share a page). Each
     // card below still prints its own numeric x-range, since that DOES
-    // vary per dim even though the meaning doesn't.
+    // vary per dim even though the meaning doesn't. The LAST card (∑) is
+    // the odd one out — its x is the model's own predicted score, not a
+    // per-dim delta/mean/std — called out explicitly here since it isn't
+    // covered by the "same KIND of thing" framing above (user: "should
+    // the overall quality be simply a final graph...").
     lines.push('{grey-fg}y: rating  [-1 .. 1]  ·  x: '
       + featureAxisLabel('<dim>', lastBakePage.model, lastBakePage.feature)
       + ', range shown per card below{/grey-fg}');
+    // Trailing "same on every <model> page" clause removed (user: "remove
+    // from the regression section the text that says 'same on every
+    // transition page'") — the rest of the ∑-card explanation stays.
+    lines.push('{grey-fg}∑ (last card) = the REAL trained ' + (MODEL_WORD[lastBakePage.model] || lastBakePage.model)
+      + ' model — bias + Σ(weight × feature) across all 14 dims, x = its predicted score{/grey-fg}');
+    // Highlight legend — only shown when there's actually something to
+    // explain (a bake is selected AND it produced at least one dot on this
+    // page's model), so it doesn't clutter the header when nothing's
+    // highlighted (fresh app, or an untagged pre-bracket :scoreLyr selected).
+    const anyHighlighted = lastBakePage.graphs.some(g => g.text.indexOf('●') !== -1);
+    if (lastBakePage.highlightId && anyHighlighted) {
+      lines.push('{bold}{white-fg}●{/white-fg}{/bold} {grey-fg}= the bake currently selected above (' + lastBakePage.highlightId + '){/grey-fg}');
+    }
+    // One row of space between the explanation text above (axis notes, the
+    // ∑/"last card" line, the highlight legend) and the graph cards' own
+    // titles (C, S, E, ...) right below — user: "add one gap between the
+    // regression graphs/titles (C, S, ...) and the explanations (last card,
+    // etc)". Previously ran straight from the last explanation line into
+    // the first card row with nothing between them.
+    lines.push('');
     // The graphs themselves — two rows of compact cards (user: "put them
     // on two rows, not only one, so everything can fit in one page"),
     // `lastBakePage.cols` per row (see refreshSelectedBakePage()), each
     // card built by buildGraphCard() and zipped together side by side by
-    // composeGridRow().
+    // composeGridRow(). The ∑ "overall" card (user: "should the overall
+    // quality be simply a final graph in the descriptor graphs?") is just
+    // the last entry in lastBakePage.graphs now, so it falls out of this
+    // same loop automatically — no separate section needed below anymore.
     for (let i = 0; i < lastBakePage.graphs.length; i += lastBakePage.cols) {
       const rowCards = lastBakePage.graphs.slice(i, i + lastBakePage.cols).map(buildGraphCard);
       composeGridRow(rowCards, lastBakePage.colW, 2).forEach(r => lines.push(r));
       lines.push('');
     }
+}
+
+// loraSummaryLines — content for the pinned reviewOverallBox sidebar.
+// USED to hold the vertical ∑/horizontal ∑ calibration scatter cards, then
+// a :tag tally (tagsSummaryLines() — see git history for both), pulled in
+// turn (user: "replace the tag sub section by the LoRA subsection. All the
+// appropriate infos concerning the LoRA training should be shown there").
+//
+// Shows the same status the :lora command reports (see the 'lora' verb's
+// 'status' sub-command below — LORA_DIR/LORA_CKPT_DIR/LORA_CURRENT_CKPT/
+// LORA_CURRENT_INVOKE/readLoraLock()), just always visible here instead of
+// needing a manual `:lora` call: whether a train run is busy right now
+// (readLoraLock() — shared with watch_lora.py, so this reflects the
+// automatic daemon too, not only a manual :lora train), which checkpoint
+// (if any) :gen is actually using live, and pipeline-stage counts —
+// raw source clips -> clean normalized clips -> train/val wav+caption
+// pairs -> .safetensors checkpoints -> generated clips staged for
+// :lora compare. prep/build/train all update these same directories
+// (see lora_tui.py / watch_lora.py / train_and_score_lora.py), so this
+// reads as one live dashboard regardless of which of those last ran.
+// The BOX itself (reviewOverallBox — position, width, same top/height as
+// reviewRegressionBox) is untouched; only this function's content changed.
+function loraSummaryLines(width) {
+  const w = Math.max(16, width || SIDE_TOTAL_W);
+  const lines = [];
+  // Leading blank line matches appendBakeGraphLines()'s own opening blank
+  // (user: "make sure they are aligned") — without it this box's title/rule
+  // sat one row higher than regression's title/rule despite sharing the
+  // same box .top, so the two headers read as offset instead of level.
+  lines.push('');
+  // "LoRA" — proper capitalization (Low-Rank Adaptation), not the lowercase
+  // "lora" this used to read (user: "for lora, write LoRA") — unlike the
+  // section titles below (view/playback/index/etc, deliberately lowercase),
+  // this is a real acronym/product name, not a stylistic label.
+  lines.push('{bright-white-fg}LoRA{/bright-white-fg}');
+  lines.push('{grey-fg}' + '─'.repeat(Math.max(1, w)) + '{/grey-fg}');
+
+  // Same recursive-count/pairs helpers the ':lora status' command uses
+  // (see the 'lora' verb handler below) — kept local here rather than
+  // hoisted to module scope so this box's content stays self-contained
+  // and can't be affected by anything else redefining AUDIO_EXTS etc.
+  const AUDIO_EXTS = new Set(['.wav', '.aif', '.aiff', '.flac', '.mp3', '.m4a', '.ogg', '.wma', '.mp4', '.3gp', '.caf']);
+  const countFilesRec = (dir, exts) => {
+    if (!fs.existsSync(dir)) return 0;
+    let n = 0;
+    for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (f.isDirectory()) n += countFilesRec(path.join(dir, f.name), exts);
+      else if (!exts || exts.has(path.extname(f.name).toLowerCase())) n++;
+    }
+    return n;
+  };
+  const countPairs = dir => fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter(f => f.toLowerCase().endsWith('.wav')).length : 0;
+
+  const P = {
+    raw:   path.join(LORA_DIR, 'raw'),
+    clean: path.join(LORA_DIR, 'clean'),
+    train: path.join(LORA_DIR, 'train'),
+    val:   path.join(LORA_DIR, 'val'),
+    gen:   path.join(LORA_DIR, 'generated'),
+    ckpt:  LORA_CKPT_DIR,
+  };
+
+  const row = (label, value) => {
+    const valStr = String(value);
+    const maxLabelW = Math.max(1, w - valStr.length - 1);
+    const clipped = label.length > maxLabelW ? label.slice(0, Math.max(1, maxLabelW - 1)) + '…' : label;
+    const pad = Math.max(1, w - clipped.length - valStr.length);
+    lines.push(clipped + ' '.repeat(pad) + valStr);
+  };
+
+  // Busy/idle — shared lock file, so a run started by watch_lora.py shows
+  // here exactly the same as one started by hand (`:lora train`).
+  const lock = readLoraLock();
+  if (lock) {
+    const mins = Math.round((Date.now() - lock.started) / 60000);
+    lines.push('{bright-white-fg}[training now]{/bright-white-fg}');
+    lines.push('{grey-fg}' + lock.source + ' · ' + mins + 'm ago{/grey-fg}');
+  } else {
+    lines.push('{grey-fg}[idle]{/grey-fg}');
+  }
+
+  // What :gen is actually generating with right now, if anything.
+  if (fs.existsSync(LORA_CURRENT_CKPT)) {
+    lines.push('{bright-white-fg}live: current.safetensors{/bright-white-fg}');
+    let invoke = '';
+    try { invoke = fs.readFileSync(LORA_CURRENT_INVOKE, 'utf8').trim(); } catch (e) {}
+    if (invoke) lines.push('{grey-fg}invoke "' + invoke + '"{/grey-fg}');
+  } else {
+    lines.push('{grey-fg}live: none — :gen uses base model{/grey-fg}');
+  }
+  lines.push('{grey-fg}' + '─'.repeat(Math.max(1, w)) + '{/grey-fg}');
+
+  // Pipeline stage counts — same five stages print_status()/':lora status'
+  // report, raw through generated.
+  row('raw',   countFilesRec(P.raw, AUDIO_EXTS));
+  row('clean', countFilesRec(P.clean, new Set(['.wav'])));
+  row('train', countPairs(P.train));
+  row('val',   countPairs(P.val));
+  row('ckpt',  countFilesRec(P.ckpt, new Set(['.safetensors'])));
+  row('gen',   countFilesRec(P.gen, new Set(['.wav'])));
+
+  lines.push('{grey-fg}' + '─'.repeat(Math.max(1, w)) + '{/grey-fg}');
+  lines.push('{grey-fg}:lora train [steps] to start{/grey-fg}');
+  return lines;
 }
 
 // Content height just changed (learnPanelContentLines was updated right
@@ -6023,18 +9905,49 @@ function relayoutLearnPanel() {
 // bracket open) shouldn't reserve up to 40% of the header cluster and push
 // the waveforms way down — see learnPanelContentLines, kept current by
 // renderTrainingView() every time content changes.
+// TRAINING_PANEL_H — the 'training' sub-view's own FIXED height, not
+// content-driven like the rest of this function. playBox is live there
+// (same "playback-shaped rules" as the Playback screen itself — see
+// inReview's own comment near render()'s SCREEN VISIBILITY block), so its
+// top has to land on the EXACT same row Playback uses (Math.max(masterColBottom,
+// statusH) + 1, always statusH + 9 — masterColBottom's own candidate boxes
+// are all fixed-height, never content-driven) for the waveform section to
+// stay aligned switching between the two screens — user: "make sure the
+// training tab waveform section is aligned with the playback tab. right
+// now it sits one row too low." That drift came from bakeInfoLines()'s
+// own line count (prmpt: plus the "no bracket open" hint lines) feeding
+// straight into this height by way of learnPanelContentLines — harmless
+// looking, but it meant playTop only matched Playback's by coincidence,
+// on whichever tick the live bracket's own content happened to add up to
+// exactly the right number of lines. 7 is that right number, worked
+// backward from statusH + 9 through learnPanelBottom()/learnPanelBodyH()'s
+// own arithmetic — pinned now instead of landing there by chance.
+// reviewDetailBox (bakeInfoLines() content) is already built scrollable
+// (see its own declaration), so a bracket with more lines than this
+// affords just scrolls in place rather than pushing the waveform down.
+// 'review' keeps the old content-driven formula below — its own list/
+// regression stack genuinely varies in size and isn't held to this same
+// alignment (reviewStackBottom() sizes that stack independently — see its
+// own comment on why it deliberately does NOT reuse learnPanelBottom()).
+const TRAINING_PANEL_H = 7;
 function learnPanelHeight() {
+    if (learnView === 'training') return TRAINING_PANEL_H;
     const h   = screen.height - FOOTER_H;
     const cap = Math.max(10, Math.min(24, Math.floor(h * 0.4)));
+    // +2 — header row + one blank row under it. Briefly tried +1 (no blank
+    // row) to compress the Train tab's header, but user: "actually put back
+    // the space between TRAIN and prmpt:" — reverted.
     return Math.max(6, Math.min(cap, learnPanelContentLines + 2));
 }
-// No "+ 1" blank row here (there used to be one) — user: "move the whole
-// TRAIN section one space up... so it aligns with the playback page header
-// height." Playback's own secondary panels (bakeInfoBox/tipBox/masterVuBox)
-// dock directly at their own fixed header rows (MASTER_VU_TOP/TRAIN_TIP_TOP,
-// both 3) rather than one row below statusH — this panel now does the same,
-// starting right at statusH instead of one row under it.
-function learnPanelTop()    { return statusH; }
+// Playback's own secondary panels (bakeInfoBox/tipBox) dock directly at
+// their own fixed header row (TRAIN_TIP_TOP = 2) rather than one row below
+// statusH — master used to share that same fixed row too (via the now-
+// removed MASTER_VU_TOP), then moved to statusH + 1 for a while, then back
+// to exactly statusH, now statusH + 1 again (masterTop, see its own
+// comment — user: "move PLAYBACK header one row down") — same row this
+// function returns, so Playback's own top edge still lines up with
+// Train's/Gen's, just one row lower than before.
+function learnPanelTop()    { return statusH + 1; }
 function learnPanelBodyTop(){ return learnPanelTop() + 2; } // header row + one blank row
 function learnPanelBodyH()  { return Math.max(3, learnPanelHeight() - 2); }
 function learnPanelBottom() { return learnPanelBodyTop() + learnPanelBodyH(); }
@@ -6062,7 +9975,19 @@ function learnPanelBottom() { return learnPanelBodyTop() + learnPanelBodyH(); }
 // unrelated layout pass.
 function reviewStackBottom() {
   if (chatMaximized) return learnPanelBottom();
-  return screen.height - FOOTER_H - 1;
+  // Non-maximized case still has peekBox + inputRuleBox + inputBox pinned
+  // to the screen bottom (reflow() shows both peekBox and inputRuleBox
+  // whenever chat ISN'T maximized — see its own comments), the same
+  // INPUT_GAP + inputLines + PEEK_H + rule stack inputRuleBox.bottom
+  // already computes for its own position. This used to just be
+  // `screen.height - FOOTER_H - 1`, which ignored that whole stack — on a
+  // short terminal, reviewRegressionBox's computed height ran deep enough
+  // to paint underneath peekBox/inputRuleBox/inputBox instead of stopping
+  // above them (user: "make sure the chat line doesn't cover the graph
+  // when resizing vertically... graphs should resize themselves smaller
+  // and never get hidden by the chat line"). +1 below accounts for
+  // inputRuleBox's own single row, which sits above all three.
+  return screen.height - (FOOTER_H + INPUT_GAP + inputLines + PEEK_H + 1);
 }
 
 function reflowLearn() {
@@ -6091,29 +10016,35 @@ function reflowLearn() {
         // (see render()'s inReview branch) — so this leaves it untouched.
         // reviewRegressionBox is 'review'-only too — hidden here same as
         // reviewWaveformBox effectively is (render() never shows() it
-        // outside inReview).
+        // outside inReview). reviewOverallBox (pinned "tags" sidebar) is
+        // aligned to regression's own top/height, so it's
+        // 'review'-only for the same reason — nothing to align to here.
         reviewListBox.hide();
         reviewRegressionBox.hide();
+        reviewOverallBox.hide();
         reviewDetailBox.left    = 0;
         reviewDetailBox.width   = w;
         reviewDetailBox.top     = bodyTop;
         reviewDetailBox.height  = bodyH;
     } else {
-        // Three stacked sections, top to bottom (user: "the order must be:
-        // bake menu with its own menu to its right ... then under it is the
-        // recording section ... and then under it is the regression
-        // section"):
+        // Three stacked sections, top to bottom — order reversed from
+        // "recording then regression" (user, back then: "the order must be:
+        // bake menu ... then under it is the recording section ... and then
+        // under it is the regression section") to "regression then
+        // recording" — user, looking at a screenshot: "switch the position
+        // of recording and regression. place recording under the regression
+        // section.":
         //   1. bake row — reviewListBox (session picker) beside
         //      reviewDetailBox (that session's own intent/track/status/
         //      corrections/final_cmds — entry detail ONLY now, see
         //      renderTrainingView()'s review branch).
-        //   2. reviewWaveformBox ("recording") — full width, fixed height.
-        //   3. reviewRegressionBox ("regression") — full width, its own
+        //   2. reviewRegressionBox ("regression") — full width, its own
         //      picker menu at the BOTTOM of its own content (see
-        //      appendBakeGraphLines()) — fills whatever's left down to
-        //      reviewStackBottom() instead of sharing the old shared/capped
-        //      bodyH the training sub-view still uses (bodyH itself is
-        //      unused in this branch now).
+        //      appendBakeGraphLines()) — takes the space between the bake
+        //      row and recording's now-fixed spot at the bottom, instead of
+        //      running all the way down to reviewStackBottom() itself.
+        //   3. reviewWaveformBox ("recording") — full width, fixed height,
+        //      now the LAST section, docked just above the footer.
         const GAP = 1;
 
         // 1. Bake row — sized off reviewBakeContentLines (entry-detail line
@@ -6137,65 +10068,141 @@ function reflowLearn() {
         reviewDetailBox.top    = bodyTop;
         reviewDetailBox.height = bakeH;
 
-        // 2. Recording — fixed 2 rows, right under the bake row.
-        const RECORDING_H = reviewWaveformBox.height; // 2 — fixed at box creation
-        const recordingTop = bodyTop + bakeH + GAP;
-        reviewWaveformBox.top   = recordingTop;
-        reviewWaveformBox.width = w;
-
-        // 3. Regression — everything left, down to just above the footer.
-        const regressionTop = recordingTop + RECORDING_H + GAP;
-        const regressionH   = Math.max(6, reviewStackBottom() - regressionTop);
+        // 2. Regression — right under the bake row now, taking whatever's
+        // left once recording's own fixed spot at the bottom (below) is
+        // reserved. No GAP between the bake row and regression any more
+        // (user: "remove one row between final_cmds and regression section.
+        // to tighten the layout") — bake row's own bottom (final_cmds, the
+        // last thing reviewDetailBox prints) now sits flush against
+        // regression's header row instead of leaving a blank row between
+        // them. The regression <-> recording seam right below keeps its own
+        // GAP, untouched — only this one seam was called out.
+        const RECORDING_H = reviewWaveformBox.height; // 6 — fixed at box creation
+        const regressionTop = bodyTop + bakeH;
+        const regressionH   = Math.max(6, reviewStackBottom() - regressionTop - GAP - RECORDING_H);
         reviewRegressionBox.show();
         reviewRegressionBox.top    = regressionTop;
         reviewRegressionBox.width  = w;
         reviewRegressionBox.height = regressionH;
+
+        // 3. Recording — fixed height (RECORDING_H, above), now docked
+        // under regression instead of under the bake row.
+        const recordingTop = regressionTop + regressionH + GAP;
+        reviewWaveformBox.top   = recordingTop;
+        reviewWaveformBox.width = w;
+
+        // 4. Tags — pinned sidebar, right-hand SIDE_TOTAL_W
+        // column (same one masterVuBox/masterSpatialBox use up top, empty
+        // below row 8 in Learn mode). Same top/height as regression itself
+        // (user: "aligned vertically with the regression section") — it
+        // sits "under the VU meter" automatically since regressionTop is
+        // always well past the meters' own row 8 bottom edge once the bake
+        // row + recording section above it are accounted for.
+        reviewOverallBox.show();
+        reviewOverallBox.top    = regressionTop;
+        reviewOverallBox.height = regressionH;
     }
 }
 
-function enterLearnMode() {
-    if (appMode === 'learn') return;
-    // Chat (if open) is left exactly as it was — ^T only ever switches
-    // which SCREEN is underneath the overlay, never touches the overlay
-    // itself (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES).
-    appMode = 'learn';
-    refreshReviewEntries();
-    reviewHeaderBox.show(); reviewDetailBox.show(); // reviewListBox: reflowLearn() decides, per learnView
-    // render() FIRST, not after — it's what shrinks statusH down to Learn
-    // mode's 2-row header (sLines' appMode branch) AND applies the SCREEN
-    // VISIBILITY rules (hides PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES
-    // now that appMode is 'learn' — no separate forEach needed here
-    // anymore). reflowLearn() sizes the review boxes off THAT statusH (via
-    // learnPanelTop/BodyH), and playTop (set inside render(), every tick)
-    // is derived from the exact same numbers — but only once render() has
-    // actually run with appMode already 'learn'. Calling reflowLearn()
-    // first, off the stale 5-row statusH from the moment before this
-    // function ran, sized the panel a few rows too tall — that overlap ate
-    // the topmost stem's rows (vocals, first in the stems array) as soon as
-    // the NEXT render() tick moved playBox up to the (correct, smaller)
-    // statusH.
+// reflowGen() — Gen's own layout, called wherever reflowLearn() is (see
+// enterGenMode() and the two resize call sites, right next to their
+// reflowLearn() calls). Now mirrors reflowLearn()'s 'review' branch
+// structure exactly (user: "the gen menu needs to use this layout"):
+//   1. Browse row — genListBox (left) beside genDetailBox (right), sized
+//      off genRowContentLines (this file's equivalent of
+//      reviewBakeContentLines — see renderGenScreen()).
+//   2. Analysis — genAnalysisBox, full width, takes everything left down
+//      to reviewStackBottom() (same "nothing else is on screen, take the
+//      space" boundary 'review's own regression box uses, for the same
+//      reason: playBox/PLAYBACK_CHANNEL_BOXES are hidden outright while
+//      inGen — see render()'s SCREEN VISIBILITY block).
+// genHeaderBox sits at EXACTLY reviewHeaderBox's own top/width
+// (learnPanelTop()/contentW()) and the browse row starts at
+// learnPanelBodyTop(), same statusH+2 offset Train's own body starts at —
+// user: "align GEN with TRAIN. so when switching the overall layout stays
+// aligned the same" — so toggling ^T between the two screens never shifts
+// anything above the body, only what's rendered inside it.
+function reflowGen() {
+    const w = contentW();
+    genHeaderBox.top   = learnPanelTop();
+    genHeaderBox.width = w;
+
+    const bodyTop = learnPanelBodyTop();
+    const GAP = 1;
+
+    // 1. Browse row — genListBox (left) beside genDetailBox (right).
+    const rowH  = Math.max(4, Math.min(10, genRowContentLines + 1));
+    const listW = Math.max(24, Math.min(48, Math.floor(w * 0.32)));
+    genListBox.top    = bodyTop;
+    genListBox.width  = listW;
+    genListBox.height = rowH;
+    genDetailBox.left   = listW + 1;
+    genDetailBox.width  = w - listW - 1;
+    genDetailBox.top    = bodyTop;
+    genDetailBox.height = rowH;
+
+    // 2. Analysis — everything left, down to just above the footer.
+    const analysisTop = bodyTop + rowH + GAP;
+    const analysisH    = Math.max(6, reviewStackBottom() - analysisTop);
+    genAnalysisBox.top    = analysisTop;
+    genAnalysisBox.width  = w;
+    genAnalysisBox.height = analysisH;
+}
+
+// switchScreen() — the one place that actually moves appMode between the
+// three screens (Train/'learn', Gen/'gen', Playback/'playback') — see the
+// SCREEN MODEL comment above appMode's own declaration.
+// enterLearnMode()/enterGenMode()/toggleTrain()/toggleGen() below all
+// funnel through this instead of poking appMode directly, same "single
+// place decides" principle the SCREEN VISIBILITY block in render() already
+// follows for box show()/hide().
+function switchScreen(target) {
+    if (appMode === target) return;
+    if (appMode === 'learn') reviewStop(); // leaving Train — same cleanup exitLearnMode() always did before the merge
+    appMode = target;
+    if (target === 'learn') {
+        refreshReviewEntries();
+        reviewHeaderBox.show(); reviewDetailBox.show(); // reviewListBox: reflowLearn() decides, per learnView
+    }
+    // render() FIRST, not after — it's what shrinks/grows statusH for
+    // whichever screen appMode now points at (sLines' appMode branch) AND
+    // applies the SCREEN VISIBILITY rules (hides/shows
+    // PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES/GEN_PANEL_BOXES/review*
+    // boxes off the appMode that's already current by the time it runs —
+    // no separate forEach needed here). reflowLearn()/reflowGen() size
+    // their own boxes off THAT statusH (via learnPanelTop/BodyH), so
+    // calling them first, off the stale pre-switch numbers from one tick
+    // ago, sizes things a row or two off — same staleness reasoning this
+    // function's predecessors (enterLearnMode()/enterGenMode()) always
+    // documented here.
     render();
-    reflowLearn();
-    renderTrainingView();
+    if (target === 'learn') { reflowLearn(); renderTrainingView(); }
+    if (target === 'gen')   { reflowGen(); renderGenPanel(); }
     renderFooter();
     screen.render();
 }
 
-function exitLearnMode() {
-    if (appMode !== 'learn') return;
-    reviewStop();
-    appMode = 'playback';
-    reviewHeaderBox.hide(); reviewListBox.hide(); reviewDetailBox.hide(); reviewRegressionBox.hide();
-    // PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES reappear on their own —
-    // see the SCREEN VISIBILITY block in render(), which this call runs
-    // (render(), not just reflow() — same statusH-staleness reasoning as
-    // enterLearnMode() above, just in reverse).
-    render();
-    renderFooter();
-    screen.render();
-}
+// enterLearnMode()/enterGenMode() — force-enter one specific screen,
+// regardless of toggle state. Kept as their own named functions (rather
+// than inlining switchScreen() at every call site) since switchLearnView()
+// (^R) and a few other non-^T/^G call sites want "make sure Training is up"
+// as an unconditional action, not a toggle.
+function enterLearnMode() { switchScreen('learn'); }
+function enterGenMode()   { switchScreen('gen'); }
 
-function toggleLearnMode() { appMode === 'learn' ? exitLearnMode() : enterLearnMode(); }
+// ── ^T / ^G — Train / Gen toggles ────────────────────────────────────────────
+// Two independent toggles now (used to be one shared ^T flipping a
+// baseLayer between them — user: "separate Train and Gen from the same
+// tab. Use a separate tab for each"). Each always jumps straight to its own
+// screen even if Playback currently covers it — same "move forward if the
+// command is hit" behavior the old shared toggle had (user: "when playback
+// is open, i still want the ^T command to function... i want it to move
+// forward if the command is hit") — and each closes back to Playback
+// specifically when pressed again from its own screen, not to "whichever
+// other one was underneath" (there's no longer a baseLayer to remember
+// that).
+function toggleTrain() { switchScreen(appMode === 'learn' ? 'playback' : 'learn'); }
+function toggleGen()   { switchScreen(appMode === 'gen'   ? 'playback' : 'gen'); }
 
 function ts() {
   const now = new Date();
@@ -6330,8 +10337,8 @@ const CMD_SECTIONS = [
     _r(':bakeState drop <name>',                     'delete saved state'),
   ]},
   { title: 'train (training + review)', rows: [
-    '{grey-fg}  ^C chat  ·  ^T train  ·  ^R training/review  ·  ^B next bake  ·  ^L log out{/grey-fg}',
-    _r(':train',                                     'toggle the training screen (^T)'),
+    '{grey-fg}  ^C chat  ·  ^T train  ·  ^G gen  ·  ^R training/review  ·  ^B next bake  ·  ^L log out{/grey-fg}',
+    _r(':train',                                     'toggle Train screen (^T)'),
     _r(':train training',                            'sub-menu: live bake bracket'),
     _r(':train review',                              'sub-menu: browse past bakes'),
     _r(':train source bakes|states',                 'review: switch data source'),
@@ -6342,25 +10349,52 @@ const CMD_SECTIONS = [
     _r(':train edit <n> <command...>',               'review: replace final_cmds line n'),
     _r(':train remove <n>',                          'review: drop final_cmds line n'),
     _r(':train add <command...>',                    'review: append a final_cmds line'),
-    _r(':score <-1..1> [overallSection]',            'score current combo'),
-    _r(':scoreTransition <-1..1> [stem]',            'score last cut'),
+    _r(':scoreLyr <-1..1> [overallSection]',         'score current combo'),
+    _r(':scoreTrs <-1..1> [stem]',                   'score last cut'),
     _r(':tag <label> [stem]',                        'tag current bar-range'),
     _r(':listSections [track]',                      'list structure tags'),
     _r(':trainBias',                                 'fit bias models'),
     _r(':reloadBias',                                'reload learned bias'),
-    _r(':setLearnedWeight <stem|all> <transition|vertical> <0-5>', 'scale learned model use'),
-    _r(':setAgentMode <stem|all> <remix|generate>', 'switch candidate source'),
+    _r(':setLearnedWeight <stem|all> <transition|layering> <0-5>', 'scale learned model use'),
+    _r(':setAgentMode <stem|all> <remix|generate|blend>', 'switch candidate source'),
     _r(':setFitShape <dim> <linear|quadratic|cubic>', 'change one dim\'s fit shape'),
-    _r(':showBakeGraph <n>|<dim> [transition|vertical] [feature]', 'scatter + fitted curve'),
+    _r(':setGenre <genre>',                        'correct the loaded track\'s genre'),
+    _r(':showBakeGraph <n>|<dim> [transition|layering] [feature]', 'scatter + fitted curve'),
     _r(':listGraphs', 'numbered menu of all 8 graph pages'),
     _r(':graphNext / :graphPrev', 'cycle the picker in Train > Review'),
-    _r('^P / ^N',                                    'same cycle (up/down), while on Train > Review'),
+    _r('^N / ^U',                                    'same cycle (down/up), while on Train > Review'),
     _r('^B / ^D',                                    'step through bakes (up/down) in Train > Review'),
     _r(':fakeBakes <n>', 'synthetic bake data, for demoing graphs'),
+    _r(':removeFakeBakes', 'strip all synthetic:true rows :fakeBakes wrote'),
     _r(':resetAll',                                '⚠ wipe everything (Y/N)'),
     _r(':analyzeAll',                              'run genre + beat analysis'),
     _r(':tagBeats',                                'run beat tagger only'),
     _r(':setMMT <bars>',                           'momentum window size'),
+  ]},
+  { title: 'gen (Stable Audio Open Small)', rows: [
+    _r('^G',                                       'toggle Gen screen (full screen, like Train)'),
+    _r(':genList [filter]',                        'list Discogs-400 genre tags to generate from'),
+    _r(':gen <stem> [count] [duration] <genre...>', 'generate + auto-ingest new clips'),
+    _r(':gen filter <all|vocals|melody|bass|drums>', 'filter the browse list'),
+    _r(':gen next / :gen prev  (or ^D / ^K)',      'move the browse list selection'),
+    _r(':gen play / :gen stop',                    'listen to the selected clip'),
+    _r(':gen keep / :gen toss',                    'override the taste model either direction, either way'),
+    _r(':gen clear',                                'drop the override — back to automatic scoring'),
+    _r(':setGenre <genre>',                        'relabel loaded track (works on generated tracks too)'),
+    _r(':setAgentMode <stem|all> <remix|generate|blend>', 'blend = pool real + generated together'),
+    _r(':scoreLyr <-1..1> [overallSection]',       'rate current combo (generated included)'),
+    _r(':scoreTrs <-1..1> [stem]',                 'rate last cut (generated included)'),
+  ]},
+  { title: 'LoRA (personal style)', rows: [
+    '{grey-fg}  prep/build run automatically (watch_lora.py) — train never does{/grey-fg}',
+    _r(':lora',                                    'pipeline status (raw/clean/train/val/ckpt counts)'),
+    _r(':lora prep [limit]',                       'force raw -> clean now (usually automatic)'),
+    _r(':lora build [caption...]',                 'force clean -> train/val now (usually automatic)'),
+    _r(':lora train [steps]',                      'the manual step — train, score vs val/, auto-promote if it clears the bar'),
+    _r(':lora train --help',                       'show train_lora.py\'s real flags'),
+    _r(':lora compare val|train',                  'generated vs corpus — generalize/memorize check'),
+    _r(':lora promote [path|latest]',              'copy a checkpoint to current.safetensors — :gen picks it up next call'),
+    _r(':restartWatcherLora',                      'restart the prep/build daemon (watch_lora)'),
   ]},
   { title: 'trigger pads', rows: [
     _r(':triggerMode <stem|all> 0|1',              '0=auto  1=manual fire'),
@@ -6405,6 +10439,7 @@ const CMD_SECTIONS = [
     _r(':eqLow <stem|all> <dB>',                  'low shelf gain'),
     _r(':eqMid <stem|all> <dB>',                  'mid bell gain'),
     _r(':eqMidFreq <stem|all> <Hz>',              'mid bell center'),
+    _r(':eqMidQ <stem|all> <Q>',                  'mid bell width (0.1-10)'),
     _r(':eqHigh <stem|all> <dB>',                 'high shelf gain'),
   ]},
   { title: 'spatial', rows: [
@@ -6458,6 +10493,7 @@ const CMD_SECTIONS = [
     _r(':link select clear',                       'deselect target deck'),
   ]},
   { title: 'tipping session (payouts — NOT your login session)', rows: [
+    _r('^V',                                       'toggle the tip panel — full readout + reserved equation space'),
     _r(':tipOpen <djId> <venue> web|venue [deck]', 'open tipping session'),
     _r(':tipClose',                                'close tipping session'),
     _r(':tip',                                     'dry-run split %'),
@@ -6736,7 +10772,9 @@ function renderCmdColumnLines(col, colWidth) {
   return lines;
 }
 
-const CMD_COL_GAP    = 3;  // spaces between adjacent columns
+// 2, was 3 — user: "make the layout more compact"; tighter column gutters
+// in the :commands list, no functional reason tied to the old width.
+const CMD_COL_GAP    = 2;  // spaces between adjacent columns
 const CMD_MAX_COLS   = 4;  // sanity ceiling
 const CMD_MIN_COL_W  = 34; // below this, a column wraps too aggressively to be worth splitting off
 
@@ -6779,6 +10817,34 @@ function buildCmdColumns(width) {
   return ['', '{bright-white-fg}command list{/bright-white-fg}', '', ...merged].map(l => `{grey-fg}${l}{/grey-fg}`).join('\n');
 }
 
+// relayoutChatOverlay — the missing piece all four expand*/collapse*
+// functions below now share (user: "when ^A is opened, its not visible on
+// the review tab. its hidden under something"). langBox/cmdBox's actual
+// .height only ever gets (re)computed inside reflow()'s chatMaximized block
+// (langH/cmdH, off langHFull/cmdHFull/chromeBudget) — these four functions
+// used to just flip langCollapsed/cmdCollapsed, set content, and call raw
+// screen.render(), never reflow() itself, so the box's height stayed
+// whatever it was a moment ago (typically 0, from being collapsed) until
+// some UNRELATED tick happened to call the app's own render() and
+// incidentally fix it. On a fast-ticking screen (playback) that's near-
+// instant and invisible; Train > Review has no such ticker driving it, so
+// the stale height (and on review specifically, reviewRegressionBox/
+// reviewOverallBox — defined AFTER langBox et al, so drawn on top of it —
+// staying sized for however much of the screen they had BEFORE reflowLearn()
+// last accounted for chatMaximized) could sit wrong indefinitely, reading as
+// "the panel didn't open" or "something's covering it". reflow() alone only
+// fixes the first half (langBox/cmdBox's own height); reflowLearn() is what
+// re-shrinks reviewRegressionBox/reviewOverallBox to leave room for the
+// overlay — same two calls toggleChatMaximize() already makes for exactly
+// this reason (see its own comment) — so both run here too, every time
+// either panel's collapsed state changes, not just when chat itself opens.
+function relayoutChatOverlay() {
+  reflow();
+  if (appMode === 'learn') reflowLearn();
+  if (appMode === 'gen') reflowGen();
+  screen.render();
+}
+
 function expandCmd() {
   cmdCollapsed = false;
   // The "type to collapse" hint now lives permanently in menuHeaderBox
@@ -6790,7 +10856,7 @@ function expandCmd() {
   // width now (user: "the chat should occupy the whole width of the
   // screen... so maybe the command list would fit all in one space").
   setCmdContent(buildCmdColumns(screen.width));
-  screen.render();
+  relayoutChatOverlay();
 }
 
 function collapseCmd() {
@@ -6798,7 +10864,7 @@ function collapseCmd() {
   // Hint text now lives in menuHeaderBox (see buildMenuHeaderLine) — this
   // panel itself takes 0 rows while collapsed, nothing to show here.
   setCmdContent('');
-  screen.render();
+  relayoutChatOverlay();
 }
 
 function expandLang() {
@@ -6806,7 +10872,7 @@ function expandLang() {
   // Same as expandCmd — hint lives in menuHeaderBox now, content is just the list.
   setLangContent(`{grey-fg}${buildLangList()}{/grey-fg}`);
   screen.realloc();
-  screen.render();
+  relayoutChatOverlay();
 }
 
 function collapseLang() {
@@ -6815,7 +10881,7 @@ function collapseLang() {
   // panel itself takes 0 rows while collapsed, nothing to show here.
   setLangContent('');
   screen.realloc();
-  screen.render();
+  relayoutChatOverlay();
 }
 
 // :commands/:language now only ever actually render while chat is
@@ -6866,10 +10932,49 @@ function toggleChatMaximize() {
   // and run underneath the chat overlay that just appeared, instead of
   // shrinking back to leave it room (see reviewStackBottom()'s own comment).
   if (appMode === 'learn') reflowLearn();
+  // reflowGen() uses reviewStackBottom() too (see its own comment) — same
+  // chatMaximized-dependent reasoning as reflowLearn() right above.
+  if (appMode === 'gen') reflowGen();
   renderFooter();
   screen.realloc();
   screen.render();
 }
+
+// ── TIP PANEL (^V) ──────────────────────────────────────────────────────────
+// Same shape as toggleChatMaximize() right above — flip the one boolean,
+// let render()'s SCREEN VISIBILITY block work out what that means for the
+// tip panel box and whatever's underneath it. Doesn't touch reflowLearn()
+// the way chat's toggle does — the tip panel docks over the VU/spatial/
+// descriptor/momentum cluster (PLAYBACK_CHANNEL_BOXES), which is already
+// hidden outright during Train > Review (see the inReview branch in
+// render()'s SCREEN VISIBILITY block), so there's no review-specific sizing
+// for this to interact with the way reviewRegressionBox has with chat.
+// No longer exclusive with Gen — Gen is a full screen now (see
+// enterGenMode()), not an overlay sharing tip's footprint, so tip can float
+// over it exactly like it already floats over Learn/Train.
+function toggleTipPanel() {
+  tipPanelOpen = !tipPanelOpen;
+  render();
+  renderFooter();
+  screen.realloc();
+  screen.render();
+}
+
+// Playback no longer has its own toggle — user: "remove the playback tab
+// since it is the baseline... playback is the normal basic mode of the
+// system. train taste and train gen are 'windows' to open." appMode still
+// starts on 'playback' (user: "keep Playback on startup") and it's still
+// exactly what Train/Gen always close back to (see toggleTrain()/
+// toggleGen(), both still switchScreen('playback') when pressed on their
+// own already-open screen — that part is untouched). What's gone is the
+// dedicated "jump to Playback directly, from anywhere" control (^P /
+// togglePlayback(), formerly here) — with no chip advertising it any more
+// (see renderFooter()'s own comment), a bare hotkey with no visible
+// affordance didn't earn its keep; getting back to Playback is always one
+// press of whichever window's own key is currently open. Playback used to
+// also get a dedicated read-only badge in the menu header (the `pb` chip),
+// but that was removed as duplicating [START]/[STOP] (was [RUNNING]/[STOPPED]) — see render()'s
+// own comment.
 
 function displayState() {
   const p = state.params;
@@ -7142,14 +11247,15 @@ function connectToMax() {
         if (state.track !== prevTrack) {
           updateGenreForTrack(state.track);
           updateBeatsForTrack(state.track);
-          // New track — the rolling descriptor window's buffered slices
-          // belong to whatever was loaded before, so drop them rather than
-          // showing a grid (and the momentum panel's in-progress bar — see
-          // momSparkline()) that's half old-track, half new-track.
+          // New track — the momentum panel's buffered strip belongs to
+          // whatever was loaded before, so drop it rather than showing an
+          // in-progress bar (see momSparkline()) that's half old-track,
+          // half new-track.
           DESC_STEMS.forEach(s => {
-            descRollBuffers[s].length = 0;
-            lastOutDesc[s] = null;
-            lastMomPush[s] = 0;
+            lastOutDesc[s]   = null;
+            lastMomPush[s]   = 0;
+            pendingSeam[s]   = false;
+            curBarSeams[s]   = [];
             DIMS.forEach(d => { curBarBuffers[s][d] = []; });
           });
         }
@@ -7164,6 +11270,7 @@ function connectToMax() {
         state.running   = true;
         ensurePlaybackRender();
         scheduleRender();
+        writeInstrumentStatus();
       } else if (msg.type === 'stopped') {
         // slicer.js confirms :stop actually froze the transport (its own
         // stop(), see outlet(1,"stopped")). state.running must flip false
@@ -7176,6 +11283,7 @@ function connectToMax() {
         state.running   = false;
         playbackStopped = true;
         stoppedAtMs      = Date.now();
+        writeInstrumentStatus();
         // Momentum panel keeps whatever it had built up — momentumBarTick()
         // already stops advancing while !state.running, so pausing just
         // freezes the strip mid-fill instead of wiping it. It picks up
@@ -7203,23 +11311,18 @@ function connectToMax() {
         state.running   = true;
         ensurePlaybackRender();
         scheduleRender();
+        writeInstrumentStatus();
       } else if (msg.type === 'downbeat') {
         // Real downbeat pulse from slicer.js's scheduleDownbeatPulse() (see
         // ws_server.js's Max.addHandler('downbeat', ...)) — phase-locked to
         // the actual music, not a client-side bpm guess.
-        // Used to wipe descRollBuffers here on the theory that the
-        // descriptor grid represents "this bar" — but that's NOT what
-        // DESC_ROLL_PAIRS actually is (see its own comment: "the last
-        // DESC_ROLL_PAIRS real TRANSITIONS per stem", not "this bar's
-        // transitions"). A downbeat fires every single musical bar, real
-        // transitions only fire on an actual segment change (e.g. every 32
-        // bars with a long :setSegmentBars) — wiping on every downbeat
-        // cleared the rolling window far more often than real transitions
-        // could ever fill it, so the grid read as permanently empty
-        // whenever a segment spanned more than ~1 bar (user: "the
-        // transition edges visualization doesn't work anymore"). Removed —
-        // descRollPush() (called from the real 'stem' transition handler
-        // above) is the only thing that should ever touch this buffer now.
+        // Deliberately doesn't touch curBarBuffers/curBarSeams/pendingSeam —
+        // a downbeat fires every single musical bar, real transitions only
+        // fire on an actual segment change (e.g. every 32 bars with a long
+        // :setSegmentBars), so treating a downbeat as a transition would
+        // mark/wipe far more often than real cuts happen. The 'stem'
+        // transition handler below is the only thing that should ever set
+        // pendingSeam or touch lastOutDesc.
         scheduleRender();
       } else if (msg.type === 'segPlayMs') {
         // Actual playback duration from slicer: content_dur × stretchRatio.
@@ -7280,35 +11383,32 @@ function connectToMax() {
         Object.assign(state.stems[msg.name], msg);
         if (msg.pos !== undefined) state.stems[msg.name].lastPosTime = Date.now();
         if (!state.running) { state.running = true; ensurePlaybackRender(); }
-        // This IS the transition — push the {out, in} pair onto this stem's
-        // rolling window (see descRollBuffers' own comment). `in` is the
-        // segment starting now (state.stems[sn], just updated above). `out`
-        // is ws_server.js's own prevSegment snapshot of whatever this stem
-        // was just playing, riding along on this same message — null on a
-        // stem's first transition, when there's nothing to have snapshotted.
+        // This IS the transition. `out` is ws_server.js's own prevSegment
+        // snapshot of whatever this stem was just playing, riding along on
+        // this same message — null on a stem's first transition, when
+        // there's nothing to have snapshotted.
         const outDesc = msg.prevSegment && msg.prevSegment.descriptors;
-        descRollPush(sn, {
-          out: outDesc ? {
-            C: outDesc.C, S: outDesc.S, E: outDesc.E,
-            F: outDesc.F, P: outDesc.P, H: outDesc.H, T: outDesc.T,
-          } : null,
-          in: {
-            C: state.stems[sn].C, S: state.stems[sn].S, E: state.stems[sn].E,
-            F: state.stems[sn].F, P: state.stems[sn].P, H: state.stems[sn].H,
-            T: state.stems[sn].T,
-          },
-        });
         // Momentum panel's bar just ended — snapshot what it's ramping FROM
-        // (same outDesc the grid's `out` uses) for the new bar's own ramp.
-        // See momentumBarTick()'s own comment for how that ramp is used.
-        // No longer wipes curBarBuffers here — the strip now scrolls
-        // continuously across multiple bars (MOM_BARS_SPAN) instead of
-        // resetting to empty on every single transition; momentumBarTick()
-        // itself handles dropping old columns once the strip is full.
+        // for the new bar's own ramp (see momentumBarTick()'s own comment
+        // for how that ramp is used). No longer wipes curBarBuffers here —
+        // the strip now scrolls continuously across multiple bars
+        // (MOM_BARS_SPAN) instead of resetting to empty on every single
+        // transition; momentumBarTick() itself handles dropping old columns
+        // once the strip is full.
         lastOutDesc[sn] = outDesc ? {
           C: outDesc.C, S: outDesc.S, E: outDesc.E,
           F: outDesc.F, P: outDesc.P, H: outDesc.H, T: outDesc.T,
         } : null;
+        // Flag this stem's momentum strip to mark its NEXT column as a
+        // transition (see pendingSeam's own comment) and force that column
+        // to land on the very next tick — momentumBarTick() only pushes a
+        // new column once colMs has elapsed since lastMomPush[sn], which
+        // for a long segment can be many seconds away; zeroing it here
+        // means the "slice just transitioned" marker shows up close to when
+        // the cut actually happened instead of waiting out the rest of that
+        // interval.
+        pendingSeam[sn] = true;
+        lastMomPush[sn] = 0;
       } else if (msg.type === 'stemTrack' && state.stems[msg.name]) {
         state.stems[msg.name].track = msg.track || '';
         // Update this stem's genre independently from its actual source track.
@@ -7376,6 +11476,19 @@ function connectToMax() {
             const db = levelToDb(vuLevels[msg.name][ch]);
             if (pk[ch] === null || db > pk[ch]) pk[ch] = db;
           });
+        }
+      } else if (msg.type === 'spectrum') {
+        // From patch_eq_spectrum.py's per-band bandpass taps, relayed by
+        // ws_server.js's 'spectrum' handler — see eqSpectrum's own comment
+        // near vuLevels/vuPeaks. Bands arrive independently/asynchronously
+        // (one message per band, same idiom as 'vu' above), so this just
+        // overwrites whichever slot changed; no scheduleRender() needed —
+        // same reasoning as 'vu', picked up by the existing 100ms tick.
+        if (eqSpectrum[msg.name] && Array.isArray(msg.bands)) {
+          for (let i = 0; i < EQ_SPEC_BANDS; i++) {
+            const v = msg.bands[i];
+            if (v !== null && v !== undefined) eqSpectrum[msg.name][i] = parseFloat(v) || 0;
+          }
         }
       } else if (msg.type === 'lufs') {
         // fluid.loudness~ perceptual loudness (K-weighted dBFS), sampled at 10 Hz
@@ -7505,7 +11618,7 @@ function connectToMax() {
       } else if (msg.type === 'param' &&
                  /^agentMode_(vocals|melody|bass|drums)$/.test(msg.key || '')) {
         // Confirmed candidate-source mode from slicer.js's setAgentMode() —
-        // e.g. "agentMode_vocals" -> 'remix' | 'generate'. Same confirmed-
+        // e.g. "agentMode_vocals" -> 'remix' | 'generate' | 'blend'. Same confirmed-
         // only pattern as sourceLock/weight*_stem below: no optimistic local
         // echo, this is the only place state.agentMode ever updates. Drives
         // the "rmx"/"gen" tag stacked directly under this stem's vcl/mel/
@@ -7536,6 +11649,65 @@ function connectToMax() {
         if (state.paramsPerStem[stemName] && state.paramsPerStem[stemName].hasOwnProperty(field)) {
           state.paramsPerStem[stemName][field] = msg.value;
         }
+      } else if (msg.type === 'param' &&
+                 /^(eqLow|eqMid|eqMidFreq|eqMidQ|eqHigh|trim|fader|pitchShift|formantShift)$/.test(msg.key || '')) {
+        // Confirmed EQ/trim/fader/pitch/formant readouts from ws_server.js's
+        // own broadcast (see that file's :eqLow/:eqMid/:eqMidFreq/:eqMidQ/
+        // :eqHigh/:trim/:fader/:pitchShift/:formantShift handlers) — feeds the new
+        // bottom row freed up in each stem's spectrum block (eqInfoStemLine()
+        // below). Two message shapes coexist here: eqLow/eqMid/eqMidFreq/
+        // eqHigh/trim/fader carry msg.value; pitchShift/formantShift carry
+        // msg.semitones instead (same split ws_server.js itself uses) — no
+        // optimistic local echo, this is the only place these numbers update.
+        // msg.stem === 'all' fans out to every real stem, matching how
+        // ws_server.js itself resolves an 'all' target before outletting to
+        // Max per-stem.
+        const field = msg.key;
+        const val = (field === 'pitchShift' || field === 'formantShift') ? msg.semitones : msg.value;
+        if (typeof val === 'number') {
+          const targets = msg.stem === 'all' ? DESC_STEMS : [msg.stem];
+          targets.forEach(s => {
+            if (state.paramsPerStem[s] && state.paramsPerStem[s].hasOwnProperty(field)) {
+              state.paramsPerStem[s][field] = val;
+            }
+          });
+        }
+      } else if (msg.type === 'param' &&
+                 /^(setShiftBand|setPitchBand|setFormantBand|clearPitchBand|clearFormantBand|clearShiftBand)$/.test(msg.key || '')) {
+        // Confirmed pitch/formant band-limit readouts from ws_server.js's
+        // own :setShiftBand/:setPitchBand/:setFormantBand/:clearPitchBand/
+        // :clearFormantBand/:clearShiftBand handlers — feeds the pitch:/
+        // fmt: fields in eqInfoStemLine() below with whichever Hz range is
+        // currently restricting each effect (see paramsPerStem's own
+        // shiftBand/pitchBandOverride/formantBandOverride comment for the
+        // shape). setShiftBand sets the SHARED band and clears both
+        // per-effect overrides — slot_router.js's own setShiftBand() does
+        // the exact same thing server-side before this broadcast ever
+        // fires, so mirroring it here keeps the two in sync. No optimistic
+        // local echo, same as every other confirmed-from-engine field on
+        // this stem.
+        const targets = msg.stem === 'all' ? DESC_STEMS : [msg.stem];
+        targets.forEach(s => {
+          const p = state.paramsPerStem[s];
+          if (!p) return;
+          if (msg.key === 'setShiftBand') {
+            p.shiftBand = { lo: msg.loHz, hi: msg.hiHz };
+            p.pitchBandOverride = null;
+            p.formantBandOverride = null;
+          } else if (msg.key === 'setPitchBand') {
+            p.pitchBandOverride = { lo: msg.loHz, hi: msg.hiHz };
+          } else if (msg.key === 'setFormantBand') {
+            p.formantBandOverride = { lo: msg.loHz, hi: msg.hiHz };
+          } else if (msg.key === 'clearPitchBand') {
+            p.pitchBandOverride = null;
+          } else if (msg.key === 'clearFormantBand') {
+            p.formantBandOverride = null;
+          } else if (msg.key === 'clearShiftBand') {
+            p.shiftBand = null;
+            p.pitchBandOverride = null;
+            p.formantBandOverride = null;
+          }
+        });
       } else if (msg.type === 'param') {
         // Accept both new names (matchM/dirM) and legacy (matchC/dirC)
         const keyMap = { matchC: 'matchM', dirC: 'dirM', weightC: 'weightM', window: 'envelope' };
@@ -7617,8 +11789,8 @@ function connectToMax() {
         logSys('✓ UMAP ready — descriptor grids updated');
         scheduleRender();
       } else if (msg.type === 'bakeScored') {
-        // A real :score/:scoreTransition just got appended to
-        // training_log_vertical.jsonl / training_log_transition.jsonl by
+        // A real :scoreLyr/:scoreTrs just got appended to
+        // training_log_vertical.jsonl / training_log_horizontal.jsonl by
         // ws_server.js (see its own 'bakeScored' broadcasts). Re-derive
         // whatever graph is currently selected so it updates on its own
         // (user: "I want it to be automatically drawn when bakes are
@@ -7630,7 +11802,7 @@ function connectToMax() {
         if (appMode === 'learn' && learnView === 'review') { renderTrainingView(); screen.render(); }
       } else if (msg.type === 'sys' && msg.msg) {
         // Generic status-line broadcast from ws_server.js (session open/close,
-        // :tag/:score confirmations, LINK status, and now slicer.js's own
+        // :tag/:scoreLyr confirmations, LINK status, and now slicer.js's own
         // downbeats-reload report via its sysMsg outlet). This branch didn't
         // exist before — every one of those broadcasts was silently dropped
         // here with no visible effect in the TUI at all, so commands like
@@ -7737,7 +11909,7 @@ const LINK_TRACKED_VERBS = new Set([
   'setGlobalBPM', 'setFallbackBPM', 'setEntropy', 'setMatchProb',
   'setWeight', 'setDirPref', 'setDirWeight',
   'setStemGain', 'setMasterGain', 'fxSend',
-  'eqLow', 'eqMid', 'eqMidFreq', 'eqHigh', 'trim',
+  'eqLow', 'eqMid', 'eqMidFreq', 'eqMidQ', 'eqHigh', 'trim',
 ]);
 
 const linkSock = dgram.createSocket('udp4');
@@ -7800,15 +11972,31 @@ function linkTouch(command) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// noteBakeDrift — the other half of activeBakeOfficial (see that var's own
+// comment, near applyBakeState). Every command this TUI ever sends funnels
+// through sendToMax below, so this is the one place that can honestly say
+// "a tracked mix param just moved for a reason OTHER than replaying the
+// active bake's own saved commands." Reuses LINK_TRACKED_VERBS as-is rather
+// than inventing a second "which params count" list — it's already exactly
+// the curated set of params that define the live mix comportment (fader/
+// weight/dir/EQ/trim/tempo), same reasoning LINK's own missile-switch relies
+// on.
+function noteBakeDrift(command) {
+  if (applyingBakeState || !activeBakeOfficial) return;
+  const verb = command.trim().split(/\s+/)[0];
+  if (LINK_TRACKED_VERBS.has(verb)) activeBakeOfficial = false;
+}
+
 function sendToMax(command, extra) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     // extra — optional plain object merged into the outgoing envelope
-    // alongside {type, text}. Used by the :score handler below to carry
+    // alongside {type, text}. Used by the :scoreLyr handler below to carry
     // bakeSessionId/bakeAttempt/bakeIntent without changing the command
     // string a user actually typed or ws_server's atom-parsing of `text`.
     ws.send(JSON.stringify({ type: 'command', text: command, ...(extra || {}) }));
   }
   linkTouch(command);   // always notify link_server, it filters by verb
+  noteBakeDrift(command);
 }
 
 // Expand :selectRange vocals C:200,2000 F:0.2,0.8  →  selectRange vocals 200 2000 -1e9 1e9 0.2 0.8 -1e9 1e9
@@ -7974,7 +12162,7 @@ function handleInput(text) {
       }
 
       // :bake show — review the current comportment before deciding whether
-      // to correct further, :score it, or :bake end it. "Editing" a
+      // to correct further, :scoreLyr it, or :bake end it. "Editing" a
       // comportment just means typing a new command — it applies live
       // immediately, same as always — but there was no way to see the
       // resolved result of everything typed so far, only the raw log. This
@@ -8158,21 +12346,22 @@ function handleInput(text) {
       return;
     }
 
-    // :score <-1..1> [overallSection] — handled here, ahead of the generic
+    // :scoreLyr <-1..1> [overallSection] — handled here, ahead of the generic
     // COMMANDS.has(verb) block further down, for two reasons:
     //   1. That block unconditionally does bakeUserCmds.push(expanded) for
     //      every command it forwards, treating it as a "user correction" fed
     //      to Cricket's fine-tune log at :bake end. A rating isn't an engine
-    //      parameter Cricket should learn to emit, so :score needs to bypass
-    //      that push entirely — previously it didn't, and every :score typed
-    //      during a bracket silently leaked into cricket_finetune.jsonl.
+    //      parameter Cricket should learn to emit, so :scoreLyr needs to
+    //      bypass that push entirely — previously it didn't, and every
+    //      :scoreLyr typed during a bracket silently leaked into
+    //      cricket_finetune.jsonl.
     //   2. When a :bake bracket is open, this attaches bakeSessionId + which
     //      attempt is currently playing (bakeAttempt hasn't incremented yet
     //      for the in-progress loop, hence +1) so ws_server.js can tag the
     //      training_log_vertical.jsonl entry — see sendToMax's `extra` param
-    //      and ws_server.js's :score handler. Outside a bracket this is a
+    //      and ws_server.js's :scoreLyr handler. Outside a bracket this is a
     //      plain passthrough, identical to before.
-    if (verb === 'score') {
+    if (verb === 'scoreLyr') {
       const extra = bakeSessionActive
         ? { bakeSessionId, bakeAttempt: bakeAttempt + 1, bakeIntent: bakeSessionLabel }
         : null;
@@ -8186,17 +12375,17 @@ function handleInput(text) {
       return;
     }
 
-    // :scoreTransition <-1..1> [stem] — same treatment as :score immediately
+    // :scoreTrs <-1..1> [stem] — same treatment as :scoreLyr immediately
     // above, and for the same two reasons (doesn't belong in bakeUserCmds,
     // gets tagged to the open bracket). This is the primary signal for
     // :bake sequence handoffs — see startBakeSequence's checkpoint log line.
-    if (verb === 'scoreTransition') {
+    if (verb === 'scoreTrs') {
       const extra = bakeSessionActive
         ? { bakeSessionId, bakeAttempt: bakeAttempt + 1, bakeIntent: bakeSessionLabel }
         : null;
       if (bakeSessionActive) {
         const v = parseFloat(parts[1]);
-        if (!isNaN(v)) { bakeScoreCount++; bakeLastScore = { type: 'transition', value: v }; }
+        if (!isNaN(v)) { bakeScoreCount++; bakeLastScore = { type: 'horizontal', value: v }; }
       }
       sendToMax(body, extra);
       logSys('→ ' + body + (extra ? '  {grey-fg}[bake ' + bakeSessionId + ' · attempt '
@@ -8204,7 +12393,7 @@ function handleInput(text) {
       return;
     }
 
-    // :tag <label> [stem] — same treatment as :score/:scoreTransition above:
+    // :tag <label> [stem] — same treatment as :scoreLyr/:scoreTrs above:
     // a structural section label isn't an engine parameter Cricket should
     // learn to emit, so it bypasses bakeUserCmds/bakeComportment entirely.
     // Tracked in bakeTag purely for the training panel's own "tag:" line, so
@@ -8290,6 +12479,104 @@ function handleInput(text) {
 
     // :analyzeAll — run genre + madmom on all tracks in htdemucs
     if (verb === 'analyzeAll') { runFullAnalysis(); return; }
+
+    // :genList [filter] — browse Essentia's Discogs-400 genre/style tags,
+    // the "general genre tags" :gen generates from. Same vocabulary
+    // genre_tagger.py classifies real tracks into, so a generated clip's
+    // tag and a real track's tag are directly comparable later.
+    if (verb === 'genList') {
+      const filter = parts.slice(1).join(' ').trim().toLowerCase();
+      let labels;
+      try {
+        labels = JSON.parse(fs.readFileSync(GEN_LABELS_PATH, 'utf8'));
+      } catch (e) {
+        logSys(`:genList — could not read ${GEN_LABELS_PATH}: ${e.message}`);
+        return;
+      }
+      const matches = filter ? labels.filter(l => l.toLowerCase().includes(filter)) : labels;
+      const CAP = 60;
+      logSys(`${matches.length} genre tag(s)${filter ? ` matching "${filter}"` : ''}:`);
+      logSys(matches.slice(0, CAP).map(l => '  ' + l).join('\n'));
+      if (matches.length > CAP) logSys(`  ...and ${matches.length - CAP} more — narrow with :genList <filter>`);
+      return;
+    }
+
+    // :gen — browse sub-commands (filter/next/prev/play/stop/keep/toss/clear,
+    // allow/disallow as aliases for keep/toss) vs. the generate-and-ingest
+    // form (:gen <stem> [count] [duration] <genre...>) — unambiguous since
+    // stem names and sub-command names never overlap. ^D/^K (see
+    // stepGenKey()) are the quick-nav equivalent of next/prev while the Gen
+    // screen is up. See renderGenPanel() for the menu this drives.
+    if (verb === 'gen') {
+      const sub = (parts[1] || '').toLowerCase();
+      const STEMS_OK = ['vocals', 'melody', 'bass', 'drums'];
+
+      if (sub === 'filter') {
+        const f = (parts[2] || '').toLowerCase();
+        if (f !== 'all' && !STEMS_OK.includes(f)) {
+          logSys('usage: :gen filter <all|vocals|melody|bass|drums>');
+          return;
+        }
+        genFilter = f; genIndex = 0;
+        if (appMode === 'gen') { renderGenPanel(); screen.render(); }
+        else logSys(`gen filter → ${f}`);
+        return;
+      }
+
+      if (sub === 'next' || sub === 'prev') { stepGen(sub === 'next' ? 1 : -1); return; }
+
+      if (sub === 'play') { genPlay(); return; }
+      if (sub === 'stop') { genStop(); return; }
+
+      // keep/toss — a real bidirectional decision per entry, independent of
+      // scoreGenEntry()'s automatic read (see genDecisionFor()/
+      // setGenDecision()'s own comment for why this replaced the old
+      // one-directional allow/disallow). allow/disallow still work as
+      // aliases for keep/toss — nothing that already learned those names
+      // breaks — and clear is new: drops the manual decision entirely,
+      // back to "defer to the score."
+      if (sub === 'keep' || sub === 'allow' || sub === 'toss' || sub === 'disallow' || sub === 'clear') {
+        const entry = genEntries[genIndex];
+        if (!entry) { logSys('gen: no entry selected — :gen next first'); return; }
+        const decision = (sub === 'keep' || sub === 'allow') ? 'keep'
+                        : (sub === 'toss' || sub === 'disallow') ? 'toss'
+                        : null;
+        setGenDecision(entry.trackName, decision);
+        const label = decision === 'keep' ? 'kept (override, regardless of score)'
+                    : decision === 'toss' ? 'tossed (override, regardless of score)'
+                    : 'cleared — back to automatic scoring';
+        logSys(`gen: ${entry.trackName} → ${label}`);
+        if (appMode === 'gen') { renderGenPanel(); screen.render(); }
+        return;
+      }
+
+      // Generate-and-ingest form: :gen <stem> [count] [duration] <genre...>
+      // Mirrors :bake start's "peel optional leading numbers, rest is free
+      // text" parsing (genre labels can contain spaces, e.g. "Deep House").
+      if (STEMS_OK.includes(sub)) {
+        if (genRunning) { logSys(':gen already running — wait for it to finish'); return; }
+        const rest = parts.slice(2);
+        let count = 4, duration = 11;
+        if (rest.length && /^\d+$/.test(rest[0])) count = parseInt(rest.shift(), 10);
+        if (rest.length && /^\d+(\.\d+)?$/.test(rest[0])) duration = parseFloat(rest.shift());
+        const genre = rest.join(' ').trim();
+        if (!genre) {
+          logSys('usage: :gen <vocals|melody|bass|drums> [count] [duration] <genre...>  — e.g. :gen drums 4 11 Deep House');
+          logSys('  note: stem is always ONE isolated stem, never "all" — there is no full-mix option (generate_agent.py is deliberately stem-only, see its STEM_LABEL prompts)');
+          return;
+        }
+        runGenerate(sub, genre, count, duration, (code, manifestPath) => {
+          if (code !== 0 || !manifestPath) return;
+          runIngestGenerated(manifestPath);
+        });
+        return;
+      }
+
+      logSys('usage: :gen <vocals|melody|bass|drums> [count] [duration] <genre...>');
+      logSys('   or: :gen filter <all|vocals|melody|bass|drums> | next | prev | play | stop | keep | toss | clear');
+      logSys('   (^D/^K step next/prev while the Gen screen is up — same as next/prev)');
+      return;
+    }
 
     // :resetAll — two-step confirmation: wipe everything and restart from scratch
     if (verb === 'resetAll') {
@@ -8400,6 +12687,20 @@ function handleInput(text) {
            watcherPath + ' >> /tmp/ebys_watch.log 2>&1 &', (err) => {
         if (err) logSys('⚠ restartWatcher failed: ' + err.message);
         else logSys('✓ watcher restarted — drop files in raw_uploads to reprocess');
+      });
+      return;
+    }
+
+    // :restartWatcherLora — same shape as :restartWatcher, targeting
+    // watch_lora.py (the prep/build daemon — see :lora's own comment for
+    // why training isn't part of what this restarts: that's :lora train,
+    // a separate process this watcher never touches).
+    if (verb === 'restartWatcherLora') {
+      const watcherPath = require('path').join(__dirname, '..', 'demucs', 'watch_lora.py');
+      exec('pkill -f watch_lora.py; sleep 1; /opt/homebrew/bin/python3 -u ' +
+           watcherPath + ' >> /tmp/ebys_watch_lora.log 2>&1 &', (err) => {
+        if (err) logSys('⚠ restartWatcherLora failed: ' + err.message);
+        else logSys('✓ lora watcher restarted — drop files in data/lora_corpus/raw to reprocess');
       });
       return;
     }
@@ -8608,14 +12909,14 @@ function handleInput(text) {
       return;
     }
 
-    // :trainBias — fits learned_bias.json from whatever :score/:scoreTransition
+    // :trainBias — fits learned_bias.json from whatever :scoreLyr/:scoreTrs
     // has been logged so far (train_bias.py, numpy-only — same demucs_env venv
     // as :setMMT's add_tension.py, no madmom/essentia needed), then tells Max
     // to pull the fresh file in. Purely a Node-side spawn: this never reaches
     // Max/slicer.js directly (there's no 'trainBias' handler there — training
     // happens offline), only the follow-up reloadBias message does.
     if (verb === 'trainBias') {
-      logSys('→ trainBias — fitting learned models from :score/:scoreTransition logs…');
+      logSys('→ trainBias — fitting learned models from :scoreLyr/:scoreTrs logs…');
       startSpinner('trainBias…');
       const venvPy = path.join(__dirname, '..', 'demucs', 'demucs_env', 'bin', 'python3');
       const script  = path.join(__dirname, '..', 'demucs', 'train_bias.py');
@@ -8637,6 +12938,253 @@ function handleInput(text) {
       return;
     }
 
+    // :lora — front-end over the User LoRA pipeline (docs/instrument/
+    // USER_LORA.md §3/§6). Split in two, per Alex: prep/build are normally
+    // automatic (watch_lora.py re-runs them itself once raw/ settles down),
+    // train is deliberately NOT — it's this command, on purpose, since it's
+    // an hours-long local-GPU job that shouldn't start without someone
+    // choosing the moment. prep/build/compare/promote here are the manual
+    // override for the automatic half; train is the only way the expensive
+    // half ever runs at all. Same shape as :gen's sub-command dispatch —
+    // one verb, first token after it routes to a sub-handler — and the same
+    // "spawn, stream to logSys, report exit code" shape as :trainBias just
+    // above. Bare ':lora' (no sub-command) reports where the corpus stands
+    // right now instead of doing anything.
+    if (verb === 'lora') {
+      const sub = (parts[1] || 'status').toLowerCase();
+      const P = {
+        raw:    path.join(LORA_DIR, 'raw'),
+        clean:  path.join(LORA_DIR, 'clean'),
+        train:  path.join(LORA_DIR, 'train'),
+        val:    path.join(LORA_DIR, 'val'),
+        gen:    path.join(LORA_DIR, 'generated'),
+        ckpt:   path.join(LORA_DIR, 'checkpoints'),
+      };
+      const AUDIO_EXTS = new Set(['.wav', '.aif', '.aiff', '.flac', '.mp3', '.m4a', '.ogg', '.wma', '.mp4', '.3gp', '.caf']);
+      const countFiles = (dir, exts) => {
+        if (!fs.existsSync(dir)) return 0;
+        let n = 0;
+        for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (f.isDirectory()) n += countFiles(path.join(dir, f.name), exts);
+          else if (!exts || exts.has(path.extname(f.name).toLowerCase())) n++;
+        }
+        return n;
+      };
+      const countPairs = dir => fs.existsSync(dir)
+        ? fs.readdirSync(dir).filter(f => f.toLowerCase().endsWith('.wav')).length : 0;
+
+      if (sub === 'status') {
+        const lock = readLoraLock();
+        const lockLine = lock
+          ? `  busy now — source: ${lock.source}, started ${Math.round((Date.now() - lock.started) / 60000)}m ago\n`
+          : '';
+        const liveLine = fs.existsSync(LORA_CURRENT_CKPT)
+          ? `  live: current.safetensors` + (fs.existsSync(LORA_CURRENT_INVOKE) ? ` (invoke: "${fs.readFileSync(LORA_CURRENT_INVOKE, 'utf8').trim()}") — :gen is already using it` : '') + '\n'
+          : `  live: none yet — :gen runs base-model-only until something is promoted\n`;
+        logSys(
+          `lora status — ${LORA_DIR}\n` +
+          lockLine + liveLine +
+          `  1. raw     ${countFiles(P.raw, AUDIO_EXTS)} source file(s)  {grey-fg}(prep+build automatic — watch_lora.py){/grey-fg}\n` +
+          `  2. clean   ${countFiles(P.clean, new Set(['.wav']))} normalized clip(s)\n` +
+          `  3. train   ${countPairs(P.train)} pair(s)   val ${countPairs(P.val)} pair(s) (held out)\n` +
+          `  4. ckpt    ${countFiles(P.ckpt, new Set(['.safetensors']))} checkpoint(s)\n` +
+          `  5. gen     ${countFiles(P.gen, new Set(['.wav']))} clip(s) to compare\n` +
+          `usage: :lora train [steps] to start training (manual, on purpose) | prep/build [args] force a rebuild now | compare val|train | promote [path|latest]`
+        );
+        return;
+      }
+
+      // :lora prep / :lora build — these two are now normally automatic
+      // (watch_lora.py re-runs them itself once new files in raw/ settle
+      // down — see that script's docstring). These commands still exist
+      // for forcing a rebuild by hand right now instead of waiting for the
+      // daemon's debounce window. Both share LORA_LOCK_PATH with the
+      // daemon and with :lora train, so a manual run here can't race the
+      // watcher touching the same clean/train/val folders at the same time.
+      if (sub === 'prep') {
+        const existingLock = readLoraLock();
+        if (existingLock) {
+          logSys(`lora prep — corpus is busy (source: ${existingLock.source}). Try again shortly.`);
+          return;
+        }
+        const venvPy = path.join(__dirname, '..', 'demucs', 'demucs_env', 'bin', 'python3');
+        const script = path.join(__dirname, '..', 'demucs', 'prep_lora_corpus.py');
+        const args = [script, '--source-dir', P.raw, '--out-dir', P.clean];
+        const limit = parts[2];
+        if (limit && /^\d+$/.test(limit)) args.push('--limit', limit);
+        logSys(`→ lora prep — raw -> clean${limit ? ` (limit ${limit})` : ''}…`);
+        startSpinner('lora prep…');
+        acquireLoraLock('manual');
+        const proc = spawn(venvPy, args, { env: LORA_ENV });
+        proc.stdout.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+        proc.stderr.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+        proc.on('error', err => { stopSpinner(); releaseLoraLock(); logSys('lora prep error: ' + err.message + ' (ffmpeg/ffprobe on PATH?)'); });
+        proc.on('close', code => {
+          stopSpinner();
+          releaseLoraLock();
+          logSys(code === 0 ? '✓ lora prep done — next: :lora build' : `prep_lora_corpus.py exited with code ${code}`);
+          scheduleRender();
+        });
+        return;
+      }
+
+      if (sub === 'build') {
+        const existingLock = readLoraLock();
+        if (existingLock) {
+          logSys(`lora build — corpus is busy (source: ${existingLock.source}). Try again shortly.`);
+          return;
+        }
+        const venvPy = path.join(__dirname, '..', 'demucs', 'demucs_env', 'bin', 'python3');
+        const script = path.join(__dirname, '..', 'demucs', 'build_lora_dataset.py');
+        const caption = parts.slice(2).join(' ') || 'ebys user style';
+        const args = [script, '--clips-dir', P.clean, '--out-dir', P.train,
+                       '--val-out-dir', P.val, '--caption', caption];
+        logSys(`→ lora build — clean -> train/val, caption "${caption}"…`);
+        startSpinner('lora build…');
+        acquireLoraLock('manual');
+        const proc = spawn(venvPy, args, { env: LORA_ENV });
+        proc.stdout.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+        proc.stderr.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+        proc.on('error', err => { stopSpinner(); releaseLoraLock(); logSys('lora build error: ' + err.message); });
+        proc.on('close', code => {
+          stopSpinner();
+          releaseLoraLock();
+          if (code === 0) {
+            updateLoraState({ caption }); // so watch_lora.py's next automatic run reuses THIS caption, not its own default
+            logSys('✓ lora build done — next: :lora train');
+          } else {
+            logSys(`build_lora_dataset.py exited with code ${code}`);
+          }
+          scheduleRender();
+        });
+        return;
+      }
+
+      // :lora train [steps] — the one deliberately manual step (Alex: "the
+      // training that takes hours to be manual, I want to enter a :command
+      // for it to start"). Spawns train_and_score_lora.py, which does the
+      // whole rest of the job unattended once started: train a checkpoint
+      // via Stable Audio 3's own train_lora.py, score it against val/ (up
+      // to 3 fresh self-test batches — see that script's own docstring for
+      // why one sample isn't trusted alone), and silently promote it to
+      // current.safetensors the moment a score clears the bar. Nothing
+      // further to type after this — :gen just starts sounding different
+      // once it's done, or nothing changes if no attempt passed.
+      if (sub === 'train') {
+        const trainScript = path.join(STABLE_AUDIO_3_DIR, 'train_lora.py');
+        const showHelp = parts[2] === '--help';
+        if (showHelp) {
+          if (!fs.existsSync(trainScript)) {
+            logSys(`lora train — train_lora.py not found at ${trainScript}. Is STABLE_AUDIO_3_DIR set correctly? (see setup.sh section 4)`);
+            return;
+          }
+          const proc = spawn(GENERATE_PY, [trainScript, '--help'], { env: GENERATE_ENV });
+          proc.stdout.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+          proc.stderr.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+          proc.on('error', err => logSys('lora train --help error: ' + err.message));
+          return;
+        }
+        const existingLock = readLoraLock();
+        if (existingLock) {
+          const mins = Math.round((Date.now() - existingLock.started) / 60000);
+          logSys(`lora train — already busy (source: ${existingLock.source}, started ${mins}m ago). Wait for it to finish, or if it's actually dead, remove ${LORA_LOCK_PATH} by hand.`);
+          return;
+        }
+        if (!fs.existsSync(TRAIN_AND_SCORE_SCRIPT)) {
+          logSys(`lora train — ${TRAIN_AND_SCORE_SCRIPT} missing`);
+          return;
+        }
+        if (!playbackStopped) {
+          logSys('⚠ instrument is currently playing — training will compete for this machine\'s one GPU. Proceeding anyway since you asked.');
+        }
+        const steps = (parts[2] && /^\d+$/.test(parts[2])) ? parts[2] : '1000';
+        const args = [TRAIN_AND_SCORE_SCRIPT, '--steps', steps];
+        logSys(`→ lora train — training a candidate (${steps} steps), then scoring it against val/ and promoting if it clears the bar…`);
+        logSys('  (this can run long — nothing further to type; :gen will reflect the result once it finishes)');
+        startSpinner('lora train…');
+        acquireLoraLock('manual');
+        const proc = spawn(GENERATE_PY, args, { env: GENERATE_ENV });
+        proc.stdout.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+        proc.stderr.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+        proc.on('error', err => { stopSpinner(); releaseLoraLock(); logSys('lora train error: ' + err.message); });
+        proc.on('close', code => {
+          stopSpinner();
+          releaseLoraLock();
+          logSys(code === 0 ? '✓ lora train finished — see the log above for promoted/not promoted' : `train_and_score_lora.py exited with code ${code}`);
+          scheduleRender();
+        });
+        return;
+      }
+
+      // :lora promote <path|latest> — the manual half of go-live: copies a
+      // checkpoint to current.safetensors, the one file runGenerate() below
+      // checks for on every :gen call. 'latest' picks the newest
+      // .safetensors under any run_*/ subdir of P.ckpt (by mtime) rather
+      // than requiring the full path — the automatic pipeline calls this
+      // same promotion logic itself after its own compare gate passes, this
+      // is just the hands-on equivalent.
+      if (sub === 'promote') {
+        let src = parts[2];
+        if (!src || src === 'latest') {
+          const candidates = [];
+          const walk = d => {
+            if (!fs.existsSync(d)) return;
+            for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+              const full = path.join(d, f.name);
+              if (f.isDirectory()) walk(full);
+              else if (f.name.endsWith('.safetensors') && f.name !== 'current.safetensors') candidates.push(full);
+            }
+          };
+          walk(P.ckpt);
+          if (!candidates.length) { logSys('lora promote — no .safetensors checkpoints found under ' + P.ckpt); return; }
+          candidates.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+          src = candidates[0];
+        }
+        if (!fs.existsSync(src)) { logSys(`lora promote — not found: ${src}`); return; }
+        fs.mkdirSync(LORA_CKPT_DIR, { recursive: true });
+        fs.copyFileSync(src, LORA_CURRENT_CKPT);
+        // Best-effort: reuse whatever caption build_lora_dataset.py last used
+        // (its .txt sidecars all carry the same phrase) rather than asking
+        // here — falls back to the script's own documented default.
+        let caption = 'ebys user style';
+        try {
+          const txts = fs.readdirSync(P.train).filter(f => f.endsWith('.txt'));
+          if (txts.length) caption = fs.readFileSync(path.join(P.train, txts[0]), 'utf8').trim() || caption;
+        } catch (e) {}
+        fs.writeFileSync(LORA_CURRENT_INVOKE, caption);
+        logSys(`✓ lora promote — ${path.basename(src)} → current.safetensors (invoke phrase: "${caption}"). :gen will use it from the next call on.`);
+        return;
+      }
+
+      if (sub === 'compare') {
+        const mode = (parts[2] || 'val').toLowerCase();
+        if (mode !== 'val' && mode !== 'train') {
+          logSys('usage: :lora compare val|train  (val = generalization check, train = memorization check)');
+          return;
+        }
+        const venvPy = path.join(__dirname, '..', 'demucs', 'demucs_env', 'bin', 'python3');
+        const script = path.join(__dirname, '..', 'demucs', 'compare_lora_output.py');
+        const realDir = mode === 'val' ? P.val : P.train;
+        const outReport = path.join(LORA_DIR, `eval_${mode}.json`);
+        const args = [script, '--real-dir', realDir, '--generated-dir', P.gen, '--out-report', outReport];
+        logSys(`→ lora compare — generated vs ${mode} (${mode === 'val' ? 'generalization' : 'memorization'} check)…`);
+        startSpinner('lora compare…');
+        const proc = spawn(venvPy, args, { env: LORA_ENV });
+        proc.stdout.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+        proc.stderr.on('data', d => d.toString().trim().split('\n').forEach(l => { if (l.trim()) logSys(l.trim()); }));
+        proc.on('error', err => { stopSpinner(); logSys('lora compare error: ' + err.message); });
+        proc.on('close', code => {
+          stopSpinner();
+          logSys(code === 0 ? `✓ lora compare done — report at ${outReport}` : `compare_lora_output.py exited with code ${code}`);
+          scheduleRender();
+        });
+        return;
+      }
+
+      logSys(`usage: :lora [status|train [steps]|compare val|train|promote [path|latest]|prep [limit]|build [caption...]] — prep/build are normally automatic, see :lora status`);
+      return;
+    }
+
     // :setFitShape <dim> <linear|quadratic|cubic> — TUI/Node-only, same
     // shape as :trainBias above: writes fit_shapes.json into DATA_DIR and
     // returns, never reaches Max/slicer.js directly. Doesn't retrain the
@@ -8652,7 +13200,7 @@ function handleInput(text) {
     // below), even though the real weights don't — that's the whole point:
     // look at the curve here before committing to a shape via :trainBias.
     if (verb === 'setFitShape') {
-      const VALID_FIT_DIMS = ['C','S','E','F','P','H','T','TnC','TnE','TnF','TnP','TnH','TnT'];
+      const VALID_FIT_DIMS = ['C','S','E','F','P','H','T','TnC','TnS','TnE','TnF','TnP','TnH','TnT'];
       const dim   = parts[1];
       const shape = (parts[2] || '').toLowerCase();
       if (!VALID_FIT_DIMS.includes(dim)) {
@@ -8686,6 +13234,57 @@ function handleInput(text) {
       return;
     }
 
+    // :setGenre <genre> — manually correct the CURRENTLY LOADED track's
+    // (state.track) genre in genres.json. genre_tagger.py's Discogs-EffNet
+    // classifier is a fixed 400-class vocabulary with typically-low
+    // confidence (0.1-0.3 even for a good call — see getGenreForTrack()'s
+    // own comment) — for anything that doesn't cleanly match a mainstream
+    // Discogs class (a lot of experimental/non-genre-conforming material),
+    // its top guess can just be wrong. This lets a human overrule it
+    // directly rather than living with a bad auto-tag. No enum/validation
+    // anywhere downstream (parseGenre() just splits on '---', slicer.js's
+    // sliceMatchesGenre() is a plain substring match) — any string is a
+    // valid genre here, doesn't have to be a real Discogs class. Prepends
+    // rather than overwrites the track's genres[] array — genres[0] is
+    // what every reader (getGenreForTrack, browse display, slicer.js's
+    // eventual index build) actually treats as "the" genre, but the
+    // tagger's original guess(es) stay in the array below it for
+    // reference/undo rather than being destroyed outright.
+    // CAVEAT logged below: :analyzeAll reruns genre_tagger.py, which
+    // rewrites genres.json FROM SCRATCH (runGenreTagger() → --out
+    // GENRE_DB_PATH) — it doesn't know about `userSet` and will happily
+    // clobber this correction on the next full rescan. Fine for a one-off
+    // fix; if this needs to survive re-analysis, genre_tagger.py itself
+    // would need to learn to preserve userSet:true entries.
+    if (verb === 'setGenre') {
+      const genre = parts.slice(1).join(' ').trim();
+      if (!genre) {
+        logSys('usage: :setGenre <genre> — e.g. :setGenre Electronic---Experimental, or any label you use yourself. Corrects genres.json for the currently loaded track (' + (state.track || 'no track loaded') + '); note :analyzeAll will overwrite this again on its next full rescan.');
+        return;
+      }
+      if (!state.track) {
+        logSys(':setGenre — no track loaded');
+        return;
+      }
+      let key = Object.keys(genreDb).find(k =>
+        k.includes(state.track) || state.track.includes(k) || k === state.track
+      );
+      if (!key) {
+        key = state.track;
+        genreDb[key] = { genres: [] };
+      }
+      if (!genreDb[key].genres) genreDb[key].genres = [];
+      const prevTop = genreDb[key].genres[0];
+      genreDb[key].genres.unshift({ genre, confidence: 1, userSet: true });
+      fs.writeFileSync(GENRE_DB_PATH, JSON.stringify(genreDb, null, 2));
+      updateGenreForTrack(state.track);
+      logSys('✓ genre[' + key + '] → ' + genre
+        + (prevTop ? ' (was: ' + prevTop.genre + ' @ ' + (prevTop.confidence || 0).toFixed(2) + ', kept below)' : '')
+        + ' — heads up: :analyzeAll rewrites genres.json from scratch and will overwrite this on its next full rescan');
+      scheduleRender();
+      return;
+    }
+
     // :listGraphs — prints the 8-page menu (user originally: "I will need a
     // graph menu to select which graphs I want to view, since there are
     // 50ish possible graph (per weights)"; later grouped down to 8 pages —
@@ -8696,32 +13295,32 @@ function handleInput(text) {
     // here is a focused/arrow-navigated widget), so a numbered log listing
     // IS this app's menu, same as :help's own list.
     if (verb === 'listGraphs' || verb === 'graphs') {
-      logSys('bake graph pages — :showBakeGraph <n>, or :showBakeGraph <dim> <transition|vertical> [feature] — a live picker also sits above the graphs themselves in Train > Review:');
+      logSys('bake graph pages — :showBakeGraph <n>, or :showBakeGraph <dim> <transition|layering> [feature] — a live picker also sits above the graphs themselves in Train > Review:');
       BAKE_GRAPH_PAGES.forEach((p, i) => {
-        logSys('  ' + (i + 1) + '. ' + KIND_LABEL[p.kind] + ' (' + p.dims.join(', ') + ') ' + p.model + ' ' + p.feature
+        logSys('  ' + (i + 1) + '. ' + KIND_LABEL[p.kind] + ' (' + p.dims.join(', ') + ') ' + (MODEL_WORD[p.model] || p.model) + ' ' + p.feature
           + (i + 1 === selectedPageIdx ? '  ← current' : ''));
       });
       return;
     }
 
-    // :fakeBakes <n> — appends n synthetic vertical + n synthetic transition
+    // :fakeBakes <n> — appends n synthetic layering + n synthetic transition
     // bake rows to the real training_log_*.jsonl files, purely so
     // :showBakeGraph has something to draw (user: "can you create fake
     // bakes in the TUI? just for the sake of seeing the graph"). Matches
-    // ws_server.js's real :score/:scoreTransition row shape exactly (see
-    // its 'score'/'scoreTransition' handlers) so extractBakePoints() — and
+    // ws_server.js's real :scoreLyr/:scoreTrs row shape exactly (see
+    // its 'scoreLyr'/'scoreTrs' handlers) so extractBakePoints() — and
     // train_bias.py itself, if ever pointed at this data — read it no
     // differently than a real bake. Every row carries synthetic: true (an
     // extra field both readers already ignore) so these rows stay
     // identifiable/removable later; nothing here is meant to train a real
-    // model, just to populate a graph. `vertical`'s E and `transition`'s
+    // model, just to populate a graph. `vertical`'s E and `horizontal`'s
     // tension_T delta are deliberately biased to correlate with rating —
     // everything else is plain noise — so at least a couple of the 52
     // graphs show a real slope instead of all 52 looking like static.
     if (verb === 'fakeBakes') {
       const n = parseInt(parts[1], 10);
       if (!n || n < 1) {
-        logSys('usage: :fakeBakes <n> — appends n synthetic vertical + n synthetic transition bake rows (tagged synthetic:true), for :showBakeGraph demo purposes only');
+        logSys('usage: :fakeBakes <n> — appends n synthetic layering + n synthetic transition bake rows (tagged synthetic:true), for :showBakeGraph demo purposes only');
         return;
       }
       const stemKeys = ['vocals', 'melody', 'bass', 'drums'];
@@ -8729,10 +13328,10 @@ function handleInput(text) {
       function randDesc() {
         const d = {};
         ['C', 'S', 'E', 'F', 'P', 'H', 'T'].forEach(k => { d[k] = Math.random(); });
-        ['C', 'E', 'F', 'P', 'H', 'T'].forEach(k => { d['tension_' + k] = Math.random(); });
+        ['C', 'S', 'E', 'F', 'P', 'H', 'T'].forEach(k => { d['tension_' + k] = Math.random(); });
         return d;
       }
-      let vertLines = '', transLines = '';
+      let vertLines = '', horizLines = '';
       for (let i = 0; i < n; i++) {
         const vStems = {};
         let sumE = 0;
@@ -8757,7 +13356,7 @@ function handleInput(text) {
         const fromDesc = randDesc(), toDesc = randDesc();
         const dTnT     = toDesc.tension_T - fromDesc.tension_T;
         const tRating  = clamp(-1.5 * dTnT + (Math.random() * 0.4 - 0.2), -1, 1);
-        transLines += JSON.stringify({
+        horizLines += JSON.stringify({
           timestamp: new Date().toISOString(), type: 'horizontal_transition', rating: tRating,
           bakeSessionId: null, bakeAttempt: null, bakeIntent: null,
           stems: { [stem]: {
@@ -8768,9 +13367,9 @@ function handleInput(text) {
         }) + '\n';
       }
       fs.appendFileSync(path.join(DATA_DIR, 'training_log_vertical.jsonl'), vertLines);
-      fs.appendFileSync(path.join(DATA_DIR, 'training_log_transition.jsonl'), transLines);
+      fs.appendFileSync(path.join(DATA_DIR, 'training_log_horizontal.jsonl'), horizLines);
       // These rows are scoring data only (training_log_vertical.jsonl /
-      // training_log_transition.jsonl — what train_bias.py fits on, and now
+      // training_log_horizontal.jsonl — what train_bias.py fits on, and now
       // what :showBakeGraph reads) — a completely different file from
       // training_log.jsonl, which is what the Review sub-view's
       // reviewEntries list actually browses (real :bake bracket sessions —
@@ -8781,7 +13380,45 @@ function handleInput(text) {
       // in the training tab") — refreshSelectedBakePage() re-derives
       // whatever's currently selected from the data that just landed.
       refreshSelectedBakePage();
-      logSys('✓ appended ' + n + ' synthetic vertical + ' + n + ' synthetic transition bake rows (synthetic:true) — see Train > Review for the graphs; :listGraphs for the other 7 pages');
+      logSys('✓ appended ' + n + ' synthetic layering + ' + n + ' synthetic transition bake rows (synthetic:true) — see Train > Review for the graphs; :listGraphs for the other 7 pages');
+      switchLearnView('review');
+      return;
+    }
+
+    // :removeFakeBakes — the other half of :fakeBakes above: strips every
+    // synthetic:true row back out of the same two files it was appended to
+    // (training_log_vertical.jsonl / training_log_horizontal.jsonl), real
+    // bakes untouched. This is exactly why every fake row carries that flag
+    // in the first place (see :fakeBakes' own comment, "so these rows stay
+    // identifiable/removable later") — this is that "later".
+    // Line-by-line filter, not a JSON.parse of the whole file, since these
+    // are .jsonl (one object per line) — a single malformed/truncated line
+    // shouldn't take down every OTHER line's parse. A line that fails to
+    // parse is kept as-is (can't know it's fake without reading it, and
+    // silently dropping unparseable real data would be worse than leaving
+    // a rare bad line alone).
+    if (verb === 'removeFakeBakes') {
+      const files = ['training_log_vertical.jsonl', 'training_log_horizontal.jsonl'];
+      let removed = 0, kept = 0;
+      files.forEach(name => {
+        const p = path.join(DATA_DIR, name);
+        if (!fs.existsSync(p)) return;
+        const lines = fs.readFileSync(p, 'utf8').split('\n').filter(l => l.trim());
+        const survivors = lines.filter(l => {
+          try {
+            if (JSON.parse(l).synthetic === true) { removed++; return false; }
+          } catch (e) { /* unparseable — keep it, not ours to drop */ }
+          kept++;
+          return true;
+        });
+        fs.writeFileSync(p, survivors.length ? survivors.join('\n') + '\n' : '');
+      });
+      if (removed === 0) {
+        logSys('✓ removeFakeBakes — no synthetic rows found (already clean)');
+        return;
+      }
+      refreshSelectedBakePage();
+      logSys('✓ removed ' + removed + ' synthetic bake row(s), ' + kept + ' real row(s) kept — Train > Review graphs refreshed');
       switchLearnView('review');
       return;
     }
@@ -8790,14 +13427,14 @@ function handleInput(text) {
     // lastBakePage, the actual mechanism behind the picker rendered above
     // the graphs in Train > Review (bakeGraphMenuLines()) — same relative-
     // move pattern as reviewMove()/:train next for browsing reviewEntries.
-    // Shares its actual logic with the ^P/^N key bindings below (see
+    // Shares its actual logic with the ^N/^U key bindings below (see
     // stepGraph()) so the typed command and the keys can never drift apart.
     if (verb === 'graphNext' || verb === 'graphPrev') {
       stepGraph(verb === 'graphNext' ? 1 : -1);
       return;
     }
 
-    // :showBakeGraph <n> | <dim> [transition|vertical] [feature] — diagnostic
+    // :showBakeGraph <n> | <dim> [transition|layering] [feature] — diagnostic
     // scatter plots, TUI/Node-only (reads the training log directly, never
     // reaches Max). Fits each dim in isolation, not the real 13-27 dim
     // model — this is for deciding whether a dim LOOKS linear or curved
@@ -8812,24 +13449,28 @@ function handleInput(text) {
     // picked here is also what auto-refreshes the next time a real bake
     // gets logged (see the WS 'bakeScored' handler).
     if (verb === 'showBakeGraph') {
-      const VALID_FIT_DIMS = ['C','S','E','F','P','H','T','TnC','TnE','TnF','TnP','TnH','TnT'];
+      const VALID_FIT_DIMS = ['C','S','E','F','P','H','T','TnC','TnS','TnE','TnF','TnP','TnH','TnT'];
       let idx = parseInt(parts[1], 10);
       if (!(parts[1] !== undefined && String(idx) === parts[1] && idx >= 1 && idx <= BAKE_GRAPH_PAGES.length)) {
         const dim   = parts[1];
-        const model = (parts[2] || 'vertical').toLowerCase();
+        // Accept the TUI vocabulary (transition/layering) as well as the
+        // internal one (horizontal/vertical) — internalModelWord() maps
+        // either to the internal key everything below (pageIndexForDim,
+        // BAKE_GRAPH_PAGES, biasData) actually keys off.
+        const model = internalModelWord(parts[2] || 'vertical');
         if (!VALID_FIT_DIMS.includes(dim)) {
-          logSys('usage: :showBakeGraph <n> (1-' + BAKE_GRAPH_PAGES.length + ', see :listGraphs) | <dim> [transition|vertical] [feature] — dim must be one of ' + VALID_FIT_DIMS.join(', '));
+          logSys('usage: :showBakeGraph <n> (1-' + BAKE_GRAPH_PAGES.length + ', see :listGraphs) | <dim> [transition|layering] [feature] — dim must be one of ' + VALID_FIT_DIMS.join(', '));
           return;
         }
-        if (model !== 'vertical' && model !== 'transition') {
-          logSys('usage: :showBakeGraph <dim> [transition|vertical] [feature]');
+        if (model !== 'vertical' && model !== 'horizontal') {
+          logSys('usage: :showBakeGraph <dim> [transition|layering] [feature]');
           return;
         }
-        const validFeatures = model === 'transition' ? ['delta', 'absDelta'] : ['mean', 'std'];
+        const validFeatures = model === 'horizontal' ? ['delta', 'absDelta'] : ['mean', 'std'];
         const rawFeature = (parts[3] || validFeatures[0]).toLowerCase();
         const feature = validFeatures.find(f => f.toLowerCase() === rawFeature);
         if (!feature) {
-          logSys('usage: :showBakeGraph ' + dim + ' ' + model + ' <' + validFeatures.join('|') + '>');
+          logSys('usage: :showBakeGraph ' + dim + ' ' + MODEL_WORD[model] + ' <' + validFeatures.join('|') + '>');
           return;
         }
         idx = pageIndexForDim(dim, model, feature);
@@ -8838,7 +13479,7 @@ function handleInput(text) {
       refreshSelectedBakePage();
       const p = BAKE_GRAPH_PAGES[selectedPageIdx - 1];
       const withData = lastBakePage.graphs.filter(g => !g.empty).length;
-      logSys('✓ bake graph page — ' + selectedPageIdx + '. ' + KIND_LABEL[p.kind] + ' (' + p.dims.join(', ') + ') ' + p.model + ' ' + p.feature
+      logSys('✓ bake graph page — ' + selectedPageIdx + '. ' + KIND_LABEL[p.kind] + ' (' + p.dims.join(', ') + ') ' + (MODEL_WORD[p.model] || p.model) + ' ' + p.feature
         + ' — ' + withData + '/' + lastBakePage.graphs.length + ' dim(s) with usable bakes'
         + (withData === 0 ? ' (try :fakeBakes 12)' : '')
         + (appMode === 'learn' && learnView === 'review' ? ' (shown under the recording in Train > Review)' : ' — press ^T then :train review to see it'));
@@ -9090,14 +13731,15 @@ function handleInput(text) {
       return;
     }
 
-    // :train — toggle the training screen (same as ^T), switch its
+    // :train — toggle the training/taste screen (same as ^T; independent of
+    // :gen/^G now — see toggleTrain()/toggleGen()), switch its
     // training/review sub-menu, or run a review sub-action while already on
     // that view. See LEARN MODE, right after stopBakeLoop, for what each one
     // actually does (still named for the internal appMode/learnView state —
     // only the user-facing command/label changed from :learn/"Learn" to :train/"Train").
     if (verb === 'train') {
       const sub = (parts[1] || '').toLowerCase();
-      if (!sub) { toggleLearnMode(); return; }
+      if (!sub) { toggleTrain(); return; }
       // training/review switch the sub-menu — and enter the training screen
       // first if you weren't already there, so ":train training" alone is
       // enough to jump straight to the live bracket view from Playback.
@@ -9154,6 +13796,25 @@ function handleInput(text) {
         render();
         return;
       }
+      // :setLearnedWeight <stem|all> <transition|layering> <0-5>  — a plain
+      // passthrough to slicer.js otherwise (see COMMANDS' own comment), but
+      // slicer.js's setLearnedWeight() still only recognizes the internal
+      // 'horizontal'/'vertical' model words, so the TUI vocabulary gets
+      // translated here, client-side, before the command ever leaves —
+      // same rewrite-before-forward shape as :lockSource all and :width
+      // master just above.
+      if (verb === 'setLearnedWeight' && parts[2] !== undefined) {
+        const translated = internalModelWord(parts[2]);
+        if (translated !== parts[2].toLowerCase()) {
+          const cmd = ['setLearnedWeight', parts[1], translated, ...parts.slice(3)].join(' ');
+          bakeUserCmds.push(cmd);
+          if (bakeSessionActive && !bakeSeqSteps) upsertComportment(cmd);
+          sendToMax(cmd);
+          logSys('→ ' + cmd);
+          render();
+          return;
+        }
+      }
       // :width master <val>  — alias for :width all <val>. There's no
       // literal "master" DSP width target (M/S width is only ever computed
       // per-stem, there's no summed-master M/S stage to control), so "master
@@ -9190,8 +13851,8 @@ function handleInput(text) {
         return;
       }
       if (verb === 'chat') { toggleChatMaximize(); return; }
-      if (verb === 'stop')  { playbackStopped = true; }
-      if (verb === 'start') { playbackStopped = false; }
+      if (verb === 'stop')  { playbackStopped = true; writeInstrumentStatus(); }
+      if (verb === 'start') { playbackStopped = false; writeInstrumentStatus(); }
       if (verb === 'setGlobalBPM') {
         const n = parseFloat(parts[1]);
         if (!isNaN(n)) state.globalBPM = n > 0 ? n : 0;  // 0 = cleared (auto)
@@ -9336,19 +13997,34 @@ screen.key(['escape'], () => process.exit(0));
 // character-insert regex (see CURSOR-AWARE INPUT EDITING below) so none of
 // them leak into whatever's currently typed either.
 //
-// There are two SCREENS — playback and training — plus one OVERLAY, chat,
-// that can toggle on top of whichever screen is active without changing it
-// (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES, near where
-// PLAYBACK_HEADER_BOXES/PLAYBACK_CHANNEL_BOXES are defined). ^C and ^T are
-// therefore fully independent: ^T keeps working while chat is open (the
-// overlay just follows to the new screen), and ^C keeps working regardless
-// of which screen you're on.
+// Playback is the baseline, not a peer screen any more (user: "playback is
+// the normal basic mode of the system. train taste and train gen are
+// 'windows' to open" — see renderFooter()'s own comment for the fuller
+// version of this). Train ('learn') and Gen ('gen') are the only two real
+// "windows," each with its own dedicated toggle key — ^T Train, ^G Gen —
+// per a later ask: "separate Train and Gen from the same tab. Use a
+// separate tab for each," reverting an intermediate design (briefly merged
+// Train/Gen onto one shared ^T toggle over a baseLayer var, per an earlier
+// ask: "put Train and Gen on the same control tab" — see git history on
+// this comment and on toggleTrain()/toggleGen() for that design). Chat
+// (^C) and Tip (^V) remain true OVERLAYS, independent of all of the above,
+// on top of whatever screen is currently showing (see the SCREEN MODEL
+// comment above CHAT_OVERLAY_BOXES).
 //
 //   ^C — open/close the chat overlay, on top of whichever screen is active
-//   ^T — switch between the playback and training screens (training has
-//        its own sub-menu — training/review — see :train training|review
-//        and the LEARN MODE section). Was ^R; moved to ^T so the letter
-//        matches "Train".
+//   ^T — toggle Train (see toggleTrain()) — training has its own sub-menu
+//        — training/review — see :train training|review and the LEARN
+//        MODE section. Was ^R, then switched to ^T so the letter matched
+//        "Train"; briefly the shared Train/Gen toggle (^G folded into it)
+//        during the merged-tab phase, now back to being just Train's own
+//        key. Chip/label was briefly "Train taste" (see renderFooter()'s
+//        own comment for why), back to plain "Train" now that Playback no
+//        longer sits in the same row needing to be told apart from it.
+//   ^G — toggle Gen (see toggleGen()) — its own independent screen toggle
+//        again, closing back to Playback same as ^T does for Train. "G"
+//        for "Gen" — this was ^G's original job before the merged-tab
+//        phase folded it into ^T; unfolded back out now. Chip/label same
+//        "Train gen" → "Gen" rename as ^T's above.
 //   ^R — switch training's own sub-menu, training <-> review (see
 //        toggleLearnSubView()) — only fires once you're already on the
 //        training screen (user: "the control r command should only work
@@ -9367,15 +14043,28 @@ screen.key(['escape'], () => process.exit(0));
 //        from the Backspace key at the terminal-protocol level (both send
 //        the same 0x08 byte), so it can't be bound separately without
 //        breaking text editing in inputBox. "D" (Down) took its place.
-//   ^P / ^N — step the graph picker in Train > Review — ^P up (previous),
-//        ^N down (next), classic Emacs previous/next letters. ^J was the
-//        first choice for "down" (user request) but isn't usable either —
-//        confirmed live that Ctrl+J arrives as a plain Enter keypress (both
-//        send the same 0x0A byte), which is already bound to SUBMIT
-//        whatever's typed in inputBox — so it would've submitted the
-//        command line instead of moving the picker. "P" took its place,
-//        keeping the "N" half of the original request. See stepGraph()/
-//        stepGraphKey() below.
+//   ^N / ^U — step the graph picker in Train > Review — ^N down (next), ^U
+//        up (previous). Was ^P/^N (classic Emacs previous/next), then
+//        briefly ^N/^J for "down" — ^J rejected, confirmed live that Ctrl+J
+//        arrives as a plain Enter keypress (both send the same 0x0A byte),
+//        already bound to SUBMIT whatever's typed in inputBox, so it
+//        would've submitted the command line instead of moving the picker.
+//        ^P freed up in that swap, and moved to ^V for the tip panel below
+//        (see the ^V entry) — later freed again for good when Playback
+//        stopped being a togglable screen at all (user: "remove the
+//        playback tab since it is the baseline" — see renderFooter()'s own
+//        comment); ^P is unbound today.
+//   ^V — toggle the tip panel (see TIP_PANEL_BOXES/toggleTipPanel()) — a
+//        second overlay, same independent-of-appMode treatment chat's own
+//        ^C gets (see the SCREEN MODEL comment above CHAT_OVERLAY_BOXES).
+//        Landed on ^V (freed up by the swap above) when it moved off its
+//        original key; ^Y (the user's first pick) was already taken by
+//        stepBake(-1) above, so ^V instead — free, and close enough to
+//        "tiP"/"reVeal" to still read as a deliberate choice rather than a
+//        random leftover key. Footer
+//        chip lives on the right, next to Log out (user: "move the tip tab
+//        next to log out") — the key binding itself doesn't care where its
+//        chip is drawn.
 //   ^L — leave this session, back to the login/session picker (2-step
 //        confirm — reuses :logout's own logic, see that verb's own comment).
 //   ^Q — toggle the :commands panel (see openCmdPanel()/collapseCmd()) —
@@ -9385,20 +14074,63 @@ screen.key(['escape'], () => process.exit(0));
 //        (no longer the key glyph) — see footerChip() call above.
 //   ^A — toggle the :language panel (openLangPanel()/collapseLang()), same
 //        deal as ^Q. "A" from lAnguage; 文 likewise moved to the description.
+//   ^S — start/stop the transport (see toggleStartStop(), just below the ^A
+//        binding). "S" for Start/Stop/Stem — confirmed free (not claimed by
+//        any Ctrl combo above), and doesn't collide with the terminal's own
+//        XOFF byte in practice: ^Q (XON) is already bound above and works
+//        fine, so flow control is already out of the picture here, same for
+//        ^S. Re-dispatches through handleInput(':start'/':stop') rather than
+//        duplicating the verb handler's logic (bakeUserCmds push, sendToMax,
+//        quiet logSys — see handleInput's own 'start'/'stop' branch) — same
+//        "call back into handleInput() instead of forking the logic" shape
+//        confirmExitToLogin() already uses for ^L → :logout, just without
+//        the two-step confirm (start/stop don't need one). Flips which of
+//        :start/:stop to send off playbackStopped, so the key always does
+//        the OPPOSITE of whatever's currently happening — press once to
+//        start, press again to stop — same toggle shape as ^C/^T/^G/^V.
 screen.key(   ['C-c'], toggleChatMaximize);
 inputBox.key( ['C-c'], toggleChatMaximize);
-screen.key(   ['C-t'], toggleLearnMode);
-inputBox.key( ['C-t'], toggleLearnMode);
+screen.key(   ['C-t'], toggleTrain);
+inputBox.key( ['C-t'], toggleTrain);
+screen.key(   ['C-g'], toggleGen);
+inputBox.key( ['C-g'], toggleGen);
+screen.key(   ['C-v'], toggleTipPanel);
+inputBox.key( ['C-v'], toggleTipPanel);
+// ^O — Playback's own "Link" sub-view (see playbackLinkView's own comment
+// and linkListBox/linkDetailBox's declaration) — user: "add a sub tab in
+// the playback tab: Link. just like the training and review... ^O Link".
+// Same "own screen only, no-op elsewhere" rule toggleLearnSubView()'s own
+// ^R already uses right below (training tab only) — Link is Playback's
+// sub-view the exact same way Training/Review are Learn's, so it gets the
+// same restriction rather than inventing a different cross-screen behavior
+// for no real reason. "O" — free (not claimed by any Ctrl combo above),
+// and reads as "O" for "lINK" being a stretch either way, so it's really
+// just the next available letter close to the other transport-y keys
+// (^S start/stop, ^V tip) rather than a deliberate mnemonic.
+function toggleLinkView() {
+  if (appMode !== 'playback') return;
+  playbackLinkView = !playbackLinkView;
+  render();
+  renderFooter();
+  screen.render();
+}
+screen.key(   ['C-o'], toggleLinkView);
+inputBox.key( ['C-o'], toggleLinkView);
 function toggleLearnSubView() {
   if (appMode !== 'learn') return; // training tab only — see the ^R comment above
   switchLearnView(learnView === 'training' ? 'review' : 'training');
 }
 
-// stepBake — shared by the ^B/^D keys below: on first press from outside
+// stepBake — shared by the ^B/^Y keys below: on first press from outside
 // Review, jumps there (same cold-start behavior cycleBake() always had,
 // regardless of which of the two keys triggered it — either one means "take
 // me to my bakes"); once already on Review, moves reviewIndex by delta,
-// wrapping past either end. ^B = -1 (up/previous), ^D = +1 (down/next).
+// wrapping past either end. ^B = +1 (down/next), ^Y = -1 (up/previous).
+// Was ^B/^D, briefly ^B/^H (^H rejected — same byte as Backspace, see
+// stepGraphKey()'s own comment for the parallel case). ^Y (0x19) isn't
+// special-cased anywhere in blessed/lib/keys.js's raw-byte table (only
+// \r/\n/\t/\b/\x7f/\x1b/space are), so it parses as a clean ctrl+letter
+// event same as ^B/^N/etc — no collision.
 function stepBake(delta) {
   const wasReview = appMode === 'learn' && learnView === 'review';
   if (!wasReview) { switchLearnView('review'); return; }
@@ -9408,13 +14140,13 @@ function stepBake(delta) {
 }
 screen.key(   ['C-r'], toggleLearnSubView);
 inputBox.key( ['C-r'], toggleLearnSubView);
-screen.key(   ['C-b'], () => stepBake(-1));
-inputBox.key( ['C-b'], () => stepBake(-1));
-screen.key(   ['C-d'], () => stepBake(1));
-inputBox.key( ['C-d'], () => stepBake(1));
+screen.key(   ['C-b'], () => stepBake(1));
+inputBox.key( ['C-b'], () => stepBake(1));
+screen.key(   ['C-y'], () => stepBake(-1));
+inputBox.key( ['C-y'], () => stepBake(-1));
 
 // stepGraph — shared by :graphNext/:graphPrev (see handleInput's verb
-// check) and the ^P/^N keys right below: moves selectedPageIdx by delta
+// check) and the ^N/^U keys right below: moves selectedPageIdx by delta
 // (wrapping past either end) and re-derives lastBakePage, logging +
 // redrawing the same way either entry point always did. Pulled out into
 // its own function so the typed command and the keys share one definition
@@ -9425,34 +14157,49 @@ function stepGraph(delta) {
   refreshSelectedBakePage();
   const p = BAKE_GRAPH_PAGES[selectedPageIdx - 1];
   const withData = lastBakePage.graphs.filter(g => !g.empty).length;
-  logSys('✓ bake graph page — ' + selectedPageIdx + '. ' + KIND_LABEL[p.kind] + ' ' + p.model + ' ' + p.feature
+  logSys('✓ bake graph page — ' + selectedPageIdx + '. ' + KIND_LABEL[p.kind] + ' ' + (MODEL_WORD[p.model] || p.model) + ' ' + p.feature
     + ' — ' + withData + '/' + lastBakePage.graphs.length + ' dim(s) with data');
   if (appMode === 'learn' && learnView === 'review') { renderTrainingView(); screen.render(); }
 }
 
-// ^P / ^N — step the graph picker, review-tab only (user originally asked
+// ^N / ^U — step the graph picker, review-tab only (user originally asked
 // for control-M as the "enter graph nav mode" key, then control-N/control-J
 // for direction — see the mode-toggles comment block above for why both M
 // and J turned out to be unusable, confirmed live with an actual keypress
 // test rather than assumed: Ctrl+M is the same byte as Enter (name:
 // 'return'), Ctrl+J is the same byte as Enter's OTHER common name (name:
 // 'enter', the exact one inputBox.key('enter') below listens for) — either
-// would submit the command line, not move the picker. ^P/^N are plain
-// single control-byte keys (0x10/0x0E) with no such collision — verified
-// the same way — and happen to match readline/Emacs' own previous/next
-// convention, so ^P still reads as "up" and ^N as "down" without needing a
-// modifier+arrow combo at all. Plain Up/Down stay untouched everywhere,
-// including here — those are hard-reserved for command history (see that
-// binding's own comment for why mixing in a second meaning there was
-// deliberately reverted once already).
+// would submit the command line, not move the picker. Went through ^P/^N,
+// then briefly ^N/^J (^J rejected again for the same reason), now ^N/^U:
+// ^U (0x15) isn't special-cased in blessed/lib/keys.js's raw-byte table
+// either, so — like ^Y for the bake keys right above — it parses as a
+// clean ctrl+letter event with no collision. ^N = down/next, ^U = up/
+// previous. Plain Up/Down stay untouched everywhere, including here —
+// those are hard-reserved for command history (see that binding's own
+// comment for why mixing in a second meaning there was deliberately
+// reverted once already).
 function stepGraphKey(delta) {
   if (!(appMode === 'learn' && learnView === 'review')) return; // review-tab only — mirrors ^R's own restriction
   stepGraph(delta);
 }
-screen.key(   ['C-p'], () => stepGraphKey(-1));
-inputBox.key( ['C-p'], () => stepGraphKey(-1));
+screen.key(   ['C-u'], () => stepGraphKey(-1));
+inputBox.key( ['C-u'], () => stepGraphKey(-1));
 screen.key(   ['C-n'], () => stepGraphKey(1));
 inputBox.key( ['C-n'], () => stepGraphKey(1));
+
+// ^D / ^K — step the Gen screen's browse list (see stepGen()/stepGenKey()
+// above), same "quick-nav key alongside a typed next/prev command" shape
+// ^B/^Y (bake) and ^N/^U (graph) already use. ^D = next (down), ^K =
+// previous (up) — both confirmed free: ^D briefly meant "bake down" early
+// on (see the bake chip's own comment — reassigned to ^Y since, so ^D was
+// sitting unused), ^K was never claimed by anything. Neither collides with
+// a raw terminal control byte the way ^H/^I/^J/^M do (see the ^N/^U
+// comment above for that whole class of rejected keys).
+screen.key(   ['C-d'], () => stepGenKey(1));
+inputBox.key( ['C-d'], () => stepGenKey(1));
+screen.key(   ['C-k'], () => stepGenKey(-1));
+inputBox.key( ['C-k'], () => stepGenKey(-1));
+
 // Same toggle logic the :commands/:language verb handlers use (see those,
 // up near the other handleInput() verb checks) — pulled out into named
 // functions here so both the typed command AND ^Q/^A share one definition
@@ -9469,6 +14216,31 @@ screen.key(   ['C-q'], toggleCommandsPanel);
 inputBox.key( ['C-q'], toggleCommandsPanel);
 screen.key(   ['C-a'], toggleLanguagePanel);
 inputBox.key( ['C-a'], toggleLanguagePanel);
+// toggleStartStop() — ^S. Sends whichever of :start/:stop is the OPPOSITE of
+// the current transport state (playbackStopped), through handleInput() so
+// it goes through the exact same path as typing the command by hand
+// (bakeUserCmds/upsertComportment tracking, sendToMax, the quiet logSys —
+// see handleInput's own 'start'/'stop' verb branch). Mirrors
+// confirmExitToLogin()'s handleInput(':logout') re-entry just above, minus
+// the two-step confirm start/stop don't need.
+// Explicit renderFooter() call after — user: "the ^S should toggle between
+// start and stop. it should show stop when start is hit and should show
+// start when stop is hit." handleInput()'s own generic render() call at the
+// end of the start/stop branch refreshes everything EXCEPT the footer chip
+// row — footerBox.setContent() only ever happens inside renderFooter()
+// itself, which is its own separate call, only wired up at a handful of
+// specific spots (switchScreen/switchLearnView/toggleTipPanel/resize/
+// startup — see those call sites) — the periodic scheduleRender() ticks
+// that drive everything else never touch it either. Without this, the
+// ^S label kept whatever it last showed until something ELSE happened to
+// trigger a footer redraw, instead of flipping the instant ^S was pressed.
+function toggleStartStop() {
+  handleInput(playbackStopped ? ':start' : ':stop');
+  renderFooter();
+  screen.render();
+}
+screen.key(   ['C-s'], toggleStartStop);
+inputBox.key( ['C-s'], toggleStartStop);
 function confirmExitToLogin() {
   // The confirm prompt is a logSys() line into logBox, which only exists
   // inside the chat overlay now (see CHAT_OVERLAY_BOXES) — used to force
@@ -9476,11 +14248,12 @@ function confirmExitToLogin() {
   // (user: "actually, never open the chat automatically. let the user open
   // it by typing control c.") — the prompt still logs via logSys() below,
   // just silently if chat happens to be closed, same as everything else now.
-  // Also drop out of Learn mode explicitly: chat and Learn are fully
-  // independent toggles now (toggleChatMaximize() no longer touches
-  // appMode), so nothing else will do this for us, and there's no reason
-  // to leave the training screen "active in the background" through a logout.
-  if (appMode === 'learn') exitLearnMode();
+  // Also drop out of Train/Gen/Playback explicitly back to Playback: chat
+  // and the underlying layer are fully independent toggles now
+  // (toggleChatMaximize() no longer touches appMode), so nothing else will
+  // do this for us, and there's no reason to leave Training or Gen "active
+  // in the background" through a logout.
+  if (appMode !== 'playback') switchScreen('playback');
   logSys('leaving this session — back to the login screen. Type Y to confirm, anything else to cancel.');
   pendingConfirm = () => handleInput(':logout');
   render();
@@ -9559,6 +14332,7 @@ screen.on('resize', () => {
   renderFooter();
   reflow(); render();
   if (appMode === 'learn') { reflowLearn(); renderTrainingView(); }
+  if (appMode === 'gen') { reflowGen(); renderGenPanel(); }
   // Belt-and-suspenders: with smartCSR off this shouldn't be load-bearing
   // anymore (see screen options above for the real fix), but a full
   // reallocation on resize is cheap and guarantees no stale buffer state

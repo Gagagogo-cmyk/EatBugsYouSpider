@@ -86,23 +86,77 @@ function readStreamTxt() {
     }
     post("analyze_reader: reading " + STREAM_PATH + "\n");
 
-    // Read ALL lines — format: "label /full/path/stem.wav"
+    // BUG (found + fixed here): this used to just push every line's PATH
+    // into one flat array and later slice it into batches of 4 by pure
+    // POSITION (globalIdx = currentBatch*4 + (n-1), see startStem() below),
+    // completely ignoring the "label" token each line actually starts with.
+    // That's correct only as long as EVERY track contributes exactly 4
+    // lines in the fixed order vocals/drums/bass/melody — true for a real
+    // Demucs track, but false for anything ingest_generated.py's
+    // regenerate_stream_txt() writes: a generated clip only ever has ONE
+    // stem file on disk (generate_agent.py produces a single isolated
+    // stem), so it contributes exactly ONE line, not four. The moment a
+    // partial-stem track's line(s) landed anywhere but a batch boundary,
+    // every following line's assumed stem type silently shifted by however
+    // many slots were missing — e.g. a lone "drums /path/to/GEN__drums_..
+    // ..._drums.wav" line landing at position 4 (5th overall) got read as
+    // step n=1 of the NEXT batch, i.e. treated as "vocals": loaded into the
+    // vocals FluCoMa chain, analyzed there, and written to
+    // analysis_library.json as a fabricated "..._vocals.wav" entry — while
+    // the track's real drums content never got a "..._drums.wav" entry at
+    // all. Net effect: buildIndex() in slicer.js could never find this
+    // generated track under its OWN stem type, so :setAgentMode <stem>
+    // generate had nothing to actually surface for it — the "gen tracks
+    // never load in the playback engine" symptom.
+    //
+    // Fix: group lines by the track folder each path actually lives in
+    // (not by raw line position), and place each line into the canonical
+    // vocals/drums/bass/melody slot named by ITS OWN label — not by
+    // whichever position it happened to land on in the flat file. Tracks
+    // with fewer than 4 stems just leave the other slots blank, which
+    // startStem()'s existing `if (!path) { advanceCounter(); return; }`
+    // guard already skips cleanly — no change needed there. This keeps the
+    // external Max [counter 1 4] object's fixed mod-4 stepping valid (every
+    // batch is still exactly 4 slots wide once flattened back out below),
+    // it just no longer trusts position to mean anything about content.
+    var LABEL_SLOT  = { vocals: 0, drums: 1, bass: 2, melody: 3 };
+    var trackOrder  = [];   // track-folder keys, in first-seen order
+    var trackSlots  = {};   // trackFolder -> [vocalsPath, drumsPath, bassPath, melodyPath]
+
     while (true) {
         var line = f.readline();
         if (line === null || line === undefined) break;
         line = line.replace(/[\r\n]+$/, "");
         if (line === "") continue;
         var space = line.indexOf(" ");
-        var path  = (space > 0) ? line.slice(space + 1).trim() : line.trim();
-        if (path) allStemPaths.push(path);
+        if (space <= 0) continue;   // no label — can't tell which slot this is, skip
+        var label = line.slice(0, space).trim();
+        var path  = line.slice(space + 1).trim();
+        if (!path) continue;
+        if (!LABEL_SLOT.hasOwnProperty(label)) {
+            post("analyze_reader: stream.txt — unknown stem label '" + label + "' — skipping line\n");
+            continue;
+        }
+        var slash     = path.lastIndexOf('/');
+        var trackKey  = (slash >= 0) ? path.slice(0, slash) : path;  // this stem's own parent folder
+        if (!trackSlots.hasOwnProperty(trackKey)) {
+            trackSlots[trackKey] = ["", "", "", ""];
+            trackOrder.push(trackKey);
+        }
+        trackSlots[trackKey][LABEL_SLOT[label]] = path;
     }
     f.close();
+
+    for (var ti = 0; ti < trackOrder.length; ti++) {
+        var slots = trackSlots[trackOrder[ti]];
+        for (var s = 0; s < 4; s++) allStemPaths.push(slots[s]);
+    }
 
     // Back-compat: populate stemPaths[1..4] from first batch
     for (var i = 0; i < 4; i++) stemPaths[i+1] = allStemPaths[i] || "";
 
     var nTracks = Math.ceil(allStemPaths.length / 4);
-    post("analyze_reader: " + allStemPaths.length + " stems loaded — " + nTracks + " track(s)\n");
+    post("analyze_reader: " + trackOrder.length + " track(s), " + allStemPaths.length + " stem-slot(s) loaded — " + nTracks + " batch(es)\n");
 
     if (allStemPaths.length === 0) {
         post("analyze_reader: ERROR — stream.txt empty or unreadable\n");

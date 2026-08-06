@@ -1,0 +1,9 @@
+#N canvas 100 100 500 260 12;
+#X obj 40 20 inlet;
+#X obj 40 180 outlet;
+#X obj 140 180 outlet;
+#X obj 240 180 outlet;
+#X obj 340 180 outlet;
+#X obj 440 180 outlet;
+#X text 140 40 regexp_stub: Max's regexp (regular-expression match/extract) has no vanilla Pd equivalent. This stub just passes the input straight through to outlet 0 and does nothing on outlets 1-4 (which normally carry captured groups/match status). Pd 0.52+'s [textfind] family is the closest built-in if you need real regex matching -- not wired up here., f 320;
+#X connect 0 0 1 0;

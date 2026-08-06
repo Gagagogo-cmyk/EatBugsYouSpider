@@ -47,6 +47,11 @@ The EBYS instrument — architecture, engine, AI, training, hardware.
 | `MOMENTUM.md` | add_tension.py — tension field computation, bar-level slopes |
 | `STRETCH_WIRING.md` | Time-stretch wiring guide for Max patch |
 | `ILM.md` | EBYS as an Intonation Language Model |
+| `GENERATIVE_LAYER.md` | Generative layer roadmap: taste model + generator, Stable Audio Open build order |
+| `USER_LORA.md` | User LoRA — sonic identity layer, Stable Audio 3 fine-tuning plan |
+| `VST_PLUGIN_ROADMAP.md` | **Current plan.** VST3/AU plugin roadmap: JUCE core + Python backend, ordered build steps, start here |
+| `PD_MIGRATION.md` | Max → Pure Data conversion plan: patch inventory, priority order, Aug 8 reality check |
+| `REAPER_INTEGRATION.md` | Superseded by `VST_PLUGIN_ROADMAP.md` — kept as historical record |
 | `CHANGELOG.md` | Version history: 0.1.0 → 0.1.19 |
 
 ---

@@ -58,7 +58,7 @@
 //        slices Nv Nm Nb Nd                             — per-stem slice counts (vocals melody bass drums)
 //        track_name name                                — cleaned source track name
 //        need_stemDurs                                  — ask Max to resend setStemDurMs for all stems
-//        desc track C S E F P H T tC tE tF tP tH tT    — current slice descriptors + tensions
+//        desc track C S E F P H T tC tS tE tF tP tH tT — current slice descriptors + tensions
 //        slice_ms track ms                              — absolute playback position in ms
 //        stemTrack track name                           — source file name for this stem
 //        seg track id dur bars startFrac endFrac        — segment summary (human-readable)
@@ -283,7 +283,7 @@ function tickLiveDesc() {
         if (!cur) continue;
 
         outlet(1, "desc", track, cur.C, cur.S, cur.E, cur.F, cur.P, cur.H, cur.T,
-               cur.tension_C, cur.tension_E, cur.tension_F,
+               cur.tension_C, cur.tension_S, cur.tension_E, cur.tension_F,
                cur.tension_P, cur.tension_H, cur.tension_T);
         outlet(1, "stemMS", track, cur.pan, cur.width);
         outlet(1, "slice_ms", track, Math.round(posMs));
@@ -792,11 +792,13 @@ var DIR_WEIGHT = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };  // per-st
 var lastEndDesc = { vocals: null, melody: null, bass: null, drums: null };
 
 // ── LEARNED BIAS (train_bias.py) ──────────────────────────────────────────────
-// Closes the loop from human judgments (:score / :scoreTransition, logged by
-// ws_server.js to training_log_vertical.jsonl / training_log_transition.jsonl)
+// Closes the loop from human judgments (:scoreLyr / :scoreTrs, logged by
+// ws_server.js to training_log_vertical.jsonl / training_log_horizontal.jsonl)
 // back into live candidate scoring — see train_bias.py's header comment for
-// the full design rationale. Two independent linear models, fit offline:
-//   TRANSITION_BIAS — predicts "will this cut flow well" from the candidate's
+// the full design rationale. Two independent linear models, fit offline,
+// named after the same horizontal/vertical pair the rest of EBYS uses (the
+// timeline runs horizontally, stems stack vertically):
+//   HORIZONTAL_BIAS — predicts "will this cut flow well" from the candidate's
 //     descriptor deltas vs. what's currently playing (same 6 dims already
 //     used by MATCH_PROB/DIR_PREF above).
 //   VERTICAL_BIAS   — predicts "does this combination of all 4 stems' current
@@ -806,8 +808,8 @@ var lastEndDesc = { vocals: null, melody: null, bass: null, drums: null };
 // Both null until learned_bias.json exists AND has enough data — see
 // loadLearnedBias(). Every function below is written to no-op cleanly when
 // either is null, so nothing changes for anyone who hasn't trained a model
-// yet; :score/:scoreTransition logging happens regardless.
-var TRANSITION_BIAS = null;  // { weights: {deltaC,...,absDeltaC,...}, bias, n_samples, r2 } | null
+// yet; :scoreLyr/:scoreTrs logging happens regardless.
+var HORIZONTAL_BIAS = null;  // { weights: {deltaC,...,absDeltaC,...}, bias, n_samples, r2 } | null
 var VERTICAL_BIAS   = null;  // { weights: {meanC,stdC,...}, bias, n_samples, r2 } | null
 // FIT_SHAPES[label] = 'quadratic' | 'cubic' for any dim :setFitShape flipped
 // up from the default 'linear' — read from learned_bias.json's own
@@ -821,23 +823,37 @@ var FIT_SHAPES = {};
 // Per-stem dial on how much each learned model influences scoreCandidate(),
 // same 0-5 convention as DIR_WEIGHT. 0 = ignore that model entirely even if
 // loaded (useful for A/B'ing whether it's actually helping).
-var LEARNED_TRANS_WEIGHT = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };
+var LEARNED_HORIZ_WEIGHT = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };
 var LEARNED_VERT_WEIGHT  = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };
 
-// Per-stem source: 'remix' (default — pick only real catalog material) or
-// 'generate' (pick only generated candidates). Generated source tracks are
+// Per-stem source: 'remix' (default — pick only real catalog material),
+// 'generate' (pick only generated candidates), or 'blend' (pool both
+// together, no source filtering at all). Generated source tracks are
 // identified purely by naming convention — generate_agent.py names them
 // with a "GEN__" prefix before they go through the normal import + Max
 // analysis pipeline, so they land in `arr` exactly like any real track,
 // just distinguishable by sourceTrack name. No schema/index changes needed
-// for this — see filterPoolByAgentMode() below, called right before
-// applyLearnedRefusal()/scoreCandidate() at both selection sites. Neither
-// of those functions, nor next() itself, needs to know this switch exists.
+// for this — see filterPoolByAgentMode() below, applied to `pool`
+// UNCONDITIONALLY in both selectSegment() and loop() (not only when
+// applyLearnedRefusal()/scoreCandidate() run) — a 'remix' stem must never
+// surface a generated candidate regardless of what else is active, per
+// Alex: "no tracks from the generative model should be entering the
+// remixing engine" when mode is 'remix'. Neither applyLearnedRefusal()/
+// scoreCandidate(), nor next() itself, needs to know this switch exists —
+// they only ever see an already-filtered pool.
+// In 'blend', a generated candidate is not pre-screened by anything before
+// it can be picked — the same live scoreCandidate() ranking and
+// applyLearnedRefusal() hard-exclusion that already vet every real slice
+// are the only filter it ever gets. That's deliberate: there's no separate
+// "is this generation good enough to keep" gate upstream of this, because
+// once a GEN__ track has gone through the normal analysis pipeline it's
+// just another arr[] entry — the taste model doesn't need a second
+// implementation to judge it, the one it already has covers it.
 var AGENT_MODE = { vocals: 'remix', melody: 'remix', bass: 'remix', drums: 'remix' };
 var GENERATED_PREFIX = 'GEN__';
 
-// Predicted quality below this (on the same -1..1 scale as :score/
-// :scoreTransition ratings) gets a candidate HARD-EXCLUDED from the pool
+// Predicted quality below this (on the same -1..1 scale as :scoreLyr/
+// :scoreTrs ratings) gets a candidate HARD-EXCLUDED from the pool
 // entirely, not just penalized — see applyLearnedRefusal(). Soft
 // favoring/penalizing for everything above this threshold happens inside
 // scoreCandidate() itself, same mechanism as MATCH_PROB/DIR_PREF.
@@ -892,7 +908,7 @@ function biaschunk() {
 }
 
 function loadLearnedBias() {
-    TRANSITION_BIAS = null;
+    HORIZONTAL_BIAS = null;
     VERTICAL_BIAS   = null;
     FIT_SHAPES      = {};
     try {
@@ -905,7 +921,7 @@ function loadLearnedBias() {
             if (!f.isopen) {
                 post("EBYS Slicer: loadLearnedBias — could not open " + getDataDir()
                      + "learned_bias.json (no learnedBiasRaw cached yet either) — "
-                     + "run train_bias.py after accumulating :score/:scoreTransition data\n");
+                     + "run train_bias.py after accumulating :scoreLyr/:scoreTrs data\n");
                 return;
             }
             var raw = "";
@@ -913,24 +929,24 @@ function loadLearnedBias() {
             f.close();
             data = JSON.parse(raw);
         }
-        if (data.transition) {
-            TRANSITION_BIAS = data.transition;
-            post("EBYS Slicer: learned TRANSITION bias loaded (n=" + data.transition.n_samples
-                 + ", R2=" + data.transition.r2.toFixed(3) + ")\n");
+        if (data.horizontal) {
+            HORIZONTAL_BIAS = data.horizontal;
+            post("EBYS Slicer: learned HORIZONTAL bias loaded (n=" + data.horizontal.n_samples
+                 + ", R2=" + data.horizontal.r2.toFixed(3) + ")\n");
         }
         if (data.vertical) {
             VERTICAL_BIAS = data.vertical;
             post("EBYS Slicer: learned VERTICAL bias loaded (n=" + data.vertical.n_samples
                  + ", R2=" + data.vertical.r2.toFixed(3) + ")\n");
         }
-        if (!data.transition && !data.vertical) {
+        if (!data.horizontal && !data.vertical) {
             post("EBYS Slicer: learned_bias.json present but both models are still "
-                 + "null (not enough :score/:scoreTransition data yet)\n");
+                 + "null (not enough :scoreLyr/:scoreTrs data yet)\n");
         }
         // dim_shapes — which labels train_bias.py fit extra sq/cu (or
         // sqMean/cuMean) terms for, per :setFitShape. Straight passthrough
         // of the {label: 'quadratic'|'cubic'} map train_bias.py wrote (see
-        // its load_fit_shapes()/main()) so predictTransitionQuality/
+        // its load_fit_shapes()/main()) so predictHorizontalQuality/
         // predictVerticalQuality can check it with a plain property read,
         // same style as the weight dicts themselves. Old field name was
         // quadratic_dims (an array) — this replaces it, not just renames it,
@@ -957,14 +973,14 @@ function reloadBias() {
     post("EBYS Slicer: reloadBias — requested fresh learned_bias.json from ws_server\n");
 }
 
-// setLearnedWeight <stem|all> <transition|vertical> <0-5>
+// setLearnedWeight <stem|all> <horizontal|vertical> <0-5>
 function setLearnedWeight(stem, kind, val) {
     var targets = (String(stem) === 'all') ? TRACKS : [String(stem)];
     var v = clamp(parseFloat(val), 0.0, 5.0);
     var table = (String(kind) === 'vertical') ? LEARNED_VERT_WEIGHT
-              : (String(kind) === 'transition') ? LEARNED_TRANS_WEIGHT : null;
+              : (String(kind) === 'horizontal') ? LEARNED_HORIZ_WEIGHT : null;
     if (!table) {
-        post("EBYS Slicer: setLearnedWeight — kind must be 'transition' or 'vertical', got '" + kind + "'\n");
+        post("EBYS Slicer: setLearnedWeight — kind must be 'horizontal' or 'vertical', got '" + kind + "'\n");
         return;
     }
     for (var i = 0; i < targets.length; i++) {
@@ -976,18 +992,20 @@ function setLearnedWeight(stem, kind, val) {
     }
 }
 
-// setAgentMode <stem|all> <remix|generate>
+// setAgentMode <stem|all> <remix|generate|blend>
 // Pure candidate-sourcing switch — does not touch scoreCandidate(),
 // applyLearnedRefusal(), or next()'s playback/sync logic at all. A
 // generated candidate that makes it through the pool filter below is, by
 // this point, just another arr[] entry with real computed descriptors from
 // the normal analysis pipeline — indistinguishable to the scoring code from
-// a real slice.
+// a real slice. 'blend' pools real and generated candidates together
+// (filterPoolByAgentMode does no source filtering in that mode) so the two
+// populations compete for selection exactly like any two real slices would.
 function setAgentMode(stem, mode) {
     var targets = (String(stem) === 'all') ? TRACKS : [String(stem)];
     var m = String(mode);
-    if (m !== 'remix' && m !== 'generate') {
-        post("EBYS Slicer: setAgentMode — mode must be 'remix' or 'generate', got '" + m + "'\n");
+    if (m !== 'remix' && m !== 'generate' && m !== 'blend') {
+        post("EBYS Slicer: setAgentMode — mode must be 'remix', 'generate', or 'blend', got '" + m + "'\n");
         return;
     }
     for (var i = 0; i < targets.length; i++) {
@@ -1006,8 +1024,15 @@ function setAgentMode(stem, mode) {
 // imported yet for this stem), falls back to the unfiltered pool rather
 // than silently stalling playback — same fail-open pattern
 // applyLearnedRefusal() already uses for its own empty-result case.
+// 'blend' is a no-op here by design: real and generated candidates both
+// pass straight through untouched, so they compete for selection in the
+// same call to scoreCandidate()/applyLearnedRefusal() that already runs
+// for either population alone. No ratio/weighting knob — whichever
+// candidate actually scores best (or gets hard-excluded by the learned
+// quality threshold) wins, same as any two real slices would.
 function filterPoolByAgentMode(pool, arr, track) {
     var mode = AGENT_MODE[track] || 'remix';
+    if (mode === 'blend') return pool;
     var wantGenerated = (mode === 'generate');
     var kept = [];
     for (var i = 0; i < pool.length; i++) {
@@ -1015,23 +1040,45 @@ function filterPoolByAgentMode(pool, arr, track) {
         var isGenerated = src.indexOf(GENERATED_PREFIX) === 0;
         if (isGenerated === wantGenerated) kept.push(pool[i]);
     }
-    if (kept.length === 0) {
-        post("EBYS Slicer: [" + track + "] agentMode='" + mode + "' has no matching "
-             + "candidates in the pool right now — falling back to the unfiltered pool\n");
-        return pool;
+    if (kept.length > 0) return kept;
+
+    // The passed-in pool (already narrowed by genre/key/downbeat) had no
+    // candidate of the right source type — widen to the FULL index for this
+    // stem, ignoring those other criteria, before ever crossing the
+    // remix/generate boundary. Alex: "no tracks from the generative model
+    // should be entering the remixing engine" when mode is 'remix' — that's
+    // an integrity requirement, not a soft preference, so the old behavior
+    // (falling straight back to the unfiltered, mixed-source pool the
+    // moment the CURRENT narrow pool came up empty — the common case, not
+    // the rare one) was wrong. This only crosses the boundary as a true
+    // last resort below, when arr has zero slices of the required type
+    // anywhere for this stem.
+    var wide = [];
+    for (var wi = 0; wi < arr.length; wi++) {
+        var wsrc = arr[wi].sourceTrack || '';
+        if ((wsrc.indexOf(GENERATED_PREFIX) === 0) === wantGenerated) wide.push(wi);
     }
-    return kept;
+    if (wide.length > 0) {
+        post("EBYS Slicer: [" + track + "] agentMode='" + mode + "' — no matching candidate in the "
+             + "current genre/key pool, widened to the full index (" + wide.length + " found)\n");
+        return wide;
+    }
+
+    post("EBYS Slicer: [" + track + "] agentMode='" + mode + "' has NO " + (wantGenerated ? "generated" : "real")
+         + " slices anywhere in the index for this stem — falling back to the unfiltered pool this once "
+         + "(mode integrity NOT guaranteed here — generate clips with :gen, or switch agentMode, to fix this)\n");
+    return pool;
 }
 
 // LEARNED_DIMS — mirrors train_bias.py's all_dims_with_keys() exactly: 7
-// level descriptors (own key) + 6 tension descriptors (looked up via
+// level descriptors (own key) + 7 tension descriptors (looked up via
 // 'tension_<letter>', short-labeled 'Tn<letter>' so weight names like
 // 'deltaTnC' don't collide with T=timbre). Both prediction functions below
 // must build features identically to how train_bias.py built them when it
 // wrote learned_bias.json's weight names — this list is the single source
 // of truth for that shape on the runtime side.
 var LEARNED_LEVEL_DIMS   = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
-var LEARNED_TENSION_DIMS = ['C', 'E', 'F', 'P', 'H', 'T'];
+var LEARNED_TENSION_DIMS = ['C', 'S', 'E', 'F', 'P', 'H', 'T'];
 function learnedDims() {
     var out = [];
     for (var i = 0; i < LEARNED_LEVEL_DIMS.length; i++) {
@@ -1043,24 +1090,24 @@ function learnedDims() {
     return out;
 }
 
-// predictTransitionQuality — `candidate[key]` is the candidate's own
+// predictHorizontalQuality — `candidate[key]` is the candidate's own
 // (start-of-slice) value, `endDesc[key]` is what's currently playing —
 // identical pairing to the transition-match term in scoreCandidate() below,
 // and to how train_bias.py computed deltas from the logged from/to pairs.
 // Returns null (rather than treating a missing dim as 0) if EITHER side is
-// missing ANY of the 13 keys — a partial read (e.g. tension not populated
+// missing ANY of the 14 keys — a partial read (e.g. tension not populated
 // yet for an older library) should skip prediction, not silently score
 // against a fabricated zero.
-function predictTransitionQuality(candidate, endDesc) {
-    if (!TRANSITION_BIAS || !endDesc) return null;
+function predictHorizontalQuality(candidate, endDesc) {
+    if (!HORIZONTAL_BIAS || !endDesc) return null;
     var dims = learnedDims();
     for (var i = 0; i < dims.length; i++) {
         var key = dims[i].key;
         if (candidate[key] === undefined || candidate[key] === null) return null;
         if (endDesc[key]   === undefined || endDesc[key]   === null) return null;
     }
-    var w = TRANSITION_BIAS.weights || {};
-    var sum = TRANSITION_BIAS.bias || 0;
+    var w = HORIZONTAL_BIAS.weights || {};
+    var sum = HORIZONTAL_BIAS.bias || 0;
     for (var i = 0; i < dims.length; i++) {
         var label = dims[i].label, key = dims[i].key;
         var delta = candidate[key] - endDesc[key];
@@ -1068,7 +1115,7 @@ function predictTransitionQuality(candidate, endDesc) {
         sum += (w['absDelta' + label] || 0) * Math.abs(delta);
         // Quadratic/cubic opt-in (:setFitShape) — sq<label> = delta*delta,
         // cu<label> = delta*delta*delta, matching train_bias.py's
-        // build_transition_dataset() exactly. Only present in `w` (and only
+        // build_horizontal_dataset() exactly. Only present in `w` (and only
         // added to `sum`) for dims someone deliberately flipped up from
         // linear; everything else is untouched by this. Cubic implies
         // quadratic (see FIT_SHAPES' own comment) — both terms fire together.
@@ -1088,7 +1135,7 @@ function predictTransitionQuality(candidate, endDesc) {
 // (lastEndDesc), would this 4-way combination read as a good mix?" Mirrors
 // train_bias.py's mean/std-across-stems feature exactly, substituting the
 // candidate in for `track`'s own slot instead of its last-played descriptors
-// (which is what a real :score would have captured had this candidate
+// (which is what a real :scoreLyr would have captured had this candidate
 // already been playing). Returns null if fewer than 2 stems have any value
 // for a given dim yet (mirrors the trainer's own floor for a meaningful std).
 function predictVerticalQuality(candidate, track) {
@@ -1142,13 +1189,13 @@ function predictVerticalQuality(candidate, track) {
 // everything would leave nothing to choose from, falls back to the
 // unfiltered pool rather than block selection entirely.
 function applyLearnedRefusal(pool, arr, track, endDesc) {
-    var ltw = LEARNED_TRANS_WEIGHT[track]; if (ltw === undefined) ltw = 1.0;
+    var ltw = LEARNED_HORIZ_WEIGHT[track]; if (ltw === undefined) ltw = 1.0;
     var lvw = LEARNED_VERT_WEIGHT[track];  if (lvw === undefined) lvw = 1.0;
-    if ((!TRANSITION_BIAS || ltw <= 0) && (!VERTICAL_BIAS || lvw <= 0)) return pool;
+    if ((!HORIZONTAL_BIAS || ltw <= 0) && (!VERTICAL_BIAS || lvw <= 0)) return pool;
     var kept = [];
     for (var i = 0; i < pool.length; i++) {
         var cand = arr[pool[i]];
-        var tq = (TRANSITION_BIAS && ltw > 0) ? predictTransitionQuality(cand, endDesc) : null;
+        var tq = (HORIZONTAL_BIAS && ltw > 0) ? predictHorizontalQuality(cand, endDesc) : null;
         var vq = (VERTICAL_BIAS   && lvw > 0) ? predictVerticalQuality(cand, track)     : null;
         var refused = (tq !== null && tq < LEARNED_REFUSE_THRESHOLD) ||
                       (vq !== null && vq < LEARNED_REFUSE_THRESHOLD);
@@ -1422,8 +1469,9 @@ function buildIndex() {
                     // 0 when the library predates add_tension.py's density pass.
                     D    : (tval("density") !== null ? tval("density") : 0),
                     dense: !!sd.get("dense"),
-                    tension_C: tval("tension_C"), tension_E: tval("tension_E"), tension_F: tval("tension_F"),
-                    tension_P: tval("tension_P"), tension_H: tval("tension_H"), tension_T: tval("tension_T"),
+                    tension_C: tval("tension_C"), tension_S: tval("tension_S"), tension_E: tval("tension_E"),
+                    tension_F: tval("tension_F"), tension_P: tval("tension_P"), tension_H: tval("tension_H"),
+                    tension_T: tval("tension_T"),
                     // Analysis-driven M/S — written by add_stereo_features.py
                     // pan: -1..+1 from original mix L-R balance at slice time
                     // width: 0..1 from stem M/S ratio, normalized within stem
@@ -1852,16 +1900,16 @@ function scoreCandidate(candidate, endDesc, track) {
         }
     }
 
-    // 3. Learned bias (train_bias.py, from :score/:scoreTransition history) —
+    // 3. Learned bias (train_bias.py, from :scoreLyr/:scoreTrs history) —
     // both predict on a -1..1 "how good" scale like MATCH_PROB/DIR_PREF's
     // inputs, so subtracting (higher predicted quality → lower/better score)
     // matches the same convention as the direction-preference term above.
-    // No-ops cleanly if a model hasn't been trained yet (TRANSITION_BIAS/
+    // No-ops cleanly if a model hasn't been trained yet (HORIZONTAL_BIAS/
     // VERTICAL_BIAS null) or its weight is dialed to 0 for this stem.
-    var ltw = LEARNED_TRANS_WEIGHT[track]; if (ltw === undefined) ltw = 1.0;
+    var ltw = LEARNED_HORIZ_WEIGHT[track]; if (ltw === undefined) ltw = 1.0;
     var lvw = LEARNED_VERT_WEIGHT[track];  if (lvw === undefined) lvw = 1.0;
-    if (TRANSITION_BIAS && ltw > 0) {
-        var tq = predictTransitionQuality(candidate, endDesc);
+    if (HORIZONTAL_BIAS && ltw > 0) {
+        var tq = predictHorizontalQuality(candidate, endDesc);
         if (tq !== null) score -= tq * ltw;
     }
     if (VERTICAL_BIAS && lvw > 0) {
@@ -1875,12 +1923,12 @@ function scoreCandidate(candidate, endDesc, track) {
 function hasActiveCriteria(track) {
     var mp  = MATCH_PROB[track] || 0;
     var dp  = DIR_PREF[track] || defaultDirPref();
-    var ltw = LEARNED_TRANS_WEIGHT[track]; if (ltw === undefined) ltw = 1.0;
+    var ltw = LEARNED_HORIZ_WEIGHT[track]; if (ltw === undefined) ltw = 1.0;
     var lvw = LEARNED_VERT_WEIGHT[track];  if (lvw === undefined) lvw = 1.0;
     return (mp > 0 ||
             dp.C !== 0 || dp.S !== 0 || dp.E !== 0 || dp.F !== 0 || dp.P !== 0 ||
             dp.H !== 0 || dp.T !== 0 || dp.D !== 0 ||
-            (TRANSITION_BIAS && ltw > 0) ||
+            (HORIZONTAL_BIAS && ltw > 0) ||
             (VERTICAL_BIAS   && lvw > 0));
 }
 
@@ -2350,9 +2398,38 @@ function selectSegment(track) {
         }
     }
 
+    // Filter by agent mode HERE — every path below (STAY's rare fallback,
+    // scored selection, plain random fallback) must only ever see
+    // candidates that match this stem's current mode. Previously this only
+    // ran inside the hasActiveCriteria() branch further down, which meant a
+    // 'remix' stem with no active match criteria (MATCH_PROB=0, no dir
+    // prefs, no learned bias — a perfectly normal idle state, not an edge
+    // case) picked straight from the unfiltered pool via the plain random
+    // fallback, letting generated clips into a stem explicitly set to
+    // 'remix'. Alex: "no tracks from the generative model should be
+    // entering the remixing engine" when mode is 'remix' — not "only when
+    // match criteria happen to be active."
+    pool = filterPoolByAgentMode(pool, arr, track);
+
+    // Mode-compatible STAY check — if this stem's last-picked source track
+    // doesn't match the CURRENT agent mode (e.g. it was generated while
+    // mode was 'generate'/'blend', and :setAgentMode switched this stem to
+    // 'remix' since), STAY must not keep extending it: STAY's own search
+    // below walks `arr` directly by sourceTrack, bypassing the pool filter
+    // just applied above entirely. Forcing a fresh pick here routes back
+    // through the now-filtered `pool` instead.
+    var stayTrackOk = true;
+    if (lastSourceTrack[track]) {
+        var stayMode = AGENT_MODE[track] || 'remix';
+        if (stayMode !== 'blend') {
+            var stayIsGenerated = lastSourceTrack[track].indexOf(GENERATED_PREFIX) === 0;
+            stayTrackOk = (stayIsGenerated === (stayMode === 'generate'));
+        }
+    }
+
     // Stay-or-move decision
     var startIdx;
-    if (STAY_PROB[track] > 0 && Math.random() < STAY_PROB[track]
+    if (stayTrackOk && STAY_PROB[track] > 0 && Math.random() < STAY_PROB[track]
         && lastSourceTrack[track] !== null && lastEndFrac[track] >= 0) {
         // Stay on the same source track — advance to the first slice that
         // starts AT or AFTER where the last segment ended (forward progression).
@@ -2430,9 +2507,9 @@ function selectSegment(track) {
         startIdx = best >= 0 ? best : pool[Math.floor(Math.random() * pool.length)];
     } else if (hasActiveCriteria(track)) {
         // Score every candidate — pick the one with the lowest combined score.
+        // `pool` is already agent-mode-filtered above — no separate call here.
         var endDesc     = getBlendedEndDesc(track);
-        var agentPool   = filterPoolByAgentMode(pool, arr, track);
-        var scoredPool  = applyLearnedRefusal(agentPool, arr, track, endDesc);
+        var scoredPool  = applyLearnedRefusal(pool, arr, track, endDesc);
         var bestScore   = Infinity;
         startIdx = scoredPool[0];
         for (var pi = 0; pi < scoredPool.length; pi++) {
@@ -2552,12 +2629,12 @@ function selectSegment(track) {
     // Store end-descriptors so next selection can match against them.
     // Tension has no start/end variant (add_tension.py writes one value per
     // slice, not per boundary) — stored under its own plain key so
-    // predictTransitionQuality() can read it the same way it reads C/S/E/F/P/H/T.
+    // predictHorizontalQuality() can read it the same way it reads C/S/E/F/P/H/T.
     lastEndDesc[track] = {
         C: startSlice.endC, S: startSlice.endS, E: startSlice.endE,
         F: startSlice.endF, P: startSlice.endP,
         H: startSlice.endH, T: startSlice.endT,
-        tension_C: startSlice.tension_C, tension_E: startSlice.tension_E,
+        tension_C: startSlice.tension_C, tension_S: startSlice.tension_S, tension_E: startSlice.tension_E,
         tension_F: startSlice.tension_F, tension_P: startSlice.tension_P,
         tension_H: startSlice.tension_H, tension_T: startSlice.tension_T
     };
@@ -2751,7 +2828,7 @@ function selectSegment(track) {
     }
 
     outlet(1, "desc",      track, startSlice.C, startSlice.S, startSlice.E, startSlice.F, startSlice.P, startSlice.H, startSlice.T,
-           startSlice.tension_C, startSlice.tension_E, startSlice.tension_F,
+           startSlice.tension_C, startSlice.tension_S, startSlice.tension_E, startSlice.tension_F,
            startSlice.tension_P, startSlice.tension_H, startSlice.tension_T);
     // Analysis-driven M/S: emit pan and width for this slice so spat_fx_router can apply them.
     // stemMS <track> <pan> <width> — received by ws_server → forwarded to spat_fx_router.
@@ -2907,7 +2984,7 @@ function pushSyncedSegment(leader, follower, cycleId, groupSize) {
 
     outlet(1, "desc", follower,
            descSrc.C || 0, descSrc.S || 0, descSrc.E || 0, descSrc.F || 0, descSrc.P || 0, descSrc.H || 0, descSrc.T || 0,
-           descSrc.tension_C || 0, descSrc.tension_E || 0, descSrc.tension_F || 0,
+           descSrc.tension_C || 0, descSrc.tension_S || 0, descSrc.tension_E || 0, descSrc.tension_F || 0,
            descSrc.tension_P || 0, descSrc.tension_H || 0, descSrc.tension_T || 0);
     outlet(1, "stemMS", follower, descSrc.pan || 0, descSrc.width || 0.5);
     outlet(1, "slice_ms", follower, seg.sliceMs);
@@ -2996,7 +3073,7 @@ function start() {
     // literally keep playing from where it paused; nothing gets reselected,
     // recomposed, or re-triggered from frame 0.
     //
-    // This is also what makes :score/:scoreTransition trustworthy across a
+    // This is also what makes :scoreLyr/:scoreTrs trustworthy across a
     // pause: while running is false, next()/loop() no-op and karma~ itself
     // is frozen, so the state a rating command reads while paused is
     // guaranteed to still be the exact layering that was actually heard —
@@ -3298,7 +3375,7 @@ function next(track) {
             if (loopSlice) {
                 outlet(1, "desc", track, loopSlice.C, loopSlice.S, loopSlice.E, loopSlice.F,
                        loopSlice.P, loopSlice.H, loopSlice.T,
-                       loopSlice.tension_C, loopSlice.tension_E, loopSlice.tension_F,
+                       loopSlice.tension_C, loopSlice.tension_S, loopSlice.tension_E, loopSlice.tension_F,
                        loopSlice.tension_P, loopSlice.tension_H, loopSlice.tension_T);
                 outlet(1, "stemMS", track, loopSlice.pan, loopSlice.width);
             }
@@ -3508,13 +3585,17 @@ function loop(track, bars) {
     var targetMs = barMs * bars;
     var durMs    = stemDurMs[track] || 0;
 
-    // Select a fresh segment as the loop anchor (same logic as selectSegment)
+    // Select a fresh segment as the loop anchor (same logic as selectSegment).
+    // Filtered by agent mode unconditionally, same reasoning as
+    // selectSegment() — previously only applied inside hasActiveCriteria(),
+    // so a 'remix' stem with no active match criteria could loop-anchor on
+    // a generated clip via the plain random fallback.
     var pool = [];
     for (var pi = 0; pi < arr.length; pi++) pool.push(pi);
+    pool = filterPoolByAgentMode(pool, arr, track);
     var startIdx = hasActiveCriteria(track)
         ? (function() {
-            var agentPool  = filterPoolByAgentMode(pool, arr, track);
-            var scoredPool = applyLearnedRefusal(agentPool, arr, track, lastEndDesc[track]);
+            var scoredPool = applyLearnedRefusal(pool, arr, track, lastEndDesc[track]);
             var best = scoredPool[0], bestSc = Infinity;
             for (var pi = 0; pi < scoredPool.length; pi++) {
                 var sc = scoreCandidate(arr[scoredPool[pi]], lastEndDesc[track], track);
@@ -3828,13 +3909,13 @@ function nextNearest(track, C, E, F, P) {
     // `continue` alongside the lastIdx skip rather than going through
     // applyLearnedRefusal(), which expects an index array to filter.
     var endDesc = getBlendedEndDesc(track);
-    var ltw = LEARNED_TRANS_WEIGHT[track]; if (ltw === undefined) ltw = 1.0;
+    var ltw = LEARNED_HORIZ_WEIGHT[track]; if (ltw === undefined) ltw = 1.0;
     var lvw = LEARNED_VERT_WEIGHT[track];  if (lvw === undefined) lvw = 1.0;
     var bestIdx = -1, bestDist = Infinity;
     for (var i = 0; i < arr.length; i++) {
         if (i === lastIdx[track]) continue;
-        if (TRANSITION_BIAS && ltw > 0) {
-            var tq = predictTransitionQuality(arr[i], endDesc);
+        if (HORIZONTAL_BIAS && ltw > 0) {
+            var tq = predictHorizontalQuality(arr[i], endDesc);
             if (tq !== null && tq < LEARNED_REFUSE_THRESHOLD) continue;
         }
         if (VERTICAL_BIAS && lvw > 0) {
@@ -3887,7 +3968,7 @@ function nextNearest(track, C, E, F, P) {
 
     lastEndDesc[track] = {
         C: s.endC, S: s.endS, E: s.endE, F: s.endF, P: s.endP, H: s.endH, T: s.endT,
-        tension_C: s.tension_C, tension_E: s.tension_E, tension_F: s.tension_F,
+        tension_C: s.tension_C, tension_S: s.tension_S, tension_E: s.tension_E, tension_F: s.tension_F,
         tension_P: s.tension_P, tension_H: s.tension_H, tension_T: s.tension_T
     };
 
@@ -3895,7 +3976,7 @@ function nextNearest(track, C, E, F, P) {
 
     outlet(0, track, sliceMs, Math.round(totalFrac * durMs), stretchRatioFor(track));
     outlet(1, "desc",      track, s.C, s.S, s.E, s.F, s.P, s.H, s.T,
-           s.tension_C, s.tension_E, s.tension_F,
+           s.tension_C, s.tension_S, s.tension_E, s.tension_F,
            s.tension_P, s.tension_H, s.tension_T);
     outlet(1, "slice_ms",  track, sliceMs);
     outlet(1, "stemTrack", track, cleanTrackName(track));

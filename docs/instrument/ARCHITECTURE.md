@@ -374,6 +374,23 @@ Routes M/S stereo and FX send/return parameters from the TUI to Max `receive` ob
 | `:fxStereo 0\|1` | 0=mono pedal chain, 1=stereo (L on 3, R on 4) |
 | `:analysisMode on\|off` | Toggle analysis-driven auto pan/width vs manual control |
 
+### `eq_router.js`
+**Location:** `EBYS_INFRA/MAX/eq_router.js` | **Type:** Max JS object
+
+Owns per-stem EQ and trim. Computes biquad coefficients on the fly from TUI commands (via `ws_server.js`) and sends them to `biquad~` objects in the patch via `receive`. Three bands: low shelf (fc=80Hz, Q=0.7), sweepable mid bell (fc=200–8000Hz, Q=0.1–10), plus a high band and per-stem trim — range -96dB (kill) to +24dB. Signal chain position: `pfft~`/`gizmo~` → trim → `biquad~`(low→mid→high) → fader → FX tap → M/S → pan.
+
+### `spat_fx_router.js`
+**Location:** `EBYS_INFRA/MAX/spat_fx_router.js` | **Type:** Max JS object
+
+Owns stereo/FX routing parameters, forwards TUI commands to `receive` objects in the patch. Includes `joystick <stem> <x> <y>` — 2D quad panning (x = L/R, y = rear/front) — in addition to `width`, `fxSend`, `fxReturn`. **Note:** this overlaps with some of what `ms_router.js` already owns (width, FX send/return) — worth reconciling which one is authoritative for what before porting either to Pd, rather than assuming a clean division.
+
+### `band_mask_init.js` / `formant_lifter_init.js`
+**Location:** `EBYS_INFRA/MAX/` | **Type:** Max JS objects (init/support, not routers)
+
+Support the formant-preserving pitch shifter in `ebys-pitch.maxpat`. `formant_lifter_init.js` fills an `ebys_formant_lifter` buffer with a real-cepstrum lifter window — the patch computes the cepstrum of each frame's log-magnitude spectrum (`cartopol~`/`log~`/`fft~`/.../`poltocar~`), zeroes high-quefrency bins to isolate the spectral envelope (formants) from pitch, divides it out before shifting and re-imposes it after. `band_mask_init.js` sets up per-stem `ebys_pitch_mask_<stem>`/`ebys_formant_mask_<stem>` buffers so each of the 4 `pfft~` instances (one per stem) gates its own frequency band independently, controlled via `:setShiftBand`/`:setPitchBand`/`:setFormantBand` in `slot_router.js`.
+
+This means the pitch shifter isn't a single object — it's a custom vocoder built from FFT primitives. See `PD_MIGRATION.md` for what that means for porting it.
+
 ---
 
 ## 7. Stage 5 — AI Brain (Cricket)
@@ -600,6 +617,8 @@ launchctl load ~/Library/LaunchAgents/com.ebys.watchdemucs.plist
 madmom requires Python ≤ 3.11. essentia requires Python ≤ 3.12. Incompatible with torch's Python 3.14 requirement — hence the split environments.
 
 ### Pure Data Migration Note
+
+**Full plan, priority order, and current patch inventory: `PD_MIGRATION.md`.** Short version below.
 
 The 2KB chunk protocol exists solely because Max's JS engine has a 32KB file read limit and no SQLite bindings. On PD migration:
 - `stream.txt` polling → filesystem watch or OSC

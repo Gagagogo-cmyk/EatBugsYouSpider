@@ -99,7 +99,7 @@ const state = {
 // ── Last touched param tracker ───────────────────────────────────────────────
 // Called after every performative TUI command.  Missile fires this.
 const TOUCH_COMMANDS = new Set([
-    'eqLow','eqMid','eqHigh','eqMidFreq',
+    'eqLow','eqMid','eqHigh','eqMidFreq','eqMidQ',
     'trim','fader','mute','solo','width','joystick','masterJoystick',
     'entropy','pitchShift','formantShift',
     'setShiftBand','setPitchBand','setFormantBand','clearPitchBand','clearFormantBand','clearShiftBand',
@@ -477,7 +477,7 @@ server.on('upgrade', (req, socket) => {
                 if (m.type === 'bake') {
                     const snapshot = {
                         timestamp:        new Date().toISOString(),
-                        bakeSessionId:    m.bakeSessionId     || null,  // joins to :score entries
+                        bakeSessionId:    m.bakeSessionId     || null,  // joins to :scoreLyr entries
                                                                          // from the same bracket in
                                                                          // training_log_vertical.jsonl
                         intent:           m.intent           || '',
@@ -485,6 +485,11 @@ server.on('upgrade', (req, socket) => {
                         user_corrections: m.user_corrections || [],
                         final_cmds:       m.final_cmds       || [],
                         attempts:         m.attempts         || null,
+                        // Structural label from the most recent :tag typed while this
+                        // bracket was open (app.js's bakeTag), or null if none was — feeds
+                        // the TUI's tags sidebar (tagsSummaryLines() in app.js), which
+                        // tallies this field across every bake in training_log.jsonl.
+                        tag:              m.tag              || null,
                         // Filename under recordings/, set by app.js's TRAINING REVIEW MODE
                         // (bracket auto-records via the same :record start/stop path a
                         // manual :record uses) — null if nothing was captured, e.g. a
@@ -829,6 +834,13 @@ server.on('upgrade', (req, socket) => {
                         const hz   = parseFloat(atoms[2]) || 1000;
                         broadcast({ type: 'param', key: 'eqMidFreq', stem, value: hz });
                         Max.outlet('eqMidFreq', stem, hz);
+                    } else if (atoms[0] === 'eqMidQ') {
+                        // :eqMidQ <stem|all> <Q>  — mid bell width/"pointiness" (0.1–10;
+                        // low = wide/gentle bell, high = narrow/pointy bell)
+                        const stem = String(atoms[1] || 'all');
+                        const q    = parseFloat(atoms[2]) || 0.7;
+                        broadcast({ type: 'param', key: 'eqMidQ', stem, value: q });
+                        Max.outlet('eqMidQ', stem, q);
                     } else if (atoms[0] === 'mute') {
                         // :mute <stem|all> <0|1>  — mute (1=mute, 0=unmute)
                         const stem = String(atoms[1] || 'all');
@@ -1051,21 +1063,21 @@ server.on('upgrade', (req, socket) => {
                         // own outlet(1, "unlockSource", ...), same as above)
                         Max.outlet('unlockSource', String(atoms[1] || 'all'));
 
-                    } else if (atoms[0] === 'score') {
-                        // :score <-1..1> [overallSection]  — "vertical" training signal:
+                    } else if (atoms[0] === 'scoreLyr') {
+                        // :scoreLyr <-1..1> [overallSection]  — "vertical" training signal:
                         // scores the CURRENT layered combination (which source track each
                         // stem is drawing from, right now, plus how they're mixed
                         // together) as opposed to :bake's "horizontal" signal (was the
-                        // right SEQUENCE of moves made over time) or :scoreTransition's
+                        // right SEQUENCE of moves made over time) or :scoreTrs's
                         // "horizontal" signal (did THIS cut, specifically, flow well).
-                        // Named "score" rather than "rate" — "rate" reads like a
-                        // speed/tempo parameter next to all the audio-rate terminology
-                        // elsewhere in this system. No bracket/session needed — the
-                        // window being scored is implicitly whatever's live this instant,
-                        // bounded by each stem's own current SEGMENT_BARS. Logged only
-                        // for now, same as :bake — this file is what a future offline
-                        // training pass reads to nudge live selection scoring once a
-                        // model exists.
+                        // Named "scoreLyr" (layering) rather than "rate" — "rate" reads
+                        // like a speed/tempo parameter next to all the audio-rate
+                        // terminology elsewhere in this system. No bracket/session
+                        // needed — the window being scored is implicitly whatever's live
+                        // this instant, bounded by each stem's own current
+                        // SEGMENT_BARS. Logged only for now, same as :bake — this file
+                        // is what a future offline training pass reads to nudge live
+                        // selection scoring once a model exists.
                         //
                         // Per-stem `section` below is looked up automatically from
                         // song_structure.json (whatever a prior :tag stored for that
@@ -1079,17 +1091,17 @@ server.on('upgrade', (req, socket) => {
                         const score = Math.max(-1, Math.min(1, parseFloat(atoms[1])));
                         const overallSection = atoms[2] ? String(atoms[2]) : null;
                         if (isNaN(score)) {
-                            broadcast({ type: 'sys', msg: 'usage: :score <-1..1> [overallSection]' });
+                            broadcast({ type: 'sys', msg: 'usage: :scoreLyr <-1..1> [overallSection]' });
                         } else {
                             const stemKeys  = ['vocals', 'melody', 'bass', 'drums'];
                             const structure = loadSongStructure();
                             // bakeSessionId/bakeAttempt/bakeIntent arrive only when this
-                            // :score was issued from inside an open :bake bracket (see
-                            // app.js's verb === 'score' handler) — they let a future pass
-                            // group vertical ratings by which bracket + which looped
+                            // :scoreLyr was issued from inside an open :bake bracket (see
+                            // app.js's verb === 'scoreLyr' handler) — they let a future
+                            // pass group vertical ratings by which bracket + which looped
                             // attempt produced them, instead of a flat disconnected
-                            // stream. null/undefined for a bare :score outside a bracket,
-                            // same shape as before this field existed.
+                            // stream. null/undefined for a bare :scoreLyr outside a
+                            // bracket, same shape as before this field existed.
                             const snapshot = {
                                 timestamp: new Date().toISOString(),
                                 type:      'vertical',
@@ -1112,7 +1124,7 @@ server.on('upgrade', (req, socket) => {
                                         slot:        st.slot,
                                         descriptors: {
                                             C: st.C, S: st.S, E: st.E, F: st.F, P: st.P, H: st.H, T: st.T,
-                                            tension_C: st.tC, tension_E: st.tE, tension_F: st.tF,
+                                            tension_C: st.tC, tension_S: st.tS, tension_E: st.tE, tension_F: st.tF,
                                             tension_P: st.tP, tension_H: st.tH, tension_T: st.tT,
                                         },
                                         segmentBars:     state.segBars[s],
@@ -1232,23 +1244,23 @@ server.on('upgrade', (req, socket) => {
                             broadcast({ type: 'sys', msg: structure[track].sections.length + ' section(s) for ' + track + ' — see console' });
                         }
 
-                    } else if (atoms[0] === 'scoreTransition') {
-                        // :scoreTransition <-1..1> [stem]  — "horizontal" signal, but a
+                    } else if (atoms[0] === 'scoreTrs') {
+                        // :scoreTrs <-1..1> [stem]  — "horizontal" signal, but a
                         // different one than :bake's: :bake asks "was the right SEQUENCE
                         // of Cricket commands issued" (a command-level training signal).
                         // This asks "did the AUDIO itself flow well crossing from the
                         // previous segment into the current one" (a signal about the cut
                         // itself) — on one stem, or all 4 at once if no stem is given,
-                        // mirroring :score's whole-mix-by-default shape. Needs both sides
-                        // of the boundary, which the 'desc' handler above snapshots into
-                        // state.stems[s].prevSegment right before it's overwritten by the
-                        // incoming segment's own descriptors.
+                        // mirroring :scoreLyr's whole-mix-by-default shape. Needs both
+                        // sides of the boundary, which the 'desc' handler above snapshots
+                        // into state.stems[s].prevSegment right before it's overwritten
+                        // by the incoming segment's own descriptors.
                         const score      = Math.max(-1, Math.min(1, parseFloat(atoms[1])));
                         const stemFilter = atoms[2] ? String(atoms[2]) : null;
                         if (isNaN(score)) {
-                            broadcast({ type: 'sys', msg: 'usage: :scoreTransition <-1..1> [stem]' });
+                            broadcast({ type: 'sys', msg: 'usage: :scoreTrs <-1..1> [stem]' });
                         } else if (stemFilter && !state.stems[stemFilter]) {
-                            broadcast({ type: 'sys', msg: 'usage: :scoreTransition <-1..1> [stem] — unknown stem "' + stemFilter + '"' });
+                            broadcast({ type: 'sys', msg: 'usage: :scoreTrs <-1..1> [stem] — unknown stem "' + stemFilter + '"' });
                         } else {
                             const stemKeys  = stemFilter ? [stemFilter] : ['vocals', 'melody', 'bass', 'drums'];
                             const structure = loadSongStructure();
@@ -1272,7 +1284,7 @@ server.on('upgrade', (req, socket) => {
                                         sourceTrack: st.track, id: st.id,
                                         descriptors: {
                                             C: st.C, S: st.S, E: st.E, F: st.F, P: st.P, H: st.H, T: st.T,
-                                            tension_C: st.tC, tension_E: st.tE, tension_F: st.tF,
+                                            tension_C: st.tC, tension_S: st.tS, tension_E: st.tE, tension_F: st.tF,
                                             tension_P: st.tP, tension_H: st.tH, tension_T: st.tT,
                                         },
                                         section: toSec ? toSec.tag : null,
@@ -1280,13 +1292,13 @@ server.on('upgrade', (req, socket) => {
                                 };
                             }
                             if (!any) {
-                                broadcast({ type: 'sys', msg: ':scoreTransition — no transition recorded yet' + (stemFilter ? ' for ' + stemFilter : '') });
+                                broadcast({ type: 'sys', msg: ':scoreTrs — no transition recorded yet' + (stemFilter ? ' for ' + stemFilter : '') });
                             } else {
                                 const snapshot = {
                                     timestamp: new Date().toISOString(),
                                     type:      'horizontal_transition',
                                     rating:    score,
-                                    // Same bake-bracket tagging as :score — see its handler's
+                                    // Same bake-bracket tagging as :scoreLyr — see its handler's
                                     // comment. Primary use: :bake sequence handoffs, so a
                                     // transition rating can be traced back to which two named
                                     // states it was rating the cut between.
@@ -1295,13 +1307,13 @@ server.on('upgrade', (req, socket) => {
                                     bakeIntent:    m.bakeIntent    || null,
                                     stems:     stemsOut,
                                 };
-                                const logPath = path.join(sessionDataDir(), 'training_log_transition.jsonl');
+                                const logPath = path.join(sessionDataDir(), 'training_log_horizontal.jsonl');
                                 fs.appendFileSync(logPath, JSON.stringify(snapshot) + '\n');
                                 Max.post('ws_server: ✓ transition scored ' + score.toFixed(2) + '\n');
                                 broadcast({ type: 'sys', msg: '✓ transition scored ' + score.toFixed(2) + ' — logged' });
                                 // See the 'vertical' bakeScored broadcast above — same reasoning,
                                 // other log file.
-                                broadcast({ type: 'bakeScored', model: 'transition' });
+                                broadcast({ type: 'bakeScored', model: 'horizontal' });
                             }
                         }
 
@@ -1606,8 +1618,8 @@ server.on('listening', () => {
 // not just spectral distance between adjacent slices. Storage is
 // data/song_structure.json, keyed by source track name, same convention as
 // downbeats.json/analysis_library.json (canonical current state, overwritten
-// in place) — NOT an append-only training log like :bake/:score/
-// :scoreTransition use, since a structure tag describes a fact about the
+// in place) — NOT an append-only training log like :bake/:scoreLyr/
+// :scoreTrs use, since a structure tag describes a fact about the
 // song rather than a training example about a decision made.
 //
 // Intensity is computed automatically rather than rated by hand (that was
@@ -1638,8 +1650,8 @@ function saveSongStructure(data) {
 }
 
 // findSection — the stored section (if any) covering `frac` (0..1) of
-// sourceTrack. Shared by :score (attach a tag to a vertical rating) and
-// :scoreTransition (attach tags to both sides of a transition) so both
+// sourceTrack. Shared by :scoreLyr (attach a tag to a vertical rating) and
+// :scoreTrs (attach tags to both sides of a transition) so both
 // mechanisms read the same canonical structure data instead of duplicating
 // the lookup.
 function findSection(structure, sourceTrack, frac) {
@@ -2022,13 +2034,13 @@ function broadcast(obj) {
 }
 
 // ── Slicer outlet 1 — status messages ────────────────────────────────────────
-Max.addHandler('desc', (track, C, S, E, F, P, H, T, tC, tE, tF, tP, tH, tT) => {
+Max.addHandler('desc', (track, C, S, E, F, P, H, T, tC, tS, tE, tF, tP, tH, tT) => {
     if (!state.stems[track]) return;
     // Snapshot the OUTGOING segment before it's overwritten below — this is
     // the one point where "what was just playing" and "what's about to play"
     // are both still distinguishable, since slicer.js always emits desc
     // before seg for a new segment (established ordering — see the loop-
-    // branch comment history). :scoreTransition reads prevSegment to score a
+    // branch comment history). :scoreTrs reads prevSegment to score a
     // transition without needing its own separate before/after tracking.
     if (state.stems[track].id && state.stems[track].id !== '--') {
         state.stems[track].prevSegment = {
@@ -2040,9 +2052,10 @@ Max.addHandler('desc', (track, C, S, E, F, P, H, T, tC, tE, tF, tP, tH, tT) => {
                 C: state.stems[track].C, S: state.stems[track].S, E: state.stems[track].E,
                 F: state.stems[track].F, P: state.stems[track].P, H: state.stems[track].H,
                 T: state.stems[track].T,
-                tension_C: state.stems[track].tC, tension_E: state.stems[track].tE,
-                tension_F: state.stems[track].tF, tension_P: state.stems[track].tP,
-                tension_H: state.stems[track].tH, tension_T: state.stems[track].tT,
+                tension_C: state.stems[track].tC, tension_S: state.stems[track].tS,
+                tension_E: state.stems[track].tE, tension_F: state.stems[track].tF,
+                tension_P: state.stems[track].tP, tension_H: state.stems[track].tH,
+                tension_T: state.stems[track].tT,
             },
         };
     }
@@ -2051,7 +2064,7 @@ Max.addHandler('desc', (track, C, S, E, F, P, H, T, tC, tE, tF, tP, tH, tT) => {
         C: parseFloat(C)||0, S: parseFloat(S)||0, E: parseFloat(E)||0,
         F: parseFloat(F)||0, P: parseFloat(P)||0,
         H: parseFloat(H)||0, T: parseFloat(T)||0,
-        tC: tension(tC), tE: tension(tE), tF: tension(tF),
+        tC: tension(tC), tS: tension(tS), tE: tension(tE), tF: tension(tF),
         tP: tension(tP), tH: tension(tH), tT: tension(tT),
     });
     // 'desc' type lets the TUI compute novelty the instant fresh descriptors arrive
@@ -2564,6 +2577,31 @@ Max.addHandler('meter', (...args) => {
         const name = VU_REMAP[rawName] || rawName;
         broadcast({ type: 'vu', name, level });
     }
+});
+
+// ── EQ spectrum analyzer ──────────────────────────────────────────────────────
+// Patch sends: spectrum <name> <bandIndex> <level>
+//   name      = vocals | melody | bass | drums | master
+//   bandIndex = 0-7, low → high (see patch_eq_spectrum.py's BAND_FREQS)
+//   level     = 0-1 linear peak amplitude (from peakamp~ 60, post fixed
+//               bandpass filter — see patch_eq_spectrum.py)
+// Tap points are the SAME post-everything nodes the VU meters above already
+// use (post EQ/trim/gain/fader/width/pan/fx-return for stems; post
+// master_gain for master) — user: "the spectrum analyzer is post everything.
+// every change in eq, filter, gain etc should be seen in the spectrum
+// analyzer." Each band reports independently/asynchronously, same idiom as
+// the 4 VU channels above, so we accumulate into a per-name array and
+// broadcast the whole thing on every single band update (TUI just overwrites
+// whichever slot changed).
+const spectrumAccum = {};  // { name: [level0..level7] }
+
+Max.addHandler('spectrum', (name, bandIndex, level) => {
+    const n  = String(name);
+    const bi = parseInt(bandIndex, 10);
+    if (isNaN(bi) || bi < 0) return;
+    if (!spectrumAccum[n]) spectrumAccum[n] = [];
+    spectrumAccum[n][bi] = parseFloat(level) || 0;
+    broadcast({ type: 'spectrum', name: n, bands: spectrumAccum[n] });
 });
 
 // ── LUFS metering ─────────────────────────────────────────────────────────────

@@ -4,10 +4,10 @@ add_tension.py — compute tension + density fields for every slice in analysis_
 
 For each stem of each track:
   1. Assign each slice to a bar using downbeats_ms
-  2. Average all 6 descriptors per bar  (T = MFCC RMS of M0–M5)
+  2. Average all 7 descriptors per bar  (T = MFCC RMS of M0–M5)
   3. Sliding-window slope across bars
   4. Normalize each descriptor's slopes to [0, 1]
-  5. Write tension_C/E/F/P/H/T back to each slice
+  5. Write tension_C/S/E/F/P/H/T back to each slice
   6. Density per bar = weighted blend of two normalized (relative-to-this-track)
      signals:
        - E level        — loudness. "Is something happening, loudly."
@@ -78,7 +78,7 @@ WINDOW         = 4   # number of bars in the slope window (half = floor(w/2))
 STEM_SUFFIXES = ['_vocals.wav', '_melody.wav', '_bass.wav', '_drums.wav', '_other.wav',
                  '_vocals',     '_melody',     '_bass',     '_drums',     '_other']
 
-DESCRIPTORS = ['C', 'E', 'F', 'P', 'H', 'T']
+DESCRIPTORS = ['C', 'S', 'E', 'F', 'P', 'H', 'T']
 
 # Density blend weights — transient rate (real slice/onset count per bar) gets
 # the larger share since it's the more direct "how much is actually happening"

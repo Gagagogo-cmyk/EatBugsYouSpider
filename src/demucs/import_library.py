@@ -80,6 +80,19 @@ def strip_suffix(name):
     return name
 
 
+# Provenance: derived from the track name itself (the "GEN__" prefix
+# generate_agent.py already stamps on every synthesized clip — see that
+# file's header comment), not from a separate flag someone has to remember
+# to pass. Recomputed the same way on every import, from every call site
+# that creates or updates a track row, so it can never drift or get
+# clobbered back to 'human' by a later import that doesn't know a track
+# came from the generative pipeline. This is what finetune_generative.py's
+# WHERE t.source = 'human' guard depends on to keep the two pipelines apart
+# even though they share ebys.db and the Max analysis step downstream.
+def source_for_name(name):
+    return 'generated' if name.startswith('GEN__') else 'human'
+
+
 def slice_T(s):
     """Timbre scalar = RMS of MFCC coefficients M0–M5."""
     vals = [float(s.get(f'M{i}', 0) or 0) for i in range(6)]
@@ -100,7 +113,9 @@ def create_schema(conn):
             bpm_confidence REAL    DEFAULT 0,
             key            TEXT    DEFAULT '',
             meter          INTEGER DEFAULT 4,
-            stem_dur_ms    REAL    DEFAULT 0
+            stem_dur_ms    REAL    DEFAULT 0,
+            source         TEXT    NOT NULL DEFAULT 'human'
+                                   CHECK(source IN ('human','generated'))
         );
 
         CREATE TABLE IF NOT EXISTS slices (
@@ -150,22 +165,37 @@ def create_schema(conn):
         CREATE INDEX IF NOT EXISTS idx_slices_track_id   ON slices(track_id);
         CREATE INDEX IF NOT EXISTS idx_slices_track_stem ON slices(track_id, stem);
     """)
+    # Migration for DBs created before the 'source' column existed. CREATE
+    # TABLE IF NOT EXISTS above is a no-op on an already-existing tracks
+    # table, so older ebys.db files need this ALTER separately. Idempotent:
+    # SQLite raises OperationalError on a duplicate column, which we treat
+    # as "already migrated" rather than an error.
+    try:
+        conn.execute(
+            "ALTER TABLE tracks ADD COLUMN source TEXT NOT NULL DEFAULT 'human'"
+        )
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        if 'duplicate column' not in str(e).lower():
+            raise
     conn.commit()
 
 
 # ── Upsert helpers ─────────────────────────────────────────────────────────────
 
 def upsert_track(conn, name, bpm=0, bpm_conf=0, key='', meter=4, stem_dur_ms=0):
+    source = source_for_name(name)
     conn.execute("""
-        INSERT INTO tracks (name, bpm, bpm_confidence, key, meter, stem_dur_ms)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO tracks (name, bpm, bpm_confidence, key, meter, stem_dur_ms, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(name) DO UPDATE SET
             bpm            = excluded.bpm,
             bpm_confidence = excluded.bpm_confidence,
             key            = excluded.key,
             meter          = excluded.meter,
-            stem_dur_ms    = excluded.stem_dur_ms
-    """, (name, bpm, bpm_conf, key, meter, stem_dur_ms))
+            stem_dur_ms    = excluded.stem_dur_ms,
+            source         = excluded.source
+    """, (name, bpm, bpm_conf, key, meter, stem_dur_ms, source))
     return conn.execute("SELECT id FROM tracks WHERE name = ?", (name,)).fetchone()[0]
 
 
@@ -173,7 +203,10 @@ def get_or_create_track(conn, name):
     row = conn.execute("SELECT id FROM tracks WHERE name = ?", (name,)).fetchone()
     if row:
         return row[0]
-    conn.execute("INSERT INTO tracks (name) VALUES (?)", (name,))
+    conn.execute(
+        "INSERT INTO tracks (name, source) VALUES (?, ?)",
+        (name, source_for_name(name)),
+    )
     conn.commit()
     return conn.execute("SELECT id FROM tracks WHERE name = ?", (name,)).fetchone()[0]
 
@@ -388,8 +421,11 @@ def main():
         n_slices  = conn.execute("SELECT COUNT(*) FROM slices").fetchone()[0]
         n_genres  = conn.execute("SELECT COUNT(DISTINCT track_id) FROM genres").fetchone()[0]
         n_beats   = conn.execute("SELECT COUNT(DISTINCT track_id) FROM downbeats").fetchone()[0]
+        n_human     = conn.execute("SELECT COUNT(*) FROM tracks WHERE source = 'human'").fetchone()[0]
+        n_generated = conn.execute("SELECT COUNT(*) FROM tracks WHERE source = 'generated'").fetchone()[0]
         print(f'ebys.db — {n_tracks} tracks  {n_slices} slices  '
               f'{n_genres} with genres  {n_beats} with downbeats')
+        print(f'  source: {n_human} human  {n_generated} generated')
         conn.close()
         return
 

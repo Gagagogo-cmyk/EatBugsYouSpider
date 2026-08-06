@@ -15,14 +15,65 @@
 //   setTrackWeight <track> <v>
 //   start / stop
 //   selectSegment <track>
+//
+//   NOT sent to the outlet: generate <stem>. slicer.js has no handler for
+//   it — it's intercepted below and routed to the generative side instead
+//   (queueGeneration()), never reaches Max's route object.
+//
+// ── Generation intent bridge (data/current/cricket_intent.json) ─────────────
+// Every command batch Cricket sends to the remix engine is ALSO written to
+// disk as a plain JSON snapshot. This is what lets the generative side
+// (AGENT_MODE 'generate' stems, Stable Audio 3 + User LoRA) react to the
+// same instruction the remix engine just acted on, without cricket.js
+// knowing anything about Stable Audio 3, LoRA, or GPUs — see
+// src/demucs/cricket_bridge.py, which reads this file and turns the raw
+// command list into a caption fragment + generate_agent.py invocation.
+//
+// ── generate <stem> — Cricket-triggered generation ───────────────────────────
+// When Cricket itself decides a stem needs genuinely new material (not just
+// a different selection of what's already in the catalog), it can emit
+// `generate <stem>` as a command line, same as any other. cricket.js
+// intercepts that one specifically and spawns cricket_bridge.py as a
+// DETACHED background process — never inline with Cricket's response, never
+// blocking Max's thread, same spawn()-not-fork() pattern ws_server.js
+// already uses for tsne_worker.js (fork() corrupts N4M's own IPC channel).
+// Gated behind ENABLE_GENERATION below, OFF by default — Cricket deciding
+// on its own to kick off a slow, GPU-bound job is a real cost/time
+// tradeoff, not something that should be live just because the plumbing
+// exists. Turn it on once you have a trained LoRA and a working Stable
+// Audio 3 install (see docs/instrument/USER_LORA.md).
 
-const Max  = require('max-api');
-const http = require('http');
+const Max       = require('max-api');
+const http      = require('http');
+const fs        = require('fs');
+const path      = require('path');
+const os        = require('os');
+const { spawn } = require('child_process');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 var OLLAMA_HOST  = 'localhost';
 var OLLAMA_PORT  = 11434;
 var MODEL_NAME   = 'llama3.1:latest';
+
+// Safety gate for Cricket-triggered generation — see the header comment
+// above. Flip to true only once STABLE_AUDIO_3_DIR below actually points
+// at a working `uv sync`'d Stable Audio 3 clone with the model license
+// accepted (see setup.sh section 4).
+var ENABLE_GENERATION = false;
+
+// Must match wherever setup.sh cloned Stable Audio 3 to (same convention
+// src/tui/app.js's GENERATE_PY and setup.sh's STABLE_AUDIO_3_DIR use).
+// Override via the environment if you keep it somewhere else.
+const STABLE_AUDIO_3_DIR = process.env.STABLE_AUDIO_3_DIR || path.join(os.homedir(), 'stable-audio-3');
+const GENERATE_PY = path.join(STABLE_AUDIO_3_DIR, '.venv', 'bin', 'python3');
+const CRICKET_BRIDGE_PATH = path.join(__dirname, '..', 'demucs', 'cricket_bridge.py');
+
+// Set this once you've trained a User LoRA (see USER_LORA.md /
+// build_lora_dataset.py) — leave blank to generate from the bare base
+// model with no personal sonic identity applied.
+var LORA_CKPT_PATH = '';
+var GENERATION_INVOKE_PHRASE = 'ebys user style';  // should match build_lora_dataset.py's --caption
+var GENERATION_COUNT = 2;  // small on purpose — this is Cricket topping up a pool, not a full batch job
 
 const SYSTEM_PROMPT = `\
 You are Cricket. You run the music at SDJ — a slice-based DJ system that remixes uploaded
@@ -121,21 +172,68 @@ setStayProb 0.0
 setQuantize 0
 setTrackWeight melody 1.6
 setTrackWeight vocals 0.7
+
+GENERATING NEW MATERIAL — generate <stem>:
+  generate vocals|melody|bass|drums
+
+This is a DIFFERENT kind of command from everything else above. Everything
+above changes HOW you pick among slices that already exist in the catalog.
+generate <stem> asks for slices that don't exist yet — brand new audio, made
+by a model, not selected from anything anyone recorded. It's slow (not
+instant like everything else) and it doesn't affect what's playing right
+now. Never generate for vocals — the model can't sing or produce lyrics or
+voice at all, that stem stays remix-only regardless of what's asked.
+
+Use generate <stem> only when the person is explicitly asking for something
+new/different/never-heard for one instrument — "give me a totally different
+bassline", "I want a bass sound that isn't in here", "surprise me with the
+drums". Do NOT use it for ordinary mood/energy/texture requests like
+"darker" or "more energy" or "build up" — those are the setWeight/setDirPref
+commands above, applied to material that already exists. If you're not sure
+which the person means, prefer the adjustment commands — generate is the
+exception, not the default.
+
+Example — "the bass is boring, give me something totally different":
+generate bass
+setTrackWeight bass 1.4
 `;
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
+const VALID_STEMS = ['vocals', 'melody', 'bass', 'drums'];
+
 Max.addHandler('ask', (...args) => {
     const text = args.join(' ');
     Max.post('Cricket ← ' + text);
     callOllama(text, (lines) => {
+        const allCommands = [];
+        const generateStems = [];
         lines.forEach(line => {
             const parts = line.trim().split(/\s+/);
             if (parts.length === 0 || parts[0] === '') return;
             // Convert numeric strings to numbers
             const atoms = parts.map(p => isNaN(p) ? p : parseFloat(p));
+            allCommands.push(atoms);
+
+            const name = String(atoms[0]);
+            const stemArg = atoms[1] !== undefined ? String(atoms[1]).toLowerCase() : null;
+            if (name === 'generate' && VALID_STEMS.includes(stemArg)) {
+                // Intercepted, not forwarded — slicer.js has no handler for
+                // this. Logged into the intent snapshot below like any
+                // other command (useful history), just not outlet-ed.
+                Max.post('Cricket → generate ' + stemArg + ' (queued, not sent to engine)');
+                generateStems.push(stemArg);
+                return;
+            }
             Max.outlet(...atoms);
             Max.post('Cricket → ' + atoms.join(' '));
         });
+
+        if (allCommands.length > 0) {
+            writeGenerationIntent(text, allCommands);
+        }
+        // Written AFTER the intent file above so cricket_bridge.py reads
+        // this exact response's direction/weights, not a stale snapshot.
+        generateStems.forEach(stem => queueGeneration(stem, text));
     });
 });
 
@@ -143,6 +241,97 @@ Max.addHandler('model', (name) => {
     MODEL_NAME = String(name);
     Max.post('Cricket: model = ' + MODEL_NAME);
 });
+
+// ── Generation intent bridge ──────────────────────────────────────────────────
+// Fire-and-forget: a missing/unwritable data/current/ directory should
+// never break the remix engine's normal command flow, so this is wrapped
+// in its own try/catch and never rethrows or blocks the outlet sends above,
+// which already happened by the time this runs.
+const INTENT_PATH = path.join(__dirname, '..', '..', 'data', 'current', 'cricket_intent.json');
+
+function writeGenerationIntent(intentText, commands) {
+    try {
+        const payload = {
+            timestamp: new Date().toISOString(),
+            intent_text: intentText,
+            commands: commands  // array of [name, ...args] atom arrays, same shape sent to Max.outlet
+        };
+        fs.mkdirSync(path.dirname(INTENT_PATH), { recursive: true });
+        fs.writeFileSync(INTENT_PATH, JSON.stringify(payload, null, 2));
+    } catch (e) {
+        Max.post('Cricket: could not write generation intent (' + e.message + ') — remix engine unaffected');
+    }
+}
+
+// ── Cricket-triggered generation ─────────────────────────────────────────────
+// Spawns cricket_bridge.py as a DETACHED background process — .unref() so
+// it can outlive/run independently of cricket.js's own event loop, spawn()
+// (not fork()) so N4M's IPC isn't corrupted, same reasoning ws_server.js
+// documents for tsne_worker.js. stdout/stderr are piped only so progress
+// can be echoed to the Max console for visibility, not because cricket.js
+// needs to parse anything from it — the actual pipeline (generate -> tag ->
+// import) runs entirely inside cricket_bridge.py, unattended.
+function queueGeneration(stem, intentText) {
+    if (!ENABLE_GENERATION) {
+        Max.post('Cricket: "generate ' + stem + '" requested but ENABLE_GENERATION is off '
+            + '(see cricket.js config) — no job started.');
+        return;
+    }
+    if (stem === 'vocals') {
+        // Belt and suspenders — the system prompt already tells Cricket
+        // never to do this, but a bad LLM response is still possible.
+        Max.post('Cricket: refusing "generate vocals" — Stable Audio 3 cannot produce singing/voice, '
+            + 'vocals stays remix-only regardless of what was asked.');
+        return;
+    }
+
+    const args = [
+        CRICKET_BRIDGE_PATH,
+        '--stem', stem,
+        '--intent-file', INTENT_PATH,
+        '--count', String(GENERATION_COUNT),
+        '--invoke-phrase', GENERATION_INVOKE_PHRASE,
+    ];
+    if (LORA_CKPT_PATH) {
+        args.push('--lora-ckpt-path', LORA_CKPT_PATH);
+    }
+
+    Max.post('Cricket: queued fresh ' + stem + ' generation ("' + intentText + '") — running in the background, '
+        + 'will post here when ready. This does not affect what is playing now.');
+
+    let child;
+    try {
+        child = spawn(GENERATE_PY, args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+        Max.post('Cricket: could not start generation (' + e.message + ') — is Stable Audio 3 set up at '
+            + STABLE_AUDIO_3_DIR + '? (see setup.sh section 4)');
+        return;
+    }
+
+    child.on('error', (e) => {
+        Max.post('Cricket: generation process failed to start (' + e.message + ') — checked '
+            + GENERATE_PY + ', does that venv exist? (see setup.sh section 4 / STABLE_AUDIO_3_DIR)');
+    });
+
+    let lastLine = '';
+    const logChunk = (label) => (chunk) => {
+        lastLine = chunk.toString().trim().split('\n').pop() || lastLine;
+        Max.post('Cricket [' + stem + ' gen ' + label + ']: ' + lastLine);
+    };
+    child.stdout.on('data', logChunk('out'));
+    child.stderr.on('data', logChunk('err'));
+
+    child.on('close', (code) => {
+        if (code === 0) {
+            Max.post('Cricket: ' + stem + ' generation batch finished — run the Max analysis pass on '
+                + 'the new WAVs, then :setAgentMode ' + stem + ' generate when ready.');
+        } else {
+            Max.post('Cricket: ' + stem + ' generation failed (exit ' + code + ') — last line: ' + lastLine);
+        }
+    });
+
+    child.unref();
+}
 
 // ── Ollama API call ───────────────────────────────────────────────────────────
 function callOllama(userText, callback) {

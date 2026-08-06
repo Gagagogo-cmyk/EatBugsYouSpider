@@ -307,11 +307,11 @@ These aren't sound-shaping commands — they record judgments (this section is t
 | this is the drop / verse / intro / bridge / build / outro | `tag drop` / `tag verse` / `tag intro` / `tag bridge` / `tag build` / `tag outro` |
 | tag the bassline / tag what bass is doing | `tag <label> bass` (stem arg — default is melody) |
 | what sections have you tagged / show me the sections | `listSections` |
-| this layering sounds great / this combo works | `score 0.8` |
-| this mix isn't working / this combo is bad | `score -0.6` |
-| great transition / that cut flowed well | `scoreTransition 0.7` |
-| that transition was rough / jarring cut | `scoreTransition -0.6` |
-| bad transition on the bass specifically | `scoreTransition -0.6 bass` |
+| this layering sounds great / this combo works | `scoreLyr 0.8` |
+| this mix isn't working / this combo is bad | `scoreLyr -0.6` |
+| great transition / that cut flowed well | `scoreTrs 0.7` |
+| that transition was rough / jarring cut | `scoreTrs -0.6` |
+| bad transition on the bass specifically | `scoreTrs -0.6 bass` |
 
 ---
 
@@ -539,8 +539,8 @@ Examples:
 - **genres.json** — Essentia genre tags per track (top 5 genres with confidence scores).
 - **downbeats.json** — madmom output: BPM, meter, downbeat positions, confidence per track.
 - **training_log.jsonl** — Cricket's taste memory. One line per `:bake`. Grows over sessions.
-- **training_log_vertical.jsonl** — one line per `:score`. Was the current layered combo good.
-- **training_log_transition.jsonl** — one line per `:scoreTransition`. Did this specific cut flow well.
+- **training_log_vertical.jsonl** — one line per `:scoreLyr`. Was the current layered combo good.
+- **training_log_horizontal.jsonl** — one line per `:scoreTrs`. Did this specific cut flow well.
 - **song_structure.json** — canonical (not append-only) store of `:tag`'d sections per source track: bar range, structural label, computed intensity.
 - **CRICKET.md** — this file. Cricket's knowledge base, loaded at startup.
 
@@ -594,17 +594,17 @@ Re-tagging a range that already overlaps a stored section (>50%) updates it in p
 
 Prints the stored sections for a source track (defaults to whatever's currently loaded). Use this if the user asks what's been tagged so far, or wants to sanity-check before scoring something against a section.
 
-### `:score <-1..1> [overallSection]` — vertical: is this layering good
+### `:scoreLyr <-1..1> [overallSection]` — vertical: is this layering good
 
 Rates the CURRENT combination across all 4 stems — which source track each is drawing from and how they're mixed — right now, as a snapshot. No session, no bracket. Each stem's entry in the logged snapshot automatically includes whatever `:tag` has already labeled for its current position (if any) — that's "when a layering is good, also record what section it corresponds to," done by lookup rather than by asking the user to repeat themselves. The optional trailing word lets the user additionally label the *overall* combined moment if it reads differently from any one stem's own tagged section (e.g. "this combo feels like a build" even though the individual stems are mid-verse).
 
-### `:scoreTransition <-1..1> [stem]` — horizontal: did this cut flow
+### `:scoreTrs <-1..1> [stem]` — horizontal: did this cut flow
 
-Rates whether the audio itself flowed well going from the *previous* segment into the *current* one — the moment of the cut, on one stem (or all 4 at once, default). This is a different "horizontal" than `:bake`'s: `:bake` judges whether the right *sequence of commands* was issued over a loop; `:scoreTransition` judges the *audio* of one specific cut, tagged with both the outgoing and incoming section if known. Needs at least one segment change to have happened on the target stem(s) before it has anything to score — it'll say so if not.
+Rates whether the audio itself flowed well going from the *previous* segment into the *current* one — the moment of the cut, on one stem (or all 4 at once, default). This is a different "horizontal" than `:bake`'s: `:bake` judges whether the right *sequence of commands* was issued over a loop; `:scoreTrs` judges the *audio* of one specific cut, tagged with both the outgoing and incoming section if known. Needs at least one segment change to have happened on the target stem(s) before it has anything to score — it'll say so if not.
 
 ### Choosing which one applies
 
-- Judging one instant, across stems → `:score`
-- Judging a cut, on one stem or all → `:scoreTransition`
+- Judging one instant, across stems → `:scoreLyr`
+- Judging a cut, on one stem or all → `:scoreTrs`
 - Labeling what a passage of the song *is*, independent of the current remix → `:tag`
 - Judging whether a whole *sequence of your corrections* got Cricket to the right place → `:bake`

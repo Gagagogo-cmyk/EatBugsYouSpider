@@ -1,0 +1,18 @@
+#N canvas 100 100 640 340 12;
+#X obj 40 20 inlet;
+#X obj 40 80 route clear refresh;
+#X msg 40 150 resetMemory;
+#X obj 260 150 t b;
+#X obj 500 150 print registry_router_unknown_msg;
+#X obj 40 220 outlet;
+#X obj 260 220 outlet;
+#X text 340 20 registry_router: replaces dict_stub (renamed 2026-08-02 -- there's no dict-like behavior left\\\, this is just a 2-way router. See CONVERSION_NOTES.md "dict_stub: coded for real" and its follow-up correction for the history)., f 380;
+#X text 343 73 Only 2 real actions exist now -- "clear" and "refresh" (collapsed from the old "read <path>"/"export <path>" pair\\\, which had become functionally identical and whose path argument was never actually used by anything downstream -- see CONVERSION_NOTES.md). Anything else received is unrecognized and printed\\\, not silently treated as a refresh. Two real upstream triggers feed this in the main patch: a loadbang fires "refresh" once on patch start\\\, and a manual "wipe memory" message box fires "clear" then "refresh" in sequence (Pd triggers fire right-to-left) -- clear the file\\\, then re-sync the counter to the now-empty state. Both were already there, f 177;
+#X text 340 170 outlet 0 ("clear"): emits "resetMemory" -- wire into bridge_sliceWriter (wipes analysis_library.json for real) and bridge_analyzeReader (clears its own in-memory batch/counter state)., f 370;
+#X text 340 235 outlet 1 ("refresh"): bang -- wire into the loadRegistry message feeding bridge_analyzeReader (reads analysis_library.json for real\\\, sets the counter's start position from what's actually been analyzed)., f 370;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 1 1 3 0;
+#X connect 1 2 4 0;
+#X connect 2 0 5 0;
+#X connect 3 0 6 0;

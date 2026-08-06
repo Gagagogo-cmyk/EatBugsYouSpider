@@ -9,7 +9,7 @@
             "modernui": 1
         },
         "classnamespace": "box",
-        "rect": [ -141.0, 121.0, 1262.0, 881.0 ],
+        "rect": [ 432.0, 95.0, 1262.0, 881.0 ],
         "boxes": [
             {
                 "box": {
@@ -7031,7 +7031,7 @@
                     "numinlets": 2,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 1537.037011384964, 274.0740694999695, 29.5, 22.0 ],
+                    "patching_rect": [ 1538.0, 284.0, 29.5, 22.0 ],
                     "text": "5"
                 }
             },
@@ -8746,6 +8746,8 @@
                     "saved_object_attributes": {
                         "autostart": 0,
                         "defer": 0,
+                        "node_bin_path": "",
+                        "npm_bin_path": "",
                         "watch": 0
                     },
                     "text": "node.script ws_server.js @autostart 1",
@@ -8794,10 +8796,10 @@
                     "id": "obj-4041",
                     "linecount": 2,
                     "maxclass": "newobj",
-                    "numinlets": 25,
+                    "numinlets": 32,
                     "numoutlets": 32,
                     "outlettype": [ "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "" ],
-                    "patching_rect": [ 5848.148050546646, 237.0370330810547, 758.1395077705383, 35.0 ],
+                    "patching_rect": [ 5848.148050546646, 237.0370330810547, 1038.1395077705383, 35.0 ],
                     "text": "route buildIndex start stop selectSegment setSegmentBars setStayProb setQuantize setFallbackBPM setWeight setMatchProb setDirPref setDirWeight setTrackWeight nextNearest reset info loop unloop unloopAll setGlobalBPM setMaxSlices resetMemory pitchShift followStem formantShift setShiftBand setPitchBand setFormantBand clearPitchBand clearFormantBand clearShiftBand"
                 }
             },
@@ -9767,7 +9769,7 @@
                     "numinlets": 1,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 6711.110999107361, 570.3703117370605, 158.0, 22.0 ],
+                    "patching_rect": [ 6899.0, 407.6296548843384, 158.0, 22.0 ],
                     "text": "prepend setFormantBand"
                 }
             },
@@ -9778,7 +9780,7 @@
                     "numinlets": 1,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 6711.110999107361, 611.1111686248779, 158.0, 22.0 ],
+                    "patching_rect": [ 6899.0, 448.6296548843384, 158.0, 22.0 ],
                     "text": "prepend clearPitchBand"
                 }
             },
@@ -9789,7 +9791,7 @@
                     "numinlets": 1,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 6711.110999107361, 651.8518254852295, 158.0, 22.0 ],
+                    "patching_rect": [ 6899.0, 488.6296548843384, 158.0, 22.0 ],
                     "text": "prepend clearFormantBand"
                 }
             },
@@ -9800,7 +9802,7 @@
                     "numinlets": 1,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 6711.110999107361, 692.5924823760986, 158.0, 22.0 ],
+                    "patching_rect": [ 6899.0, 529.6296548843384, 158.0, 22.0 ],
                     "text": "prepend clearShiftBand"
                 }
             },
@@ -9811,7 +9813,7 @@
                     "numinlets": 3,
                     "numoutlets": 1,
                     "outlettype": [ "signal" ],
-                    "patching_rect": [ 1044.4444270133972, 1407.4073839187622, 200.0, 22.0 ],
+                    "patching_rect": [ 1044.4444270133972, 1407.4073839187622, 221.0, 22.0 ],
                     "text": "pfft~ ebys-pitch.maxpat 1024 4 args voc"
                 }
             },
@@ -9822,7 +9824,7 @@
                     "numinlets": 3,
                     "numoutlets": 1,
                     "outlettype": [ "signal" ],
-                    "patching_rect": [ 1644.444416999817, 1407.4073839187622, 200.0, 22.0 ],
+                    "patching_rect": [ 1644.444416999817, 1407.4073839187622, 223.0, 22.0 ],
                     "text": "pfft~ ebys-pitch.maxpat 1024 4 args drm"
                 }
             },
@@ -9833,7 +9835,7 @@
                     "numinlets": 3,
                     "numoutlets": 1,
                     "outlettype": [ "signal" ],
-                    "patching_rect": [ 2214.8147778511047, 1407.4073839187622, 200.0, 22.0 ],
+                    "patching_rect": [ 2214.8147778511047, 1407.4073839187622, 221.0, 22.0 ],
                     "text": "pfft~ ebys-pitch.maxpat 1024 4 args bss"
                 }
             },
@@ -9844,7 +9846,7 @@
                     "numinlets": 3,
                     "numoutlets": 1,
                     "outlettype": [ "signal" ],
-                    "patching_rect": [ 2833.333286046982, 1407.4073839187622, 200.0, 22.0 ],
+                    "patching_rect": [ 2833.333286046982, 1407.4073839187622, 222.0, 22.0 ],
                     "text": "pfft~ ebys-pitch.maxpat 1024 4 args mel"
                 }
             },
@@ -15710,7 +15712,7 @@
                     "numinlets": 2,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 1851.5149881839752, 114.81481289863586, 441.0, 189.0 ],
+                    "patching_rect": [ 4769.999545097351, 4489.999571800232, 441.0, 189.0 ],
                     "range": [ 0.0, 0.10000000149011612 ]
                 }
             },
@@ -15720,8 +15722,14074 @@
                     "maxclass": "comment",
                     "numinlets": 1,
                     "numoutlets": 0,
-                    "patching_rect": [ 1851.5149881839752, 86.36362874507904, 460.0, 20.0 ],
+                    "patching_rect": [ 4769.999545097351, 4459.999574661255, 460.0, 20.0 ],
                     "text": "MASTER SPECTRUM  —  verify EQ here (solo a stem to isolate it)"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_hdr",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 4734.999548435211, 3600.0, 20.0 ],
+                    "text": "========================  EQ SPECTRUM ANALYZER  ========================"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_hdr2",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 4764.999545574188, 3600.0, 20.0 ],
+                    "text": "post-everything, fixed 64-band bandpass filterbank per source (see patch_eq_spectrum.py) — one column per source below"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_col_lbl_vocals",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 4799.999542236328, 660.0, 20.0 ],
+                    "text": "── VOCALS ──"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum1_vocals",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum2_vocals",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4929.999529838562, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum_vocals",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 4874.999535083771, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_mono_vocals",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 4919.999530792236, 110.0, 22.0 ],
+                    "text": "*~ 0.5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_0",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 4949.999527931213, 200.0, 20.0 ],
+                    "text": "band 0 — 40 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_0",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 4984.999524593353, 280.0, 22.0 ],
+                    "text": "biquad~ 0.000949 0. -0.000949 -1.99807 0.998102"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_0",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 4984.999524593353, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_0",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 4984.999524593353, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 0"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_1",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5004.999522686005, 200.0, 20.0 ],
+                    "text": "band 1 — 44 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_1",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5029.999520301819, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001044 0. -0.001044 -1.997873 0.997913"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_1",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5029.999520301819, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_1",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5029.999520301819, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 1"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_2",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5054.999517917633, 200.0, 20.0 ],
+                    "text": "band 2 — 48 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_2",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5074.999516010284, 285.0, 22.0 ],
+                    "text": "biquad~ 0.001139 0. -0.001139 -1.997676 0.997723"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_2",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5074.999516010284, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_2",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5074.999516010284, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 2"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_3",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5099.999513626099, 200.0, 20.0 ],
+                    "text": "band 3 — 53 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_3",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5119.99951171875, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001257 0. -0.001257 -1.997429 0.997486"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_3",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5119.99951171875, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_3",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5119.99951171875, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 3"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_4",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5144.999509334564, 200.0, 20.0 ],
+                    "text": "band 4 — 59 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_4",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5169.999506950378, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001399 0. -0.001399 -1.997131 0.997202"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_4",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5169.999506950378, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_4",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5169.999506950378, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 4"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_5",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5189.99950504303, 200.0, 20.0 ],
+                    "text": "band 5 — 64 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_5",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5209.999503135681, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001517 0. -0.001517 -1.996882 0.996965"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_5",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5209.999503135681, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_5",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5209.999503135681, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_6",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5234.999500751495, 200.0, 20.0 ],
+                    "text": "band 6 — 71 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_6",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5259.99949836731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001683 0. -0.001683 -1.996532 0.996634"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_6",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5259.99949836731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_6",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5259.99949836731, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 6"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_7",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5284.999495983124, 200.0, 20.0 ],
+                    "text": "band 7 — 78 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_7",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5304.999494075775, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001849 0. -0.001849 -1.996179 0.996303"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_7",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5304.999494075775, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_7",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5304.999494075775, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 7"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_8",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5329.999491691589, 200.0, 20.0 ],
+                    "text": "band 8 — 86 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_8",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5349.999489784241, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002038 0. -0.002038 -1.995774 0.995924"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_8",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5349.999489784241, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_8",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5349.999489784241, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 8"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_9",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5374.999487400055, 200.0, 20.0 ],
+                    "text": "band 9 — 94 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_9",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5399.999485015869, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002227 0. -0.002227 -1.995367 0.995546"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_9",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5399.999485015869, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_9",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5399.999485015869, 153.0, 22.0 ],
+                    "text": "prepend spectrum vocals 9"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_10",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5419.9994831085205, 200.0, 20.0 ],
+                    "text": "band 10 — 104 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_10",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5439.999481201172, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002463 0. -0.002463 -1.994854 0.995073"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_10",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5439.999481201172, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_10",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5439.999481201172, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 10"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_11",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5469.999478340149, 200.0, 20.0 ],
+                    "text": "band 11 — 114 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_11",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5484.999476909637, 260.0, 22.0 ],
+                    "text": "biquad~ 0.0027 0. -0.0027 -1.994338 0.994601"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_11",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5484.999476909637, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_11",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5484.999476909637, 158.0, 22.0 ],
+                    "text": "prepend spectrum vocals 11"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_12",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5509.999474525452, 200.0, 20.0 ],
+                    "text": "band 12 — 125 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_12",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5534.999472141266, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002959 0. -0.002959 -1.993765 0.994081"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_12",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5534.999472141266, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_12",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5534.999472141266, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 12"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_13",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5559.99946975708, 200.0, 20.0 ],
+                    "text": "band 13 — 138 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_13",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5579.999467849731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003266 0. -0.003266 -1.993083 0.993468"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_13",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5579.999467849731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_13",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5579.999467849731, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 13"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_14",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5604.999465465546, 200.0, 20.0 ],
+                    "text": "band 14 — 151 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_14",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5624.999463558197, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003573 0. -0.003573 -1.992394 0.992855"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_14",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5624.999463558197, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_14",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5624.999463558197, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 14"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_15",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5649.999461174011, 200.0, 20.0 ],
+                    "text": "band 15 — 167 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_15",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5674.999458789825, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00395 0. -0.00395 -1.991537 0.992101"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_15",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5674.999458789825, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_15",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5674.999458789825, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 15"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_16",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5699.99945640564, 200.0, 20.0 ],
+                    "text": "band 16 — 183 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_16",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5719.999454498291, 286.0, 22.0 ],
+                    "text": "biquad~ 0.004326 0. -0.004326 -1.990671 0.991348"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_16",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5719.999454498291, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_16",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5719.999454498291, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 16"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_17",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5739.999452590942, 200.0, 20.0 ],
+                    "text": "band 17 — 201 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_17",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5764.999450206757, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00475 0. -0.00475 -1.989685 0.990501"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_17",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5764.999450206757, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_17",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5764.999450206757, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 17"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_18",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5784.999448299408, 200.0, 20.0 ],
+                    "text": "band 18 — 222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_18",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5809.999445915222, 286.0, 22.0 ],
+                    "text": "biquad~ 0.005243 0. -0.005243 -1.988519 0.989514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_18",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5809.999445915222, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_18",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5809.999445915222, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 18"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_19",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5834.999443531036, 200.0, 20.0 ],
+                    "text": "band 19 — 244 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_19",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5854.999441623688, 280.0, 22.0 ],
+                    "text": "biquad~ 0.005759 0. -0.005759 -1.98728 0.988481"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_19",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5854.999441623688, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_19",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5854.999441623688, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 19"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_20",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5879.999439239502, 200.0, 20.0 ],
+                    "text": "band 20 — 268 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_20",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5904.999436855316, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006322 0. -0.006322 -1.985907 0.987356"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_20",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5904.999436855316, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_20",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5904.999436855316, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 20"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_21",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5924.9994349479675, 200.0, 20.0 ],
+                    "text": "band 21 — 295 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_21",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5949.999432563782, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006954 0. -0.006954 -1.984337 0.986091"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_21",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5949.999432563782, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_21",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5949.999432563782, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 21"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_22",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 5974.999430179596, 200.0, 20.0 ],
+                    "text": "band 22 — 324 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_22",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 5994.999428272247, 286.0, 22.0 ],
+                    "text": "biquad~ 0.007632 0. -0.007632 -1.982621 0.984735"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_22",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 5994.999428272247, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_22",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 5994.999428272247, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 22"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_23",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6019.9994258880615, 200.0, 20.0 ],
+                    "text": "band 23 — 356 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_23",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6039.999423980713, 286.0, 22.0 ],
+                    "text": "biquad~ 0.008379 0. -0.008379 -1.980691 0.983242"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_23",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6039.999423980713, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_23",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6039.999423980713, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 23"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_24",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6064.999421596527, 200.0, 20.0 ],
+                    "text": "band 24 — 392 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_24",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6084.9994196891785, 286.0, 22.0 ],
+                    "text": "biquad~ 0.009218 0. -0.009218 -1.978475 0.981564"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_24",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6084.9994196891785, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_24",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6084.9994196891785, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 24"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_25",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6109.999417304993, 200.0, 20.0 ],
+                    "text": "band 25 — 431 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_25",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6134.999414920807, 286.0, 22.0 ],
+                    "text": "biquad~ 0.010125 0. -0.010125 -1.976019 0.979751"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_25",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6134.999414920807, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_25",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6134.999414920807, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 25"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_26",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6154.999413013458, 200.0, 20.0 ],
+                    "text": "band 26 — 474 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_26",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6179.9994106292725, 283.0, 22.0 ],
+                    "text": "biquad~ 0.011122 0. -0.011122 -1.973248 0.977756"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_26",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6179.9994106292725, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_26",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6179.9994106292725, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 26"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_27",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6204.999408245087, 200.0, 20.0 ],
+                    "text": "band 27 — 521 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_27",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6224.999406337738, 286.0, 22.0 ],
+                    "text": "biquad~ 0.012209 0. -0.012209 -1.970141 0.975581"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_27",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6224.999406337738, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_27",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6224.999406337738, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 27"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_28",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6249.999403953552, 200.0, 20.0 ],
+                    "text": "band 28 — 573 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_28",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6269.999402046204, 280.0, 22.0 ],
+                    "text": "biquad~ 0.013409 0. -0.013409 -1.96661 0.973182"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_28",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6269.999402046204, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_28",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6269.999402046204, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 28"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_29",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6294.999399662018, 200.0, 20.0 ],
+                    "text": "band 29 — 631 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_29",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6319.999397277832, 286.0, 22.0 ],
+                    "text": "biquad~ 0.014743 0. -0.014743 -1.962556 0.970514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_29",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6319.999397277832, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_29",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6319.999397277832, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 29"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_30",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6339.999395370483, 200.0, 20.0 ],
+                    "text": "band 30 — 694 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_30",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6359.999393463135, 286.0, 22.0 ],
+                    "text": "biquad~ 0.016187 0. -0.016187 -1.958016 0.967627"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_30",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6359.999393463135, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_30",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6359.999393463135, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 30"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_31",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6384.999391078949, 200.0, 20.0 ],
+                    "text": "band 31 — 763 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_31",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6409.999388694763, 286.0, 22.0 ],
+                    "text": "biquad~ 0.017761 0. -0.017761 -1.952881 0.964477"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_31",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6409.999388694763, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_31",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6409.999388694763, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 31"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_32",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6434.999386310577, 200.0, 20.0 ],
+                    "text": "band 32 — 839 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_32",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6454.999384403229, 280.0, 22.0 ],
+                    "text": "biquad~ 0.019488 0. -0.019488 -1.94703 0.961024"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_32",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6454.999384403229, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_32",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6454.999384403229, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 32"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_33",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6479.999382019043, 200.0, 20.0 ],
+                    "text": "band 33 — 923 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_33",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6499.999380111694, 286.0, 22.0 ],
+                    "text": "biquad~ 0.021387 0. -0.021387 -1.940327 0.957226"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_33",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6499.999380111694, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_33",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6499.999380111694, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 33"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_34",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6524.9993777275085, 200.0, 20.0 ],
+                    "text": "band 34 — 1015 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_34",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6549.999375343323, 280.0, 22.0 ],
+                    "text": "biquad~ 0.023455 0. -0.023455 -1.932703 0.95309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_34",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6549.999375343323, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_34",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6549.999375343323, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 34"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_35",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6569.999373435974, 200.0, 20.0 ],
+                    "text": "band 35 — 1116 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_35",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6589.9993715286255, 285.0, 22.0 ],
+                    "text": "biquad~ 0.025711 0. -0.025711 -1.923999 0.948579"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_35",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6589.9993715286255, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_35",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6589.9993715286255, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 35"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_36",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6619.9993686676025, 200.0, 20.0 ],
+                    "text": "band 36 — 1227 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_36",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6634.999367237091, 286.0, 22.0 ],
+                    "text": "biquad~ 0.028171 0. -0.028171 -1.914032 0.943657"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_36",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6634.999367237091, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_36",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6634.999367237091, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 36"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_37",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6659.999364852905, 200.0, 20.0 ],
+                    "text": "band 37 — 1350 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_37",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6684.9993624687195, 286.0, 22.0 ],
+                    "text": "biquad~ 0.030876 0. -0.030876 -1.902505 0.938248"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_37",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6684.9993624687195, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_37",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6684.9993624687195, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 37"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_38",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6709.999360084534, 200.0, 20.0 ],
+                    "text": "band 38 — 1484 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_38",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6729.999358177185, 280.0, 22.0 ],
+                    "text": "biquad~ 0.033795 0. -0.033795 -1.889377 0.93241"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_38",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6729.999358177185, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_38",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6729.999358177185, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 38"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_39",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6754.999355792999, 200.0, 20.0 ],
+                    "text": "band 39 — 1633 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_39",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6774.999353885651, 286.0, 22.0 ],
+                    "text": "biquad~ 0.037006 0. -0.037006 -1.874093 0.925988"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_39",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6774.999353885651, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_39",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6774.999353885651, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 39"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_40",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6799.999351501465, 200.0, 20.0 ],
+                    "text": "band 40 — 1795 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_40",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6824.999349117279, 286.0, 22.0 ],
+                    "text": "biquad~ 0.040455 0. -0.040455 -1.856672 0.919089"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_40",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6824.999349117279, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_40",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6824.999349117279, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 40"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_41",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6849.999346733093, 200.0, 20.0 ],
+                    "text": "band 41 — 1975 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_41",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6869.999344825745, 286.0, 22.0 ],
+                    "text": "biquad~ 0.044235 0. -0.044235 -1.836351 0.911531"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_41",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6869.999344825745, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_41",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6869.999344825745, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 41"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_42",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6889.999342918396, 200.0, 20.0 ],
+                    "text": "band 42 — 2172 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_42",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6914.99934053421, 280.0, 22.0 ],
+                    "text": "biquad~ 0.048305 0. -0.048305 -1.812977 0.90339"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_42",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6914.99934053421, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_42",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6914.99934053421, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 42"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_43",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6934.999338626862, 200.0, 20.0 ],
+                    "text": "band 43 — 2388 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_43",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 6959.999336242676, 280.0, 22.0 ],
+                    "text": "biquad~ 0.052687 0. -0.052687 -1.78602 0.894625"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_43",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 6959.999336242676, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_43",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 6959.999336242676, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 43"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_44",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 6984.99933385849, 200.0, 20.0 ],
+                    "text": "band 44 — 2626 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_44",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7004.999331951141, 280.0, 22.0 ],
+                    "text": "biquad~ 0.057415 0. -0.057415 -1.754757 0.88517"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_44",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7004.999331951141, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_44",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7004.999331951141, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 44"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_45",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7029.999329566956, 200.0, 20.0 ],
+                    "text": "band 45 — 2889 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_45",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7054.99932718277, 280.0, 22.0 ],
+                    "text": "biquad~ 0.062513 0. -0.062513 -1.71837 0.874974"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_45",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7054.99932718277, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_45",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7054.99932718277, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 45"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_46",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7074.999325275421, 200.0, 20.0 ],
+                    "text": "band 46 — 3177 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_46",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7099.999322891235, 286.0, 22.0 ],
+                    "text": "biquad~ 0.067939 0. -0.067939 -1.676392 0.864122"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_46",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7099.999322891235, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_46",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7099.999322891235, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 46"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_47",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7124.99932050705, 200.0, 20.0 ],
+                    "text": "band 47 — 3494 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_47",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7144.999318599701, 280.0, 22.0 ],
+                    "text": "biquad~ 0.073717 0. -0.073717 -1.62772 0.852566"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_47",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7144.999318599701, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_47",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7144.999318599701, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 47"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_48",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7169.999316215515, 200.0, 20.0 ],
+                    "text": "band 48 — 3842 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_48",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7189.9993143081665, 266.0, 22.0 ],
+                    "text": "biquad~ 0.07982 0. -0.07982 -1.571455 0.84036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_48",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7189.9993143081665, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_48",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7189.9993143081665, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 48"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_49",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7214.999311923981, 200.0, 20.0 ],
+                    "text": "band 49 — 4226 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_49",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7234.999310016632, 286.0, 22.0 ],
+                    "text": "biquad~ 0.086254 0. -0.086254 -1.506121 0.827492"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_49",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7234.999310016632, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_49",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7234.999310016632, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 49"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_50",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7259.999307632446, 200.0, 20.0 ],
+                    "text": "band 50 — 4647 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_50",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7284.9993052482605, 286.0, 22.0 ],
+                    "text": "biquad~ 0.092938 0. -0.092938 -1.430821 0.814124"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_50",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7284.9993052482605, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_50",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7284.9993052482605, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 50"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_51",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7304.999303340912, 200.0, 20.0 ],
+                    "text": "band 51 — 5111 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_51",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7329.999300956726, 280.0, 22.0 ],
+                    "text": "biquad~ 0.099846 0. -0.099846 -1.34371 0.800309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_51",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7329.999300956726, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_51",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7329.999300956726, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 51"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_52",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7354.99929857254, 200.0, 20.0 ],
+                    "text": "band 52 — 5621 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_52",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7374.999296665192, 273.0, 22.0 ],
+                    "text": "biquad~ 0.106871 0. -0.106871 -1.2434 0.786258"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_52",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7374.999296665192, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_52",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7374.999296665192, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 52"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_53",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7399.999294281006, 200.0, 20.0 ],
+                    "text": "band 53 — 6182 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_53",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7419.999292373657, 285.0, 22.0 ],
+                    "text": "biquad~ 0.113899 0. -0.113899 -1.128087 0.772201"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_53",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7419.999292373657, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_53",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7419.999292373657, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 53"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_54",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7444.999289989471, 200.0, 20.0 ],
+                    "text": "band 54 — 6798 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_54",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7469.999287605286, 280.0, 22.0 ],
+                    "text": "biquad~ 0.120759 0. -0.120759 -0.99617 0.758482"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_54",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7469.999287605286, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_54",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7469.999287605286, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 54"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_55",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7489.999285697937, 200.0, 20.0 ],
+                    "text": "band 55 — 7477 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_55",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7509.999283790588, 286.0, 22.0 ],
+                    "text": "biquad~ 0.127264 0. -0.127264 -0.845243 0.745472"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_55",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7509.999283790588, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_55",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7509.999283790588, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 55"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_56",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7534.999281406403, 200.0, 20.0 ],
+                    "text": "band 56 — 8222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_56",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7559.999279022217, 285.0, 22.0 ],
+                    "text": "biquad~ 0.133112 0. -0.133112 -0.674142 0.733776"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_56",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7559.999279022217, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_56",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7559.999279022217, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 56"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_57",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7584.999276638031, 200.0, 20.0 ],
+                    "text": "band 57 — 9043 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_57",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7604.999274730682, 273.0, 22.0 ],
+                    "text": "biquad~ 0.13798 0. -0.13798 -0.480402 0.724041"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_57",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7604.999274730682, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_57",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7604.999274730682, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 57"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_58",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7629.999272346497, 200.0, 20.0 ],
+                    "text": "band 58 — 9945 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_58",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7649.999270439148, 286.0, 22.0 ],
+                    "text": "biquad~ 0.141408 0. -0.141408 -0.263188 0.717184"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_58",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7649.999270439148, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_58",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7649.999270439148, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 58"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_59",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7674.999268054962, 200.0, 20.0 ],
+                    "text": "band 59 — 10937 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_59",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7699.999265670776, 286.0, 22.0 ],
+                    "text": "biquad~ 0.142848 0. -0.142848 -0.021493 0.714305"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_59",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7699.999265670776, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_59",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7699.999265670776, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 59"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_60",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7719.999263763428, 200.0, 20.0 ],
+                    "text": "band 60 — 12029 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_60",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7739.999261856079, 282.0, 22.0 ],
+                    "text": "biquad~ 0.141605 0. -0.141605 0.244743 0.716791"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_60",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7739.999261856079, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_60",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7739.999261856079, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_61",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7769.999258995056, 200.0, 20.0 ],
+                    "text": "band 61 — 13229 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_61",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7784.999257564545, 282.0, 22.0 ],
+                    "text": "biquad~ 0.136827 0. -0.136827 0.533236 0.726345"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_61",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7784.999257564545, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_61",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7784.999257564545, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 61"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_62",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7809.999255180359, 200.0, 20.0 ],
+                    "text": "band 62 — 14548 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_62",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7834.999252796173, 282.0, 22.0 ],
+                    "text": "biquad~ 0.127482 0. -0.127482 0.839588 0.745036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_62",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7834.999252796173, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_62",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7834.999252796173, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 62"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_vocals_63",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4799.999542236328, 7859.999250411987, 200.0, 20.0 ],
+                    "text": "band 63 — 16000 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_vocals_63",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 4799.999542236328, 7879.999248504639, 281.0, 22.0 ],
+                    "text": "biquad~ 0.112312 0. -0.112312 1.155657 0.775376"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_vocals_63",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5029.999520301819, 7879.999248504639, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_vocals_63",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5149.999508857727, 7879.999248504639, 159.0, 22.0 ],
+                    "text": "prepend spectrum vocals 63"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_col_lbl_melody",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 4799.999542236328, 660.0, 20.0 ],
+                    "text": "── MELODY ──"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum1_melody",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum2_melody",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5629.99946308136, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum_melody",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 4874.999535083771, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_mono_melody",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 4919.999530792236, 110.0, 22.0 ],
+                    "text": "*~ 0.5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_0",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 4949.999527931213, 200.0, 20.0 ],
+                    "text": "band 0 — 40 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_0",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 4984.999524593353, 280.0, 22.0 ],
+                    "text": "biquad~ 0.000949 0. -0.000949 -1.99807 0.998102"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_0",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 4984.999524593353, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_0",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 4984.999524593353, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 0"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_1",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5004.999522686005, 200.0, 20.0 ],
+                    "text": "band 1 — 44 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_1",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5029.999520301819, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001044 0. -0.001044 -1.997873 0.997913"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_1",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5029.999520301819, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_1",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5029.999520301819, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 1"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_2",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5054.999517917633, 200.0, 20.0 ],
+                    "text": "band 2 — 48 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_2",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5074.999516010284, 285.0, 22.0 ],
+                    "text": "biquad~ 0.001139 0. -0.001139 -1.997676 0.997723"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_2",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5074.999516010284, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_2",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5074.999516010284, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 2"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_3",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5099.999513626099, 200.0, 20.0 ],
+                    "text": "band 3 — 53 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_3",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5119.99951171875, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001257 0. -0.001257 -1.997429 0.997486"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_3",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5119.99951171875, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_3",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5119.99951171875, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 3"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_4",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5144.999509334564, 200.0, 20.0 ],
+                    "text": "band 4 — 59 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_4",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5169.999506950378, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001399 0. -0.001399 -1.997131 0.997202"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_4",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5169.999506950378, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_4",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5169.999506950378, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 4"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_5",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5189.99950504303, 200.0, 20.0 ],
+                    "text": "band 5 — 64 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_5",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5209.999503135681, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001517 0. -0.001517 -1.996882 0.996965"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_5",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5209.999503135681, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_5",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5209.999503135681, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_6",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5234.999500751495, 200.0, 20.0 ],
+                    "text": "band 6 — 71 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_6",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5259.99949836731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001683 0. -0.001683 -1.996532 0.996634"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_6",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5259.99949836731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_6",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5259.99949836731, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 6"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_7",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5284.999495983124, 200.0, 20.0 ],
+                    "text": "band 7 — 78 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_7",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5304.999494075775, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001849 0. -0.001849 -1.996179 0.996303"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_7",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5304.999494075775, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_7",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5304.999494075775, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 7"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_8",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5329.999491691589, 200.0, 20.0 ],
+                    "text": "band 8 — 86 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_8",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5349.999489784241, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002038 0. -0.002038 -1.995774 0.995924"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_8",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5349.999489784241, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_8",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5349.999489784241, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 8"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_9",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5374.999487400055, 200.0, 20.0 ],
+                    "text": "band 9 — 94 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_9",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5399.999485015869, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002227 0. -0.002227 -1.995367 0.995546"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_9",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5399.999485015869, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_9",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5399.999485015869, 157.0, 22.0 ],
+                    "text": "prepend spectrum melody 9"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_10",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5419.9994831085205, 200.0, 20.0 ],
+                    "text": "band 10 — 104 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_10",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5439.999481201172, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002463 0. -0.002463 -1.994854 0.995073"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_10",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5439.999481201172, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_10",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5439.999481201172, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 10"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_11",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5469.999478340149, 200.0, 20.0 ],
+                    "text": "band 11 — 114 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_11",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5484.999476909637, 260.0, 22.0 ],
+                    "text": "biquad~ 0.0027 0. -0.0027 -1.994338 0.994601"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_11",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5484.999476909637, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_11",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5484.999476909637, 163.0, 22.0 ],
+                    "text": "prepend spectrum melody 11"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_12",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5509.999474525452, 200.0, 20.0 ],
+                    "text": "band 12 — 125 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_12",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5534.999472141266, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002959 0. -0.002959 -1.993765 0.994081"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_12",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5534.999472141266, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_12",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5534.999472141266, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 12"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_13",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5559.99946975708, 200.0, 20.0 ],
+                    "text": "band 13 — 138 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_13",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5579.999467849731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003266 0. -0.003266 -1.993083 0.993468"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_13",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5579.999467849731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_13",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5579.999467849731, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 13"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_14",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5604.999465465546, 200.0, 20.0 ],
+                    "text": "band 14 — 151 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_14",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5624.999463558197, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003573 0. -0.003573 -1.992394 0.992855"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_14",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5624.999463558197, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_14",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5624.999463558197, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 14"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_15",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5649.999461174011, 200.0, 20.0 ],
+                    "text": "band 15 — 167 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_15",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5674.999458789825, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00395 0. -0.00395 -1.991537 0.992101"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_15",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5674.999458789825, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_15",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5674.999458789825, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 15"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_16",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5699.99945640564, 200.0, 20.0 ],
+                    "text": "band 16 — 183 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_16",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5719.999454498291, 286.0, 22.0 ],
+                    "text": "biquad~ 0.004326 0. -0.004326 -1.990671 0.991348"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_16",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5719.999454498291, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_16",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5719.999454498291, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 16"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_17",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5739.999452590942, 200.0, 20.0 ],
+                    "text": "band 17 — 201 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_17",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5764.999450206757, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00475 0. -0.00475 -1.989685 0.990501"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_17",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5764.999450206757, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_17",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5764.999450206757, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 17"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_18",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5784.999448299408, 200.0, 20.0 ],
+                    "text": "band 18 — 222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_18",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5809.999445915222, 286.0, 22.0 ],
+                    "text": "biquad~ 0.005243 0. -0.005243 -1.988519 0.989514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_18",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5809.999445915222, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_18",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5809.999445915222, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 18"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_19",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5834.999443531036, 200.0, 20.0 ],
+                    "text": "band 19 — 244 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_19",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5854.999441623688, 280.0, 22.0 ],
+                    "text": "biquad~ 0.005759 0. -0.005759 -1.98728 0.988481"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_19",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5854.999441623688, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_19",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5854.999441623688, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 19"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_20",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5879.999439239502, 200.0, 20.0 ],
+                    "text": "band 20 — 268 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_20",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5904.999436855316, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006322 0. -0.006322 -1.985907 0.987356"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_20",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5904.999436855316, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_20",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5904.999436855316, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 20"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_21",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5924.9994349479675, 200.0, 20.0 ],
+                    "text": "band 21 — 295 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_21",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5949.999432563782, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006954 0. -0.006954 -1.984337 0.986091"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_21",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5949.999432563782, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_21",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5949.999432563782, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 21"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_22",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 5974.999430179596, 200.0, 20.0 ],
+                    "text": "band 22 — 324 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_22",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 5994.999428272247, 286.0, 22.0 ],
+                    "text": "biquad~ 0.007632 0. -0.007632 -1.982621 0.984735"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_22",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 5994.999428272247, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_22",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 5994.999428272247, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 22"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_23",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6019.9994258880615, 200.0, 20.0 ],
+                    "text": "band 23 — 356 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_23",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6039.999423980713, 286.0, 22.0 ],
+                    "text": "biquad~ 0.008379 0. -0.008379 -1.980691 0.983242"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_23",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6039.999423980713, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_23",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6039.999423980713, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 23"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_24",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6064.999421596527, 200.0, 20.0 ],
+                    "text": "band 24 — 392 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_24",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6084.9994196891785, 286.0, 22.0 ],
+                    "text": "biquad~ 0.009218 0. -0.009218 -1.978475 0.981564"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_24",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6084.9994196891785, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_24",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6084.9994196891785, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 24"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_25",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6109.999417304993, 200.0, 20.0 ],
+                    "text": "band 25 — 431 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_25",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6134.999414920807, 286.0, 22.0 ],
+                    "text": "biquad~ 0.010125 0. -0.010125 -1.976019 0.979751"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_25",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6134.999414920807, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_25",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6134.999414920807, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 25"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_26",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6154.999413013458, 200.0, 20.0 ],
+                    "text": "band 26 — 474 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_26",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6179.9994106292725, 283.0, 22.0 ],
+                    "text": "biquad~ 0.011122 0. -0.011122 -1.973248 0.977756"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_26",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6179.9994106292725, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_26",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6179.9994106292725, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 26"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_27",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6204.999408245087, 200.0, 20.0 ],
+                    "text": "band 27 — 521 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_27",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6224.999406337738, 286.0, 22.0 ],
+                    "text": "biquad~ 0.012209 0. -0.012209 -1.970141 0.975581"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_27",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6224.999406337738, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_27",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6224.999406337738, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 27"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_28",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6249.999403953552, 200.0, 20.0 ],
+                    "text": "band 28 — 573 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_28",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6269.999402046204, 280.0, 22.0 ],
+                    "text": "biquad~ 0.013409 0. -0.013409 -1.96661 0.973182"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_28",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6269.999402046204, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_28",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6269.999402046204, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 28"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_29",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6294.999399662018, 200.0, 20.0 ],
+                    "text": "band 29 — 631 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_29",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6319.999397277832, 286.0, 22.0 ],
+                    "text": "biquad~ 0.014743 0. -0.014743 -1.962556 0.970514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_29",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6319.999397277832, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_29",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6319.999397277832, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 29"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_30",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6339.999395370483, 200.0, 20.0 ],
+                    "text": "band 30 — 694 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_30",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6359.999393463135, 286.0, 22.0 ],
+                    "text": "biquad~ 0.016187 0. -0.016187 -1.958016 0.967627"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_30",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6359.999393463135, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_30",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6359.999393463135, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 30"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_31",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6384.999391078949, 200.0, 20.0 ],
+                    "text": "band 31 — 763 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_31",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6409.999388694763, 286.0, 22.0 ],
+                    "text": "biquad~ 0.017761 0. -0.017761 -1.952881 0.964477"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_31",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6409.999388694763, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_31",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6409.999388694763, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 31"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_32",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6434.999386310577, 200.0, 20.0 ],
+                    "text": "band 32 — 839 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_32",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6454.999384403229, 280.0, 22.0 ],
+                    "text": "biquad~ 0.019488 0. -0.019488 -1.94703 0.961024"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_32",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6454.999384403229, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_32",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6454.999384403229, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 32"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_33",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6479.999382019043, 200.0, 20.0 ],
+                    "text": "band 33 — 923 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_33",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6499.999380111694, 286.0, 22.0 ],
+                    "text": "biquad~ 0.021387 0. -0.021387 -1.940327 0.957226"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_33",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6499.999380111694, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_33",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6499.999380111694, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 33"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_34",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6524.9993777275085, 200.0, 20.0 ],
+                    "text": "band 34 — 1015 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_34",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6549.999375343323, 280.0, 22.0 ],
+                    "text": "biquad~ 0.023455 0. -0.023455 -1.932703 0.95309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_34",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6549.999375343323, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_34",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6549.999375343323, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 34"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_35",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6569.999373435974, 200.0, 20.0 ],
+                    "text": "band 35 — 1116 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_35",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6589.9993715286255, 285.0, 22.0 ],
+                    "text": "biquad~ 0.025711 0. -0.025711 -1.923999 0.948579"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_35",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6589.9993715286255, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_35",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6589.9993715286255, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 35"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_36",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6619.9993686676025, 200.0, 20.0 ],
+                    "text": "band 36 — 1227 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_36",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6634.999367237091, 286.0, 22.0 ],
+                    "text": "biquad~ 0.028171 0. -0.028171 -1.914032 0.943657"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_36",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6634.999367237091, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_36",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6634.999367237091, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 36"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_37",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6659.999364852905, 200.0, 20.0 ],
+                    "text": "band 37 — 1350 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_37",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6684.9993624687195, 286.0, 22.0 ],
+                    "text": "biquad~ 0.030876 0. -0.030876 -1.902505 0.938248"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_37",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6684.9993624687195, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_37",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6684.9993624687195, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 37"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_38",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6709.999360084534, 200.0, 20.0 ],
+                    "text": "band 38 — 1484 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_38",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6729.999358177185, 280.0, 22.0 ],
+                    "text": "biquad~ 0.033795 0. -0.033795 -1.889377 0.93241"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_38",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6729.999358177185, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_38",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6729.999358177185, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 38"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_39",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6754.999355792999, 200.0, 20.0 ],
+                    "text": "band 39 — 1633 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_39",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6774.999353885651, 286.0, 22.0 ],
+                    "text": "biquad~ 0.037006 0. -0.037006 -1.874093 0.925988"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_39",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6774.999353885651, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_39",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6774.999353885651, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 39"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_40",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6799.999351501465, 200.0, 20.0 ],
+                    "text": "band 40 — 1795 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_40",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6824.999349117279, 286.0, 22.0 ],
+                    "text": "biquad~ 0.040455 0. -0.040455 -1.856672 0.919089"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_40",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6824.999349117279, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_40",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6824.999349117279, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 40"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_41",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6849.999346733093, 200.0, 20.0 ],
+                    "text": "band 41 — 1975 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_41",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6869.999344825745, 286.0, 22.0 ],
+                    "text": "biquad~ 0.044235 0. -0.044235 -1.836351 0.911531"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_41",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6869.999344825745, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_41",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6869.999344825745, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 41"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_42",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6889.999342918396, 200.0, 20.0 ],
+                    "text": "band 42 — 2172 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_42",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6914.99934053421, 280.0, 22.0 ],
+                    "text": "biquad~ 0.048305 0. -0.048305 -1.812977 0.90339"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_42",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6914.99934053421, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_42",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6914.99934053421, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 42"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_43",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6934.999338626862, 200.0, 20.0 ],
+                    "text": "band 43 — 2388 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_43",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 6959.999336242676, 280.0, 22.0 ],
+                    "text": "biquad~ 0.052687 0. -0.052687 -1.78602 0.894625"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_43",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 6959.999336242676, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_43",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 6959.999336242676, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 43"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_44",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 6984.99933385849, 200.0, 20.0 ],
+                    "text": "band 44 — 2626 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_44",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7004.999331951141, 280.0, 22.0 ],
+                    "text": "biquad~ 0.057415 0. -0.057415 -1.754757 0.88517"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_44",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7004.999331951141, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_44",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7004.999331951141, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 44"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_45",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7029.999329566956, 200.0, 20.0 ],
+                    "text": "band 45 — 2889 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_45",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7054.99932718277, 280.0, 22.0 ],
+                    "text": "biquad~ 0.062513 0. -0.062513 -1.71837 0.874974"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_45",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7054.99932718277, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_45",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7054.99932718277, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 45"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_46",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7074.999325275421, 200.0, 20.0 ],
+                    "text": "band 46 — 3177 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_46",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7099.999322891235, 286.0, 22.0 ],
+                    "text": "biquad~ 0.067939 0. -0.067939 -1.676392 0.864122"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_46",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7099.999322891235, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_46",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7099.999322891235, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 46"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_47",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7124.99932050705, 200.0, 20.0 ],
+                    "text": "band 47 — 3494 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_47",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7144.999318599701, 280.0, 22.0 ],
+                    "text": "biquad~ 0.073717 0. -0.073717 -1.62772 0.852566"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_47",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7144.999318599701, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_47",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7144.999318599701, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 47"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_48",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7169.999316215515, 200.0, 20.0 ],
+                    "text": "band 48 — 3842 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_48",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7189.9993143081665, 266.0, 22.0 ],
+                    "text": "biquad~ 0.07982 0. -0.07982 -1.571455 0.84036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_48",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7189.9993143081665, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_48",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7189.9993143081665, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 48"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_49",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7214.999311923981, 200.0, 20.0 ],
+                    "text": "band 49 — 4226 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_49",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7234.999310016632, 286.0, 22.0 ],
+                    "text": "biquad~ 0.086254 0. -0.086254 -1.506121 0.827492"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_49",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7234.999310016632, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_49",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7234.999310016632, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 49"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_50",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7259.999307632446, 200.0, 20.0 ],
+                    "text": "band 50 — 4647 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_50",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7284.9993052482605, 286.0, 22.0 ],
+                    "text": "biquad~ 0.092938 0. -0.092938 -1.430821 0.814124"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_50",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7284.9993052482605, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_50",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7284.9993052482605, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 50"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_51",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7304.999303340912, 200.0, 20.0 ],
+                    "text": "band 51 — 5111 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_51",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7329.999300956726, 280.0, 22.0 ],
+                    "text": "biquad~ 0.099846 0. -0.099846 -1.34371 0.800309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_51",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7329.999300956726, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_51",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7329.999300956726, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 51"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_52",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7354.99929857254, 200.0, 20.0 ],
+                    "text": "band 52 — 5621 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_52",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7374.999296665192, 273.0, 22.0 ],
+                    "text": "biquad~ 0.106871 0. -0.106871 -1.2434 0.786258"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_52",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7374.999296665192, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_52",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7374.999296665192, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 52"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_53",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7399.999294281006, 200.0, 20.0 ],
+                    "text": "band 53 — 6182 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_53",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7419.999292373657, 285.0, 22.0 ],
+                    "text": "biquad~ 0.113899 0. -0.113899 -1.128087 0.772201"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_53",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7419.999292373657, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_53",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7419.999292373657, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 53"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_54",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7444.999289989471, 200.0, 20.0 ],
+                    "text": "band 54 — 6798 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_54",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7469.999287605286, 280.0, 22.0 ],
+                    "text": "biquad~ 0.120759 0. -0.120759 -0.99617 0.758482"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_54",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7469.999287605286, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_54",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7469.999287605286, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 54"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_55",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7489.999285697937, 200.0, 20.0 ],
+                    "text": "band 55 — 7477 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_55",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7509.999283790588, 286.0, 22.0 ],
+                    "text": "biquad~ 0.127264 0. -0.127264 -0.845243 0.745472"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_55",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7509.999283790588, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_55",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7509.999283790588, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 55"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_56",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7534.999281406403, 200.0, 20.0 ],
+                    "text": "band 56 — 8222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_56",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7559.999279022217, 285.0, 22.0 ],
+                    "text": "biquad~ 0.133112 0. -0.133112 -0.674142 0.733776"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_56",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7559.999279022217, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_56",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7559.999279022217, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 56"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_57",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7584.999276638031, 200.0, 20.0 ],
+                    "text": "band 57 — 9043 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_57",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7604.999274730682, 273.0, 22.0 ],
+                    "text": "biquad~ 0.13798 0. -0.13798 -0.480402 0.724041"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_57",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7604.999274730682, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_57",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7604.999274730682, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 57"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_58",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7629.999272346497, 200.0, 20.0 ],
+                    "text": "band 58 — 9945 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_58",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7649.999270439148, 286.0, 22.0 ],
+                    "text": "biquad~ 0.141408 0. -0.141408 -0.263188 0.717184"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_58",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7649.999270439148, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_58",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7649.999270439148, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 58"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_59",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7674.999268054962, 200.0, 20.0 ],
+                    "text": "band 59 — 10937 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_59",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7699.999265670776, 286.0, 22.0 ],
+                    "text": "biquad~ 0.142848 0. -0.142848 -0.021493 0.714305"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_59",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7699.999265670776, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_59",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7699.999265670776, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 59"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_60",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7719.999263763428, 200.0, 20.0 ],
+                    "text": "band 60 — 12029 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_60",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7739.999261856079, 282.0, 22.0 ],
+                    "text": "biquad~ 0.141605 0. -0.141605 0.244743 0.716791"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_60",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7739.999261856079, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_60",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7739.999261856079, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_61",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7769.999258995056, 200.0, 20.0 ],
+                    "text": "band 61 — 13229 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_61",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7784.999257564545, 282.0, 22.0 ],
+                    "text": "biquad~ 0.136827 0. -0.136827 0.533236 0.726345"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_61",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7784.999257564545, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_61",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7784.999257564545, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 61"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_62",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7809.999255180359, 200.0, 20.0 ],
+                    "text": "band 62 — 14548 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_62",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7834.999252796173, 282.0, 22.0 ],
+                    "text": "biquad~ 0.127482 0. -0.127482 0.839588 0.745036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_62",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7834.999252796173, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_62",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7834.999252796173, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 62"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_melody_63",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 5499.999475479126, 7859.999250411987, 200.0, 20.0 ],
+                    "text": "band 63 — 16000 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_melody_63",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 5499.999475479126, 7879.999248504639, 281.0, 22.0 ],
+                    "text": "biquad~ 0.112312 0. -0.112312 1.155657 0.775376"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_melody_63",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 5729.999453544617, 7879.999248504639, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_melody_63",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 5849.999442100525, 7879.999248504639, 164.0, 22.0 ],
+                    "text": "prepend spectrum melody 63"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_col_lbl_bass",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 4799.999542236328, 660.0, 20.0 ],
+                    "text": "── BASS ──"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum1_bass",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum2_bass",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6329.999396324158, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum_bass",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 4874.999535083771, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_mono_bass",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 4919.999530792236, 110.0, 22.0 ],
+                    "text": "*~ 0.5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_0",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 4949.999527931213, 200.0, 20.0 ],
+                    "text": "band 0 — 40 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_0",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 4984.999524593353, 280.0, 22.0 ],
+                    "text": "biquad~ 0.000949 0. -0.000949 -1.99807 0.998102"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_0",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 4984.999524593353, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_0",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 4984.999524593353, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 0"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_1",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5004.999522686005, 200.0, 20.0 ],
+                    "text": "band 1 — 44 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_1",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5029.999520301819, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001044 0. -0.001044 -1.997873 0.997913"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_1",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5029.999520301819, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_1",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5029.999520301819, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 1"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_2",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5054.999517917633, 200.0, 20.0 ],
+                    "text": "band 2 — 48 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_2",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5074.999516010284, 285.0, 22.0 ],
+                    "text": "biquad~ 0.001139 0. -0.001139 -1.997676 0.997723"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_2",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5074.999516010284, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_2",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5074.999516010284, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 2"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_3",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5099.999513626099, 200.0, 20.0 ],
+                    "text": "band 3 — 53 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_3",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5119.99951171875, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001257 0. -0.001257 -1.997429 0.997486"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_3",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5119.99951171875, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_3",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5119.99951171875, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 3"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_4",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5144.999509334564, 200.0, 20.0 ],
+                    "text": "band 4 — 59 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_4",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5169.999506950378, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001399 0. -0.001399 -1.997131 0.997202"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_4",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5169.999506950378, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_4",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5169.999506950378, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 4"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_5",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5189.99950504303, 200.0, 20.0 ],
+                    "text": "band 5 — 64 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_5",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5209.999503135681, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001517 0. -0.001517 -1.996882 0.996965"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_5",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5209.999503135681, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_5",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5209.999503135681, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_6",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5234.999500751495, 200.0, 20.0 ],
+                    "text": "band 6 — 71 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_6",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5259.99949836731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001683 0. -0.001683 -1.996532 0.996634"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_6",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5259.99949836731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_6",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5259.99949836731, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 6"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_7",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5284.999495983124, 200.0, 20.0 ],
+                    "text": "band 7 — 78 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_7",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5304.999494075775, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001849 0. -0.001849 -1.996179 0.996303"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_7",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5304.999494075775, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_7",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5304.999494075775, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 7"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_8",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5329.999491691589, 200.0, 20.0 ],
+                    "text": "band 8 — 86 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_8",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5349.999489784241, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002038 0. -0.002038 -1.995774 0.995924"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_8",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5349.999489784241, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_8",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5349.999489784241, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 8"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_9",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5374.999487400055, 200.0, 20.0 ],
+                    "text": "band 9 — 94 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_9",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5399.999485015869, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002227 0. -0.002227 -1.995367 0.995546"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_9",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5399.999485015869, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_9",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5399.999485015869, 144.0, 22.0 ],
+                    "text": "prepend spectrum bass 9"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_10",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5419.9994831085205, 200.0, 20.0 ],
+                    "text": "band 10 — 104 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_10",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5439.999481201172, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002463 0. -0.002463 -1.994854 0.995073"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_10",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5439.999481201172, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_10",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5439.999481201172, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 10"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_11",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5469.999478340149, 200.0, 20.0 ],
+                    "text": "band 11 — 114 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_11",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5484.999476909637, 260.0, 22.0 ],
+                    "text": "biquad~ 0.0027 0. -0.0027 -1.994338 0.994601"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_11",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5484.999476909637, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_11",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5484.999476909637, 150.0, 22.0 ],
+                    "text": "prepend spectrum bass 11"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_12",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5509.999474525452, 200.0, 20.0 ],
+                    "text": "band 12 — 125 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_12",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5534.999472141266, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002959 0. -0.002959 -1.993765 0.994081"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_12",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5534.999472141266, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_12",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5534.999472141266, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 12"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_13",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5559.99946975708, 200.0, 20.0 ],
+                    "text": "band 13 — 138 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_13",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5579.999467849731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003266 0. -0.003266 -1.993083 0.993468"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_13",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5579.999467849731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_13",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5579.999467849731, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 13"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_14",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5604.999465465546, 200.0, 20.0 ],
+                    "text": "band 14 — 151 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_14",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5624.999463558197, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003573 0. -0.003573 -1.992394 0.992855"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_14",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5624.999463558197, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_14",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5624.999463558197, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 14"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_15",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5649.999461174011, 200.0, 20.0 ],
+                    "text": "band 15 — 167 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_15",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5674.999458789825, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00395 0. -0.00395 -1.991537 0.992101"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_15",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5674.999458789825, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_15",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5674.999458789825, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 15"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_16",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5699.99945640564, 200.0, 20.0 ],
+                    "text": "band 16 — 183 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_16",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5719.999454498291, 286.0, 22.0 ],
+                    "text": "biquad~ 0.004326 0. -0.004326 -1.990671 0.991348"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_16",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5719.999454498291, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_16",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5719.999454498291, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 16"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_17",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5739.999452590942, 200.0, 20.0 ],
+                    "text": "band 17 — 201 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_17",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5764.999450206757, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00475 0. -0.00475 -1.989685 0.990501"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_17",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5764.999450206757, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_17",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5764.999450206757, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 17"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_18",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5784.999448299408, 200.0, 20.0 ],
+                    "text": "band 18 — 222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_18",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5809.999445915222, 286.0, 22.0 ],
+                    "text": "biquad~ 0.005243 0. -0.005243 -1.988519 0.989514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_18",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5809.999445915222, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_18",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5809.999445915222, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 18"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_19",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5834.999443531036, 200.0, 20.0 ],
+                    "text": "band 19 — 244 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_19",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5854.999441623688, 280.0, 22.0 ],
+                    "text": "biquad~ 0.005759 0. -0.005759 -1.98728 0.988481"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_19",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5854.999441623688, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_19",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5854.999441623688, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 19"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_20",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5879.999439239502, 200.0, 20.0 ],
+                    "text": "band 20 — 268 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_20",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5904.999436855316, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006322 0. -0.006322 -1.985907 0.987356"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_20",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5904.999436855316, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_20",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5904.999436855316, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 20"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_21",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5924.9994349479675, 200.0, 20.0 ],
+                    "text": "band 21 — 295 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_21",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5949.999432563782, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006954 0. -0.006954 -1.984337 0.986091"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_21",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5949.999432563782, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_21",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5949.999432563782, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 21"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_22",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 5974.999430179596, 200.0, 20.0 ],
+                    "text": "band 22 — 324 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_22",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 5994.999428272247, 286.0, 22.0 ],
+                    "text": "biquad~ 0.007632 0. -0.007632 -1.982621 0.984735"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_22",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 5994.999428272247, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_22",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 5994.999428272247, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 22"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_23",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6019.9994258880615, 200.0, 20.0 ],
+                    "text": "band 23 — 356 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_23",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6039.999423980713, 286.0, 22.0 ],
+                    "text": "biquad~ 0.008379 0. -0.008379 -1.980691 0.983242"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_23",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6039.999423980713, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_23",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6039.999423980713, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 23"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_24",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6064.999421596527, 200.0, 20.0 ],
+                    "text": "band 24 — 392 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_24",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6084.9994196891785, 286.0, 22.0 ],
+                    "text": "biquad~ 0.009218 0. -0.009218 -1.978475 0.981564"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_24",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6084.9994196891785, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_24",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6084.9994196891785, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 24"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_25",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6109.999417304993, 200.0, 20.0 ],
+                    "text": "band 25 — 431 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_25",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6134.999414920807, 286.0, 22.0 ],
+                    "text": "biquad~ 0.010125 0. -0.010125 -1.976019 0.979751"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_25",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6134.999414920807, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_25",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6134.999414920807, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 25"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_26",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6154.999413013458, 200.0, 20.0 ],
+                    "text": "band 26 — 474 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_26",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6179.9994106292725, 283.0, 22.0 ],
+                    "text": "biquad~ 0.011122 0. -0.011122 -1.973248 0.977756"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_26",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6179.9994106292725, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_26",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6179.9994106292725, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 26"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_27",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6204.999408245087, 200.0, 20.0 ],
+                    "text": "band 27 — 521 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_27",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6224.999406337738, 286.0, 22.0 ],
+                    "text": "biquad~ 0.012209 0. -0.012209 -1.970141 0.975581"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_27",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6224.999406337738, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_27",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6224.999406337738, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 27"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_28",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6249.999403953552, 200.0, 20.0 ],
+                    "text": "band 28 — 573 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_28",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6269.999402046204, 280.0, 22.0 ],
+                    "text": "biquad~ 0.013409 0. -0.013409 -1.96661 0.973182"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_28",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6269.999402046204, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_28",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6269.999402046204, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 28"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_29",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6294.999399662018, 200.0, 20.0 ],
+                    "text": "band 29 — 631 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_29",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6319.999397277832, 286.0, 22.0 ],
+                    "text": "biquad~ 0.014743 0. -0.014743 -1.962556 0.970514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_29",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6319.999397277832, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_29",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6319.999397277832, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 29"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_30",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6339.999395370483, 200.0, 20.0 ],
+                    "text": "band 30 — 694 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_30",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6359.999393463135, 286.0, 22.0 ],
+                    "text": "biquad~ 0.016187 0. -0.016187 -1.958016 0.967627"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_30",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6359.999393463135, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_30",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6359.999393463135, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 30"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_31",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6384.999391078949, 200.0, 20.0 ],
+                    "text": "band 31 — 763 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_31",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6409.999388694763, 286.0, 22.0 ],
+                    "text": "biquad~ 0.017761 0. -0.017761 -1.952881 0.964477"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_31",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6409.999388694763, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_31",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6409.999388694763, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 31"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_32",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6434.999386310577, 200.0, 20.0 ],
+                    "text": "band 32 — 839 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_32",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6454.999384403229, 280.0, 22.0 ],
+                    "text": "biquad~ 0.019488 0. -0.019488 -1.94703 0.961024"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_32",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6454.999384403229, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_32",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6454.999384403229, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 32"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_33",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6479.999382019043, 200.0, 20.0 ],
+                    "text": "band 33 — 923 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_33",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6499.999380111694, 286.0, 22.0 ],
+                    "text": "biquad~ 0.021387 0. -0.021387 -1.940327 0.957226"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_33",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6499.999380111694, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_33",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6499.999380111694, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 33"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_34",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6524.9993777275085, 200.0, 20.0 ],
+                    "text": "band 34 — 1015 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_34",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6549.999375343323, 280.0, 22.0 ],
+                    "text": "biquad~ 0.023455 0. -0.023455 -1.932703 0.95309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_34",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6549.999375343323, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_34",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6549.999375343323, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 34"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_35",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6569.999373435974, 200.0, 20.0 ],
+                    "text": "band 35 — 1116 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_35",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6589.9993715286255, 285.0, 22.0 ],
+                    "text": "biquad~ 0.025711 0. -0.025711 -1.923999 0.948579"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_35",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6589.9993715286255, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_35",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6589.9993715286255, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 35"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_36",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6619.9993686676025, 200.0, 20.0 ],
+                    "text": "band 36 — 1227 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_36",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6634.999367237091, 286.0, 22.0 ],
+                    "text": "biquad~ 0.028171 0. -0.028171 -1.914032 0.943657"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_36",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6634.999367237091, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_36",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6634.999367237091, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 36"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_37",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6659.999364852905, 200.0, 20.0 ],
+                    "text": "band 37 — 1350 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_37",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6684.9993624687195, 286.0, 22.0 ],
+                    "text": "biquad~ 0.030876 0. -0.030876 -1.902505 0.938248"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_37",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6684.9993624687195, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_37",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6684.9993624687195, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 37"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_38",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6709.999360084534, 200.0, 20.0 ],
+                    "text": "band 38 — 1484 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_38",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6729.999358177185, 280.0, 22.0 ],
+                    "text": "biquad~ 0.033795 0. -0.033795 -1.889377 0.93241"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_38",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6729.999358177185, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_38",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6729.999358177185, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 38"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_39",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6754.999355792999, 200.0, 20.0 ],
+                    "text": "band 39 — 1633 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_39",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6774.999353885651, 286.0, 22.0 ],
+                    "text": "biquad~ 0.037006 0. -0.037006 -1.874093 0.925988"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_39",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6774.999353885651, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_39",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6774.999353885651, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 39"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_40",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6799.999351501465, 200.0, 20.0 ],
+                    "text": "band 40 — 1795 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_40",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6824.999349117279, 286.0, 22.0 ],
+                    "text": "biquad~ 0.040455 0. -0.040455 -1.856672 0.919089"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_40",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6824.999349117279, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_40",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6824.999349117279, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 40"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_41",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6849.999346733093, 200.0, 20.0 ],
+                    "text": "band 41 — 1975 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_41",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6869.999344825745, 286.0, 22.0 ],
+                    "text": "biquad~ 0.044235 0. -0.044235 -1.836351 0.911531"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_41",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6869.999344825745, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_41",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6869.999344825745, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 41"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_42",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6889.999342918396, 200.0, 20.0 ],
+                    "text": "band 42 — 2172 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_42",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6914.99934053421, 280.0, 22.0 ],
+                    "text": "biquad~ 0.048305 0. -0.048305 -1.812977 0.90339"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_42",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6914.99934053421, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_42",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6914.99934053421, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 42"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_43",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6934.999338626862, 200.0, 20.0 ],
+                    "text": "band 43 — 2388 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_43",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 6959.999336242676, 280.0, 22.0 ],
+                    "text": "biquad~ 0.052687 0. -0.052687 -1.78602 0.894625"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_43",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 6959.999336242676, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_43",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 6959.999336242676, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 43"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_44",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 6984.99933385849, 200.0, 20.0 ],
+                    "text": "band 44 — 2626 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_44",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7004.999331951141, 280.0, 22.0 ],
+                    "text": "biquad~ 0.057415 0. -0.057415 -1.754757 0.88517"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_44",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7004.999331951141, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_44",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7004.999331951141, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 44"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_45",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7029.999329566956, 200.0, 20.0 ],
+                    "text": "band 45 — 2889 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_45",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7054.99932718277, 280.0, 22.0 ],
+                    "text": "biquad~ 0.062513 0. -0.062513 -1.71837 0.874974"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_45",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7054.99932718277, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_45",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7054.99932718277, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 45"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_46",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7074.999325275421, 200.0, 20.0 ],
+                    "text": "band 46 — 3177 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_46",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7099.999322891235, 286.0, 22.0 ],
+                    "text": "biquad~ 0.067939 0. -0.067939 -1.676392 0.864122"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_46",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7099.999322891235, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_46",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7099.999322891235, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 46"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_47",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7124.99932050705, 200.0, 20.0 ],
+                    "text": "band 47 — 3494 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_47",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7144.999318599701, 280.0, 22.0 ],
+                    "text": "biquad~ 0.073717 0. -0.073717 -1.62772 0.852566"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_47",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7144.999318599701, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_47",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7144.999318599701, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 47"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_48",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7169.999316215515, 200.0, 20.0 ],
+                    "text": "band 48 — 3842 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_48",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7189.9993143081665, 266.0, 22.0 ],
+                    "text": "biquad~ 0.07982 0. -0.07982 -1.571455 0.84036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_48",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7189.9993143081665, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_48",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7189.9993143081665, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 48"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_49",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7214.999311923981, 200.0, 20.0 ],
+                    "text": "band 49 — 4226 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_49",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7234.999310016632, 286.0, 22.0 ],
+                    "text": "biquad~ 0.086254 0. -0.086254 -1.506121 0.827492"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_49",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7234.999310016632, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_49",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7234.999310016632, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 49"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_50",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7259.999307632446, 200.0, 20.0 ],
+                    "text": "band 50 — 4647 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_50",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7284.9993052482605, 286.0, 22.0 ],
+                    "text": "biquad~ 0.092938 0. -0.092938 -1.430821 0.814124"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_50",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7284.9993052482605, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_50",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7284.9993052482605, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 50"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_51",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7304.999303340912, 200.0, 20.0 ],
+                    "text": "band 51 — 5111 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_51",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7329.999300956726, 280.0, 22.0 ],
+                    "text": "biquad~ 0.099846 0. -0.099846 -1.34371 0.800309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_51",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7329.999300956726, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_51",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7329.999300956726, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 51"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_52",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7354.99929857254, 200.0, 20.0 ],
+                    "text": "band 52 — 5621 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_52",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7374.999296665192, 273.0, 22.0 ],
+                    "text": "biquad~ 0.106871 0. -0.106871 -1.2434 0.786258"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_52",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7374.999296665192, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_52",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7374.999296665192, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 52"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_53",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7399.999294281006, 200.0, 20.0 ],
+                    "text": "band 53 — 6182 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_53",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7419.999292373657, 285.0, 22.0 ],
+                    "text": "biquad~ 0.113899 0. -0.113899 -1.128087 0.772201"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_53",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7419.999292373657, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_53",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7419.999292373657, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 53"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_54",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7444.999289989471, 200.0, 20.0 ],
+                    "text": "band 54 — 6798 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_54",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7469.999287605286, 280.0, 22.0 ],
+                    "text": "biquad~ 0.120759 0. -0.120759 -0.99617 0.758482"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_54",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7469.999287605286, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_54",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7469.999287605286, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 54"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_55",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7489.999285697937, 200.0, 20.0 ],
+                    "text": "band 55 — 7477 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_55",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7509.999283790588, 286.0, 22.0 ],
+                    "text": "biquad~ 0.127264 0. -0.127264 -0.845243 0.745472"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_55",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7509.999283790588, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_55",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7509.999283790588, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 55"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_56",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7534.999281406403, 200.0, 20.0 ],
+                    "text": "band 56 — 8222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_56",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7559.999279022217, 285.0, 22.0 ],
+                    "text": "biquad~ 0.133112 0. -0.133112 -0.674142 0.733776"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_56",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7559.999279022217, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_56",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7559.999279022217, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 56"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_57",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7584.999276638031, 200.0, 20.0 ],
+                    "text": "band 57 — 9043 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_57",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7604.999274730682, 273.0, 22.0 ],
+                    "text": "biquad~ 0.13798 0. -0.13798 -0.480402 0.724041"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_57",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7604.999274730682, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_57",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7604.999274730682, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 57"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_58",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7629.999272346497, 200.0, 20.0 ],
+                    "text": "band 58 — 9945 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_58",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7649.999270439148, 286.0, 22.0 ],
+                    "text": "biquad~ 0.141408 0. -0.141408 -0.263188 0.717184"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_58",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7649.999270439148, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_58",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7649.999270439148, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 58"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_59",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7674.999268054962, 200.0, 20.0 ],
+                    "text": "band 59 — 10937 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_59",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7699.999265670776, 286.0, 22.0 ],
+                    "text": "biquad~ 0.142848 0. -0.142848 -0.021493 0.714305"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_59",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7699.999265670776, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_59",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7699.999265670776, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 59"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_60",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7719.999263763428, 200.0, 20.0 ],
+                    "text": "band 60 — 12029 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_60",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7739.999261856079, 282.0, 22.0 ],
+                    "text": "biquad~ 0.141605 0. -0.141605 0.244743 0.716791"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_60",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7739.999261856079, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_60",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7739.999261856079, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_61",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7769.999258995056, 200.0, 20.0 ],
+                    "text": "band 61 — 13229 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_61",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7784.999257564545, 282.0, 22.0 ],
+                    "text": "biquad~ 0.136827 0. -0.136827 0.533236 0.726345"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_61",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7784.999257564545, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_61",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7784.999257564545, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 61"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_62",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7809.999255180359, 200.0, 20.0 ],
+                    "text": "band 62 — 14548 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_62",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7834.999252796173, 282.0, 22.0 ],
+                    "text": "biquad~ 0.127482 0. -0.127482 0.839588 0.745036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_62",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7834.999252796173, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_62",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7834.999252796173, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 62"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_bass_63",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6199.999408721924, 7859.999250411987, 200.0, 20.0 ],
+                    "text": "band 63 — 16000 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_bass_63",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6199.999408721924, 7879.999248504639, 281.0, 22.0 ],
+                    "text": "biquad~ 0.112312 0. -0.112312 1.155657 0.775376"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_bass_63",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 6429.999386787415, 7879.999248504639, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_bass_63",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 6549.999375343323, 7879.999248504639, 151.0, 22.0 ],
+                    "text": "prepend spectrum bass 63"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_col_lbl_drums",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 4799.999542236328, 660.0, 20.0 ],
+                    "text": "── DRUMS ──"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum1_drums",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum2_drums",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7029.999329566956, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum_drums",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 4874.999535083771, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_mono_drums",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 4919.999530792236, 110.0, 22.0 ],
+                    "text": "*~ 0.5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_0",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 4949.999527931213, 200.0, 20.0 ],
+                    "text": "band 0 — 40 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_0",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 4984.999524593353, 280.0, 22.0 ],
+                    "text": "biquad~ 0.000949 0. -0.000949 -1.99807 0.998102"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_0",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 4984.999524593353, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_0",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 4984.999524593353, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 0"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_1",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5004.999522686005, 200.0, 20.0 ],
+                    "text": "band 1 — 44 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_1",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5029.999520301819, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001044 0. -0.001044 -1.997873 0.997913"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_1",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5029.999520301819, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_1",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5029.999520301819, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 1"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_2",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5054.999517917633, 200.0, 20.0 ],
+                    "text": "band 2 — 48 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_2",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5074.999516010284, 285.0, 22.0 ],
+                    "text": "biquad~ 0.001139 0. -0.001139 -1.997676 0.997723"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_2",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5074.999516010284, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_2",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5074.999516010284, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 2"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_3",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5099.999513626099, 200.0, 20.0 ],
+                    "text": "band 3 — 53 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_3",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5119.99951171875, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001257 0. -0.001257 -1.997429 0.997486"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_3",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5119.99951171875, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_3",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5119.99951171875, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 3"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_4",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5144.999509334564, 200.0, 20.0 ],
+                    "text": "band 4 — 59 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_4",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5169.999506950378, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001399 0. -0.001399 -1.997131 0.997202"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_4",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5169.999506950378, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_4",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5169.999506950378, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 4"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_5",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5189.99950504303, 200.0, 20.0 ],
+                    "text": "band 5 — 64 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_5",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5209.999503135681, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001517 0. -0.001517 -1.996882 0.996965"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_5",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5209.999503135681, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_5",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5209.999503135681, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_6",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5234.999500751495, 200.0, 20.0 ],
+                    "text": "band 6 — 71 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_6",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5259.99949836731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001683 0. -0.001683 -1.996532 0.996634"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_6",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5259.99949836731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_6",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5259.99949836731, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 6"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_7",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5284.999495983124, 200.0, 20.0 ],
+                    "text": "band 7 — 78 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_7",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5304.999494075775, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001849 0. -0.001849 -1.996179 0.996303"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_7",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5304.999494075775, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_7",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5304.999494075775, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 7"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_8",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5329.999491691589, 200.0, 20.0 ],
+                    "text": "band 8 — 86 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_8",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5349.999489784241, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002038 0. -0.002038 -1.995774 0.995924"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_8",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5349.999489784241, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_8",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5349.999489784241, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 8"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_9",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5374.999487400055, 200.0, 20.0 ],
+                    "text": "band 9 — 94 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_9",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5399.999485015869, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002227 0. -0.002227 -1.995367 0.995546"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_9",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5399.999485015869, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_9",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5399.999485015869, 152.0, 22.0 ],
+                    "text": "prepend spectrum drums 9"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_10",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5419.9994831085205, 200.0, 20.0 ],
+                    "text": "band 10 — 104 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_10",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5439.999481201172, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002463 0. -0.002463 -1.994854 0.995073"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_10",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5439.999481201172, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_10",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5439.999481201172, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 10"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_11",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5469.999478340149, 200.0, 20.0 ],
+                    "text": "band 11 — 114 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_11",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5484.999476909637, 260.0, 22.0 ],
+                    "text": "biquad~ 0.0027 0. -0.0027 -1.994338 0.994601"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_11",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5484.999476909637, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_11",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5484.999476909637, 158.0, 22.0 ],
+                    "text": "prepend spectrum drums 11"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_12",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5509.999474525452, 200.0, 20.0 ],
+                    "text": "band 12 — 125 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_12",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5534.999472141266, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002959 0. -0.002959 -1.993765 0.994081"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_12",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5534.999472141266, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_12",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5534.999472141266, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 12"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_13",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5559.99946975708, 200.0, 20.0 ],
+                    "text": "band 13 — 138 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_13",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5579.999467849731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003266 0. -0.003266 -1.993083 0.993468"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_13",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5579.999467849731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_13",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5579.999467849731, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 13"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_14",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5604.999465465546, 200.0, 20.0 ],
+                    "text": "band 14 — 151 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_14",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5624.999463558197, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003573 0. -0.003573 -1.992394 0.992855"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_14",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5624.999463558197, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_14",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5624.999463558197, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 14"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_15",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5649.999461174011, 200.0, 20.0 ],
+                    "text": "band 15 — 167 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_15",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5674.999458789825, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00395 0. -0.00395 -1.991537 0.992101"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_15",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5674.999458789825, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_15",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5674.999458789825, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 15"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_16",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5699.99945640564, 200.0, 20.0 ],
+                    "text": "band 16 — 183 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_16",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5719.999454498291, 286.0, 22.0 ],
+                    "text": "biquad~ 0.004326 0. -0.004326 -1.990671 0.991348"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_16",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5719.999454498291, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_16",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5719.999454498291, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 16"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_17",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5739.999452590942, 200.0, 20.0 ],
+                    "text": "band 17 — 201 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_17",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5764.999450206757, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00475 0. -0.00475 -1.989685 0.990501"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_17",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5764.999450206757, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_17",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5764.999450206757, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 17"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_18",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5784.999448299408, 200.0, 20.0 ],
+                    "text": "band 18 — 222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_18",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5809.999445915222, 286.0, 22.0 ],
+                    "text": "biquad~ 0.005243 0. -0.005243 -1.988519 0.989514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_18",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5809.999445915222, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_18",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5809.999445915222, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 18"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_19",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5834.999443531036, 200.0, 20.0 ],
+                    "text": "band 19 — 244 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_19",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5854.999441623688, 280.0, 22.0 ],
+                    "text": "biquad~ 0.005759 0. -0.005759 -1.98728 0.988481"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_19",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5854.999441623688, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_19",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5854.999441623688, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 19"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_20",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5879.999439239502, 200.0, 20.0 ],
+                    "text": "band 20 — 268 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_20",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5904.999436855316, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006322 0. -0.006322 -1.985907 0.987356"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_20",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5904.999436855316, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_20",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5904.999436855316, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 20"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_21",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5924.9994349479675, 200.0, 20.0 ],
+                    "text": "band 21 — 295 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_21",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5949.999432563782, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006954 0. -0.006954 -1.984337 0.986091"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_21",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5949.999432563782, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_21",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5949.999432563782, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 21"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_22",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 5974.999430179596, 200.0, 20.0 ],
+                    "text": "band 22 — 324 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_22",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 5994.999428272247, 286.0, 22.0 ],
+                    "text": "biquad~ 0.007632 0. -0.007632 -1.982621 0.984735"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_22",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 5994.999428272247, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_22",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 5994.999428272247, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 22"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_23",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6019.9994258880615, 200.0, 20.0 ],
+                    "text": "band 23 — 356 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_23",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6039.999423980713, 286.0, 22.0 ],
+                    "text": "biquad~ 0.008379 0. -0.008379 -1.980691 0.983242"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_23",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6039.999423980713, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_23",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6039.999423980713, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 23"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_24",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6064.999421596527, 200.0, 20.0 ],
+                    "text": "band 24 — 392 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_24",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6084.9994196891785, 286.0, 22.0 ],
+                    "text": "biquad~ 0.009218 0. -0.009218 -1.978475 0.981564"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_24",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6084.9994196891785, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_24",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6084.9994196891785, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 24"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_25",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6109.999417304993, 200.0, 20.0 ],
+                    "text": "band 25 — 431 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_25",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6134.999414920807, 286.0, 22.0 ],
+                    "text": "biquad~ 0.010125 0. -0.010125 -1.976019 0.979751"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_25",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6134.999414920807, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_25",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6134.999414920807, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 25"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_26",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6154.999413013458, 200.0, 20.0 ],
+                    "text": "band 26 — 474 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_26",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6179.9994106292725, 283.0, 22.0 ],
+                    "text": "biquad~ 0.011122 0. -0.011122 -1.973248 0.977756"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_26",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6179.9994106292725, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_26",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6179.9994106292725, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 26"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_27",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6204.999408245087, 200.0, 20.0 ],
+                    "text": "band 27 — 521 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_27",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6224.999406337738, 286.0, 22.0 ],
+                    "text": "biquad~ 0.012209 0. -0.012209 -1.970141 0.975581"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_27",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6224.999406337738, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_27",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6224.999406337738, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 27"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_28",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6249.999403953552, 200.0, 20.0 ],
+                    "text": "band 28 — 573 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_28",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6269.999402046204, 280.0, 22.0 ],
+                    "text": "biquad~ 0.013409 0. -0.013409 -1.96661 0.973182"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_28",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6269.999402046204, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_28",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6269.999402046204, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 28"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_29",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6294.999399662018, 200.0, 20.0 ],
+                    "text": "band 29 — 631 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_29",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6319.999397277832, 286.0, 22.0 ],
+                    "text": "biquad~ 0.014743 0. -0.014743 -1.962556 0.970514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_29",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6319.999397277832, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_29",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6319.999397277832, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 29"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_30",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6339.999395370483, 200.0, 20.0 ],
+                    "text": "band 30 — 694 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_30",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6359.999393463135, 286.0, 22.0 ],
+                    "text": "biquad~ 0.016187 0. -0.016187 -1.958016 0.967627"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_30",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6359.999393463135, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_30",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6359.999393463135, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 30"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_31",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6384.999391078949, 200.0, 20.0 ],
+                    "text": "band 31 — 763 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_31",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6409.999388694763, 286.0, 22.0 ],
+                    "text": "biquad~ 0.017761 0. -0.017761 -1.952881 0.964477"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_31",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6409.999388694763, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_31",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6409.999388694763, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 31"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_32",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6434.999386310577, 200.0, 20.0 ],
+                    "text": "band 32 — 839 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_32",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6454.999384403229, 280.0, 22.0 ],
+                    "text": "biquad~ 0.019488 0. -0.019488 -1.94703 0.961024"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_32",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6454.999384403229, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_32",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6454.999384403229, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 32"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_33",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6479.999382019043, 200.0, 20.0 ],
+                    "text": "band 33 — 923 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_33",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6499.999380111694, 286.0, 22.0 ],
+                    "text": "biquad~ 0.021387 0. -0.021387 -1.940327 0.957226"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_33",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6499.999380111694, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_33",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6499.999380111694, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 33"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_34",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6524.9993777275085, 200.0, 20.0 ],
+                    "text": "band 34 — 1015 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_34",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6549.999375343323, 280.0, 22.0 ],
+                    "text": "biquad~ 0.023455 0. -0.023455 -1.932703 0.95309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_34",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6549.999375343323, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_34",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6549.999375343323, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 34"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_35",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6569.999373435974, 200.0, 20.0 ],
+                    "text": "band 35 — 1116 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_35",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6589.9993715286255, 285.0, 22.0 ],
+                    "text": "biquad~ 0.025711 0. -0.025711 -1.923999 0.948579"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_35",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6589.9993715286255, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_35",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6589.9993715286255, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 35"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_36",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6619.9993686676025, 200.0, 20.0 ],
+                    "text": "band 36 — 1227 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_36",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6634.999367237091, 286.0, 22.0 ],
+                    "text": "biquad~ 0.028171 0. -0.028171 -1.914032 0.943657"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_36",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6634.999367237091, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_36",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6634.999367237091, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 36"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_37",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6659.999364852905, 200.0, 20.0 ],
+                    "text": "band 37 — 1350 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_37",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6684.9993624687195, 286.0, 22.0 ],
+                    "text": "biquad~ 0.030876 0. -0.030876 -1.902505 0.938248"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_37",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6684.9993624687195, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_37",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6684.9993624687195, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 37"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_38",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6709.999360084534, 200.0, 20.0 ],
+                    "text": "band 38 — 1484 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_38",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6729.999358177185, 280.0, 22.0 ],
+                    "text": "biquad~ 0.033795 0. -0.033795 -1.889377 0.93241"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_38",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6729.999358177185, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_38",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6729.999358177185, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 38"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_39",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6754.999355792999, 200.0, 20.0 ],
+                    "text": "band 39 — 1633 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_39",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6774.999353885651, 286.0, 22.0 ],
+                    "text": "biquad~ 0.037006 0. -0.037006 -1.874093 0.925988"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_39",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6774.999353885651, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_39",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6774.999353885651, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 39"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_40",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6799.999351501465, 200.0, 20.0 ],
+                    "text": "band 40 — 1795 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_40",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6824.999349117279, 286.0, 22.0 ],
+                    "text": "biquad~ 0.040455 0. -0.040455 -1.856672 0.919089"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_40",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6824.999349117279, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_40",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6824.999349117279, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 40"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_41",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6849.999346733093, 200.0, 20.0 ],
+                    "text": "band 41 — 1975 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_41",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6869.999344825745, 286.0, 22.0 ],
+                    "text": "biquad~ 0.044235 0. -0.044235 -1.836351 0.911531"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_41",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6869.999344825745, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_41",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6869.999344825745, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 41"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_42",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6889.999342918396, 200.0, 20.0 ],
+                    "text": "band 42 — 2172 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_42",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6914.99934053421, 280.0, 22.0 ],
+                    "text": "biquad~ 0.048305 0. -0.048305 -1.812977 0.90339"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_42",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6914.99934053421, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_42",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6914.99934053421, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 42"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_43",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6934.999338626862, 200.0, 20.0 ],
+                    "text": "band 43 — 2388 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_43",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 6959.999336242676, 280.0, 22.0 ],
+                    "text": "biquad~ 0.052687 0. -0.052687 -1.78602 0.894625"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_43",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 6959.999336242676, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_43",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 6959.999336242676, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 43"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_44",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 6984.99933385849, 200.0, 20.0 ],
+                    "text": "band 44 — 2626 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_44",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7004.999331951141, 280.0, 22.0 ],
+                    "text": "biquad~ 0.057415 0. -0.057415 -1.754757 0.88517"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_44",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7004.999331951141, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_44",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7004.999331951141, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 44"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_45",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7029.999329566956, 200.0, 20.0 ],
+                    "text": "band 45 — 2889 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_45",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7054.99932718277, 280.0, 22.0 ],
+                    "text": "biquad~ 0.062513 0. -0.062513 -1.71837 0.874974"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_45",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7054.99932718277, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_45",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7054.99932718277, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 45"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_46",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7074.999325275421, 200.0, 20.0 ],
+                    "text": "band 46 — 3177 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_46",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7099.999322891235, 286.0, 22.0 ],
+                    "text": "biquad~ 0.067939 0. -0.067939 -1.676392 0.864122"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_46",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7099.999322891235, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_46",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7099.999322891235, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 46"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_47",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7124.99932050705, 200.0, 20.0 ],
+                    "text": "band 47 — 3494 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_47",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7144.999318599701, 280.0, 22.0 ],
+                    "text": "biquad~ 0.073717 0. -0.073717 -1.62772 0.852566"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_47",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7144.999318599701, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_47",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7144.999318599701, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 47"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_48",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7169.999316215515, 200.0, 20.0 ],
+                    "text": "band 48 — 3842 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_48",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7189.9993143081665, 266.0, 22.0 ],
+                    "text": "biquad~ 0.07982 0. -0.07982 -1.571455 0.84036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_48",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7189.9993143081665, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_48",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7189.9993143081665, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 48"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_49",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7214.999311923981, 200.0, 20.0 ],
+                    "text": "band 49 — 4226 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_49",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7234.999310016632, 286.0, 22.0 ],
+                    "text": "biquad~ 0.086254 0. -0.086254 -1.506121 0.827492"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_49",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7234.999310016632, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_49",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7234.999310016632, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 49"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_50",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7259.999307632446, 200.0, 20.0 ],
+                    "text": "band 50 — 4647 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_50",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7284.9993052482605, 286.0, 22.0 ],
+                    "text": "biquad~ 0.092938 0. -0.092938 -1.430821 0.814124"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_50",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7284.9993052482605, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_50",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7284.9993052482605, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 50"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_51",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7304.999303340912, 200.0, 20.0 ],
+                    "text": "band 51 — 5111 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_51",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7329.999300956726, 280.0, 22.0 ],
+                    "text": "biquad~ 0.099846 0. -0.099846 -1.34371 0.800309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_51",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7329.999300956726, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_51",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7329.999300956726, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 51"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_52",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7354.99929857254, 200.0, 20.0 ],
+                    "text": "band 52 — 5621 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_52",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7374.999296665192, 273.0, 22.0 ],
+                    "text": "biquad~ 0.106871 0. -0.106871 -1.2434 0.786258"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_52",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7374.999296665192, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_52",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7374.999296665192, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 52"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_53",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7399.999294281006, 200.0, 20.0 ],
+                    "text": "band 53 — 6182 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_53",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7419.999292373657, 285.0, 22.0 ],
+                    "text": "biquad~ 0.113899 0. -0.113899 -1.128087 0.772201"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_53",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7419.999292373657, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_53",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7419.999292373657, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 53"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_54",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7444.999289989471, 200.0, 20.0 ],
+                    "text": "band 54 — 6798 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_54",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7469.999287605286, 280.0, 22.0 ],
+                    "text": "biquad~ 0.120759 0. -0.120759 -0.99617 0.758482"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_54",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7469.999287605286, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_54",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7469.999287605286, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 54"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_55",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7489.999285697937, 200.0, 20.0 ],
+                    "text": "band 55 — 7477 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_55",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7509.999283790588, 286.0, 22.0 ],
+                    "text": "biquad~ 0.127264 0. -0.127264 -0.845243 0.745472"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_55",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7509.999283790588, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_55",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7509.999283790588, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 55"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_56",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7534.999281406403, 200.0, 20.0 ],
+                    "text": "band 56 — 8222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_56",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7559.999279022217, 285.0, 22.0 ],
+                    "text": "biquad~ 0.133112 0. -0.133112 -0.674142 0.733776"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_56",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7559.999279022217, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_56",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7559.999279022217, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 56"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_57",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7584.999276638031, 200.0, 20.0 ],
+                    "text": "band 57 — 9043 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_57",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7604.999274730682, 273.0, 22.0 ],
+                    "text": "biquad~ 0.13798 0. -0.13798 -0.480402 0.724041"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_57",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7604.999274730682, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_57",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7604.999274730682, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 57"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_58",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7629.999272346497, 200.0, 20.0 ],
+                    "text": "band 58 — 9945 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_58",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7649.999270439148, 286.0, 22.0 ],
+                    "text": "biquad~ 0.141408 0. -0.141408 -0.263188 0.717184"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_58",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7649.999270439148, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_58",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7649.999270439148, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 58"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_59",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7674.999268054962, 200.0, 20.0 ],
+                    "text": "band 59 — 10937 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_59",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7699.999265670776, 286.0, 22.0 ],
+                    "text": "biquad~ 0.142848 0. -0.142848 -0.021493 0.714305"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_59",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7699.999265670776, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_59",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7699.999265670776, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 59"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_60",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7719.999263763428, 200.0, 20.0 ],
+                    "text": "band 60 — 12029 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_60",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7739.999261856079, 282.0, 22.0 ],
+                    "text": "biquad~ 0.141605 0. -0.141605 0.244743 0.716791"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_60",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7739.999261856079, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_60",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7739.999261856079, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_61",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7769.999258995056, 200.0, 20.0 ],
+                    "text": "band 61 — 13229 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_61",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7784.999257564545, 282.0, 22.0 ],
+                    "text": "biquad~ 0.136827 0. -0.136827 0.533236 0.726345"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_61",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7784.999257564545, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_61",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7784.999257564545, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 61"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_62",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7809.999255180359, 200.0, 20.0 ],
+                    "text": "band 62 — 14548 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_62",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7834.999252796173, 282.0, 22.0 ],
+                    "text": "biquad~ 0.127482 0. -0.127482 0.839588 0.745036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_62",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7834.999252796173, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_62",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7834.999252796173, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 62"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_drums_63",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 6899.999341964722, 7859.999250411987, 200.0, 20.0 ],
+                    "text": "band 63 — 16000 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_drums_63",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 6899.999341964722, 7879.999248504639, 281.0, 22.0 ],
+                    "text": "biquad~ 0.112312 0. -0.112312 1.155657 0.775376"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_drums_63",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7129.999320030212, 7879.999248504639, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_drums_63",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7249.999308586121, 7879.999248504639, 159.0, 22.0 ],
+                    "text": "prepend spectrum drums 63"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_col_lbl_master",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 4799.999542236328, 660.0, 20.0 ],
+                    "text": "── MASTER ──"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum1_master",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum2_master",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7729.999262809753, 4824.999539852142, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_sum_master",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 4874.999535083771, 110.0, 22.0 ],
+                    "text": "+~"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_mono_master",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 4919.999530792236, 110.0, 22.0 ],
+                    "text": "*~ 0.5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_0",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 4949.999527931213, 200.0, 20.0 ],
+                    "text": "band 0 — 40 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_0",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 4984.999524593353, 280.0, 22.0 ],
+                    "text": "biquad~ 0.000949 0. -0.000949 -1.99807 0.998102"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_0",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 4984.999524593353, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_0",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 4984.999524593353, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 0"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_1",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5004.999522686005, 200.0, 20.0 ],
+                    "text": "band 1 — 44 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_1",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5029.999520301819, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001044 0. -0.001044 -1.997873 0.997913"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_1",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5029.999520301819, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_1",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5029.999520301819, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 1"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_2",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5054.999517917633, 200.0, 20.0 ],
+                    "text": "band 2 — 48 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_2",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5074.999516010284, 285.0, 22.0 ],
+                    "text": "biquad~ 0.001139 0. -0.001139 -1.997676 0.997723"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_2",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5074.999516010284, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_2",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5074.999516010284, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 2"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_3",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5099.999513626099, 200.0, 20.0 ],
+                    "text": "band 3 — 53 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_3",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5119.99951171875, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001257 0. -0.001257 -1.997429 0.997486"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_3",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5119.99951171875, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_3",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5119.99951171875, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 3"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_4",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5144.999509334564, 200.0, 20.0 ],
+                    "text": "band 4 — 59 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_4",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5169.999506950378, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001399 0. -0.001399 -1.997131 0.997202"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_4",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5169.999506950378, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_4",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5169.999506950378, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 4"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_5",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5189.99950504303, 200.0, 20.0 ],
+                    "text": "band 5 — 64 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_5",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5209.999503135681, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001517 0. -0.001517 -1.996882 0.996965"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_5",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5209.999503135681, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_5",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5209.999503135681, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 5"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_6",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5234.999500751495, 200.0, 20.0 ],
+                    "text": "band 6 — 71 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_6",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5259.99949836731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001683 0. -0.001683 -1.996532 0.996634"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_6",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5259.99949836731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_6",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5259.99949836731, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 6"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_7",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5284.999495983124, 200.0, 20.0 ],
+                    "text": "band 7 — 78 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_7",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5304.999494075775, 286.0, 22.0 ],
+                    "text": "biquad~ 0.001849 0. -0.001849 -1.996179 0.996303"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_7",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5304.999494075775, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_7",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5304.999494075775, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 7"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_8",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5329.999491691589, 200.0, 20.0 ],
+                    "text": "band 8 — 86 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_8",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5349.999489784241, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002038 0. -0.002038 -1.995774 0.995924"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_8",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5349.999489784241, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_8",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5349.999489784241, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 8"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_9",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5374.999487400055, 200.0, 20.0 ],
+                    "text": "band 9 — 94 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_9",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5399.999485015869, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002227 0. -0.002227 -1.995367 0.995546"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_9",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5399.999485015869, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_9",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5399.999485015869, 155.0, 22.0 ],
+                    "text": "prepend spectrum master 9"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_10",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5419.9994831085205, 200.0, 20.0 ],
+                    "text": "band 10 — 104 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_10",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5439.999481201172, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002463 0. -0.002463 -1.994854 0.995073"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_10",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5439.999481201172, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_10",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5439.999481201172, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 10"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_11",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5469.999478340149, 200.0, 20.0 ],
+                    "text": "band 11 — 114 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_11",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5484.999476909637, 260.0, 22.0 ],
+                    "text": "biquad~ 0.0027 0. -0.0027 -1.994338 0.994601"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_11",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5484.999476909637, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_11",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5484.999476909637, 161.0, 22.0 ],
+                    "text": "prepend spectrum master 11"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_12",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5509.999474525452, 200.0, 20.0 ],
+                    "text": "band 12 — 125 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_12",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5534.999472141266, 286.0, 22.0 ],
+                    "text": "biquad~ 0.002959 0. -0.002959 -1.993765 0.994081"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_12",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5534.999472141266, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_12",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5534.999472141266, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 12"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_13",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5559.99946975708, 200.0, 20.0 ],
+                    "text": "band 13 — 138 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_13",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5579.999467849731, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003266 0. -0.003266 -1.993083 0.993468"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_13",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5579.999467849731, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_13",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5579.999467849731, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 13"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_14",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5604.999465465546, 200.0, 20.0 ],
+                    "text": "band 14 — 151 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_14",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5624.999463558197, 286.0, 22.0 ],
+                    "text": "biquad~ 0.003573 0. -0.003573 -1.992394 0.992855"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_14",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5624.999463558197, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_14",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5624.999463558197, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 14"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_15",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5649.999461174011, 200.0, 20.0 ],
+                    "text": "band 15 — 167 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_15",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5674.999458789825, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00395 0. -0.00395 -1.991537 0.992101"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_15",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5674.999458789825, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_15",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5674.999458789825, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 15"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_16",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5699.99945640564, 200.0, 20.0 ],
+                    "text": "band 16 — 183 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_16",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5719.999454498291, 286.0, 22.0 ],
+                    "text": "biquad~ 0.004326 0. -0.004326 -1.990671 0.991348"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_16",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5719.999454498291, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_16",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5719.999454498291, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 16"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_17",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5739.999452590942, 200.0, 20.0 ],
+                    "text": "band 17 — 201 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_17",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5764.999450206757, 273.0, 22.0 ],
+                    "text": "biquad~ 0.00475 0. -0.00475 -1.989685 0.990501"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_17",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5764.999450206757, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_17",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5764.999450206757, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 17"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_18",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5784.999448299408, 200.0, 20.0 ],
+                    "text": "band 18 — 222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_18",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5809.999445915222, 286.0, 22.0 ],
+                    "text": "biquad~ 0.005243 0. -0.005243 -1.988519 0.989514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_18",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5809.999445915222, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_18",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5809.999445915222, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 18"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_19",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5834.999443531036, 200.0, 20.0 ],
+                    "text": "band 19 — 244 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_19",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5854.999441623688, 280.0, 22.0 ],
+                    "text": "biquad~ 0.005759 0. -0.005759 -1.98728 0.988481"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_19",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5854.999441623688, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_19",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5854.999441623688, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 19"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_20",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5879.999439239502, 200.0, 20.0 ],
+                    "text": "band 20 — 268 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_20",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5904.999436855316, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006322 0. -0.006322 -1.985907 0.987356"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_20",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5904.999436855316, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_20",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5904.999436855316, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 20"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_21",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5924.9994349479675, 200.0, 20.0 ],
+                    "text": "band 21 — 295 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_21",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5949.999432563782, 286.0, 22.0 ],
+                    "text": "biquad~ 0.006954 0. -0.006954 -1.984337 0.986091"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_21",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5949.999432563782, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_21",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5949.999432563782, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 21"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_22",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 5974.999430179596, 200.0, 20.0 ],
+                    "text": "band 22 — 324 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_22",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 5994.999428272247, 286.0, 22.0 ],
+                    "text": "biquad~ 0.007632 0. -0.007632 -1.982621 0.984735"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_22",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 5994.999428272247, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_22",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 5994.999428272247, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 22"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_23",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6019.9994258880615, 200.0, 20.0 ],
+                    "text": "band 23 — 356 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_23",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6039.999423980713, 286.0, 22.0 ],
+                    "text": "biquad~ 0.008379 0. -0.008379 -1.980691 0.983242"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_23",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6039.999423980713, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_23",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6039.999423980713, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 23"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_24",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6064.999421596527, 200.0, 20.0 ],
+                    "text": "band 24 — 392 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_24",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6084.9994196891785, 286.0, 22.0 ],
+                    "text": "biquad~ 0.009218 0. -0.009218 -1.978475 0.981564"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_24",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6084.9994196891785, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_24",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6084.9994196891785, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 24"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_25",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6109.999417304993, 200.0, 20.0 ],
+                    "text": "band 25 — 431 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_25",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6134.999414920807, 286.0, 22.0 ],
+                    "text": "biquad~ 0.010125 0. -0.010125 -1.976019 0.979751"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_25",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6134.999414920807, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_25",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6134.999414920807, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 25"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_26",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6154.999413013458, 200.0, 20.0 ],
+                    "text": "band 26 — 474 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_26",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6179.9994106292725, 283.0, 22.0 ],
+                    "text": "biquad~ 0.011122 0. -0.011122 -1.973248 0.977756"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_26",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6179.9994106292725, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_26",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6179.9994106292725, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 26"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_27",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6204.999408245087, 200.0, 20.0 ],
+                    "text": "band 27 — 521 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_27",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6224.999406337738, 286.0, 22.0 ],
+                    "text": "biquad~ 0.012209 0. -0.012209 -1.970141 0.975581"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_27",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6224.999406337738, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_27",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6224.999406337738, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 27"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_28",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6249.999403953552, 200.0, 20.0 ],
+                    "text": "band 28 — 573 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_28",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6269.999402046204, 280.0, 22.0 ],
+                    "text": "biquad~ 0.013409 0. -0.013409 -1.96661 0.973182"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_28",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6269.999402046204, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_28",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6269.999402046204, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 28"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_29",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6294.999399662018, 200.0, 20.0 ],
+                    "text": "band 29 — 631 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_29",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6319.999397277832, 286.0, 22.0 ],
+                    "text": "biquad~ 0.014743 0. -0.014743 -1.962556 0.970514"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_29",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6319.999397277832, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_29",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6319.999397277832, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 29"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_30",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6339.999395370483, 200.0, 20.0 ],
+                    "text": "band 30 — 694 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_30",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6359.999393463135, 286.0, 22.0 ],
+                    "text": "biquad~ 0.016187 0. -0.016187 -1.958016 0.967627"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_30",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6359.999393463135, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_30",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6359.999393463135, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 30"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_31",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6384.999391078949, 200.0, 20.0 ],
+                    "text": "band 31 — 763 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_31",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6409.999388694763, 286.0, 22.0 ],
+                    "text": "biquad~ 0.017761 0. -0.017761 -1.952881 0.964477"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_31",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6409.999388694763, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_31",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6409.999388694763, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 31"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_32",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6434.999386310577, 200.0, 20.0 ],
+                    "text": "band 32 — 839 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_32",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6454.999384403229, 280.0, 22.0 ],
+                    "text": "biquad~ 0.019488 0. -0.019488 -1.94703 0.961024"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_32",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6454.999384403229, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_32",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6454.999384403229, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 32"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_33",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6479.999382019043, 200.0, 20.0 ],
+                    "text": "band 33 — 923 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_33",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6499.999380111694, 286.0, 22.0 ],
+                    "text": "biquad~ 0.021387 0. -0.021387 -1.940327 0.957226"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_33",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6499.999380111694, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_33",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6499.999380111694, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 33"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_34",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6524.9993777275085, 200.0, 20.0 ],
+                    "text": "band 34 — 1015 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_34",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6549.999375343323, 280.0, 22.0 ],
+                    "text": "biquad~ 0.023455 0. -0.023455 -1.932703 0.95309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_34",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6549.999375343323, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_34",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6549.999375343323, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 34"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_35",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6569.999373435974, 200.0, 20.0 ],
+                    "text": "band 35 — 1116 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_35",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6589.9993715286255, 285.0, 22.0 ],
+                    "text": "biquad~ 0.025711 0. -0.025711 -1.923999 0.948579"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_35",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6589.9993715286255, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_35",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6589.9993715286255, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 35"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_36",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6619.9993686676025, 200.0, 20.0 ],
+                    "text": "band 36 — 1227 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_36",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6634.999367237091, 286.0, 22.0 ],
+                    "text": "biquad~ 0.028171 0. -0.028171 -1.914032 0.943657"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_36",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6634.999367237091, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_36",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6634.999367237091, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 36"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_37",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6659.999364852905, 200.0, 20.0 ],
+                    "text": "band 37 — 1350 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_37",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6684.9993624687195, 286.0, 22.0 ],
+                    "text": "biquad~ 0.030876 0. -0.030876 -1.902505 0.938248"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_37",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6684.9993624687195, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_37",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6684.9993624687195, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 37"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_38",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6709.999360084534, 200.0, 20.0 ],
+                    "text": "band 38 — 1484 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_38",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6729.999358177185, 280.0, 22.0 ],
+                    "text": "biquad~ 0.033795 0. -0.033795 -1.889377 0.93241"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_38",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6729.999358177185, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_38",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6729.999358177185, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 38"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_39",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6754.999355792999, 200.0, 20.0 ],
+                    "text": "band 39 — 1633 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_39",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6774.999353885651, 286.0, 22.0 ],
+                    "text": "biquad~ 0.037006 0. -0.037006 -1.874093 0.925988"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_39",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6774.999353885651, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_39",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6774.999353885651, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 39"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_40",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6799.999351501465, 200.0, 20.0 ],
+                    "text": "band 40 — 1795 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_40",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6824.999349117279, 286.0, 22.0 ],
+                    "text": "biquad~ 0.040455 0. -0.040455 -1.856672 0.919089"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_40",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6824.999349117279, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_40",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6824.999349117279, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 40"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_41",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6849.999346733093, 200.0, 20.0 ],
+                    "text": "band 41 — 1975 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_41",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6869.999344825745, 286.0, 22.0 ],
+                    "text": "biquad~ 0.044235 0. -0.044235 -1.836351 0.911531"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_41",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6869.999344825745, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_41",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6869.999344825745, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 41"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_42",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6889.999342918396, 200.0, 20.0 ],
+                    "text": "band 42 — 2172 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_42",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6914.99934053421, 280.0, 22.0 ],
+                    "text": "biquad~ 0.048305 0. -0.048305 -1.812977 0.90339"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_42",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6914.99934053421, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_42",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6914.99934053421, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 42"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_43",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6934.999338626862, 200.0, 20.0 ],
+                    "text": "band 43 — 2388 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_43",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 6959.999336242676, 280.0, 22.0 ],
+                    "text": "biquad~ 0.052687 0. -0.052687 -1.78602 0.894625"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_43",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 6959.999336242676, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_43",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 6959.999336242676, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 43"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_44",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 6984.99933385849, 200.0, 20.0 ],
+                    "text": "band 44 — 2626 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_44",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7004.999331951141, 280.0, 22.0 ],
+                    "text": "biquad~ 0.057415 0. -0.057415 -1.754757 0.88517"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_44",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7004.999331951141, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_44",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7004.999331951141, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 44"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_45",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7029.999329566956, 200.0, 20.0 ],
+                    "text": "band 45 — 2889 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_45",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7054.99932718277, 280.0, 22.0 ],
+                    "text": "biquad~ 0.062513 0. -0.062513 -1.71837 0.874974"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_45",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7054.99932718277, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_45",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7054.99932718277, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 45"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_46",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7074.999325275421, 200.0, 20.0 ],
+                    "text": "band 46 — 3177 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_46",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7099.999322891235, 286.0, 22.0 ],
+                    "text": "biquad~ 0.067939 0. -0.067939 -1.676392 0.864122"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_46",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7099.999322891235, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_46",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7099.999322891235, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 46"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_47",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7124.99932050705, 200.0, 20.0 ],
+                    "text": "band 47 — 3494 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_47",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7144.999318599701, 280.0, 22.0 ],
+                    "text": "biquad~ 0.073717 0. -0.073717 -1.62772 0.852566"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_47",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7144.999318599701, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_47",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7144.999318599701, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 47"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_48",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7169.999316215515, 200.0, 20.0 ],
+                    "text": "band 48 — 3842 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_48",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7189.9993143081665, 266.0, 22.0 ],
+                    "text": "biquad~ 0.07982 0. -0.07982 -1.571455 0.84036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_48",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7189.9993143081665, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_48",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7189.9993143081665, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 48"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_49",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7214.999311923981, 200.0, 20.0 ],
+                    "text": "band 49 — 4226 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_49",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7234.999310016632, 286.0, 22.0 ],
+                    "text": "biquad~ 0.086254 0. -0.086254 -1.506121 0.827492"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_49",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7234.999310016632, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_49",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7234.999310016632, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 49"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_50",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7259.999307632446, 200.0, 20.0 ],
+                    "text": "band 50 — 4647 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_50",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7284.9993052482605, 286.0, 22.0 ],
+                    "text": "biquad~ 0.092938 0. -0.092938 -1.430821 0.814124"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_50",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7284.9993052482605, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_50",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7284.9993052482605, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 50"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_51",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7304.999303340912, 200.0, 20.0 ],
+                    "text": "band 51 — 5111 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_51",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7329.999300956726, 280.0, 22.0 ],
+                    "text": "biquad~ 0.099846 0. -0.099846 -1.34371 0.800309"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_51",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7329.999300956726, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_51",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7329.999300956726, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 51"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_52",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7354.99929857254, 200.0, 20.0 ],
+                    "text": "band 52 — 5621 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_52",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7374.999296665192, 273.0, 22.0 ],
+                    "text": "biquad~ 0.106871 0. -0.106871 -1.2434 0.786258"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_52",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7374.999296665192, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_52",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7374.999296665192, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 52"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_53",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7399.999294281006, 200.0, 20.0 ],
+                    "text": "band 53 — 6182 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_53",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7419.999292373657, 285.0, 22.0 ],
+                    "text": "biquad~ 0.113899 0. -0.113899 -1.128087 0.772201"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_53",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7419.999292373657, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_53",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7419.999292373657, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 53"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_54",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7444.999289989471, 200.0, 20.0 ],
+                    "text": "band 54 — 6798 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_54",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7469.999287605286, 280.0, 22.0 ],
+                    "text": "biquad~ 0.120759 0. -0.120759 -0.99617 0.758482"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_54",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7469.999287605286, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_54",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7469.999287605286, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 54"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_55",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7489.999285697937, 200.0, 20.0 ],
+                    "text": "band 55 — 7477 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_55",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7509.999283790588, 286.0, 22.0 ],
+                    "text": "biquad~ 0.127264 0. -0.127264 -0.845243 0.745472"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_55",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7509.999283790588, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_55",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7509.999283790588, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 55"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_56",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7534.999281406403, 200.0, 20.0 ],
+                    "text": "band 56 — 8222 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_56",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7559.999279022217, 285.0, 22.0 ],
+                    "text": "biquad~ 0.133112 0. -0.133112 -0.674142 0.733776"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_56",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7559.999279022217, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_56",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7559.999279022217, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 56"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_57",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7584.999276638031, 200.0, 20.0 ],
+                    "text": "band 57 — 9043 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_57",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7604.999274730682, 273.0, 22.0 ],
+                    "text": "biquad~ 0.13798 0. -0.13798 -0.480402 0.724041"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_57",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7604.999274730682, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_57",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7604.999274730682, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 57"
+                }
+            },
+            {
+                "box": {
+                    "angle": 270.0,
+                    "background": 1,
+                    "bgcolor": [ 0.0, 0.18, 0.22, 0.0 ],
+                    "border": 2,
+                    "bordercolor": [ 1.0, 1.0, 1.0, 1.0 ],
+                    "id": "obj-241",
+                    "maxclass": "panel",
+                    "mode": 0,
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 4774.999544620514, 4709.999550819397, 3381.6665860414505, 3234.9999228715897 ],
+                    "proportion": 0.5
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_58",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7629.999272346497, 200.0, 20.0 ],
+                    "text": "band 58 — 9945 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_58",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7649.999270439148, 286.0, 22.0 ],
+                    "text": "biquad~ 0.141408 0. -0.141408 -0.263188 0.717184"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_58",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7649.999270439148, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_58",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7649.999270439148, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 58"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_59",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7674.999268054962, 200.0, 20.0 ],
+                    "text": "band 59 — 10937 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_59",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7699.999265670776, 286.0, 22.0 ],
+                    "text": "biquad~ 0.142848 0. -0.142848 -0.021493 0.714305"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_59",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7699.999265670776, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_59",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7699.999265670776, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 59"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_60",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7719.999263763428, 200.0, 20.0 ],
+                    "text": "band 60 — 12029 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_60",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7739.999261856079, 282.0, 22.0 ],
+                    "text": "biquad~ 0.141605 0. -0.141605 0.244743 0.716791"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_60",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7739.999261856079, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_60",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7739.999261856079, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_61",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7769.999258995056, 200.0, 20.0 ],
+                    "text": "band 61 — 13229 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_61",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7784.999257564545, 282.0, 22.0 ],
+                    "text": "biquad~ 0.136827 0. -0.136827 0.533236 0.726345"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_61",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7784.999257564545, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_61",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7784.999257564545, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 61"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_62",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7809.999255180359, 200.0, 20.0 ],
+                    "text": "band 62 — 14548 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_62",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7834.999252796173, 282.0, 22.0 ],
+                    "text": "biquad~ 0.127482 0. -0.127482 0.839588 0.745036"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_62",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7834.999252796173, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_62",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7834.999252796173, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 62"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_lbl_master_63",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 7599.9992752075195, 7859.999250411987, 200.0, 20.0 ],
+                    "text": "band 63 — 16000 Hz"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_bp_master_63",
+                    "maxclass": "newobj",
+                    "numinlets": 6,
+                    "numoutlets": 1,
+                    "outlettype": [ "signal" ],
+                    "patching_rect": [ 7599.9992752075195, 7879.999248504639, 281.0, 22.0 ],
+                    "text": "biquad~ 0.112312 0. -0.112312 1.155657 0.775376"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pk_master_63",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "float" ],
+                    "patching_rect": [ 7829.99925327301, 7879.999248504639, 110.0, 22.0 ],
+                    "text": "peakamp~ 60"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-spec_pre_master_63",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 7949.9992418289185, 7879.999248504639, 162.0, 22.0 ],
+                    "text": "prepend spectrum master 63"
                 }
             }
         ],
@@ -17427,12 +31495,28 @@
             {
                 "patchline": {
                     "destination": [ "obj-162", 0 ],
+                    "order": 1,
+                    "source": [ "obj-167", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_master", 0 ],
+                    "order": 0,
                     "source": [ "obj-167", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-166", 0 ],
+                    "order": 1,
+                    "source": [ "obj-168", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_master", 1 ],
+                    "order": 0,
                     "source": [ "obj-168", 0 ]
                 }
             },
@@ -20261,6 +34345,14 @@
             {
                 "patchline": {
                     "destination": [ "obj-52", 0 ],
+                    "order": 1,
+                    "source": [ "obj-34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_master", 0 ],
+                    "order": 0,
                     "source": [ "obj-34", 0 ]
                 }
             },
@@ -20437,6 +34529,14 @@
             {
                 "patchline": {
                     "destination": [ "obj-161", 0 ],
+                    "order": 1,
+                    "source": [ "obj-40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_master", 1 ],
+                    "order": 0,
                     "source": [ "obj-40", 0 ]
                 }
             },
@@ -20762,14 +34862,14 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-9101", 0 ],
-                    "source": [ "obj-4041", 24 ]
+                    "destination": [ "obj-551", 0 ],
+                    "source": [ "obj-4041", 31 ]
                 }
             },
             {
                 "patchline": {
-                    "destination": [ "obj-9982", 0 ],
-                    "source": [ "obj-9101", 0 ]
+                    "destination": [ "obj-9101", 0 ],
+                    "source": [ "obj-4041", 24 ]
                 }
             },
             {
@@ -20780,20 +34880,8 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-9982", 0 ],
-                    "source": [ "obj-9102", 0 ]
-                }
-            },
-            {
-                "patchline": {
                     "destination": [ "obj-9103", 0 ],
                     "source": [ "obj-4041", 26 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-9982", 0 ],
-                    "source": [ "obj-9103", 0 ]
                 }
             },
             {
@@ -20804,20 +34892,8 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-9982", 0 ],
-                    "source": [ "obj-9104", 0 ]
-                }
-            },
-            {
-                "patchline": {
                     "destination": [ "obj-9105", 0 ],
                     "source": [ "obj-4041", 28 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-9982", 0 ],
-                    "source": [ "obj-9105", 0 ]
                 }
             },
             {
@@ -20828,26 +34904,8 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-9982", 0 ],
-                    "source": [ "obj-9106", 0 ]
-                }
-            },
-            {
-                "patchline": {
                     "destination": [ "obj-9107", 0 ],
                     "source": [ "obj-4041", 30 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-9982", 0 ],
-                    "source": [ "obj-9107", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-551", 0 ],
-                    "source": [ "obj-4041", 31 ]
                 }
             },
             {
@@ -21766,6 +35824,48 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-9982", 0 ],
+                    "source": [ "obj-9101", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-9982", 0 ],
+                    "source": [ "obj-9102", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-9982", 0 ],
+                    "source": [ "obj-9103", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-9982", 0 ],
+                    "source": [ "obj-9104", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-9982", 0 ],
+                    "source": [ "obj-9105", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-9982", 0 ],
+                    "source": [ "obj-9106", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-9982", 0 ],
+                    "source": [ "obj-9107", 0 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-99", 0 ],
                     "source": [ "obj-96", 0 ]
                 }
@@ -22086,8 +36186,20 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-5100", 2 ],
+                    "source": [ "obj-9982", 25 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-5100", 1 ],
                     "source": [ "obj-9982", 16 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-5101", 2 ],
+                    "source": [ "obj-9982", 28 ]
                 }
             },
             {
@@ -22098,20 +36210,14 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-5102", 2 ],
+                    "source": [ "obj-9982", 27 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-5102", 1 ],
                     "source": [ "obj-9982", 18 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-5103", 1 ],
-                    "source": [ "obj-9982", 17 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-5100", 2 ],
-                    "source": [ "obj-9982", 25 ]
                 }
             },
             {
@@ -22122,14 +36228,8 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-5102", 2 ],
-                    "source": [ "obj-9982", 27 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-5101", 2 ],
-                    "source": [ "obj-9982", 28 ]
+                    "destination": [ "obj-5103", 1 ],
+                    "source": [ "obj-9982", 17 ]
                 }
             },
             {
@@ -22767,27 +36867,41 @@
             {
                 "patchline": {
                     "destination": [ "obj-191", 0 ],
-                    "order": 0,
+                    "order": 1,
                     "source": [ "obj-jpsum_FL_bass", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_FL_bm", 0 ],
-                    "order": 1,
+                    "order": 2,
+                    "source": [ "obj-jpsum_FL_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_bass", 0 ],
+                    "order": 0,
                     "source": [ "obj-jpsum_FL_bass", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-185", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_FL_drums", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_FL_vd", 1 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_FL_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_drums", 0 ],
                     "order": 0,
                     "source": [ "obj-jpsum_FL_drums", 0 ]
                 }
@@ -22795,27 +36909,41 @@
             {
                 "patchline": {
                     "destination": [ "obj-203", 0 ],
-                    "order": 0,
+                    "order": 1,
                     "source": [ "obj-jpsum_FL_melody", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_FL_bm", 1 ],
-                    "order": 1,
+                    "order": 2,
+                    "source": [ "obj-jpsum_FL_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_melody", 0 ],
+                    "order": 0,
                     "source": [ "obj-jpsum_FL_melody", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-174", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_FL_vocals", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_FL_vd", 0 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_FL_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_vocals", 0 ],
                     "order": 0,
                     "source": [ "obj-jpsum_FL_vocals", 0 ]
                 }
@@ -22823,27 +36951,41 @@
             {
                 "patchline": {
                     "destination": [ "obj-201", 0 ],
-                    "order": 0,
+                    "order": 1,
                     "source": [ "obj-jpsum_FR_bass", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_FR_bm", 0 ],
-                    "order": 1,
+                    "order": 2,
+                    "source": [ "obj-jpsum_FR_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_bass", 1 ],
+                    "order": 0,
                     "source": [ "obj-jpsum_FR_bass", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-186", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_FR_drums", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_FR_vd", 1 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_FR_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_drums", 1 ],
                     "order": 0,
                     "source": [ "obj-jpsum_FR_drums", 0 ]
                 }
@@ -22851,27 +36993,41 @@
             {
                 "patchline": {
                     "destination": [ "obj-204", 0 ],
-                    "order": 0,
+                    "order": 1,
                     "source": [ "obj-jpsum_FR_melody", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_FR_bm", 1 ],
-                    "order": 1,
+                    "order": 2,
+                    "source": [ "obj-jpsum_FR_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_melody", 1 ],
+                    "order": 0,
                     "source": [ "obj-jpsum_FR_melody", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-184", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_FR_vocals", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_FR_vd", 0 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_FR_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum1_vocals", 1 ],
                     "order": 0,
                     "source": [ "obj-jpsum_FR_vocals", 0 ]
                 }
@@ -22879,13 +37035,20 @@
             {
                 "patchline": {
                     "destination": [ "obj-211", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_RL_bass", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_RL_bm", 0 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_RL_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_bass", 0 ],
                     "order": 0,
                     "source": [ "obj-jpsum_RL_bass", 0 ]
                 }
@@ -22893,13 +37056,20 @@
             {
                 "patchline": {
                     "destination": [ "obj-221", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_RL_drums", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_RL_vd", 1 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_RL_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_drums", 0 ],
                     "order": 0,
                     "source": [ "obj-jpsum_RL_drums", 0 ]
                 }
@@ -22907,20 +37077,34 @@
             {
                 "patchline": {
                     "destination": [ "obj-214", 0 ],
-                    "order": 0,
-                    "source": [ "obj-jpsum_RL_melody", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-jpsum2_RL_bm", 1 ],
                     "order": 1,
                     "source": [ "obj-jpsum_RL_melody", 0 ]
                 }
             },
             {
                 "patchline": {
+                    "destination": [ "obj-jpsum2_RL_bm", 1 ],
+                    "order": 2,
+                    "source": [ "obj-jpsum_RL_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_melody", 0 ],
+                    "order": 0,
+                    "source": [ "obj-jpsum_RL_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-jpsum2_RL_vd", 0 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_RL_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_vocals", 0 ],
                     "order": 0,
                     "source": [ "obj-jpsum_RL_vocals", 0 ]
                 }
@@ -22928,20 +37112,27 @@
             {
                 "patchline": {
                     "destination": [ "pkamp_vocals_RL", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_RL_vocals", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-209", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_RR_bass", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_RR_bm", 0 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_RR_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_bass", 1 ],
                     "order": 0,
                     "source": [ "obj-jpsum_RR_bass", 0 ]
                 }
@@ -22949,13 +37140,20 @@
             {
                 "patchline": {
                     "destination": [ "obj-215", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_RR_drums", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-jpsum2_RR_vd", 1 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_RR_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_drums", 1 ],
                     "order": 0,
                     "source": [ "obj-jpsum_RR_drums", 0 ]
                 }
@@ -22963,20 +37161,34 @@
             {
                 "patchline": {
                     "destination": [ "obj-207", 0 ],
-                    "order": 0,
-                    "source": [ "obj-jpsum_RR_melody", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-jpsum2_RR_bm", 1 ],
                     "order": 1,
                     "source": [ "obj-jpsum_RR_melody", 0 ]
                 }
             },
             {
                 "patchline": {
+                    "destination": [ "obj-jpsum2_RR_bm", 1 ],
+                    "order": 2,
+                    "source": [ "obj-jpsum_RR_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_melody", 1 ],
+                    "order": 0,
+                    "source": [ "obj-jpsum_RR_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-jpsum2_RR_vd", 0 ],
+                    "order": 1,
+                    "source": [ "obj-jpsum_RR_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum2_vocals", 1 ],
                     "order": 0,
                     "source": [ "obj-jpsum_RR_vocals", 0 ]
                 }
@@ -22984,7 +37196,7 @@
             {
                 "patchline": {
                     "destination": [ "pkamp_vocals_RR", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-jpsum_RR_vocals", 0 ]
                 }
             },
@@ -23408,6 +37620,8096 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-spec_pk_bass_0", 0 ],
+                    "source": [ "obj-spec_bp_bass_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_1", 0 ],
+                    "source": [ "obj-spec_bp_bass_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_10", 0 ],
+                    "source": [ "obj-spec_bp_bass_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_11", 0 ],
+                    "source": [ "obj-spec_bp_bass_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_12", 0 ],
+                    "source": [ "obj-spec_bp_bass_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_13", 0 ],
+                    "source": [ "obj-spec_bp_bass_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_14", 0 ],
+                    "source": [ "obj-spec_bp_bass_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_15", 0 ],
+                    "source": [ "obj-spec_bp_bass_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_16", 0 ],
+                    "source": [ "obj-spec_bp_bass_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_17", 0 ],
+                    "source": [ "obj-spec_bp_bass_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_18", 0 ],
+                    "source": [ "obj-spec_bp_bass_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_19", 0 ],
+                    "source": [ "obj-spec_bp_bass_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_2", 0 ],
+                    "source": [ "obj-spec_bp_bass_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_20", 0 ],
+                    "source": [ "obj-spec_bp_bass_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_21", 0 ],
+                    "source": [ "obj-spec_bp_bass_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_22", 0 ],
+                    "source": [ "obj-spec_bp_bass_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_23", 0 ],
+                    "source": [ "obj-spec_bp_bass_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_24", 0 ],
+                    "source": [ "obj-spec_bp_bass_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_25", 0 ],
+                    "source": [ "obj-spec_bp_bass_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_26", 0 ],
+                    "source": [ "obj-spec_bp_bass_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_27", 0 ],
+                    "source": [ "obj-spec_bp_bass_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_28", 0 ],
+                    "source": [ "obj-spec_bp_bass_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_29", 0 ],
+                    "source": [ "obj-spec_bp_bass_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_3", 0 ],
+                    "source": [ "obj-spec_bp_bass_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_30", 0 ],
+                    "source": [ "obj-spec_bp_bass_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_31", 0 ],
+                    "source": [ "obj-spec_bp_bass_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_32", 0 ],
+                    "source": [ "obj-spec_bp_bass_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_33", 0 ],
+                    "source": [ "obj-spec_bp_bass_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_34", 0 ],
+                    "source": [ "obj-spec_bp_bass_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_35", 0 ],
+                    "source": [ "obj-spec_bp_bass_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_36", 0 ],
+                    "source": [ "obj-spec_bp_bass_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_37", 0 ],
+                    "source": [ "obj-spec_bp_bass_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_38", 0 ],
+                    "source": [ "obj-spec_bp_bass_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_39", 0 ],
+                    "source": [ "obj-spec_bp_bass_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_4", 0 ],
+                    "source": [ "obj-spec_bp_bass_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_40", 0 ],
+                    "source": [ "obj-spec_bp_bass_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_41", 0 ],
+                    "source": [ "obj-spec_bp_bass_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_42", 0 ],
+                    "source": [ "obj-spec_bp_bass_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_43", 0 ],
+                    "source": [ "obj-spec_bp_bass_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_44", 0 ],
+                    "source": [ "obj-spec_bp_bass_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_45", 0 ],
+                    "source": [ "obj-spec_bp_bass_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_46", 0 ],
+                    "source": [ "obj-spec_bp_bass_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_47", 0 ],
+                    "source": [ "obj-spec_bp_bass_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_48", 0 ],
+                    "source": [ "obj-spec_bp_bass_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_49", 0 ],
+                    "source": [ "obj-spec_bp_bass_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_5", 0 ],
+                    "source": [ "obj-spec_bp_bass_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_50", 0 ],
+                    "source": [ "obj-spec_bp_bass_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_51", 0 ],
+                    "source": [ "obj-spec_bp_bass_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_52", 0 ],
+                    "source": [ "obj-spec_bp_bass_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_53", 0 ],
+                    "source": [ "obj-spec_bp_bass_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_54", 0 ],
+                    "source": [ "obj-spec_bp_bass_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_55", 0 ],
+                    "source": [ "obj-spec_bp_bass_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_56", 0 ],
+                    "source": [ "obj-spec_bp_bass_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_57", 0 ],
+                    "source": [ "obj-spec_bp_bass_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_58", 0 ],
+                    "source": [ "obj-spec_bp_bass_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_59", 0 ],
+                    "source": [ "obj-spec_bp_bass_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_6", 0 ],
+                    "source": [ "obj-spec_bp_bass_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_60", 0 ],
+                    "source": [ "obj-spec_bp_bass_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_61", 0 ],
+                    "source": [ "obj-spec_bp_bass_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_62", 0 ],
+                    "source": [ "obj-spec_bp_bass_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_63", 0 ],
+                    "source": [ "obj-spec_bp_bass_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_7", 0 ],
+                    "source": [ "obj-spec_bp_bass_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_8", 0 ],
+                    "source": [ "obj-spec_bp_bass_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_bass_9", 0 ],
+                    "source": [ "obj-spec_bp_bass_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_0", 0 ],
+                    "source": [ "obj-spec_bp_drums_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_1", 0 ],
+                    "source": [ "obj-spec_bp_drums_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_10", 0 ],
+                    "source": [ "obj-spec_bp_drums_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_11", 0 ],
+                    "source": [ "obj-spec_bp_drums_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_12", 0 ],
+                    "source": [ "obj-spec_bp_drums_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_13", 0 ],
+                    "source": [ "obj-spec_bp_drums_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_14", 0 ],
+                    "source": [ "obj-spec_bp_drums_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_15", 0 ],
+                    "source": [ "obj-spec_bp_drums_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_16", 0 ],
+                    "source": [ "obj-spec_bp_drums_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_17", 0 ],
+                    "source": [ "obj-spec_bp_drums_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_18", 0 ],
+                    "source": [ "obj-spec_bp_drums_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_19", 0 ],
+                    "source": [ "obj-spec_bp_drums_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_2", 0 ],
+                    "source": [ "obj-spec_bp_drums_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_20", 0 ],
+                    "source": [ "obj-spec_bp_drums_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_21", 0 ],
+                    "source": [ "obj-spec_bp_drums_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_22", 0 ],
+                    "source": [ "obj-spec_bp_drums_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_23", 0 ],
+                    "source": [ "obj-spec_bp_drums_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_24", 0 ],
+                    "source": [ "obj-spec_bp_drums_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_25", 0 ],
+                    "source": [ "obj-spec_bp_drums_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_26", 0 ],
+                    "source": [ "obj-spec_bp_drums_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_27", 0 ],
+                    "source": [ "obj-spec_bp_drums_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_28", 0 ],
+                    "source": [ "obj-spec_bp_drums_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_29", 0 ],
+                    "source": [ "obj-spec_bp_drums_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_3", 0 ],
+                    "source": [ "obj-spec_bp_drums_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_30", 0 ],
+                    "source": [ "obj-spec_bp_drums_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_31", 0 ],
+                    "source": [ "obj-spec_bp_drums_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_32", 0 ],
+                    "source": [ "obj-spec_bp_drums_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_33", 0 ],
+                    "source": [ "obj-spec_bp_drums_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_34", 0 ],
+                    "source": [ "obj-spec_bp_drums_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_35", 0 ],
+                    "source": [ "obj-spec_bp_drums_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_36", 0 ],
+                    "source": [ "obj-spec_bp_drums_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_37", 0 ],
+                    "source": [ "obj-spec_bp_drums_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_38", 0 ],
+                    "source": [ "obj-spec_bp_drums_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_39", 0 ],
+                    "source": [ "obj-spec_bp_drums_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_4", 0 ],
+                    "source": [ "obj-spec_bp_drums_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_40", 0 ],
+                    "source": [ "obj-spec_bp_drums_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_41", 0 ],
+                    "source": [ "obj-spec_bp_drums_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_42", 0 ],
+                    "source": [ "obj-spec_bp_drums_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_43", 0 ],
+                    "source": [ "obj-spec_bp_drums_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_44", 0 ],
+                    "source": [ "obj-spec_bp_drums_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_45", 0 ],
+                    "source": [ "obj-spec_bp_drums_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_46", 0 ],
+                    "source": [ "obj-spec_bp_drums_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_47", 0 ],
+                    "source": [ "obj-spec_bp_drums_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_48", 0 ],
+                    "source": [ "obj-spec_bp_drums_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_49", 0 ],
+                    "source": [ "obj-spec_bp_drums_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_5", 0 ],
+                    "source": [ "obj-spec_bp_drums_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_50", 0 ],
+                    "source": [ "obj-spec_bp_drums_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_51", 0 ],
+                    "source": [ "obj-spec_bp_drums_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_52", 0 ],
+                    "source": [ "obj-spec_bp_drums_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_53", 0 ],
+                    "source": [ "obj-spec_bp_drums_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_54", 0 ],
+                    "source": [ "obj-spec_bp_drums_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_55", 0 ],
+                    "source": [ "obj-spec_bp_drums_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_56", 0 ],
+                    "source": [ "obj-spec_bp_drums_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_57", 0 ],
+                    "source": [ "obj-spec_bp_drums_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_58", 0 ],
+                    "source": [ "obj-spec_bp_drums_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_59", 0 ],
+                    "source": [ "obj-spec_bp_drums_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_6", 0 ],
+                    "source": [ "obj-spec_bp_drums_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_60", 0 ],
+                    "source": [ "obj-spec_bp_drums_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_61", 0 ],
+                    "source": [ "obj-spec_bp_drums_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_62", 0 ],
+                    "source": [ "obj-spec_bp_drums_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_63", 0 ],
+                    "source": [ "obj-spec_bp_drums_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_7", 0 ],
+                    "source": [ "obj-spec_bp_drums_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_8", 0 ],
+                    "source": [ "obj-spec_bp_drums_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_drums_9", 0 ],
+                    "source": [ "obj-spec_bp_drums_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_0", 0 ],
+                    "source": [ "obj-spec_bp_master_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_1", 0 ],
+                    "source": [ "obj-spec_bp_master_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_10", 0 ],
+                    "source": [ "obj-spec_bp_master_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_11", 0 ],
+                    "source": [ "obj-spec_bp_master_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_12", 0 ],
+                    "source": [ "obj-spec_bp_master_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_13", 0 ],
+                    "source": [ "obj-spec_bp_master_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_14", 0 ],
+                    "source": [ "obj-spec_bp_master_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_15", 0 ],
+                    "source": [ "obj-spec_bp_master_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_16", 0 ],
+                    "source": [ "obj-spec_bp_master_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_17", 0 ],
+                    "source": [ "obj-spec_bp_master_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_18", 0 ],
+                    "source": [ "obj-spec_bp_master_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_19", 0 ],
+                    "source": [ "obj-spec_bp_master_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_2", 0 ],
+                    "source": [ "obj-spec_bp_master_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_20", 0 ],
+                    "source": [ "obj-spec_bp_master_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_21", 0 ],
+                    "source": [ "obj-spec_bp_master_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_22", 0 ],
+                    "source": [ "obj-spec_bp_master_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_23", 0 ],
+                    "source": [ "obj-spec_bp_master_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_24", 0 ],
+                    "source": [ "obj-spec_bp_master_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_25", 0 ],
+                    "source": [ "obj-spec_bp_master_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_26", 0 ],
+                    "source": [ "obj-spec_bp_master_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_27", 0 ],
+                    "source": [ "obj-spec_bp_master_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_28", 0 ],
+                    "source": [ "obj-spec_bp_master_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_29", 0 ],
+                    "source": [ "obj-spec_bp_master_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_3", 0 ],
+                    "source": [ "obj-spec_bp_master_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_30", 0 ],
+                    "source": [ "obj-spec_bp_master_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_31", 0 ],
+                    "source": [ "obj-spec_bp_master_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_32", 0 ],
+                    "source": [ "obj-spec_bp_master_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_33", 0 ],
+                    "source": [ "obj-spec_bp_master_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_34", 0 ],
+                    "source": [ "obj-spec_bp_master_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_35", 0 ],
+                    "source": [ "obj-spec_bp_master_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_36", 0 ],
+                    "source": [ "obj-spec_bp_master_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_37", 0 ],
+                    "source": [ "obj-spec_bp_master_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_38", 0 ],
+                    "source": [ "obj-spec_bp_master_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_39", 0 ],
+                    "source": [ "obj-spec_bp_master_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_4", 0 ],
+                    "source": [ "obj-spec_bp_master_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_40", 0 ],
+                    "source": [ "obj-spec_bp_master_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_41", 0 ],
+                    "source": [ "obj-spec_bp_master_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_42", 0 ],
+                    "source": [ "obj-spec_bp_master_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_43", 0 ],
+                    "source": [ "obj-spec_bp_master_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_44", 0 ],
+                    "source": [ "obj-spec_bp_master_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_45", 0 ],
+                    "source": [ "obj-spec_bp_master_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_46", 0 ],
+                    "source": [ "obj-spec_bp_master_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_47", 0 ],
+                    "source": [ "obj-spec_bp_master_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_48", 0 ],
+                    "source": [ "obj-spec_bp_master_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_49", 0 ],
+                    "source": [ "obj-spec_bp_master_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_5", 0 ],
+                    "source": [ "obj-spec_bp_master_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_50", 0 ],
+                    "source": [ "obj-spec_bp_master_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_51", 0 ],
+                    "source": [ "obj-spec_bp_master_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_52", 0 ],
+                    "source": [ "obj-spec_bp_master_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_53", 0 ],
+                    "source": [ "obj-spec_bp_master_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_54", 0 ],
+                    "source": [ "obj-spec_bp_master_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_55", 0 ],
+                    "source": [ "obj-spec_bp_master_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_56", 0 ],
+                    "source": [ "obj-spec_bp_master_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_57", 0 ],
+                    "source": [ "obj-spec_bp_master_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_58", 0 ],
+                    "source": [ "obj-spec_bp_master_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_59", 0 ],
+                    "source": [ "obj-spec_bp_master_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_6", 0 ],
+                    "source": [ "obj-spec_bp_master_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_60", 0 ],
+                    "source": [ "obj-spec_bp_master_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_61", 0 ],
+                    "source": [ "obj-spec_bp_master_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_62", 0 ],
+                    "source": [ "obj-spec_bp_master_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_63", 0 ],
+                    "source": [ "obj-spec_bp_master_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_7", 0 ],
+                    "source": [ "obj-spec_bp_master_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_8", 0 ],
+                    "source": [ "obj-spec_bp_master_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_master_9", 0 ],
+                    "source": [ "obj-spec_bp_master_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_0", 0 ],
+                    "source": [ "obj-spec_bp_melody_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_1", 0 ],
+                    "source": [ "obj-spec_bp_melody_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_10", 0 ],
+                    "source": [ "obj-spec_bp_melody_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_11", 0 ],
+                    "source": [ "obj-spec_bp_melody_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_12", 0 ],
+                    "source": [ "obj-spec_bp_melody_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_13", 0 ],
+                    "source": [ "obj-spec_bp_melody_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_14", 0 ],
+                    "source": [ "obj-spec_bp_melody_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_15", 0 ],
+                    "source": [ "obj-spec_bp_melody_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_16", 0 ],
+                    "source": [ "obj-spec_bp_melody_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_17", 0 ],
+                    "source": [ "obj-spec_bp_melody_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_18", 0 ],
+                    "source": [ "obj-spec_bp_melody_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_19", 0 ],
+                    "source": [ "obj-spec_bp_melody_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_2", 0 ],
+                    "source": [ "obj-spec_bp_melody_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_20", 0 ],
+                    "source": [ "obj-spec_bp_melody_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_21", 0 ],
+                    "source": [ "obj-spec_bp_melody_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_22", 0 ],
+                    "source": [ "obj-spec_bp_melody_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_23", 0 ],
+                    "source": [ "obj-spec_bp_melody_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_24", 0 ],
+                    "source": [ "obj-spec_bp_melody_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_25", 0 ],
+                    "source": [ "obj-spec_bp_melody_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_26", 0 ],
+                    "source": [ "obj-spec_bp_melody_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_27", 0 ],
+                    "source": [ "obj-spec_bp_melody_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_28", 0 ],
+                    "source": [ "obj-spec_bp_melody_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_29", 0 ],
+                    "source": [ "obj-spec_bp_melody_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_3", 0 ],
+                    "source": [ "obj-spec_bp_melody_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_30", 0 ],
+                    "source": [ "obj-spec_bp_melody_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_31", 0 ],
+                    "source": [ "obj-spec_bp_melody_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_32", 0 ],
+                    "source": [ "obj-spec_bp_melody_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_33", 0 ],
+                    "source": [ "obj-spec_bp_melody_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_34", 0 ],
+                    "source": [ "obj-spec_bp_melody_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_35", 0 ],
+                    "source": [ "obj-spec_bp_melody_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_36", 0 ],
+                    "source": [ "obj-spec_bp_melody_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_37", 0 ],
+                    "source": [ "obj-spec_bp_melody_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_38", 0 ],
+                    "source": [ "obj-spec_bp_melody_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_39", 0 ],
+                    "source": [ "obj-spec_bp_melody_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_4", 0 ],
+                    "source": [ "obj-spec_bp_melody_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_40", 0 ],
+                    "source": [ "obj-spec_bp_melody_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_41", 0 ],
+                    "source": [ "obj-spec_bp_melody_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_42", 0 ],
+                    "source": [ "obj-spec_bp_melody_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_43", 0 ],
+                    "source": [ "obj-spec_bp_melody_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_44", 0 ],
+                    "source": [ "obj-spec_bp_melody_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_45", 0 ],
+                    "source": [ "obj-spec_bp_melody_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_46", 0 ],
+                    "source": [ "obj-spec_bp_melody_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_47", 0 ],
+                    "source": [ "obj-spec_bp_melody_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_48", 0 ],
+                    "source": [ "obj-spec_bp_melody_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_49", 0 ],
+                    "source": [ "obj-spec_bp_melody_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_5", 0 ],
+                    "source": [ "obj-spec_bp_melody_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_50", 0 ],
+                    "source": [ "obj-spec_bp_melody_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_51", 0 ],
+                    "source": [ "obj-spec_bp_melody_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_52", 0 ],
+                    "source": [ "obj-spec_bp_melody_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_53", 0 ],
+                    "source": [ "obj-spec_bp_melody_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_54", 0 ],
+                    "source": [ "obj-spec_bp_melody_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_55", 0 ],
+                    "source": [ "obj-spec_bp_melody_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_56", 0 ],
+                    "source": [ "obj-spec_bp_melody_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_57", 0 ],
+                    "source": [ "obj-spec_bp_melody_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_58", 0 ],
+                    "source": [ "obj-spec_bp_melody_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_59", 0 ],
+                    "source": [ "obj-spec_bp_melody_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_6", 0 ],
+                    "source": [ "obj-spec_bp_melody_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_60", 0 ],
+                    "source": [ "obj-spec_bp_melody_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_61", 0 ],
+                    "source": [ "obj-spec_bp_melody_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_62", 0 ],
+                    "source": [ "obj-spec_bp_melody_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_63", 0 ],
+                    "source": [ "obj-spec_bp_melody_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_7", 0 ],
+                    "source": [ "obj-spec_bp_melody_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_8", 0 ],
+                    "source": [ "obj-spec_bp_melody_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_melody_9", 0 ],
+                    "source": [ "obj-spec_bp_melody_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_0", 0 ],
+                    "source": [ "obj-spec_bp_vocals_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_1", 0 ],
+                    "source": [ "obj-spec_bp_vocals_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_10", 0 ],
+                    "source": [ "obj-spec_bp_vocals_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_11", 0 ],
+                    "source": [ "obj-spec_bp_vocals_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_12", 0 ],
+                    "source": [ "obj-spec_bp_vocals_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_13", 0 ],
+                    "source": [ "obj-spec_bp_vocals_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_14", 0 ],
+                    "source": [ "obj-spec_bp_vocals_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_15", 0 ],
+                    "source": [ "obj-spec_bp_vocals_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_16", 0 ],
+                    "source": [ "obj-spec_bp_vocals_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_17", 0 ],
+                    "source": [ "obj-spec_bp_vocals_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_18", 0 ],
+                    "source": [ "obj-spec_bp_vocals_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_19", 0 ],
+                    "source": [ "obj-spec_bp_vocals_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_2", 0 ],
+                    "source": [ "obj-spec_bp_vocals_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_20", 0 ],
+                    "source": [ "obj-spec_bp_vocals_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_21", 0 ],
+                    "source": [ "obj-spec_bp_vocals_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_22", 0 ],
+                    "source": [ "obj-spec_bp_vocals_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_23", 0 ],
+                    "source": [ "obj-spec_bp_vocals_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_24", 0 ],
+                    "source": [ "obj-spec_bp_vocals_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_25", 0 ],
+                    "source": [ "obj-spec_bp_vocals_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_26", 0 ],
+                    "source": [ "obj-spec_bp_vocals_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_27", 0 ],
+                    "source": [ "obj-spec_bp_vocals_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_28", 0 ],
+                    "source": [ "obj-spec_bp_vocals_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_29", 0 ],
+                    "source": [ "obj-spec_bp_vocals_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_3", 0 ],
+                    "source": [ "obj-spec_bp_vocals_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_30", 0 ],
+                    "source": [ "obj-spec_bp_vocals_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_31", 0 ],
+                    "source": [ "obj-spec_bp_vocals_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_32", 0 ],
+                    "source": [ "obj-spec_bp_vocals_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_33", 0 ],
+                    "source": [ "obj-spec_bp_vocals_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_34", 0 ],
+                    "source": [ "obj-spec_bp_vocals_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_35", 0 ],
+                    "source": [ "obj-spec_bp_vocals_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_36", 0 ],
+                    "source": [ "obj-spec_bp_vocals_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_37", 0 ],
+                    "source": [ "obj-spec_bp_vocals_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_38", 0 ],
+                    "source": [ "obj-spec_bp_vocals_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_39", 0 ],
+                    "source": [ "obj-spec_bp_vocals_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_4", 0 ],
+                    "source": [ "obj-spec_bp_vocals_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_40", 0 ],
+                    "source": [ "obj-spec_bp_vocals_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_41", 0 ],
+                    "source": [ "obj-spec_bp_vocals_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_42", 0 ],
+                    "source": [ "obj-spec_bp_vocals_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_43", 0 ],
+                    "source": [ "obj-spec_bp_vocals_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_44", 0 ],
+                    "source": [ "obj-spec_bp_vocals_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_45", 0 ],
+                    "source": [ "obj-spec_bp_vocals_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_46", 0 ],
+                    "source": [ "obj-spec_bp_vocals_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_47", 0 ],
+                    "source": [ "obj-spec_bp_vocals_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_48", 0 ],
+                    "source": [ "obj-spec_bp_vocals_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_49", 0 ],
+                    "source": [ "obj-spec_bp_vocals_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_5", 0 ],
+                    "source": [ "obj-spec_bp_vocals_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_50", 0 ],
+                    "source": [ "obj-spec_bp_vocals_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_51", 0 ],
+                    "source": [ "obj-spec_bp_vocals_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_52", 0 ],
+                    "source": [ "obj-spec_bp_vocals_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_53", 0 ],
+                    "source": [ "obj-spec_bp_vocals_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_54", 0 ],
+                    "source": [ "obj-spec_bp_vocals_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_55", 0 ],
+                    "source": [ "obj-spec_bp_vocals_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_56", 0 ],
+                    "source": [ "obj-spec_bp_vocals_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_57", 0 ],
+                    "source": [ "obj-spec_bp_vocals_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_58", 0 ],
+                    "source": [ "obj-spec_bp_vocals_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_59", 0 ],
+                    "source": [ "obj-spec_bp_vocals_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_6", 0 ],
+                    "source": [ "obj-spec_bp_vocals_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_60", 0 ],
+                    "source": [ "obj-spec_bp_vocals_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_61", 0 ],
+                    "source": [ "obj-spec_bp_vocals_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_62", 0 ],
+                    "source": [ "obj-spec_bp_vocals_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_63", 0 ],
+                    "source": [ "obj-spec_bp_vocals_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_7", 0 ],
+                    "source": [ "obj-spec_bp_vocals_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_8", 0 ],
+                    "source": [ "obj-spec_bp_vocals_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pk_vocals_9", 0 ],
+                    "source": [ "obj-spec_bp_vocals_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_0", 0 ],
+                    "order": 63,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_1", 0 ],
+                    "order": 62,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_10", 0 ],
+                    "order": 53,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_11", 0 ],
+                    "order": 52,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_12", 0 ],
+                    "order": 51,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_13", 0 ],
+                    "order": 50,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_14", 0 ],
+                    "order": 49,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_15", 0 ],
+                    "order": 48,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_16", 0 ],
+                    "order": 47,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_17", 0 ],
+                    "order": 46,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_18", 0 ],
+                    "order": 45,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_19", 0 ],
+                    "order": 44,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_2", 0 ],
+                    "order": 61,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_20", 0 ],
+                    "order": 43,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_21", 0 ],
+                    "order": 42,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_22", 0 ],
+                    "order": 41,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_23", 0 ],
+                    "order": 40,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_24", 0 ],
+                    "order": 39,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_25", 0 ],
+                    "order": 38,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_26", 0 ],
+                    "order": 37,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_27", 0 ],
+                    "order": 36,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_28", 0 ],
+                    "order": 35,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_29", 0 ],
+                    "order": 34,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_3", 0 ],
+                    "order": 60,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_30", 0 ],
+                    "order": 33,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_31", 0 ],
+                    "order": 32,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_32", 0 ],
+                    "order": 31,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_33", 0 ],
+                    "order": 30,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_34", 0 ],
+                    "order": 29,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_35", 0 ],
+                    "order": 28,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_36", 0 ],
+                    "order": 27,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_37", 0 ],
+                    "order": 26,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_38", 0 ],
+                    "order": 25,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_39", 0 ],
+                    "order": 24,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_4", 0 ],
+                    "order": 59,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_40", 0 ],
+                    "order": 23,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_41", 0 ],
+                    "order": 22,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_42", 0 ],
+                    "order": 21,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_43", 0 ],
+                    "order": 20,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_44", 0 ],
+                    "order": 19,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_45", 0 ],
+                    "order": 18,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_46", 0 ],
+                    "order": 17,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_47", 0 ],
+                    "order": 16,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_48", 0 ],
+                    "order": 15,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_49", 0 ],
+                    "order": 14,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_5", 0 ],
+                    "order": 58,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_50", 0 ],
+                    "order": 13,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_51", 0 ],
+                    "order": 12,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_52", 0 ],
+                    "order": 11,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_53", 0 ],
+                    "order": 10,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_54", 0 ],
+                    "order": 9,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_55", 0 ],
+                    "order": 8,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_56", 0 ],
+                    "order": 7,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_57", 0 ],
+                    "order": 6,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_58", 0 ],
+                    "order": 5,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_59", 0 ],
+                    "order": 4,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_6", 0 ],
+                    "order": 57,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_60", 0 ],
+                    "order": 3,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_61", 0 ],
+                    "order": 2,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_62", 0 ],
+                    "order": 1,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_63", 0 ],
+                    "order": 0,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_7", 0 ],
+                    "order": 56,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_8", 0 ],
+                    "order": 55,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_bass_9", 0 ],
+                    "order": 54,
+                    "source": [ "obj-spec_mono_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_0", 0 ],
+                    "order": 63,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_1", 0 ],
+                    "order": 62,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_10", 0 ],
+                    "order": 53,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_11", 0 ],
+                    "order": 52,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_12", 0 ],
+                    "order": 51,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_13", 0 ],
+                    "order": 50,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_14", 0 ],
+                    "order": 49,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_15", 0 ],
+                    "order": 48,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_16", 0 ],
+                    "order": 47,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_17", 0 ],
+                    "order": 46,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_18", 0 ],
+                    "order": 45,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_19", 0 ],
+                    "order": 44,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_2", 0 ],
+                    "order": 61,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_20", 0 ],
+                    "order": 43,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_21", 0 ],
+                    "order": 42,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_22", 0 ],
+                    "order": 41,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_23", 0 ],
+                    "order": 40,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_24", 0 ],
+                    "order": 39,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_25", 0 ],
+                    "order": 38,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_26", 0 ],
+                    "order": 37,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_27", 0 ],
+                    "order": 36,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_28", 0 ],
+                    "order": 35,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_29", 0 ],
+                    "order": 34,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_3", 0 ],
+                    "order": 60,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_30", 0 ],
+                    "order": 33,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_31", 0 ],
+                    "order": 32,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_32", 0 ],
+                    "order": 31,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_33", 0 ],
+                    "order": 30,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_34", 0 ],
+                    "order": 29,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_35", 0 ],
+                    "order": 28,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_36", 0 ],
+                    "order": 27,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_37", 0 ],
+                    "order": 26,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_38", 0 ],
+                    "order": 25,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_39", 0 ],
+                    "order": 24,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_4", 0 ],
+                    "order": 59,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_40", 0 ],
+                    "order": 23,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_41", 0 ],
+                    "order": 22,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_42", 0 ],
+                    "order": 21,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_43", 0 ],
+                    "order": 20,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_44", 0 ],
+                    "order": 19,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_45", 0 ],
+                    "order": 18,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_46", 0 ],
+                    "order": 17,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_47", 0 ],
+                    "order": 16,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_48", 0 ],
+                    "order": 15,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_49", 0 ],
+                    "order": 14,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_5", 0 ],
+                    "order": 58,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_50", 0 ],
+                    "order": 13,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_51", 0 ],
+                    "order": 12,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_52", 0 ],
+                    "order": 11,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_53", 0 ],
+                    "order": 10,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_54", 0 ],
+                    "order": 9,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_55", 0 ],
+                    "order": 8,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_56", 0 ],
+                    "order": 7,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_57", 0 ],
+                    "order": 6,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_58", 0 ],
+                    "order": 5,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_59", 0 ],
+                    "order": 4,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_6", 0 ],
+                    "order": 57,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_60", 0 ],
+                    "order": 3,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_61", 0 ],
+                    "order": 2,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_62", 0 ],
+                    "order": 1,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_63", 0 ],
+                    "order": 0,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_7", 0 ],
+                    "order": 56,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_8", 0 ],
+                    "order": 55,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_drums_9", 0 ],
+                    "order": 54,
+                    "source": [ "obj-spec_mono_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_0", 0 ],
+                    "order": 63,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_1", 0 ],
+                    "order": 62,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_10", 0 ],
+                    "order": 53,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_11", 0 ],
+                    "order": 52,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_12", 0 ],
+                    "order": 51,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_13", 0 ],
+                    "order": 50,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_14", 0 ],
+                    "order": 49,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_15", 0 ],
+                    "order": 48,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_16", 0 ],
+                    "order": 47,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_17", 0 ],
+                    "order": 46,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_18", 0 ],
+                    "order": 45,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_19", 0 ],
+                    "order": 44,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_2", 0 ],
+                    "order": 61,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_20", 0 ],
+                    "order": 43,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_21", 0 ],
+                    "order": 42,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_22", 0 ],
+                    "order": 41,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_23", 0 ],
+                    "order": 40,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_24", 0 ],
+                    "order": 39,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_25", 0 ],
+                    "order": 38,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_26", 0 ],
+                    "order": 37,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_27", 0 ],
+                    "order": 36,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_28", 0 ],
+                    "order": 35,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_29", 0 ],
+                    "order": 34,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_3", 0 ],
+                    "order": 60,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_30", 0 ],
+                    "order": 33,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_31", 0 ],
+                    "order": 32,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_32", 0 ],
+                    "order": 31,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_33", 0 ],
+                    "order": 30,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_34", 0 ],
+                    "order": 29,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_35", 0 ],
+                    "order": 28,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_36", 0 ],
+                    "order": 27,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_37", 0 ],
+                    "order": 26,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_38", 0 ],
+                    "order": 25,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_39", 0 ],
+                    "order": 24,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_4", 0 ],
+                    "order": 59,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_40", 0 ],
+                    "order": 23,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_41", 0 ],
+                    "order": 22,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_42", 0 ],
+                    "order": 21,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_43", 0 ],
+                    "order": 20,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_44", 0 ],
+                    "order": 19,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_45", 0 ],
+                    "order": 18,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_46", 0 ],
+                    "order": 17,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_47", 0 ],
+                    "order": 16,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_48", 0 ],
+                    "order": 15,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_49", 0 ],
+                    "order": 14,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_5", 0 ],
+                    "order": 58,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_50", 0 ],
+                    "order": 13,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_51", 0 ],
+                    "order": 12,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_52", 0 ],
+                    "order": 11,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_53", 0 ],
+                    "order": 10,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_54", 0 ],
+                    "order": 9,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_55", 0 ],
+                    "order": 8,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_56", 0 ],
+                    "order": 7,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_57", 0 ],
+                    "order": 6,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_58", 0 ],
+                    "order": 5,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_59", 0 ],
+                    "order": 4,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_6", 0 ],
+                    "order": 57,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_60", 0 ],
+                    "order": 3,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_61", 0 ],
+                    "order": 2,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_62", 0 ],
+                    "order": 1,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_63", 0 ],
+                    "order": 0,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_7", 0 ],
+                    "order": 56,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_8", 0 ],
+                    "order": 55,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_master_9", 0 ],
+                    "order": 54,
+                    "source": [ "obj-spec_mono_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_0", 0 ],
+                    "order": 63,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_1", 0 ],
+                    "order": 62,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_10", 0 ],
+                    "order": 53,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_11", 0 ],
+                    "order": 52,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_12", 0 ],
+                    "order": 51,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_13", 0 ],
+                    "order": 50,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_14", 0 ],
+                    "order": 49,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_15", 0 ],
+                    "order": 48,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_16", 0 ],
+                    "order": 47,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_17", 0 ],
+                    "order": 46,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_18", 0 ],
+                    "order": 45,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_19", 0 ],
+                    "order": 44,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_2", 0 ],
+                    "order": 61,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_20", 0 ],
+                    "order": 43,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_21", 0 ],
+                    "order": 42,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_22", 0 ],
+                    "order": 41,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_23", 0 ],
+                    "order": 40,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_24", 0 ],
+                    "order": 39,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_25", 0 ],
+                    "order": 38,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_26", 0 ],
+                    "order": 37,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_27", 0 ],
+                    "order": 36,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_28", 0 ],
+                    "order": 35,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_29", 0 ],
+                    "order": 34,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_3", 0 ],
+                    "order": 60,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_30", 0 ],
+                    "order": 33,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_31", 0 ],
+                    "order": 32,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_32", 0 ],
+                    "order": 31,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_33", 0 ],
+                    "order": 30,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_34", 0 ],
+                    "order": 29,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_35", 0 ],
+                    "order": 28,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_36", 0 ],
+                    "order": 27,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_37", 0 ],
+                    "order": 26,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_38", 0 ],
+                    "order": 25,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_39", 0 ],
+                    "order": 24,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_4", 0 ],
+                    "order": 59,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_40", 0 ],
+                    "order": 23,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_41", 0 ],
+                    "order": 22,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_42", 0 ],
+                    "order": 21,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_43", 0 ],
+                    "order": 20,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_44", 0 ],
+                    "order": 19,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_45", 0 ],
+                    "order": 18,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_46", 0 ],
+                    "order": 17,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_47", 0 ],
+                    "order": 16,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_48", 0 ],
+                    "order": 15,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_49", 0 ],
+                    "order": 14,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_5", 0 ],
+                    "order": 58,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_50", 0 ],
+                    "order": 13,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_51", 0 ],
+                    "order": 12,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_52", 0 ],
+                    "order": 11,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_53", 0 ],
+                    "order": 10,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_54", 0 ],
+                    "order": 9,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_55", 0 ],
+                    "order": 8,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_56", 0 ],
+                    "order": 7,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_57", 0 ],
+                    "order": 6,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_58", 0 ],
+                    "order": 5,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_59", 0 ],
+                    "order": 4,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_6", 0 ],
+                    "order": 57,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_60", 0 ],
+                    "order": 3,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_61", 0 ],
+                    "order": 2,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_62", 0 ],
+                    "order": 1,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_63", 0 ],
+                    "order": 0,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_7", 0 ],
+                    "order": 56,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_8", 0 ],
+                    "order": 55,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_melody_9", 0 ],
+                    "order": 54,
+                    "source": [ "obj-spec_mono_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_0", 0 ],
+                    "order": 63,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_1", 0 ],
+                    "order": 62,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_10", 0 ],
+                    "order": 53,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_11", 0 ],
+                    "order": 52,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_12", 0 ],
+                    "order": 51,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_13", 0 ],
+                    "order": 50,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_14", 0 ],
+                    "order": 49,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_15", 0 ],
+                    "order": 48,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_16", 0 ],
+                    "order": 47,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_17", 0 ],
+                    "order": 46,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_18", 0 ],
+                    "order": 45,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_19", 0 ],
+                    "order": 44,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_2", 0 ],
+                    "order": 61,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_20", 0 ],
+                    "order": 43,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_21", 0 ],
+                    "order": 42,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_22", 0 ],
+                    "order": 41,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_23", 0 ],
+                    "order": 40,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_24", 0 ],
+                    "order": 39,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_25", 0 ],
+                    "order": 38,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_26", 0 ],
+                    "order": 37,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_27", 0 ],
+                    "order": 36,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_28", 0 ],
+                    "order": 35,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_29", 0 ],
+                    "order": 34,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_3", 0 ],
+                    "order": 60,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_30", 0 ],
+                    "order": 33,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_31", 0 ],
+                    "order": 32,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_32", 0 ],
+                    "order": 31,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_33", 0 ],
+                    "order": 30,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_34", 0 ],
+                    "order": 29,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_35", 0 ],
+                    "order": 28,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_36", 0 ],
+                    "order": 27,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_37", 0 ],
+                    "order": 26,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_38", 0 ],
+                    "order": 25,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_39", 0 ],
+                    "order": 24,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_4", 0 ],
+                    "order": 59,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_40", 0 ],
+                    "order": 23,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_41", 0 ],
+                    "order": 22,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_42", 0 ],
+                    "order": 21,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_43", 0 ],
+                    "order": 20,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_44", 0 ],
+                    "order": 19,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_45", 0 ],
+                    "order": 18,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_46", 0 ],
+                    "order": 17,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_47", 0 ],
+                    "order": 16,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_48", 0 ],
+                    "order": 15,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_49", 0 ],
+                    "order": 14,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_5", 0 ],
+                    "order": 58,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_50", 0 ],
+                    "order": 13,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_51", 0 ],
+                    "order": 12,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_52", 0 ],
+                    "order": 11,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_53", 0 ],
+                    "order": 10,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_54", 0 ],
+                    "order": 9,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_55", 0 ],
+                    "order": 8,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_56", 0 ],
+                    "order": 7,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_57", 0 ],
+                    "order": 6,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_58", 0 ],
+                    "order": 5,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_59", 0 ],
+                    "order": 4,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_6", 0 ],
+                    "order": 57,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_60", 0 ],
+                    "order": 3,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_61", 0 ],
+                    "order": 2,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_62", 0 ],
+                    "order": 1,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_63", 0 ],
+                    "order": 0,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_7", 0 ],
+                    "order": 56,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_8", 0 ],
+                    "order": 55,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_bp_vocals_9", 0 ],
+                    "order": 54,
+                    "source": [ "obj-spec_mono_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_0", 0 ],
+                    "source": [ "obj-spec_pk_bass_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_1", 0 ],
+                    "source": [ "obj-spec_pk_bass_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_10", 0 ],
+                    "source": [ "obj-spec_pk_bass_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_11", 0 ],
+                    "source": [ "obj-spec_pk_bass_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_12", 0 ],
+                    "source": [ "obj-spec_pk_bass_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_13", 0 ],
+                    "source": [ "obj-spec_pk_bass_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_14", 0 ],
+                    "source": [ "obj-spec_pk_bass_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_15", 0 ],
+                    "source": [ "obj-spec_pk_bass_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_16", 0 ],
+                    "source": [ "obj-spec_pk_bass_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_17", 0 ],
+                    "source": [ "obj-spec_pk_bass_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_18", 0 ],
+                    "source": [ "obj-spec_pk_bass_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_19", 0 ],
+                    "source": [ "obj-spec_pk_bass_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_2", 0 ],
+                    "source": [ "obj-spec_pk_bass_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_20", 0 ],
+                    "source": [ "obj-spec_pk_bass_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_21", 0 ],
+                    "source": [ "obj-spec_pk_bass_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_22", 0 ],
+                    "source": [ "obj-spec_pk_bass_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_23", 0 ],
+                    "source": [ "obj-spec_pk_bass_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_24", 0 ],
+                    "source": [ "obj-spec_pk_bass_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_25", 0 ],
+                    "source": [ "obj-spec_pk_bass_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_26", 0 ],
+                    "source": [ "obj-spec_pk_bass_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_27", 0 ],
+                    "source": [ "obj-spec_pk_bass_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_28", 0 ],
+                    "source": [ "obj-spec_pk_bass_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_29", 0 ],
+                    "source": [ "obj-spec_pk_bass_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_3", 0 ],
+                    "source": [ "obj-spec_pk_bass_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_30", 0 ],
+                    "source": [ "obj-spec_pk_bass_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_31", 0 ],
+                    "source": [ "obj-spec_pk_bass_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_32", 0 ],
+                    "source": [ "obj-spec_pk_bass_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_33", 0 ],
+                    "source": [ "obj-spec_pk_bass_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_34", 0 ],
+                    "source": [ "obj-spec_pk_bass_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_35", 0 ],
+                    "source": [ "obj-spec_pk_bass_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_36", 0 ],
+                    "source": [ "obj-spec_pk_bass_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_37", 0 ],
+                    "source": [ "obj-spec_pk_bass_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_38", 0 ],
+                    "source": [ "obj-spec_pk_bass_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_39", 0 ],
+                    "source": [ "obj-spec_pk_bass_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_4", 0 ],
+                    "source": [ "obj-spec_pk_bass_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_40", 0 ],
+                    "source": [ "obj-spec_pk_bass_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_41", 0 ],
+                    "source": [ "obj-spec_pk_bass_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_42", 0 ],
+                    "source": [ "obj-spec_pk_bass_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_43", 0 ],
+                    "source": [ "obj-spec_pk_bass_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_44", 0 ],
+                    "source": [ "obj-spec_pk_bass_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_45", 0 ],
+                    "source": [ "obj-spec_pk_bass_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_46", 0 ],
+                    "source": [ "obj-spec_pk_bass_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_47", 0 ],
+                    "source": [ "obj-spec_pk_bass_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_48", 0 ],
+                    "source": [ "obj-spec_pk_bass_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_49", 0 ],
+                    "source": [ "obj-spec_pk_bass_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_5", 0 ],
+                    "source": [ "obj-spec_pk_bass_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_50", 0 ],
+                    "source": [ "obj-spec_pk_bass_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_51", 0 ],
+                    "source": [ "obj-spec_pk_bass_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_52", 0 ],
+                    "source": [ "obj-spec_pk_bass_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_53", 0 ],
+                    "source": [ "obj-spec_pk_bass_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_54", 0 ],
+                    "source": [ "obj-spec_pk_bass_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_55", 0 ],
+                    "source": [ "obj-spec_pk_bass_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_56", 0 ],
+                    "source": [ "obj-spec_pk_bass_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_57", 0 ],
+                    "source": [ "obj-spec_pk_bass_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_58", 0 ],
+                    "source": [ "obj-spec_pk_bass_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_59", 0 ],
+                    "source": [ "obj-spec_pk_bass_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_6", 0 ],
+                    "source": [ "obj-spec_pk_bass_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_60", 0 ],
+                    "source": [ "obj-spec_pk_bass_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_61", 0 ],
+                    "source": [ "obj-spec_pk_bass_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_62", 0 ],
+                    "source": [ "obj-spec_pk_bass_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_63", 0 ],
+                    "source": [ "obj-spec_pk_bass_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_7", 0 ],
+                    "source": [ "obj-spec_pk_bass_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_8", 0 ],
+                    "source": [ "obj-spec_pk_bass_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_bass_9", 0 ],
+                    "source": [ "obj-spec_pk_bass_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_0", 0 ],
+                    "source": [ "obj-spec_pk_drums_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_1", 0 ],
+                    "source": [ "obj-spec_pk_drums_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_10", 0 ],
+                    "source": [ "obj-spec_pk_drums_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_11", 0 ],
+                    "source": [ "obj-spec_pk_drums_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_12", 0 ],
+                    "source": [ "obj-spec_pk_drums_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_13", 0 ],
+                    "source": [ "obj-spec_pk_drums_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_14", 0 ],
+                    "source": [ "obj-spec_pk_drums_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_15", 0 ],
+                    "source": [ "obj-spec_pk_drums_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_16", 0 ],
+                    "source": [ "obj-spec_pk_drums_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_17", 0 ],
+                    "source": [ "obj-spec_pk_drums_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_18", 0 ],
+                    "source": [ "obj-spec_pk_drums_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_19", 0 ],
+                    "source": [ "obj-spec_pk_drums_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_2", 0 ],
+                    "source": [ "obj-spec_pk_drums_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_20", 0 ],
+                    "source": [ "obj-spec_pk_drums_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_21", 0 ],
+                    "source": [ "obj-spec_pk_drums_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_22", 0 ],
+                    "source": [ "obj-spec_pk_drums_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_23", 0 ],
+                    "source": [ "obj-spec_pk_drums_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_24", 0 ],
+                    "source": [ "obj-spec_pk_drums_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_25", 0 ],
+                    "source": [ "obj-spec_pk_drums_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_26", 0 ],
+                    "source": [ "obj-spec_pk_drums_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_27", 0 ],
+                    "source": [ "obj-spec_pk_drums_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_28", 0 ],
+                    "source": [ "obj-spec_pk_drums_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_29", 0 ],
+                    "source": [ "obj-spec_pk_drums_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_3", 0 ],
+                    "source": [ "obj-spec_pk_drums_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_30", 0 ],
+                    "source": [ "obj-spec_pk_drums_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_31", 0 ],
+                    "source": [ "obj-spec_pk_drums_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_32", 0 ],
+                    "source": [ "obj-spec_pk_drums_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_33", 0 ],
+                    "source": [ "obj-spec_pk_drums_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_34", 0 ],
+                    "source": [ "obj-spec_pk_drums_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_35", 0 ],
+                    "source": [ "obj-spec_pk_drums_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_36", 0 ],
+                    "source": [ "obj-spec_pk_drums_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_37", 0 ],
+                    "source": [ "obj-spec_pk_drums_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_38", 0 ],
+                    "source": [ "obj-spec_pk_drums_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_39", 0 ],
+                    "source": [ "obj-spec_pk_drums_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_4", 0 ],
+                    "source": [ "obj-spec_pk_drums_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_40", 0 ],
+                    "source": [ "obj-spec_pk_drums_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_41", 0 ],
+                    "source": [ "obj-spec_pk_drums_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_42", 0 ],
+                    "source": [ "obj-spec_pk_drums_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_43", 0 ],
+                    "source": [ "obj-spec_pk_drums_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_44", 0 ],
+                    "source": [ "obj-spec_pk_drums_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_45", 0 ],
+                    "source": [ "obj-spec_pk_drums_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_46", 0 ],
+                    "source": [ "obj-spec_pk_drums_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_47", 0 ],
+                    "source": [ "obj-spec_pk_drums_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_48", 0 ],
+                    "source": [ "obj-spec_pk_drums_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_49", 0 ],
+                    "source": [ "obj-spec_pk_drums_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_5", 0 ],
+                    "source": [ "obj-spec_pk_drums_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_50", 0 ],
+                    "source": [ "obj-spec_pk_drums_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_51", 0 ],
+                    "source": [ "obj-spec_pk_drums_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_52", 0 ],
+                    "source": [ "obj-spec_pk_drums_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_53", 0 ],
+                    "source": [ "obj-spec_pk_drums_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_54", 0 ],
+                    "source": [ "obj-spec_pk_drums_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_55", 0 ],
+                    "source": [ "obj-spec_pk_drums_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_56", 0 ],
+                    "source": [ "obj-spec_pk_drums_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_57", 0 ],
+                    "source": [ "obj-spec_pk_drums_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_58", 0 ],
+                    "source": [ "obj-spec_pk_drums_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_59", 0 ],
+                    "source": [ "obj-spec_pk_drums_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_6", 0 ],
+                    "source": [ "obj-spec_pk_drums_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_60", 0 ],
+                    "source": [ "obj-spec_pk_drums_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_61", 0 ],
+                    "source": [ "obj-spec_pk_drums_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_62", 0 ],
+                    "source": [ "obj-spec_pk_drums_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_63", 0 ],
+                    "source": [ "obj-spec_pk_drums_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_7", 0 ],
+                    "source": [ "obj-spec_pk_drums_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_8", 0 ],
+                    "source": [ "obj-spec_pk_drums_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_drums_9", 0 ],
+                    "source": [ "obj-spec_pk_drums_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_0", 0 ],
+                    "source": [ "obj-spec_pk_master_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_1", 0 ],
+                    "source": [ "obj-spec_pk_master_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_10", 0 ],
+                    "source": [ "obj-spec_pk_master_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_11", 0 ],
+                    "source": [ "obj-spec_pk_master_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_12", 0 ],
+                    "source": [ "obj-spec_pk_master_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_13", 0 ],
+                    "source": [ "obj-spec_pk_master_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_14", 0 ],
+                    "source": [ "obj-spec_pk_master_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_15", 0 ],
+                    "source": [ "obj-spec_pk_master_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_16", 0 ],
+                    "source": [ "obj-spec_pk_master_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_17", 0 ],
+                    "source": [ "obj-spec_pk_master_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_18", 0 ],
+                    "source": [ "obj-spec_pk_master_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_19", 0 ],
+                    "source": [ "obj-spec_pk_master_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_2", 0 ],
+                    "source": [ "obj-spec_pk_master_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_20", 0 ],
+                    "source": [ "obj-spec_pk_master_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_21", 0 ],
+                    "source": [ "obj-spec_pk_master_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_22", 0 ],
+                    "source": [ "obj-spec_pk_master_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_23", 0 ],
+                    "source": [ "obj-spec_pk_master_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_24", 0 ],
+                    "source": [ "obj-spec_pk_master_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_25", 0 ],
+                    "source": [ "obj-spec_pk_master_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_26", 0 ],
+                    "source": [ "obj-spec_pk_master_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_27", 0 ],
+                    "source": [ "obj-spec_pk_master_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_28", 0 ],
+                    "source": [ "obj-spec_pk_master_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_29", 0 ],
+                    "source": [ "obj-spec_pk_master_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_3", 0 ],
+                    "source": [ "obj-spec_pk_master_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_30", 0 ],
+                    "source": [ "obj-spec_pk_master_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_31", 0 ],
+                    "source": [ "obj-spec_pk_master_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_32", 0 ],
+                    "source": [ "obj-spec_pk_master_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_33", 0 ],
+                    "source": [ "obj-spec_pk_master_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_34", 0 ],
+                    "source": [ "obj-spec_pk_master_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_35", 0 ],
+                    "source": [ "obj-spec_pk_master_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_36", 0 ],
+                    "source": [ "obj-spec_pk_master_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_37", 0 ],
+                    "source": [ "obj-spec_pk_master_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_38", 0 ],
+                    "source": [ "obj-spec_pk_master_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_39", 0 ],
+                    "source": [ "obj-spec_pk_master_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_4", 0 ],
+                    "source": [ "obj-spec_pk_master_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_40", 0 ],
+                    "source": [ "obj-spec_pk_master_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_41", 0 ],
+                    "source": [ "obj-spec_pk_master_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_42", 0 ],
+                    "source": [ "obj-spec_pk_master_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_43", 0 ],
+                    "source": [ "obj-spec_pk_master_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_44", 0 ],
+                    "source": [ "obj-spec_pk_master_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_45", 0 ],
+                    "source": [ "obj-spec_pk_master_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_46", 0 ],
+                    "source": [ "obj-spec_pk_master_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_47", 0 ],
+                    "source": [ "obj-spec_pk_master_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_48", 0 ],
+                    "source": [ "obj-spec_pk_master_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_49", 0 ],
+                    "source": [ "obj-spec_pk_master_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_5", 0 ],
+                    "source": [ "obj-spec_pk_master_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_50", 0 ],
+                    "source": [ "obj-spec_pk_master_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_51", 0 ],
+                    "source": [ "obj-spec_pk_master_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_52", 0 ],
+                    "source": [ "obj-spec_pk_master_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_53", 0 ],
+                    "source": [ "obj-spec_pk_master_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_54", 0 ],
+                    "source": [ "obj-spec_pk_master_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_55", 0 ],
+                    "source": [ "obj-spec_pk_master_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_56", 0 ],
+                    "source": [ "obj-spec_pk_master_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_57", 0 ],
+                    "source": [ "obj-spec_pk_master_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_58", 0 ],
+                    "source": [ "obj-spec_pk_master_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_59", 0 ],
+                    "source": [ "obj-spec_pk_master_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_6", 0 ],
+                    "source": [ "obj-spec_pk_master_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_60", 0 ],
+                    "source": [ "obj-spec_pk_master_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_61", 0 ],
+                    "source": [ "obj-spec_pk_master_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_62", 0 ],
+                    "source": [ "obj-spec_pk_master_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_63", 0 ],
+                    "source": [ "obj-spec_pk_master_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_7", 0 ],
+                    "source": [ "obj-spec_pk_master_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_8", 0 ],
+                    "source": [ "obj-spec_pk_master_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_master_9", 0 ],
+                    "source": [ "obj-spec_pk_master_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_0", 0 ],
+                    "source": [ "obj-spec_pk_melody_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_1", 0 ],
+                    "source": [ "obj-spec_pk_melody_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_10", 0 ],
+                    "source": [ "obj-spec_pk_melody_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_11", 0 ],
+                    "source": [ "obj-spec_pk_melody_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_12", 0 ],
+                    "source": [ "obj-spec_pk_melody_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_13", 0 ],
+                    "source": [ "obj-spec_pk_melody_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_14", 0 ],
+                    "source": [ "obj-spec_pk_melody_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_15", 0 ],
+                    "source": [ "obj-spec_pk_melody_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_16", 0 ],
+                    "source": [ "obj-spec_pk_melody_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_17", 0 ],
+                    "source": [ "obj-spec_pk_melody_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_18", 0 ],
+                    "source": [ "obj-spec_pk_melody_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_19", 0 ],
+                    "source": [ "obj-spec_pk_melody_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_2", 0 ],
+                    "source": [ "obj-spec_pk_melody_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_20", 0 ],
+                    "source": [ "obj-spec_pk_melody_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_21", 0 ],
+                    "source": [ "obj-spec_pk_melody_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_22", 0 ],
+                    "source": [ "obj-spec_pk_melody_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_23", 0 ],
+                    "source": [ "obj-spec_pk_melody_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_24", 0 ],
+                    "source": [ "obj-spec_pk_melody_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_25", 0 ],
+                    "source": [ "obj-spec_pk_melody_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_26", 0 ],
+                    "source": [ "obj-spec_pk_melody_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_27", 0 ],
+                    "source": [ "obj-spec_pk_melody_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_28", 0 ],
+                    "source": [ "obj-spec_pk_melody_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_29", 0 ],
+                    "source": [ "obj-spec_pk_melody_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_3", 0 ],
+                    "source": [ "obj-spec_pk_melody_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_30", 0 ],
+                    "source": [ "obj-spec_pk_melody_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_31", 0 ],
+                    "source": [ "obj-spec_pk_melody_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_32", 0 ],
+                    "source": [ "obj-spec_pk_melody_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_33", 0 ],
+                    "source": [ "obj-spec_pk_melody_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_34", 0 ],
+                    "source": [ "obj-spec_pk_melody_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_35", 0 ],
+                    "source": [ "obj-spec_pk_melody_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_36", 0 ],
+                    "source": [ "obj-spec_pk_melody_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_37", 0 ],
+                    "source": [ "obj-spec_pk_melody_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_38", 0 ],
+                    "source": [ "obj-spec_pk_melody_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_39", 0 ],
+                    "source": [ "obj-spec_pk_melody_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_4", 0 ],
+                    "source": [ "obj-spec_pk_melody_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_40", 0 ],
+                    "source": [ "obj-spec_pk_melody_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_41", 0 ],
+                    "source": [ "obj-spec_pk_melody_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_42", 0 ],
+                    "source": [ "obj-spec_pk_melody_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_43", 0 ],
+                    "source": [ "obj-spec_pk_melody_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_44", 0 ],
+                    "source": [ "obj-spec_pk_melody_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_45", 0 ],
+                    "source": [ "obj-spec_pk_melody_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_46", 0 ],
+                    "source": [ "obj-spec_pk_melody_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_47", 0 ],
+                    "source": [ "obj-spec_pk_melody_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_48", 0 ],
+                    "source": [ "obj-spec_pk_melody_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_49", 0 ],
+                    "source": [ "obj-spec_pk_melody_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_5", 0 ],
+                    "source": [ "obj-spec_pk_melody_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_50", 0 ],
+                    "source": [ "obj-spec_pk_melody_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_51", 0 ],
+                    "source": [ "obj-spec_pk_melody_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_52", 0 ],
+                    "source": [ "obj-spec_pk_melody_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_53", 0 ],
+                    "source": [ "obj-spec_pk_melody_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_54", 0 ],
+                    "source": [ "obj-spec_pk_melody_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_55", 0 ],
+                    "source": [ "obj-spec_pk_melody_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_56", 0 ],
+                    "source": [ "obj-spec_pk_melody_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_57", 0 ],
+                    "source": [ "obj-spec_pk_melody_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_58", 0 ],
+                    "source": [ "obj-spec_pk_melody_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_59", 0 ],
+                    "source": [ "obj-spec_pk_melody_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_6", 0 ],
+                    "source": [ "obj-spec_pk_melody_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_60", 0 ],
+                    "source": [ "obj-spec_pk_melody_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_61", 0 ],
+                    "source": [ "obj-spec_pk_melody_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_62", 0 ],
+                    "source": [ "obj-spec_pk_melody_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_63", 0 ],
+                    "source": [ "obj-spec_pk_melody_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_7", 0 ],
+                    "source": [ "obj-spec_pk_melody_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_8", 0 ],
+                    "source": [ "obj-spec_pk_melody_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_melody_9", 0 ],
+                    "source": [ "obj-spec_pk_melody_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_0", 0 ],
+                    "source": [ "obj-spec_pk_vocals_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_1", 0 ],
+                    "source": [ "obj-spec_pk_vocals_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_10", 0 ],
+                    "source": [ "obj-spec_pk_vocals_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_11", 0 ],
+                    "source": [ "obj-spec_pk_vocals_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_12", 0 ],
+                    "source": [ "obj-spec_pk_vocals_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_13", 0 ],
+                    "source": [ "obj-spec_pk_vocals_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_14", 0 ],
+                    "source": [ "obj-spec_pk_vocals_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_15", 0 ],
+                    "source": [ "obj-spec_pk_vocals_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_16", 0 ],
+                    "source": [ "obj-spec_pk_vocals_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_17", 0 ],
+                    "source": [ "obj-spec_pk_vocals_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_18", 0 ],
+                    "source": [ "obj-spec_pk_vocals_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_19", 0 ],
+                    "source": [ "obj-spec_pk_vocals_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_2", 0 ],
+                    "source": [ "obj-spec_pk_vocals_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_20", 0 ],
+                    "source": [ "obj-spec_pk_vocals_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_21", 0 ],
+                    "source": [ "obj-spec_pk_vocals_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_22", 0 ],
+                    "source": [ "obj-spec_pk_vocals_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_23", 0 ],
+                    "source": [ "obj-spec_pk_vocals_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_24", 0 ],
+                    "source": [ "obj-spec_pk_vocals_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_25", 0 ],
+                    "source": [ "obj-spec_pk_vocals_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_26", 0 ],
+                    "source": [ "obj-spec_pk_vocals_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_27", 0 ],
+                    "source": [ "obj-spec_pk_vocals_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_28", 0 ],
+                    "source": [ "obj-spec_pk_vocals_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_29", 0 ],
+                    "source": [ "obj-spec_pk_vocals_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_3", 0 ],
+                    "source": [ "obj-spec_pk_vocals_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_30", 0 ],
+                    "source": [ "obj-spec_pk_vocals_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_31", 0 ],
+                    "source": [ "obj-spec_pk_vocals_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_32", 0 ],
+                    "source": [ "obj-spec_pk_vocals_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_33", 0 ],
+                    "source": [ "obj-spec_pk_vocals_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_34", 0 ],
+                    "source": [ "obj-spec_pk_vocals_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_35", 0 ],
+                    "source": [ "obj-spec_pk_vocals_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_36", 0 ],
+                    "source": [ "obj-spec_pk_vocals_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_37", 0 ],
+                    "source": [ "obj-spec_pk_vocals_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_38", 0 ],
+                    "source": [ "obj-spec_pk_vocals_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_39", 0 ],
+                    "source": [ "obj-spec_pk_vocals_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_4", 0 ],
+                    "source": [ "obj-spec_pk_vocals_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_40", 0 ],
+                    "source": [ "obj-spec_pk_vocals_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_41", 0 ],
+                    "source": [ "obj-spec_pk_vocals_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_42", 0 ],
+                    "source": [ "obj-spec_pk_vocals_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_43", 0 ],
+                    "source": [ "obj-spec_pk_vocals_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_44", 0 ],
+                    "source": [ "obj-spec_pk_vocals_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_45", 0 ],
+                    "source": [ "obj-spec_pk_vocals_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_46", 0 ],
+                    "source": [ "obj-spec_pk_vocals_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_47", 0 ],
+                    "source": [ "obj-spec_pk_vocals_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_48", 0 ],
+                    "source": [ "obj-spec_pk_vocals_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_49", 0 ],
+                    "source": [ "obj-spec_pk_vocals_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_5", 0 ],
+                    "source": [ "obj-spec_pk_vocals_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_50", 0 ],
+                    "source": [ "obj-spec_pk_vocals_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_51", 0 ],
+                    "source": [ "obj-spec_pk_vocals_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_52", 0 ],
+                    "source": [ "obj-spec_pk_vocals_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_53", 0 ],
+                    "source": [ "obj-spec_pk_vocals_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_54", 0 ],
+                    "source": [ "obj-spec_pk_vocals_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_55", 0 ],
+                    "source": [ "obj-spec_pk_vocals_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_56", 0 ],
+                    "source": [ "obj-spec_pk_vocals_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_57", 0 ],
+                    "source": [ "obj-spec_pk_vocals_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_58", 0 ],
+                    "source": [ "obj-spec_pk_vocals_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_59", 0 ],
+                    "source": [ "obj-spec_pk_vocals_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_6", 0 ],
+                    "source": [ "obj-spec_pk_vocals_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_60", 0 ],
+                    "source": [ "obj-spec_pk_vocals_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_61", 0 ],
+                    "source": [ "obj-spec_pk_vocals_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_62", 0 ],
+                    "source": [ "obj-spec_pk_vocals_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_63", 0 ],
+                    "source": [ "obj-spec_pk_vocals_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_7", 0 ],
+                    "source": [ "obj-spec_pk_vocals_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_8", 0 ],
+                    "source": [ "obj-spec_pk_vocals_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_pre_vocals_9", 0 ],
+                    "source": [ "obj-spec_pk_vocals_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_bass_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_drums_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_master_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_melody_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_0", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_1", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_10", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_11", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_12", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_15", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_16", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_18", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_19", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_2", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_20", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_21", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_22", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_23", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_24", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_25", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_26", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_27", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_28", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_29", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_3", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_30", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_31", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_32", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_33", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_34", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_35", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_36", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_37", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_38", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_39", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_4", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_40", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_41", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_42", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_43", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_44", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_45", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_46", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_47", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_48", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_49", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_5", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_50", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_51", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_52", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_53", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_54", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_55", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_56", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_57", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_58", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_59", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_6", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_63", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_7", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-7013", 1 ],
+                    "source": [ "obj-spec_pre_vocals_9", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_bass", 0 ],
+                    "source": [ "obj-spec_sum1_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_drums", 0 ],
+                    "source": [ "obj-spec_sum1_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_master", 0 ],
+                    "source": [ "obj-spec_sum1_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_melody", 0 ],
+                    "source": [ "obj-spec_sum1_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_vocals", 0 ],
+                    "source": [ "obj-spec_sum1_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_bass", 1 ],
+                    "source": [ "obj-spec_sum2_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_drums", 1 ],
+                    "source": [ "obj-spec_sum2_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_master", 1 ],
+                    "source": [ "obj-spec_sum2_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_melody", 1 ],
+                    "source": [ "obj-spec_sum2_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_sum_vocals", 1 ],
+                    "source": [ "obj-spec_sum2_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_mono_bass", 0 ],
+                    "source": [ "obj-spec_sum_bass", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_mono_drums", 0 ],
+                    "source": [ "obj-spec_sum_drums", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_mono_master", 0 ],
+                    "source": [ "obj-spec_sum_master", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_mono_melody", 0 ],
+                    "source": [ "obj-spec_sum_melody", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-spec_mono_vocals", 0 ],
+                    "source": [ "obj-spec_sum_vocals", 0 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-21070", 0 ],
                     "source": [ "obj-stereo_sum_L", 0 ]
                 }
@@ -23433,21 +45735,21 @@
             {
                 "patchline": {
                     "destination": [ "obj-eq_spectrum", 0 ],
-                    "order": 2,
+                    "order": 0,
                     "source": [ "obj-wave_mono", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-wave_max", 0 ],
-                    "order": 1,
+                    "order": 2,
                     "source": [ "obj-wave_mono", 0 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-wave_min", 0 ],
-                    "order": 0,
+                    "order": 1,
                     "source": [ "obj-wave_mono", 0 ]
                 }
             },

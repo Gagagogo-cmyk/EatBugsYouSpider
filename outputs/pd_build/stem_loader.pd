@@ -1,0 +1,15 @@
+#N canvas 100 100 640 320 12;
+#X obj 40 20 inlet;
+#X obj 40 80 list prepend read -resize;
+#X obj 40 120 list append \$1-0 \$1-1;
+#X obj 40 160 list trim;
+#X obj 40 210 soundfiler;
+#X obj 40 260 t b;
+#X obj 40 300 outlet;
+#X text 220 20 stem_loader \$1: loads a soundfile into arrays \$1-0/\$1-1 via [soundfiler] (Pd arrays don't understand a "read <path>" message directly the way Max's buffer~ did -- that's the real gap that made the old readVocals-style "read <path>.wav" message boxes silently no-ops). Inlet 0 takes a file path (symbol). Builds "read -resize <path> \$1-0 \$1-1" and sends it to [soundfiler]\, which resizes both arrays to fit and loads one channel into each -- true stereo\, not the old single-array mono-summed load (2026-08-02\, see CONVERSION_NOTES.md "true stereo" section). [soundfiler]'s outlet reports the number of frames read as a float -- converted to a plain bang here (outlet 0) so it can drive a "load complete" trigger downstream (e.g. the matching pd stereo_to_mono.<stem> subpatch's inlet\, which previously had nothing feeding it -- see CONVERSION_NOTES.md)., f 340;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X connect 4 0 5 0;
+#X connect 5 0 6 0;

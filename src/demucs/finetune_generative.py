@@ -1,5 +1,23 @@
 #!/usr/bin/env python3
 """
+SUPERSEDED — do not use this for the User LoRA. Left in place for history
+only; not part of the active generation pipeline.
+
+This script fine-tunes the OLD Stable Audio Open Small integration via a
+hand-rolled diffusers training loop. generate_agent.py has since moved to
+Stable Audio 3 (see docs/instrument/USER_LORA.md), which ships its own
+first-party, maintained LoRA trainer — train_lora.py, in the separate
+Stability-AI/stable-audio-3 repo. That's the real training path now:
+  1. src/demucs/prep_lora_corpus.py    — normalize + chunk a raw clip corpus
+  2. src/demucs/build_lora_dataset.py  — wav+txt pairs in train_lora.py's format
+  3. train_lora.py (in stable-audio-3, NOT this repo) — actual training
+  4. src/demucs/compare_lora_output.py — post-training sonic-identity QA
+See USER_LORA.md's roadmap for the full sequence. This file's diffusers
+training loop was never finished (see the NOTE further down) and nothing
+downstream of it depends on it existing.
+
+── Original docstring, kept for context ─────────────────────────────────────
+
 EBYS — Fine-tune Stable Audio Open on the EBYS catalog
 
 Prepares a caption/audio manifest from EBYS's own already-computed metadata
@@ -32,14 +50,25 @@ def build_manifest(db_path, audio_root, stem_filter=None):
     """One caption per (source track, stem) pair with real audio on disk —
     mirrors generate_agent.py's build_caption() so fine-tuning captions and
     generation-time prompts use the identical format. Model can't be
-    expected to respond to a prompt style it never saw during fine-tuning."""
+    expected to respond to a prompt style it never saw during fine-tuning.
+
+    WHERE t.source = 'human' is load-bearing, not a style choice: ebys.db
+    is shared by both pipelines (real catalog tracks AND generate_agent.py's
+    synthesized clips, once ingested via ingest_generated.py), and
+    import_library.py stamps every row's source column from the track name
+    (see source_for_name() there — 'generated' for anything with the
+    GEN__ prefix). Without this filter, a fine-tuning run pointed at a
+    --audio-root that also contains ingested GEN__ stems would silently
+    train the model on its own prior output — model collapse, not caught
+    by anything downstream. This is the one line standing between "two
+    separate pipelines" and "one pipeline that eats its own tail"."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     rows = conn.execute("""
         SELECT t.name AS track_name, t.bpm AS bpm, g.genre AS genre
         FROM tracks t
         JOIN genres g ON g.track_id = t.id AND g.rank = 0
-        WHERE t.bpm > 0
+        WHERE t.bpm > 0 AND t.source = 'human'
     """).fetchall()
     conn.close()
 

@@ -161,10 +161,18 @@ function flatToNested(flat) {
     return result;
 }
 
+// forgottenTracks — tracks explicitly removed via forgetTrack() this
+// process, so saveLibrary()'s merge-safety-net (below) knows an absence
+// from `library` was intentional and doesn't resurrect it from whatever's
+// still sitting on disk. Cleared on resetMemory() along with everything
+// else.
+var forgottenTracks = {};
+
 // resetMemory — called via Max patch when TUI sends :resetMemory + confirmation
 // Clears in-memory library, sends "clear" to dict analysisLib, overwrites JSON file
 function resetMemory() {
     library = {};
+    forgottenTracks = {};
     outlet(0, "clear");                 // clears dict analysisLib
     try {
         var f = new File(getLibraryPath(), "write", "TEXT");
@@ -173,6 +181,24 @@ function resetMemory() {
     post("EBYS SliceWriter: memory cleared — library wiped\n");
 }
 
+// saveLibrary — writes `library` to analysis_library.json.
+//
+// BUG (found + fixed here): this used to trust `library` completely and
+// overwrite the WHOLE file with just its contents — not a merge, not an
+// append. `library` is only ever populated by (a) loadLibrary() at
+// startup or (b) whatever's been written via wr() THIS process — so any
+// time it was out of sync with disk for any reason (a save landing before
+// the startup loadLibrary() task fires, this js object getting reloaded
+// independently of a full Max restart, another process touching the file,
+// etc.), the next save silently erased every track `library` didn't
+// happen to know about. That's exactly how one freshly-analyzed generated
+// track's save wiped an unrelated real track's four stem entries clean
+// off disk — see loadLibrary()'s own startup-task comment for the full
+// story. Now: read whatever's currently on disk first, and keep any track
+// key `library` has no opinion on (i.e. wasn't intentionally removed via
+// forgetTrack() this process — see forgottenTracks above) — this function
+// can now only ever ADD or UPDATE a track, never silently drop one it
+// simply doesn't know about.
 function saveLibrary() {
     try {
         // Build nested JSON: {filename: {vocals: {metadata: {...}, slices: {...}}}}
@@ -181,6 +207,22 @@ function saveLibrary() {
         var nested = {};
         for (var tn in library) {
             nested[tn] = flatToNested(library[tn]);
+        }
+        try {
+            var ef = new File(getLibraryPath(), "read", "TEXT");
+            if (ef.isopen) {
+                var existingRaw = "";
+                while (!ef.eof) existingRaw += ef.readstring(CHUNK);
+                ef.close();
+                var existing = JSON.parse(existingRaw);
+                for (var etn in existing) {
+                    if (!nested.hasOwnProperty(etn) && !forgottenTracks.hasOwnProperty(etn)) {
+                        nested[etn] = existing[etn];
+                    }
+                }
+            }
+        } catch (mergeErr) {
+            post("EBYS SliceWriter: save merge-read skipped — " + mergeErr + "\n");
         }
         var f = new File(getLibraryPath(), "write", "TEXT");
         f.open();
@@ -254,6 +296,9 @@ function forgetTrack() {
     var name = parts.join("_");
     if (library.hasOwnProperty(name)) {
         delete library[name];
+        forgottenTracks[name] = true;   // see saveLibrary()'s merge-safety-net — without
+                                         // this an intentional forget would just get
+                                         // silently restored from whatever's still on disk
         saveLibrary();
         post("EBYS SliceWriter: removed '" + name + "' from library\n");
     } else {
@@ -711,4 +756,38 @@ function reset_drum() { drum_counter = 0;                    post("EBYS: drums c
 // ── STARTUP ───────────────────────────────────────────────────────────────────
 // dict analysisLib is reloaded on patch open via a native Max wire:
 //   [loadbang] → [message "read analysis_library.json"] → [dict analysisLib]
-// No JS startup code needed here — Max handles it reliably without outlet timing issues.
+// That wire keeps the DICT (what slicer.js/analyze_reader.js actually read)
+// in sync with disk on every patch open — but it never touched THIS file's
+// own `library` JS variable (what saveLibrary()'s writes and
+// skipIfExists's registry check actually use). `library` started as a
+// fresh `{}` on every single Max restart, completely independent of
+// whatever the dict had just reloaded from disk.
+//
+// BUG (found + fixed here): saveLibrary() dumps the ENTIRE contents of the
+// in-memory `library` variable to analysis_library.json every time it's
+// called — replacing the whole file, not merging or appending. Combined
+// with `library` starting empty on every restart, the first successful
+// write after ANY Max restart calls saveLibrary() with `library` holding
+// ONLY whatever got (re-)analyzed in this fresh process — and that call
+// overwrites analysis_library.json wholesale, silently erasing every OTHER
+// track's analysis data that had been sitting safely on disk (and was
+// still correctly cached in the dict) a moment earlier. This is exactly
+// what happened here: a Max restart meant to pick up one newly-fixed
+// generated-track re-analysis instead wiped an unrelated real track's four
+// stem entries out of analysis_library.json the instant the generated
+// track's own saveLibrary() call fired, because this file's `library` var
+// had no idea that other track existed. The raw stem WAVs on disk were
+// never touched — only the analysis (slice descriptors) was lost, and only
+// because it lived exclusively in a JSON file this variable didn't load
+// before writing over it.
+//
+// Fix: replay analysis_library.json into `library` at startup, same as the
+// dict already does, so the two stay in sync from the moment Max opens —
+// saveLibrary() then always writes out every previously-known track, not
+// just whatever's touched since this process last restarted. Deferred by
+// 2000ms, mirroring analyze_reader.js's own startup load (same file, same
+// reasoning): gives Max time to finish registering this object's outlets
+// before loadLibrary() fires its own outlet(0, "replace", ...) replay —
+// redundant with, but harmless alongside, the native dict wire's load.
+var _initTask = new Task(loadLibrary, this);
+_initTask.schedule(2000);

@@ -232,7 +232,30 @@ def main():
         sys.exit(0)
 
     # ── Classify ──────────────────────────────────────────────────────────────
+    # Seed `results` from whatever --out already contains, rather than
+    # starting empty. Batch modes (--raw-folder / --htdemucs-root) only add
+    # an entry for tracks where find_original_mix() succeeds — GEN__ tracks
+    # (generate_agent.py's synthesized clips) never have an original mix to
+    # find by construction, so they're always skipped here with a WARN.
+    # Starting from {} meant every full rescan (watch_demucs.py runs one on
+    # EVERY new file dropped in raw_uploads/, and :analyzeAll in the TUI runs
+    # one on demand) silently DELETED genres.json's entries for any track
+    # not reprocessed this run — not just generated clips, but any real
+    # track whose original mix had since been moved/cleaned up too. Loading
+    # the existing file first and only overwriting entries we actually
+    # (re)compute this run fixes both: a manually-corrected or
+    # tag_generated.py-fabricated genre for a GEN__ track now survives every
+    # future rescan structurally, not by luck.
     results = {}
+    if args.out and os.path.exists(args.out):
+        try:
+            with open(args.out) as f:
+                results = json.load(f)
+            if not isinstance(results, dict):
+                results = {}
+        except Exception as e:
+            print(f'WARN: could not read existing {args.out} to merge ({e}) — starting fresh', file=sys.stderr)
+            results = {}
 
     for mix_path, track_name, stem_files in jobs:
         print(f'\n→ {track_name}', file=sys.stderr)

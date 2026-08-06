@@ -1,0 +1,12 @@
+#N canvas 100 100 700 500 12;
+#X obj 40 20 inlet;
+#X obj 40 60 netreceive -u -b 9001;
+#X obj 40 100 oscparse;
+#X obj 40 140 route streamWatcherBang;
+#X obj 40 180 outlet;
+#X text 300 20 bridge_streamWatcher: REPLACES js_streamWatcher_stub. Real bang\, not a placeholder \-- receives it over OSC/UDP from bridge/streamWatcher_bridge.js\, a standalone Node process that replicates the original streamWatcher.js logic (polls stream.txt every 1s\, unchanged behavior) using Node's fs/setTimeout instead of Max's File/Task APIs. Start the bridge alongside Pd: `node bridge/streamWatcher_bridge.js --data-dir /path/to/EBYS/data --send-port 9001` (port must match the netreceive port below). Inlet 0 is unused (matches the original stub's interface\, nothing was ever wired into it in the source Max patch either) -- kept only so existing upstream connections\, if any get added later\, don't break., f 560;
+#X text 300 220 [netreceive -u -b 9001]: opens a UDP socket in raw/binary mode (the -b flag) on port 9001\, matching the bridge script's --send-port. [oscparse]: decodes the raw OSC bytes into a Pd list -- a single-segment address like "/streamWatcherBang" becomes a one-symbol list "streamWatcherBang" with no trailing args\, since oscparse splits multi-segment OSC addresses on "/" into separate leading atoms (verified against Pd's own x_misc.c source -- this is why the bridge intentionally uses a single-segment address\, not "/streamWatcher/bang"\, avoiding the nested-route complexity multi-segment addresses would need). [route streamWatcherBang]: when the match consumes the WHOLE incoming list (nothing follows the matched selector)\, Pd's route outputs a bare bang on the matching outlet -- exactly the original streamWatcher.js's outlet(0\, "bang") behavior., f 560;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;

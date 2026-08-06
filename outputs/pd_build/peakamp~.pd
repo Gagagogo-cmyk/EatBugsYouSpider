@@ -1,0 +1,13 @@
+#N canvas 100 100 500 320 12;
+#X obj 40 20 inlet~;
+#X obj 200 20 inlet;
+#X obj 40 90 abs~;
+#X obj 40 140 rpole~ 0.9997;
+#X obj 40 200 snapshot~;
+#X obj 40 260 outlet;
+#X text 200 90 peakamp~ stand-in: decaying peak follower (abs~ -> rpole~ leaky integrator -> snapshot~)\, triggered by a bang/float into the right inlet. Max's peakamp~ is a peak-hold meter with a settable report interval -- this is functionally similar but not identical\, see CONVERSION_NOTES., f 260;
+#X connect 0 0 2 0;
+#X connect 1 0 4 0;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X connect 4 0 5 0;

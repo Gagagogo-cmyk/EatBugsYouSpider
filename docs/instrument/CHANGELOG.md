@@ -438,5 +438,5 @@ karma~ → pfft~ → *~0.7 ──┬── mono sum → *~ fxSend → selector~ 
 ## Roadmap
 
 - **0.2** — momentum wired into slice selection (`:setArc`, `:setMMT` bias)
-- **0.3** — Pure Data migration (Max/MSP → PD, deadline Aug 8)
+- **0.3** — Pure Data migration (Max/MSP → PD, deadline Aug 8) — see `PD_MIGRATION.md` for the priority order and patch inventory
 - **1.0** — stable enough to perform with, documented, demo recording

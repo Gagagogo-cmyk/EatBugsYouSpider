@@ -3,32 +3,34 @@
 EBYS — Learned Bias Trainer
 
 Offline trainer that closes the loop between the human-judgment logs
-(:score / :scoreTransition, written by ws_server.js) and slicer.js's live
+(:scoreLyr / :scoreTrs, written by ws_server.js) and slicer.js's live
 candidate scoring. Nothing in the real-time engine changes on its own —
 this script reads whatever has been logged so far, fits two small linear
 models, and writes learned_bias.json. slicer.js loads that file (see
 loadLearnedBias() there) and blends its predictions into scoreCandidate()
 as an additional term, scaled by the per-stem :setLearnedWeight knob.
 
-Two independent signals, two independent models:
+Two independent signals, two independent models — named after the same
+horizontal/vertical pair the rest of EBYS already uses (the timeline runs
+horizontally, stems stack vertically):
 
-  1. TRANSITION quality — from training_log_transition.jsonl (:scoreTransition).
+  1. HORIZONTAL quality — from training_log_horizontal.jsonl (:scoreTrs).
      Each logged entry has, per stem, a `from` slice's descriptors and a `to`
      slice's descriptors, plus one -1..1 rating for how well that specific cut
      flowed. Feature = the per-descriptor delta (to - from) for C/S/E/F/P/H/T
-     (7 level dims) PLUS the same delta treatment applied to tension_C/E/F/P/H/T
-     (6 tension dims, no tension_S — see TENSION_DIMS below) — 13 dims × 2
-     (signed + absolute delta) = 26 features. The 7 level dims are the same
+     (7 level dims) PLUS the same delta treatment applied to tension_C/S/E/F/P/H/T
+     (7 tension dims — see TENSION_DIMS below) — 14 dims × 2
+     (signed + absolute delta) = 28 features. The 7 level dims are the same
      ones slicer.js already tracks in lastEndDesc, so the runtime side can
      compute the identical feature at scoring time (candidate[d] - endDesc[d])
      with no new state needed.
 
-  2. VERTICAL / mix quality — from training_log_vertical.jsonl (:score).
+  2. VERTICAL / mix quality — from training_log_vertical.jsonl (:scoreLyr).
      Each entry rates the whole 4-stem combination at one instant. There's no
      natural per-stem feature here — it's a judgment about how the 4 stems'
      current states sit together — so the feature is the mean and standard
-     deviation of each of the same 13 level+tension dims ACROSS the 4 stems'
-     current values. 26 features total. This is deliberately generic (not
+     deviation of each of the same 14 level+tension dims ACROSS the 4 stems'
+     current values. 28 features total. This is deliberately generic (not
      hand-designed "clash" heuristics) — with real data accumulated, the
      fitted weights themselves will reveal which of mean/std per dimension
      actually correlates with a good mix, rather than us guessing upfront.
@@ -67,12 +69,14 @@ STEM_KEYS = ['vocals', 'melody', 'bass', 'drums']
 # computation: per-bar average → sliding-window slope → min-max normalize).
 # A genuinely different KIND of signal than DESC_DIMS above — trend/momentum
 # rather than level — not a redundant copy of the same information.
-# Only 6, not 7: add_tension.py's own DESCRIPTORS list never included S, so
-# there is no tension_S field anywhere in the data to read.
-TENSION_DIMS = ['C', 'E', 'F', 'P', 'H', 'T']
+# All 7, matching DESC_DIMS one-for-one — add_tension.py's own DESCRIPTORS
+# list computes tension_S too now (it used to skip S; existing libraries
+# need add_tension.py re-run once to backfill tension_S onto already-
+# analyzed tracks).
+TENSION_DIMS = ['C', 'S', 'E', 'F', 'P', 'H', 'T']
 
 # Below this many examples, OLS is more likely to be fitting noise than
-# signal (6 features + bias = 7 unknowns for transition; 12 + bias = 13 for
+# signal (6 features + bias = 7 unknowns for horizontal; 12 + bias = 13 for
 # vertical). This is a floor, not a guarantee of a GOOD fit — just enough to
 # not solve a near-singular system. Small-N runs will print an R^2 so it's
 # obvious when the fit isn't trustworthy yet even above this floor.
@@ -116,7 +120,7 @@ def load_fit_shapes(data_dir):
 
     'cubic' is a strict extension of 'quadratic', not a separate branch: a
     dim flagged cubic gets BOTH the sq<label> and cu<label> terms (see
-    transition_feature_names()/build_*_dataset() below), so the fit can
+    horizontal_feature_names()/build_*_dataset() below), so the fit can
     represent any real cubic shape rather than being forced through the
     origin-symmetric x^3-only curve a cubic term alone would give."""
     path_ = os.path.join(data_dir, 'fit_shapes.json')
@@ -160,7 +164,7 @@ def all_dims_with_keys():
     return pairs
 
 
-def transition_feature_names(dim_shapes=None):
+def horizontal_feature_names(dim_shapes=None):
     # Both signed delta AND |delta| per dimension — deliberately not assuming
     # upfront whether "did this cut flow well" is a DIRECTIONAL preference
     # (linear in delta, like DIR_PREF) or a SMOOTHNESS preference (small
@@ -201,15 +205,15 @@ def transition_feature_names(dim_shapes=None):
     return names
 
 
-def build_transition_dataset(rows, dim_shapes=None):
-    """Each logged :scoreTransition entry can cover 1..4 stems (stemFilter or
+def build_horizontal_dataset(rows, dim_shapes=None):
+    """Each logged :scoreTrs entry can cover 1..4 stems (stemFilter or
     all 4) — every stem present is its own training example, sharing that
     entry's rating. Skips a stem-entry if either side is missing ANY of the
-    now-13 lookup keys (7 level + 6 tension) — logs written before this
-    tension/S update won't have tension_* or S keys at all, so old entries
+    now-14 lookup keys (7 level + 7 tension) — logs written before add_tension.py
+    started computing tension_S won't have that key at all, so old entries
     are correctly excluded rather than silently padded with fabricated
-    zeros. Re-run :score/:scoreTransition after this update to accumulate
-    usable examples."""
+    zeros. Re-run add_tension.py (to backfill tension_S) and
+    :scoreLyr/:scoreTrs to accumulate usable examples."""
     dim_shapes = dim_shapes or {}
     dims = all_dims_with_keys()
     X, y = [], []
@@ -238,8 +242,8 @@ def build_transition_dataset(rows, dim_shapes=None):
 
 
 def build_vertical_dataset(rows, dim_shapes=None):
-    """Each logged :score entry rates the whole 4-stem combo as ONE example
-    (not one per stem, unlike transitions) — the judgment is inherently about
+    """Each logged :scoreLyr entry rates the whole 4-stem combo as ONE example
+    (not one per stem, unlike horizontal) — the judgment is inherently about
     all 4 together. Feature = mean + std of each level/tension dim across
     whichever stems have valid values right now (fewer than 4 is fine — a
     stem can be silent/unloaded; mean/std just adapt to however many are
@@ -292,7 +296,7 @@ def train_section(name, X, y, feature_names, min_samples):
     n = X.shape[0]
     n_params = len(feature_names) + 1  # + bias
     # A flat --min-samples floor isn't enough on its own: the vertical model
-    # has 12 features (13 params w/ bias) and the transition model has 12 too
+    # has 12 features (13 params w/ bias) and the horizontal model has 12 too
     # — at n close to n_params, OLS can fit almost ANY data near-perfectly
     # (a high R^2 that means nothing, not a real relationship). Require some
     # comfortable multiple of the parameter count on top of whatever floor
@@ -313,7 +317,7 @@ def train_section(name, X, y, feature_names, min_samples):
     if r2 < 0.1:
         print(f"[{name}] warning: R^2 is very low — this model won't predict "
               f"much better than guessing the average rating yet. More data "
-              f"(more :score/:scoreTransition judgments) should improve it.")
+              f"(more :scoreLyr/:scoreTrs judgments) should improve it.")
     elif n < 5 * n_params:
         print(f"[{name}] note: R^2 looks OK but n={n} is still not far past "
               f"the {required}-sample floor — treat this fit as provisional "
@@ -328,7 +332,7 @@ def train_section(name, X, y, feature_names, min_samples):
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Train EBYS learned-bias models from :score/:scoreTransition logs')
+    ap = argparse.ArgumentParser(description='Train EBYS learned-bias models from :scoreLyr/:scoreTrs logs')
     ap.add_argument('--data-dir', default=None, help='Session data dir containing the training_log_*.jsonl files (default: data/current)')
     ap.add_argument('--out', default=None, help='Output path for learned_bias.json (default: <data-dir>/learned_bias.json)')
     ap.add_argument('--min-samples', type=int, default=DEFAULT_MIN_SAMPLES)
@@ -337,13 +341,13 @@ def main():
     data_dir = args.data_dir or default_data_dir()
     out_path = args.out or os.path.join(data_dir, 'learned_bias.json')
 
-    trans_path = os.path.join(data_dir, 'training_log_transition.jsonl')
+    horiz_path = os.path.join(data_dir, 'training_log_horizontal.jsonl')
     vert_path = os.path.join(data_dir, 'training_log_vertical.jsonl')
 
-    trans_rows = read_jsonl(trans_path)
+    horiz_rows = read_jsonl(horiz_path)
     vert_rows = read_jsonl(vert_path)
     print(f"data dir: {data_dir}")
-    print(f"transition log: {len(trans_rows)} entries ({trans_path})")
+    print(f"horizontal log: {len(horiz_rows)} entries ({horiz_path})")
     print(f"vertical log:   {len(vert_rows)} entries ({vert_path})")
 
     dim_shapes = load_fit_shapes(data_dir)
@@ -355,10 +359,10 @@ def main():
               f"cubic term added for: {', '.join(cubic_only) or 'none'} "
               f"— each adds one more weight per model, raising the 3x-parameters floor below")
 
-    Xt, yt = build_transition_dataset(trans_rows, dim_shapes)
+    Xh, yh = build_horizontal_dataset(horiz_rows, dim_shapes)
     Xv, yv = build_vertical_dataset(vert_rows, dim_shapes)
 
-    transition_model = train_section('transition', Xt, yt, transition_feature_names(dim_shapes), args.min_samples)
+    horizontal_model = train_section('horizontal', Xh, yh, horizontal_feature_names(dim_shapes), args.min_samples)
 
     vert_feature_names = []
     for label, _ in all_dims_with_keys():
@@ -373,7 +377,7 @@ def main():
     vertical_model = train_section('vertical', Xv, yv, vert_feature_names, args.min_samples)
 
     out = {
-        'transition': transition_model,
+        'horizontal': horizontal_model,
         'vertical': vertical_model,
         # Replaces the old 'quadratic_dims' array — slicer.js now reads this
         # single {label: shape} map instead (see loadLearnedBias() there),
@@ -387,10 +391,10 @@ def main():
     with open(out_path, 'w') as f:
         json.dump(out, f, indent=2)
     print(f"wrote {out_path}")
-    if transition_model is None and vertical_model is None:
+    if horizontal_model is None and vertical_model is None:
         print("Neither model had enough data — learned_bias.json written with both "
               "sections null. slicer.js will treat this as \"no learned bias yet\" "
-              "and behave exactly as before. Keep using :score / :scoreTransition "
+              "and behave exactly as before. Keep using :scoreLyr / :scoreTrs "
               "and re-run this script later.")
 
 
