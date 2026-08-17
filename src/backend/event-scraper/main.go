@@ -11,12 +11,13 @@ import (
 	"time"
 )
 
-const addr = ":6969"
+const port = ":6969"
 
 var (
 	scrapeSchedule = 1 * time.Hour // scrape every hour
-	concurrent     = flag.Bool("conc", false, "concurrent scraping")
-	serve          = flag.Bool("serve", false,
+
+	concurrent = flag.Bool("conc", false, "concurrent scraping")
+	serve      = flag.Bool("serve", false,
 		"scrape concurrently at startup, then runs API server with 1 hour scrape scheduler")
 )
 
@@ -53,7 +54,7 @@ func main() {
 			func(el EventList) EventList { return el.ThisWeekend().ByWeekday(time.Sunday) }))
 
 		srv := &http.Server{
-			Addr:    addr,
+			Addr:    port,
 			Handler: corsMiddleware(mux),
 		}
 
@@ -65,7 +66,7 @@ func main() {
 			}
 		}()
 
-		fmt.Println("API server running on port : " + addr)
+		fmt.Println("API server running on -> localhost:" + port)
 		fmt.Println()
 		if err := srv.ListenAndServe(); err != nil {
 			return
