@@ -54,3 +54,7 @@ node_modules/
 # Archive — kept locally only
 archive/
 src/demucs/genenv/
+
+# event-crawler build output / non-source assets
+src/backend/event-crawler/event-scraper
+src/backend/event-crawler/frontend/*.mov

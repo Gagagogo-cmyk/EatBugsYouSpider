@@ -1,0 +1,82 @@
+{
+	"title": "Discovered Events",
+	"event_count": 5,
+	"generated_at": "2026-08-24T15:47:43-04:00",
+	"events": [
+		{
+			"venue_key": "discover-evenko-ca",
+			"name": "The Lion King",
+			"venue": "Salle Wilfrid-Pelletier, Place des Arts – Montréal",
+			"date": "25 août au 6 septembre 2026",
+			"address": "",
+			"price": "Économisez jusqu'à 15% 10 billets minimum",
+			"ticket_url": "https://am.ticketmaster.com/pda/fr-ca/promotional-page?id=Njk5Nw==",
+			"day_of_week": "",
+			"is_free": false,
+			"is_today": false,
+			"is_tomorrow": false,
+			"is_this_weekend": false,
+			"is_this_week": false
+		},
+		{
+			"venue_key": "discover-evenko-ca",
+			"name": "Mamma Mia !",
+			"venue": "Salle Wilfrid-Pelletier, Place des Arts – Montréal",
+			"date": "13 octobre au 18 octobre 2026",
+			"address": "",
+			"price": "Économisez jusqu'à 15% 10 billets minimum",
+			"ticket_url": "https://am.ticketmaster.com/pda/fr-ca/promotional-page?id=ODU1Mw==",
+			"day_of_week": "",
+			"is_free": false,
+			"is_today": false,
+			"is_tomorrow": false,
+			"is_this_weekend": false,
+			"is_this_week": false
+		},
+		{
+			"venue_key": "discover-evenko-ca",
+			"name": "RIVERDANCE",
+			"venue": "Salle Wilfrid-Pelletier, Place des Arts – Montréal",
+			"date": "4 février au 7 février 2027",
+			"address": "",
+			"price": "Économisez jusqu'à 15% 10 billets minimum",
+			"ticket_url": "https://am.ticketmaster.com/pda/fr-ca/promotional-page?id=ODU3Nw==",
+			"day_of_week": "",
+			"is_free": false,
+			"is_today": false,
+			"is_tomorrow": false,
+			"is_this_weekend": false,
+			"is_this_week": false
+		},
+		{
+			"venue_key": "discover-evenko-ca",
+			"name": "The Book of Mormon",
+			"venue": "Salle Wilfrid-Pelletier, Place des Arts – Montréal",
+			"date": "2 mars au 7 mars 2027",
+			"address": "",
+			"price": "Économisez jusqu'à 15% 10 billets minimum",
+			"ticket_url": "https://am.ticketmaster.com/pda/fr-ca/promotional-page?id=ODYwMQ==",
+			"day_of_week": "",
+			"is_free": false,
+			"is_today": false,
+			"is_tomorrow": false,
+			"is_this_weekend": false,
+			"is_this_week": false
+		},
+		{
+			"venue_key": "discover-evenko-ca",
+			"name": "A Beautiful Noise",
+			"venue": "Salle Wilfrid-Pelletier, Place des Arts – Montréal",
+			"date": "13 avril au 18 avril 2027",
+			"address": "",
+			"price": "Économisez jusqu'à 15% 10 billets minimum",
+			"ticket_url": "https://am.ticketmaster.com/pda/fr-ca/promotional-page?id=ODYyNQ==",
+			"day_of_week": "",
+			"is_free": false,
+			"is_today": false,
+			"is_tomorrow": false,
+			"is_this_weekend": false,
+			"is_this_week": false
+		}
+	]
+}

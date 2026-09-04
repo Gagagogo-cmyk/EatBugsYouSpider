@@ -1,0 +1,596 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} -- Eat Bugs you Spiders!</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- ── dark/mono/posterize redesign — user: "make the typeface the same
+         as the rest of the website. terminal style. and apply the same 3
+         channels posterize sharp effect... make sure the background is
+         always the same color [as the OMGM panel]. no white. just the
+         dark." This page used to be its own plain light-mode site (Verdana,
+         white body, blue links) — it's now styled to match src/gui/panel.html
+         directly: same --mono font stack, same #0e130e/white/grey palette,
+         and the SAME #posterize3 SVG filter (identical tableValues), applied
+         to <body> here since this page has no .plugin-style wrapper of its
+         own to hang it on.
+         Colour note: #posterize3's feColorMatrix saturate(0) desaturates
+         everything before quantizing it into exactly 3 luminance bands
+         (black/mid/white) — see panel.html's own POSTERIZE comment for the
+         full reasoning. That means hue carries NO information here once the
+         filter runs: the old green "notice-ok" / red "notice-error" tint
+         distinction is impossible to preserve, so those are told apart by a
+         bracketed [OK]/[ERROR]/[PENDING] label instead, same convention
+         panel.html itself uses everywhere (e.g. [SPECTATOR MODE]) rather
+         than relying on colour. Every colour below is one of exactly three
+         literal values already proven (in panel.html) to land in the
+         correct band — #0e130e (black), #7d8281 (mid), #fff (white) — reused
+         rather than re-derived, since anything landing in the same band
+         renders pixel-identical after the filter regardless of its
+         pre-filter hex. -->
+    <style>
+        :root {
+            --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Monaco,
+                "DejaVu Sans Mono", "Apple Symbols", "Segoe UI Symbol", monospace;
+            --bg: #0e130e;   /* black band */
+            --mid: #7d8281;  /* mid band -- same final pixel as any other mid-band grey */
+            --w: #fff;       /* white band */
+        }
+        /* NOTE: filter:url(#posterize3) below is on <body>, and a CSS filter
+           applies to an element's entire rendered subtree -- a child can't
+           opt back out of an ancestor's filter (border/background on #map
+           here don't need it, but the Leaflet TILES it loads are real map
+           imagery, and those WILL get posterized to black/mid/white same as
+           everything else on this page; flagged rather than silently
+           left inconsistent -- if that reads as broken rather than "in
+           keeping with the rest of the site," the fix is moving #map (or
+           this whole body) outside the filtered element, not tuning a
+           colour). */
+        /* html gets the literal dark colour directly (not var(--bg), not
+           going through the filter) -- html is body's PARENT, and
+           filter:url(#posterize3) below is set on body, so it only ever
+           covers body's own subtree, never html itself. On a short page
+           (few events, or the "Scraping…" empty state) body's content can
+           be shorter than the viewport, and without this, whatever sliver
+           of html shows below/around it would stay the browser's default
+           white -- same structural reason panel.html's own <body> (outside
+           .plugin's filtered subtree) needs a literal #0e130e rather than
+           var(--bg), see that file's own comment on this exact point.
+           min-height:100% on both keeps that sliver as small as possible
+           in the first place, so this is a backstop, not the only guard. */
+        html { background: #0e130e; min-height: 100%; }
+        /* UPDATE — user screenshot: the sidebar and the main content were
+           rendering on top of each other, overlapping into unreadable
+           double-exposed text, and the events grid showed 0 events despite
+           the sidebar itself looking fine. Root cause of the overlap:
+           filter:url(...) on an ancestor establishes a new containing
+           block for that ancestor's position:fixed/absolute descendants —
+           the same CSS rule panel.html's own .plugin relies on deliberately
+           (see .plugin's own comment). filter used to be on <body> here,
+           and .sidebar (a body child) is position:fixed — so instead of
+           positioning against the real viewport like it's supposed to,
+           .sidebar started positioning against BODY's own box, which is
+           itself offset by body's margin-left:200px. Net result: the
+           sidebar rendered ~200px further right than intended, landing
+           almost exactly on top of the main content column instead of in
+           the gutter to its left.
+           Fix: the filter moved off <body> and onto new wrapper .page,
+           which wraps everything EXCEPT <nav class="sidebar"> (see its own
+           markup, below) -- .sidebar is now a <body> child that sits
+           OUTSIDE the filtered subtree entirely, so position:fixed on it
+           goes back to meaning "relative to the real viewport," same as
+           before dark/posterize was ever added. .page also took over the
+           max-width/margin/min-height/filter duties body used to carry
+           itself, since a new element needed to own the "this is the
+           positioned/filtered content column" job, and .sidebar's own
+           colours are already flat band-safe literals (var(--w)/var(--mid))
+           -- nothing in it depends on actually passing through the filter
+           to look right, so this costs the sidebar nothing visually,
+           it just no longer sits inside .page's filtered/positioned box. */
+        #map { height: 350px; margin-bottom: 12px; border: 1px solid var(--mid); }
+        body {
+            font-family: var(--mono);
+            font-size: 12px;
+            margin: 0;
+            background: var(--bg);
+            color: var(--mid);
+        }
+        .page {
+            max-width: 1100px;
+            min-height: 100vh;
+            margin: 10px auto 10px 200px;
+            filter: url(#posterize3);
+        }
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 8px;
+        }
+        h1, h2, h3 { font-weight: 400; }
+        h1 {
+            font-size: 16px;
+            color: var(--w);
+            border-bottom: 1px solid var(--mid);
+            padding-bottom: 4px;
+        }
+        /* search bar -- sits where <h1>mtl-shows</h1> used to (see the HTML
+           comment right above the <form> itself), so it took over that
+           bottom rule as its own outer border instead of leaving a bare
+           unbordered row up top. "as a rectangle": one bordered box holding
+           the input, the submit button, and (once a search is active) the
+           [clear] link, rather than a bare unstyled input floating on the
+           page background. */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            margin-bottom: 8px;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 3px 4px;
+            background: var(--bg);
+            color: var(--w);
+            border: 1px solid var(--mid);
+        }
+        .search-bar button {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 4px 10px;
+            border: 1px solid var(--mid);
+            background: var(--bg);
+            color: var(--mid);
+            cursor: pointer;
+        }
+        .search-bar button:hover {
+            color: var(--w);
+            border-color: var(--w);
+        }
+        .search-clear {
+            font-size: 11px;
+            color: var(--mid);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .search-clear:hover { color: var(--w); }
+        h2 {
+            font-size: 13px;
+            color: var(--mid);
+        }
+        .sidebar {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 170px;
+            overflow-y: auto;
+            max-height: calc(100vh - 20px);
+            z-index: 9999;
+            filter: url(#posterize3);
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .filter-group-title {
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--mid);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .filter-group a {
+            color: var(--mid);
+            font-size: 12px;
+            text-decoration: none;
+            line-height: 1.6;
+            padding: 0 4px;
+            border-left: 2px solid transparent;
+        }
+        .filter-group a:hover {
+            color: var(--w);
+        }
+        .filter-group a.active {
+            font-weight: bold;
+            color: var(--w);
+            border-left-color: var(--w);
+        }
+        .filter-group select {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--mid);
+            background: var(--bg);
+            border: 1px solid var(--mid);
+            padding: 1px 2px;
+        }
+        .updated {
+            font-size: 10px;
+            color: var(--mid);
+        }
+
+        .add-venue-form {
+            display: flex;
+            gap: 4px;
+            margin-top: 2px;
+        }
+        .add-venue-form input[type="url"] {
+            flex: 1;
+            min-width: 0;
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 3px 4px;
+            background: var(--bg);
+            color: var(--w);
+            border: 1px solid var(--mid);
+        }
+        .add-venue-form button {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 3px 8px;
+            border: 1px solid var(--mid);
+            background: var(--bg);
+            color: var(--mid);
+            cursor: pointer;
+        }
+        .add-venue-form button:hover {
+            color: var(--w);
+            border-color: var(--w);
+        }
+        .add-venue-hint {
+            display: block;
+            font-size: 10px;
+            color: var(--mid);
+            margin-top: 3px;
+            line-height: 1.4;
+        }
+
+        .notice {
+            font-size: 12px;
+            padding: 8px 10px;
+            margin: 8px 0;
+            border: 1px solid var(--mid);
+            background: var(--bg);
+            color: var(--mid);
+        }
+        /* [OK]/[ERROR]/[PENDING] — see this file's own top-of-<style> note:
+           hue (the old green/red tint) can't survive #posterize3, so these
+           read by a bracketed label + brightness instead, same idiom
+           panel.html uses throughout. */
+        .notice-ok { color: var(--w); border-color: var(--w); }
+        .notice-ok::before { content: "[OK] "; font-weight: bold; }
+        .notice-error { color: var(--w); border-color: var(--w); }
+        .notice-error::before { content: "[ERROR] "; font-weight: bold; }
+        .notice-pending strong::before { content: "[PENDING] "; }
+        .notice-pending ul {
+            margin: 4px 0 0 0;
+            padding-left: 18px;
+        }
+
+        .event {
+            border: 1px solid var(--mid);
+            padding: 6px;
+        }
+        .event.event-today { border-color: var(--w); }
+        .event.event-today .event-when { color: var(--w); }
+        .event img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border: 1px solid var(--mid);
+            box-sizing: border-box;
+        }
+        .event h3 {
+            font-size: 13px;
+            color: var(--w);
+            margin: 6px 0 2px 0;
+        }
+        .event p {
+            margin: 2px 0;
+            color: var(--mid);
+        }
+        .event .event-when {
+            font-weight: bold;
+            color: var(--mid);
+            font-size: 12px;
+            margin: 4px 0;
+        }
+        .event a {
+            font-size: 11px;
+            color: var(--mid);
+            margin-top: auto;
+            padding-top: 4px;
+        }
+        .event a:hover { color: var(--w); }
+        .filter-toggle > summary {
+            display: none;
+        }
+        @media (max-width: 1200px) {
+            .events-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 800px) {
+            .page {
+                margin: 10px;
+                max-width: none;
+            }
+            .sidebar {
+                position: static;
+                width: auto;
+                max-height: none;
+                margin-bottom: 16px;
+            }
+            .events-grid {
+                grid-template-columns: 1fr;
+            }
+            .filter-toggle > summary {
+                display: block;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 12px;
+                background: var(--bg);
+                color: var(--mid);
+                border: 1px solid var(--mid);
+                list-style: none;
+            }
+            .filter-toggle > summary::-webkit-details-marker {
+                display: none;
+            }
+            .filter-toggle > summary::after {
+                content: " ▸";
+                float: right;
+            }
+            .filter-toggle[open] > summary::after {
+                content: " ▾";
+            }
+            .filter-group a {
+                padding: 12px 8px;
+                line-height: 1.2;
+            }
+            .event a {
+                font-size: 13px;
+                padding: 12px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- ── POSTERIZE — identical filter to panel.html's own (same id, same
+     tableValues); duplicated here rather than shared since this page is
+     served by a completely separate process (the Go server, :6969) with no
+     access to panel.html's markup. Delete this <svg> block and the
+     filter:url(#posterize3) line on body above to switch it off. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="posterize3" color-interpolation-filters="sRGB">
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncR type="discrete" tableValues="0.0549 0.5 1"/>
+      <feFuncG type="discrete" tableValues="0.0745 0.5 1"/>
+      <feFuncB type="discrete" tableValues="0.0549 0.5 1"/>
+    </feComponentTransfer>
+  </filter>
+</svg>
+<nav class="sidebar">
+    <details class="filter-toggle" open>
+        <summary>Filters</summary>
+        <div class="filter-group">
+            <span class="filter-group-title">When</span>
+            <a href="/">All</a>
+            <br>
+            <a href="/right-now">Right Now</a>
+            <a href="/tonight">Tonight</a>
+            <a href="/tomorrow">Tomorrow</a>
+            <a href="/this-week">This Week</a>
+        </div>
+        <div class="filter-group">
+            <span class="filter-group-title">This Weekend</span>
+            <select class="weekend-select" onchange="if (this.value) window.location.href = this.value;">
+                <option value="/this-weekend">All weekend</option>
+                <option value="/this-weekend/friday">Friday</option>
+                <option value="/this-weekend/saturday">Saturday</option>
+                <option value="/this-weekend/sunday">Sunday</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-group-title">Venue</span>
+            {{range .Venues}}<a href="?venue={{.Key}}">{{.Name}}</a>
+            {{end}}
+        </div>
+        <div class="filter-group">
+            <span class="filter-group-title">Add a venue</span>
+            <form method="POST" action="/venues/add" class="add-venue-form">
+                <input type="url" name="url" placeholder="https://venue-website.com" required>
+                <button type="submit">Add</button>
+            </form>
+            <span class="add-venue-hint">We'll look up its events -- usually ready within a few minutes.</span>
+        </div>
+    </details>
+</nav>
+
+<!-- .page — see the CSS comment on .page (near <style>'s own body{}/.page{}
+     rules) for why this wrapper exists: it owns the max-width/margin/
+     filter this content used to get from <body> directly, so that
+     <nav class="sidebar">'s position:fixed (above, OUTSIDE this div) keeps
+     positioning against the real viewport instead of against a filtered
+     ancestor's box. -->
+<div class="page">
+
+<!-- h1 "mtl-shows" title REMOVED, SEARCH BAR PUT IN ITS PLACE -- user:
+     "remove mtl show title" then "put the search bar as a rectangle where
+     currently mtl show is." The page's own <title> tag (head, above) still
+     reads "{{.Title}} -- mtl-shows" for the browser tab; only the on-page
+     heading (which repeated that name right above the notices) is gone,
+     replaced by this bar. GET so it's a plain shareable/bookmarkable URL
+     (?q=...), same idiom as the sidebar's own venue links (?venue=...) --
+     no JS required for the filter itself to work. Carries the current venue
+     filter along as a hidden field so searching doesn't silently drop an
+     already-selected venue (see .search-bar's own comment, CSS, for why
+     this needed a dedicated rectangle rather than reusing .add-venue-form:
+     different placement, needs to read as the page's primary control, not
+     a sidebar utility). -->
+<form method="GET" action="" class="search-bar">
+    {{if .VenueFilter}}<input type="hidden" name="venue" value="{{.VenueFilter}}">{{end}}
+    <input type="text" name="q" value="{{.SearchQuery}}" placeholder="Search by artist / show name…" class="search-input">
+    <button type="submit">Search</button>
+    {{if .SearchQuery}}<a href="{{if .VenueFilter}}?venue={{.VenueFilter}}{{else}}/{{end}}" class="search-clear">[clear]</a>{{end}}
+</form>
+
+{{if .VenueSubmitted}}
+<p class="notice notice-ok">Thanks -- we're looking up events for that venue now. It'll show up in the list above once it's ready; check back in a minute or two.</p>
+{{end}}
+{{if .VenueError}}
+<p class="notice notice-error">{{.VenueError}}</p>
+{{end}}
+{{if .PendingSubmissions}}
+<div class="notice notice-pending">
+    <strong>Venue submissions:</strong>
+    <ul>
+        {{range .PendingSubmissions}}
+        <li>{{.URL}} -- {{if eq .Status "failed"}}couldn't find events there ({{.Message}}){{else}}still looking, submitted {{.SubmittedAt.Format "3:04 PM"}}{{end}}</li>
+        {{end}}
+    </ul>
+</div>
+{{end}}
+
+<h2>{{.Title}} ({{.EventCount}})</h2>
+<p class="updated">
+    {{if .LastScrapedAt}}Last updated: {{.LastScrapedAt}}{{else}}Scraping…{{end}}
+</p>
+
+{{if .Events}}
+<div class="events-grid">
+    {{range .Events}}
+    <div class="event{{if .IsToday}} event-today{{else if .IsThisWeek}} event-week{{end}}">
+        {{if .EventImage}}<img src="{{.EventImage}}" alt="{{.Name}}">{{end}}
+        <h3>{{.Name}}</h3>
+        <p>{{.Venue}} — {{.Address}}</p>
+        <p class="event-when">{{.Date}} · {{.Time}}</p>
+        <p>{{.Price}}</p>
+        <!-- target="_blank" rel="noopener noreferrer" -- user: "make sure
+             that the link to the event tickets redirect to another page by
+             opening a new web page and not opening straight in the
+             website... trust wise, i would never pay tickets on a third
+             party scraper website." TicketURL always points OFF-SITE (the
+             venue's own ticket vendor, never this app) -- without target=
+             "_blank" a click would navigate this scraper's own tab away to
+             that third-party checkout, which is exactly the "am I still on
+             the real site?" confusion that erodes trust before anyone
+             enters payment info. rel="noopener" is the required pairing:
+             a target="_blank" link without it lets the new tab's page
+             reach back into this one via window.opener (a real, if narrow,
+             security/tracking gap for an unknown third-party destination);
+             "noreferrer" additionally withholds the Referer header, so the
+             ticket vendor site doesn't see it was linked from a scraper. -->
+        {{if .TicketURL}}<a href="{{.TicketURL}}" target="_blank" rel="noopener noreferrer">Link to event ↗</a>{{end}}
+    </div>
+    {{end}}
+</div>
+{{else}}
+<p>No events found.</p>
+{{end}}
+
+<details id="map-details">
+    <summary><h2 style="display:inline">Map</h2></summary>
+    <div id="map"></div>
+</details>
+
+<script>
+    (function() {
+        let sel = document.querySelector('.weekend-select');
+        if (sel) {
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === window.location.pathname) {
+                    sel.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (window.innerWidth <= 800) {
+            const toggle = document.querySelector('.filter-toggle');
+            if (toggle) toggle.open = false;
+        }
+
+        const path = window.location.pathname;
+        const search = window.location.search;
+        const links = document.querySelectorAll('.filter-group a');
+        for (var j = 0; j < links.length; j++) {
+            var href = links[j].getAttribute('href');
+            if (href.indexOf('?') === 0) {
+                if (href === search) links[j].classList.add('active');
+            } else if (href === path || (href === '/' && path === '/' && !search)) {
+                if (href === '/' && (path !== '/' || search)) continue;
+                links[j].classList.add('active');
+            }
+        }
+    })();
+
+    var map = L.map('map').setView([45.5236, -73.5985], 13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    document.getElementById('map-details').addEventListener('toggle', function(e) {
+        if (e.target.open) map.invalidateSize();
+    });
+
+    function markerColor(v) {
+        if (!v.events || v.events.length === 0) return 'grey';
+        for (var i = 0; i < v.events.length; i++) {
+            if (v.events[i].is_today) return 'red';
+        }
+        for (var i = 0; i < v.events.length; i++) {
+            if (v.events[i].is_this_week) return 'orange';
+        }
+        return 'blue';
+    }
+
+    function coloredIcon(color) {
+        return new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-' + color + '.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+    }
+
+    var venues = {{.VenuesJSON}};
+
+    venues.forEach(function(v) {
+        if (!v.lat || !v.lng) return;
+
+        var color = markerColor(v);
+        var popupHTML = '<b>' + v.name + '</b>';
+        popupHTML += '<br><a href="?venue=' + v.key + '" style="font-size:10px;">Show events</a>';
+
+        if (v.events && v.events.length > 0) {
+            popupHTML += '<br>';
+            v.events.forEach(function(e) {
+                popupHTML += '<br>' + e.name + '<br><small>' + e.date + ' · ' + e.time + '</small>';
+            });
+        } else {
+            popupHTML += '<br><small>No upcoming events</small>';
+        }
+
+        L.marker([v.lat, v.lng], {icon: coloredIcon(color)}).addTo(map).bindPopup(popupHTML);
+    });
+</script>
+</div>
+</body>
+</html>
+{{end}}

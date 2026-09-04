@@ -1,0 +1,39 @@
+[
+	{
+		"key": "discover-evenko-ca",
+		"name": "Événements | evenko - La source officielle pour vos billets",
+		"start_url": "https://evenko.ca/fr/evenements",
+		"events_url": "https://evenko.ca/fr/evenements",
+		"render": true,
+		"promoted_at": "2026-08-24T15:23:02-04:00",
+		"last_verified_at": "2026-09-03T20:46:47-04:00"
+	},
+	{
+		"key": "discover-casadelpopolo-com",
+		"name": "Casa del Popolo | La Sala Rossa | La Sotterenea",
+		"start_url": "https://casadelpopolo.com/en",
+		"events_url": "https://casadelpopolo.com/en",
+		"render": false,
+		"promoted_at": "2026-08-24T15:45:31-04:00",
+		"last_verified_at": "2026-09-03T20:49:17-04:00",
+		"last_rediscovered_at": "2026-08-28T20:21:11-04:00"
+	},
+	{
+		"key": "quai-des-brumes",
+		"name": "Quai des Brumes",
+		"start_url": "https://quaidesbrumes.ca/calendrier/",
+		"events_url": "https://quaidesbrumes.ca/calendrier/",
+		"render": true,
+		"promoted_at": "2026-08-26T01:52:18-04:00",
+		"last_verified_at": "2026-09-03T20:50:25-04:00"
+	},
+	{
+		"key": "mtelus",
+		"name": "MTelus",
+		"start_url": "https://mtelus.com/en/events?display=list",
+		"events_url": "https://mtelus.com/en/events",
+		"render": true,
+		"promoted_at": "2026-08-26T07:42:49-04:00",
+		"last_verified_at": "2026-09-03T20:52:16-04:00"
+	}
+]

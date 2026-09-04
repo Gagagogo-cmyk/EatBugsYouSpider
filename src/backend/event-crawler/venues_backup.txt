@@ -1,0 +1,162 @@
+EBYS event-scraper — hardcoded venues backup
+==============================================
+Removed from venues.go's `allVenues` map on 2026-08-24 so the crawler could be
+tested "cold" (no hardcoded venues loaded, no selectors to lean on). Keeping
+this list around so nothing is lost — paste any of these back into venues.go's
+`allVenues` map (see the Venue struct at the top of that file) to restore them.
+
+The venue key (used in URLs like ?venue=<key>) is in [brackets].
+
+
+[casa-del-popolo] Casa del Popolo
+  Address:  4873 Boul. St-Laurent
+  Group:    casa-del-popolo-group
+  Events:   https://casadelpopolo.com/en/events/casa-del-popolo
+  Website:  https://casadelpopolo.com/en
+  Domains:  casadelpopolo.com, www.casadelpopolo.com
+  Selector: CasaDelPopoloSelector -> div.md\:w-5\/12.p-6
+  Lat/Lng:  45.521805, -73.590431
+
+[la-sala-rossa] La Sala Rossa
+  Address:  4848 Boul. St-Laurent
+  Group:    casa-del-popolo-group
+  Events:   https://casadelpopolo.com/en/events/la-sala-rossa
+  Website:  https://casadelpopolo.com/en
+  Domains:  casadelpopolo.com, www.casadelpopolo.com
+  Selector: CasaDelPopoloSelector -> div.md\:w-5\/12.p-6
+  Lat/Lng:  45.521771, -73.590493
+
+[la-sotterenea] La Sotterenea
+  Address:  4848 Boul. St-Laurent
+  Group:    casa-del-popolo-group
+  Events:   https://casadelpopolo.com/en/events/la-sotterenea
+  Website:  https://casadelpopolo.com/en
+  Domains:  casadelpopolo.com, www.casadelpopolo.com
+  Selector: CasaDelPopoloSelector -> div.md\:w-5\/12.p-6
+  Lat/Lng:  45.521771, -73.590493
+
+[ptit-ours] Ptit Ours
+  Address:  5589 Avenue du Parc
+  Group:    casa-del-popolo-group
+  Events:   https://casadelpopolo.com/en/events/ptit-ours
+  Website:  https://casadelpopolo.com/en
+  Domains:  casadelpopolo.com, www.casadelpopolo.com
+  Selector: CasaDelPopoloSelector -> div.md\:w-5\/12.p-6
+  Lat/Lng:  45.522644, -73.602695
+
+[la-toscadura] La Toscadura
+  Address:  4388 St-Laurent
+  Group:    casa-del-popolo-group
+  Events:   https://casadelpopolo.com/en/events/la-toscadura
+  Website:  https://casadelpopolo.com/en
+  Domains:  casadelpopolo.com, www.casadelpopolo.com
+  Selector: CasaDelPopoloSelector -> div.md\:w-5\/12.p-6
+  Lat/Lng:  45.519246, -73.584909
+
+[quai-des-brumes] Quai des Brumes
+  Address:  4481 Rue Saint-Denis
+  Events:   https://quaidesbrumes.ca/calendrier/
+  Website:  https://quaidesbrumes.ca
+  Domains:  quaidesbrumes.ca, www.quaidesbrumes.ca
+  Selector: QuaiDesBrumesSelector -> article.mec-event-article
+  Lat/Lng:  45.523917, -73.582513
+
+[cafe-campus] Cafe Campus
+  Address:  57 Rue Prince-Arthur Est
+  Events:   https://spectacles.cafecampus.com/evenements
+  Website:  https://www.cafecampus.com/
+  Domains:  spectacles.cafecampus.com, www.spectacles.cafecampus.com
+  Selector: CafeCampusSelector -> div.noo-shevent-content
+  Lat/Lng:  45.514541, -73.572183
+
+[hemisphere-gauche] L'Hemisphere Gauche
+  Address:  221 Beaubien Est
+  Events:   https://www.hemispheregauche.com/?lang=en
+  Website:  https://www.hemispheregauche.com
+  Domains:  hemispheregauche.com, www.hemispheregauche.com
+  Selector: HemisphereGaucheSelector -> div.IFphb0
+  Lat/Lng:  45.532241, -73.606866
+
+[verre-bouteille] Le Verre Bouteille
+  Address:  2112 Avenue du Mont-Royal Est
+  Events:   https://verrebouteille.com/shows.php
+  Website:  https://verrebouteille.com
+  Domains:  verrebouteille.com, www.verrebouteille.com
+  Selector: VerreBouteilleSelector -> div.card-container
+  Lat/Lng:  45.535373, -73.572007
+
+[piranha-bar] Piranha Bar
+  Address:  680 Rue Sainte-Catherine Ouest
+  Events:   https://www.piranhabar.ca/events
+  Website:  https://www.piranhabar.ca
+  Domains:  piranhabar.ca, www.piranhabar.ca
+  Selector: PiranhaBarSelector -> article.eventlist-event
+  Lat/Lng:  45.502818, -73.569794
+
+[club-soda] Club Soda
+  Address:  1225 Boul. Saint-Laurent
+  Events:   https://clubsoda.ca/fr/evenements
+  Website:  https://clubsoda.ca
+  Domains:  clubsoda.ca, www.clubsoda.ca
+  Selector: ClubSodaSelector -> div.card.h-100
+  Lat/Lng:  45.509597, -73.563217
+
+[le-ministere] Le Ministère
+  Address:  4521 Boul. Saint-Laurent
+  Events:   https://leministere.ca/evenements
+  Website:  https://leministere.ca
+  Domains:  leministere.ca, www.leministere.ca
+  Selector: LeMinistereSelector -> div.col-sm-6.col-lg-4.mb-4
+  Lat/Lng:  45.520459, -73.586783
+
+[fairmount-theatre] Fairmount Theatre
+  Address:  5240 Avenue du Parc
+  Events:   https://www.theatrefairmount.com/
+  Website:  https://www.theatrefairmount.com/
+  Domains:  theatrefairmount.com, www.theatrefairmount.com
+  Selector: FairmountTheatreSelector -> article.eventlist-event--upcoming
+  Lat/Lng:  45.520477, -73.598509
+
+[olympia] L'Olympia
+  Address:  1004 Rue Sainte-Catherine Est
+  Events:   https://www.olympiamontreal.com/en/programmation/
+  Website:  https://www.olympiamontreal.com/
+  Domains:  olympiamontreal.com, www.olympiamontreal.com
+  Parsing:  no CSS selector -- paginated via admin-ajax.php
+            OlympiaSelector -> div.wtb-olympia-concert_wrap
+            OlympiaAjaxURL  -> https://www.olympiamontreal.com/wp-admin/admin-ajax.php
+  Lat/Lng:  45.517137, -73.557311
+
+[mtelus] MTelus
+  Address:  59 Rue Sainte-Catherine Est
+  Events:   https://mtelus.com/en/events?display=list
+  Website:  https://mtelus.com
+  Domains:  mtelus.com, www.mtelus.com
+  Parsing:  no CSS selector -- Algolia JSON API
+            mtelusAPIBase -> https://mtelus.com/api/algolia/search?query=
+  Lat/Lng:  45.510586, -73.56321
+
+[bar-le-ritz] Bar Le Ritz PDB
+  Address:  179 Rue Jean-Talon Ouest
+  Events:   https://www.barleritzpdb.com/vnements
+  Website:  https://www.barleritzpdb.com
+  Domains:  barleritzpdb.com, www.barleritzpdb.com
+  Parsing:  no CSS selector -- Squarespace JSON
+            BarLeRitzURL -> https://www.barleritzpdb.com/vnements?format=json
+  Lat/Lng:  45.530927, -73.614784
+
+[turbo-haus] Turbo Haüs
+  Address:  2040 Rue Saint-Denis
+  Events:   https://www.turbohaus.ca/cal
+  Website:  https://www.turbohaus.ca
+  Domains:  turbohaus.ca, www.turbohaus.ca
+  Parsing:  no CSS selector -- JSON API
+            TurboHausURL -> https://www.turbohaus.ca/api/events
+  Lat/Lng:  45.516304, -73.566101
+
+
+Note: the CSS selector constants and the four JSON-API URL/endpoint constants
+(OlympiaSelector, OlympiaAjaxURL, TurboHausURL, BarLeRitzURL, mtelusAPIBase)
+are still declared in venues.go -- parsers.go references them directly for the
+four JSON-driven venues (Olympia, MTelus, Bar Le Ritz, Turbo Haüs), so they
+had to stay even with the map emptied out.

@@ -627,7 +627,28 @@ func convertMTelusHit(hit mtelusHit) Event {
 		Time:       timeStr,
 		TicketURL:  ticketURL,
 		EventImage: thumbnail,
+		// Genre -- spec item 6. MTelus's own Algolia-backed API is the one
+		// hardcoded source in this file that already returns structured
+		// genre data (hit.Genre, see mtelusGenre's own struct, above) --
+		// nothing invented here, just passed through instead of discarded
+		// the way it silently was before this field existed at all.
+		Genre: joinGenreNames(hit.Genre),
 	}
 	e.enrichEvent()
 	return e
+}
+
+// joinGenreNames -- see Event.Genre's own comment (events.go) for the
+// comma-separated shape this feeds. hit.Genre (mtelusHit, above) is
+// already a []mtelusGenre from MTelus's own API response; this just pulls
+// each one's Name and joins them, same "small local helper next to its
+// one real caller" scope as the rest of this file's per-venue converters.
+func joinGenreNames(genres []mtelusGenre) string {
+	names := make([]string, 0, len(genres))
+	for _, g := range genres {
+		if g.Name != "" {
+			names = append(names, g.Name)
+		}
+	}
+	return strings.Join(names, ", ")
 }
