@@ -56,17 +56,6 @@ The EBYS instrument — architecture, engine, AI, training, hardware.
 
 ---
 
-## business/
-
-Revenue models and a speculative future layer.
-
-| File | What it covers |
-|------|----------------|
-| `MONETISATION_MODELS.md` | Active revenue models: hardware, merch, nag screen, Stripe Connect |
-| `SPECULATIVE.md` | Exploratory concept: cricket protein powder company, CRKT token economy |
-
----
-
 ## Licence
 
 Copyleft © 2026 Eat Bugs You Spider!
