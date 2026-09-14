@@ -1,4 +1,4 @@
-# Eat Bugs You Spider! - Chirp! 
+# Gnumbat
 
 AI-assisted Dj deck / Indie Webradios
 Montréal, 2023 — en cours
