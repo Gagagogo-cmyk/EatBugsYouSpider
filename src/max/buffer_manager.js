@@ -1,4 +1,4 @@
-// EBYS — Buffer Manager  v2
+// Gnumbat — Buffer Manager  v2
 //
 // Two-level ring buffer architecture for scalable multi-source-track playback.
 //

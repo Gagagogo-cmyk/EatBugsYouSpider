@@ -1,0 +1,184 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.knnclassifier Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.knnclassifier</h1>
+  <div class="digest">Classification with K-Nearest Neighbours</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>A nearest neighbour classifier using a <a href="fluid.kdtree.html">fluid.kdtree</a> .</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>In order to make predictions, the KNNClassifier must first be <code>fit</code> with a <a href="fluid.dataset.html">fluid.dataset</a> of data points and a target <a href="fluid.labelset.html">fluid.labelset</a> with a label for each point in the DataSet (by means of a shared identifier).</p>
+<p>To classify a point, <code>numneighbours</code> neighbours are determined for the incoming point and whichever class is most common among the neighbours is predicted as the class for the point. If an even number of <code>numneighbours</code> is requested and there is a tie, the label with the closer point will be predicted.</p>
+
+
+    <p>Read more about fluid.knnclassifier on the <a href='https://learn.flucoma.org/reference/knnclassifier'>learn platform</a>.</p>
+    
+    <p>fluid.knnclassifier is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Name<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: )</span><div class="description"><p>Name for this instance, so that it can be reused or referred to by other data objects. If none is given, a name will be generated</p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">numneighbours
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 3)</span>
+      </h3>
+      <div class="description"><p>The number of neighbours to consider</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">weight
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>Whether the neighbours should be weighted by their distance so that closer points have more influence over determining the class. The default is 1 (true).</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='fit'>fit</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)),  </span><span class='arg'>labelSet (Unknown Type (input labelset)) </span><div class='description'>
+       <p>Fit the model to a source <a href="fluid.dataset.html">fluid.dataset</a> and a target <a href="fluid.labelset.html">fluid.labelset</a>. The labels in the <a href="fluid.labelset.html">fluid.labelset</a> correspond to the data points in the <a href="fluid.dataset.html">fluid.dataset</a> by means of a shared identifier.</p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>Source <a href="fluid.dataset.html">fluid.dataset</a></p>
+</li><li>labelSet: <p>A <a href="fluid.labelset.html">fluid.labelset</a> of labels for the source <code>dataset</code></p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='predict'>predict</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)),  </span><span class='arg'>labelSet (symbol) </span><div class='description'>
+       <p>Given a fitted model, predict labels for a <a href="fluid.dataset.html">fluid.dataset</a> and write these to a <a href="fluid.labelset.html">fluid.labelset</a></p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> of data points to predict labels for</p>
+</li><li>labelSet: <p>A <a href="fluid.labelset.html">fluid.labelset</a> to write the predicted labels into</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='predictpoint'>predictpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>buffer (symbol) </span><div class='description'>
+       <p>Given a fitted model, predict a label for a data point in array and return to the caller</p>
+
+<h5>Argument details:</h5>       <ul><li>buffer: <p>A data point stored in a array</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='cols'>cols</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of columns (dimensions) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='clear'>clear</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Resets the internal state of the model</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='size'>size</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of data points (entries / observations) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+    <div class='method_group'><h3 class='method_name' name='write'>write</h3>
+      <span class='arglist'>Arguments</span>
+        <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Save the internal state of the object to a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+    </div>
+    <div class='method_group'><h3 class='method_name' name='read'>read</h3>
+      <span class='arglist'>Arguments</span>
+      <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Replace the internal state of the object from a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+     
+    </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.knnclassifier object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.knnclassifier objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.knnregressor.html">KNNRegressor</a></h3><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3><h3 class="seealso_name"><a href="fluid.mlpclassifier.html">MLPClassifier</a></h3><h3 class="seealso_name"><a href="fluid.labelset.html">LabelSet</a></h3></section> 
+</body>
+</html>

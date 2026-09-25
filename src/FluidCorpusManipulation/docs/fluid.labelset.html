@@ -1,0 +1,210 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.labelset Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.labelset</h1>
+  <div class="digest">A set of labels associated with identifiers.</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>FluidLabelSet is a container associating identifiers with labels.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    
+
+    <p>Read more about fluid.labelset on the <a href='https://learn.flucoma.org/reference/labelset'>learn platform</a>.</p>
+    
+    <p>fluid.labelset is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Name of the LabelSet<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: )</span><div class="description"><p>Symbol with the FluidLabelSet name.</p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='addlabel'>addlabel</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol),  </span><span class='arg'>label (symbol) </span><div class='description'>
+       <p>Add a label to the FluidLabelSet.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier for this label.</p>
+</li><li>label: <p>The label to add.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='getlabel'>getlabel</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol) </span><div class='description'>
+       <p>Retrieve the label associated with an identifier. Will report an error if the identifier is not present in the set.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier for the label to be retrieved.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='deletelabel'>deletelabel</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol) </span><div class='description'>
+       <p>Delete a label given a certain identifier.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier to be deleted.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='updatelabel'>updatelabel</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol),  </span><span class='arg'>label (symbol) </span><div class='description'>
+       <p>Update a label for a given identifier in the label set.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier for this label.</p>
+</li><li>label: <p>The label to update.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='setlabel'>setlabel</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol),  </span><span class='arg'>label (symbol) </span><div class='description'>
+       <p>Set a label for a given identifier.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier for this label.</p>
+</li><li>label: <p>The label to update.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='merge'>merge</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceLabelSet (symbol),  </span><span class='arg'>overwrite (int) </span><div class='description'>
+       <p>Merge sourceLabelSet in the current LabelSet. It will replace the label with the same identifier if overwrite is set to 1.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceLabelSet: <p>The source LabelSet to be merged.</p>
+</li><li>overwrite: <p>A flag to allow overwrite labels with the same identifier.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='print'>print</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Post an abbreviated content of the label set in the window by default, but you can supply a custom action instead.</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='size'>size</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of data points (entries / observations) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='cols'>cols</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of columns (dimensions) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='clear'>clear</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Empty the label set and reset to a clean state.</p>
+
+       <ul></ul>
+     </div>
+   </div>
+    <div class='method_group'><h3 class='method_name' name='write'>write</h3>
+      <span class='arglist'>Arguments</span>
+        <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Save the internal state of the object to a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+    </div>
+    <div class='method_group'><h3 class='method_name' name='read'>read</h3>
+      <span class='arglist'>Arguments</span>
+      <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Replace the internal state of the object from a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+     
+    </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='getids'>getids</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>labelSet (symbol) </span><div class='description'>
+       <p>Export the LabelSet identifier to a FluidLabelSet.</p>
+
+<h5>Argument details:</h5>       <ul><li>labelSet: <p>The FluidLabelSet to export to. Its content will be replaced.</p>
+</li></ul>
+     </div>
+   </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.labelset object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.labelset objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3><h3 class="seealso_name"><a href="fluid.datasetquery.html">DataSetQuery</a></h3><h3 class="seealso_name"><a href="fluid.kmeans.html">KMeans</a></h3></section> 
+</body>
+</html>

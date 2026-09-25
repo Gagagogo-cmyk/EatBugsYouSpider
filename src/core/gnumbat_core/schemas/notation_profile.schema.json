@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/notation_profile.schema.json",
+  "title": "User-defined notation parser (opt-in; never built in)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.notation_profile/0\\.[0-9]+$"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^np_[a-z0-9_]{1,40}$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "split": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "delimiter": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8
+        },
+        "trim": {
+          "type": "boolean"
+        },
+        "drop_empty": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "delimiter"
+      ]
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "match": {
+            "type": "string",
+            "description": "ECMAScript-subset regex (no lookbehind, no named groups), applied with search semantics"
+          },
+          "flags": {
+            "enum": [
+              "",
+              "i"
+            ]
+          },
+          "emit": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "field"
+                    },
+                    "name": {
+                      "type": "string",
+                      "pattern": "^[^/]{1,64}$"
+                    },
+                    "type": {
+                      "enum": [
+                        "number",
+                        "integer",
+                        "string"
+                      ]
+                    },
+                    "group": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "template": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "name",
+                    "type"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "tag"
+                    },
+                    "group": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "template": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "ignore"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "id",
+          "match",
+          "emit"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "fallback": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "field"
+            },
+            "name": {
+              "type": "string",
+              "pattern": "^[^/]{1,64}$"
+            },
+            "type": {
+              "enum": [
+                "number",
+                "integer",
+                "string"
+              ]
+            },
+            "group": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "tag"
+            },
+            "group": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "ignore"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "profile_id",
+    "name",
+    "version",
+    "rules",
+    "fallback"
+  ],
+  "additionalProperties": true
+}

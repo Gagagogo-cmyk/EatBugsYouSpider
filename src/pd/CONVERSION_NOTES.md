@@ -1,6 +1,6 @@
 # Max → Pd conversion notes
 
-`ebys-analyze.maxpat` was converted to `ebys-analyze.pd` with a script
+`gnumbat-analyze.maxpat` was converted to `gnumbat-analyze.pd` with a script
 (structural, not hand-retyped), so every box and connection carried over with
 matching wiring. Nothing in `src/max/` was touched — both `.maxpat` files are
 untouched originals.
@@ -13,23 +13,23 @@ show up at load time, not from just reading the file format spec.
 
 ## Pitch/formant shifting and karma~ looping are deliberately NOT in the Pd version
 
-Both subsystems were stripped out of `ebys-analyze.pd` on request — pitch/
+Both subsystems were stripped out of `gnumbat-analyze.pd` on request — pitch/
 formant shift is handled by a separate DAW plugin, and playback/looping
 happens in the DAW too, not via Pd. Both still exist untouched in
-`ebys-analyze.maxpat` / `ebys-pitch.maxpat` — these removals are Pd-only.
+`gnumbat-analyze.maxpat` / `gnumbat-pitch.maxpat` — these removals are Pd-only.
 
 Removed:
-- the 4 `pfft~ ebys-pitch.maxpat ...` instances (voc/drm/bss/mel — the pitch/
-  formant shifter, which loaded `ebys-pitch.maxpat` as its FFT subpatch)
+- the 4 `pfft~ gnumbat-pitch.maxpat ...` instances (voc/drm/bss/mel — the pitch/
+  formant shifter, which loaded `gnumbat-pitch.maxpat` as its FFT subpatch)
 - the 8 command-router objects that only fed pitch/formant commands into
   `slot_router.js`: `pitchShift`, `formantShift`, `setShiftBand`,
   `setPitchBand`, `setFormantBand`, `clearPitchBand`, `clearFormantBand`,
   `clearShiftBand`
-- `send ebys_pitchWindow` (only had a receiver inside the now-removed pitch
+- `send gnumbat_pitchWindow` (only had a receiver inside the now-removed pitch
   subpatch)
 - the 4 `karma~ ring_0_<stem>` loopers themselves
 
-`ebys-pitch.pd`, `gizmo_stub~.pd`, and `karma_stub~.pd` (all previously
+`gnumbat-pitch.pd`, `gizmo_stub~.pd`, and `karma_stub~.pd` (all previously
 generated as part of this conversion) are no longer used and have been
 removed from `src/pd/`.
 
@@ -308,8 +308,8 @@ subsystem removed above):
   into its matching re-included `obj-spec_mono_<stem>` inlet 0. A small
   `+~`/`+~`/`+~` -> `*~ 0.25` mono-sum stage combines all 4 preview outputs
   and feeds that into both `obj-spec_mono_master` and `obj-wave_mono` inlet
-  0. This only runs for the main `ebys-analyze` conversion, never for
-  `ebys-pitch` subpatches. Uses the `Canvas.id_to_index` registry (already
+  0. This only runs for the main `gnumbat-analyze` conversion, never for
+  `gnumbat-pitch` subpatches. Uses the `Canvas.id_to_index` registry (already
   populated by every `canvas.add(line, box_id=...)` call in `convert_canvas`)
   to find the already-emitted Pd index of each `obj-spec_mono_*`/
   `obj-wave_mono` box -- no changes were needed to `convert_canvas` itself
@@ -317,7 +317,7 @@ subsystem removed above):
 
 Net result: 4 new `stem_preview~` instances, 4 new mixer-glue objects
 (3x `+~` + 1x `*~ 0.25`), and 10 new `#X connect` lines in
-`ebys-analyze.pd` (4 stem taps -> per-stem spec_mono, 4 into the sum chain,
+`gnumbat-analyze.pd` (4 stem taps -> per-stem spec_mono, 4 into the sum chain,
 2 out of the sum chain into spec_mono_master and wave_mono).
 
 Caveat, same as everywhere else in this document: there's no real Pd binary
@@ -365,7 +365,7 @@ name) snaps all 4 stem arrays to whole-bar length at once.
   `canvas.id_to_index`/`canvas.add`/`canvas.next_index` pattern as
   `add_stem_preview_subsystem()`) adds 1 `receive bpm` object + 4
   `bpm_bar_resize~ <arrayname>` instances, positioned below the
-  `stem_preview~` row, and only runs for the main `ebys-analyze`
+  `stem_preview~` row, and only runs for the main `gnumbat-analyze`
   conversion (mirrors `add_stem_preview_subsystem`).
 
 Caveat: Pd's `[expr]` recomputes on ANY inlet receiving a value (all
@@ -417,7 +417,7 @@ pass in this file).
 
 User request: "clean up the patch. make sure nothing are placed on top of
 each other." New standalone script `deoverlap.py`, run once against the
-final `ebys-analyze.pd` after the changes above. It tracks canvas scope
+final `gnumbat-analyze.pd` after the changes above. It tracks canvas scope
 nesting the same way `validate_pd.py` does (root `#N canvas` never closed
 by a restore; every subsequent `#N canvas` opens a scope closed by the
 next balancing `#X restore`), collects every box with real screen
@@ -502,11 +502,11 @@ bangs on change):
   `patcher.filepath` -> explicit `--data-dir` arg (a standalone process
   has no patch to ask), `File` -> `fs`, `Task`/`.schedule()` ->
   `setTimeout`, `post()` -> `console.log()`, `outlet(0, "bang")` -> an OSC
-  UDP message. Tested against the real `EBYS/data/` directory --
+  UDP message. Tested against the real `Gnumbat/data/` directory --
   correctly reads the current session, detects the baseline stream.txt,
   and sends the OSC message.
 - **`src/pd/bridge_streamWatcher.pd`** -- replaces `js_streamWatcher_stub.pd`
-  in `ebys-analyze.pd`. `[netreceive -u -b 9001]` -> `[oscparse]` ->
+  in `gnumbat-analyze.pd`. `[netreceive -u -b 9001]` -> `[oscparse]` ->
   `[route streamWatcherBang]` -> bang, matching the original outlet
   exactly. Verified against Pd's actual `x_net.c`/`x_misc.c` source (not
   guessed): `netreceive` needs `-b` for raw/binary mode to feed
@@ -562,7 +562,7 @@ the symmetry and let separation converge normally. Went from 7124
 overlapping pairs down to 0 over several script runs (each run is fully
 resumable -- it just re-reads whatever the file currently looks like and
 keeps separating). This superseded the two `deoverlap.py` runs above --
-`ebys-analyze.pd` now reflects `layout_preserve.py`'s output, not
+`gnumbat-analyze.pd` now reflects `layout_preserve.py`'s output, not
 `deoverlap.py`'s. `deoverlap.py` is left in the repo in case a full grid
 re-layout is ever wanted again instead.
 
@@ -661,7 +661,7 @@ targets (`width_*`, `joyX_*/joyY_*`, `fxsend_*`, `fxreturn_*`, `master_gain`,
 pan/width and fx-return/master-gain exclusion passes. So `obj-20100` and
 `obj-20101` were added to a new `SPAT_FX_ROUTER_EXCLUDE_IDS` set in
 `convert_maxpat.py` (same pattern as `PAN_WIDTH_EXCLUDE_IDS` etc.) so a future
-reconversion won't regenerate the stub. `src/max/ebys-analyze.maxpat` is
+reconversion won't regenerate the stub. `src/max/gnumbat-analyze.maxpat` is
 untouched, as always — this is a Pd-side-only removal.
 
 **karma~ replaced with `stem_timestretch~`.** The user deleted the old
@@ -682,7 +682,7 @@ one voice of `timeStretch~`, keyed to a given array name (creation arg).
 at the current ratio (no smooth mid-playback ratio change — re-send `play`
 to restart at a new ratio); `stop` stops it.
 
-Four instances were wired into `ebys-analyze.pd` under a new "TRAINING
+Four instances were wired into `gnumbat-analyze.pd` under a new "TRAINING
 PLAYBACK PREVIEW" section (one per stem: vocals/melody/bass/drums), each
 `floatatom → "ratio $1" → stem_timestretch~ stem_<name> → *~ 0.4`, summed
 into the patch's one remaining `dac~ 1 2`. This is explicitly *preview/
@@ -754,7 +754,7 @@ a Max `dict analysisLib` object with no Pd equivalent — dropped, since the
 bridge is already the single source of truth for `analysis_library.json`
 (same as the original `library` JS variable was) and nothing on the Pd side
 could meaningfully consume a raw `replace` message anyway. The
-`ebys-analyze.pd` connection from the old stub's outlet 0 into `dict
+`gnumbat-analyze.pd` connection from the old stub's outlet 0 into `dict
 analysisLib` was removed accordingly (that `dict` object itself is left in
 place, untouched, still fed by the native `read`/`clear`/`export` message
 wires — those are unrelated to this change and out of scope here).
@@ -947,7 +947,7 @@ regenerate the (now-deleted) blind stub.
 ## `slicer.js`: real segment selection, transport, and BPM/downbeat timing
 
 `js_slicer_stub.pd` → real `bridge_slicer` (2026-08-01). `slicer.js` is
-EBYS's sequencing brain — segment selection, BPM/downbeat-aware timing,
+Gnumbat's sequencing brain — segment selection, BPM/downbeat-aware timing,
 transport (start/stop/next/loop), learned-bias scoring, genre/key filters,
 sync groups. Its own header comment says it plainly: "Slicer does NOT touch
 audio objects or DSP parameters directly. It emits play triggers on outlet 0
@@ -1017,7 +1017,7 @@ Simplifications, beyond the platform glue (also documented at the top of
 
 ## Link audit: cross-checking the real .maxpat connection graph
 
-Per request, I parsed `ebys-analyze.maxpat`'s actual JSON (not memory/assumption)
+Per request, I parsed `gnumbat-analyze.maxpat`'s actual JSON (not memory/assumption)
 to get the complete, real inbound/outbound patchline list for every `js`
 control-logic object, plus every `dict`/`send`/`receive` hub in the file, and
 checked each against what's actually wired in the Pd conversion. Findings:
@@ -1110,7 +1110,7 @@ counts aren't arbitrary: pitch=2, loudness=2, spectral=7, chroma=12, mfcc=13
 per stem (2+2+7+12+13=36 ×4 stems=144), matching exactly what's built.
 
 **`dict analysisLib` swapped for `dict_stub.pd`.** The literal Max `dict`
-object was still sitting in `ebys-analyze.pd`, left over from before
+object was still sitting in `gnumbat-analyze.pd`, left over from before
 `bridge_sliceWriter` superseded its connection to `slice_writer.js` — Pd has
 no `dict` object at all, so this would throw a "couldn't create" error on
 load. Traced its exact 4 real connections in the file (read/clear/export
@@ -1151,8 +1151,8 @@ Verified: a full pairwise bounding-box scan of all 180 array boxes (using
 each box's actual declared width/height from its `#X coords` line) confirms
 0 overlapping pairs after the change; `validate_pd.py` reports identical
 counts to before (`array` 180, `connect` 379, `restore` 184, `N_canvas` 185),
-0 structural errors. `src/max/ebys-analyze.maxpat` /
-`ebys-pitch.maxpat` confirmed byte-identical (mtime + size) throughout.
+0 structural errors. `src/max/gnumbat-analyze.maxpat` /
+`gnumbat-pitch.maxpat` confirmed byte-identical (mtime + size) throughout.
 
 **Applied twice.** The first pass landed on disk, was confirmed via
 `validate_pd.py`, then a re-check moments later found it gone -- the file
@@ -1167,7 +1167,7 @@ landed via two independent read paths (not just the one that reported
 success the first time) before considering it done. `connect` count was 379
 both before and after this whole back-and-forth, so nothing was structurally
 lost from whatever changed the `msg`/`text` counts. Worth knowing: if
-`ebys-analyze.pd` is open in Pd while edits are being made to it externally,
+`gnumbat-analyze.pd` is open in Pd while edits are being made to it externally,
 saving from Pd will silently overwrite those edits.
 
 ## analyze_reader.js: the file-I/O/batch half, finished (2026-08-02)
@@ -1247,7 +1247,7 @@ file path to load for vocals/drums/bass/melody respectively. The
 by matching on the leading float and passing the remainder (the path)
 through -- one object instead of 4 separate addresses.
 
-**Wired into `ebys-analyze.pd`.** The `[counter 1 4]` object already
+**Wired into `gnumbat-analyze.pd`.** The `[counter 1 4]` object already
 sitting in the LOADING section (this session found it pre-existing, not
 previously connected to anything real) now drives the whole loop: its
 output → `[prepend startStem]` → `bridge_analyzeReader`'s inlet;
@@ -1430,7 +1430,7 @@ the wipe completes is very unlikely -- but it's two independent processes
 coordinated only by Pd's send order, not by any actual acknowledgment,
 so it's not impossible either.
 
-Validated: `obj`/`msg`/`text`/`connect`/etc. counts on `ebys-analyze.pd`
+Validated: `obj`/`msg`/`text`/`connect`/etc. counts on `gnumbat-analyze.pd`
 completely unchanged (only message-box *text* was edited, no boxes
 added/removed), 0 structural errors, `registry_router.pd` itself 0
 errors, `src/max/*.maxpat` confirmed byte-identical throughout.
@@ -1500,7 +1500,7 @@ readable" over compactness.
 ## Array vertical layout reverted, then reapplied (2026-08-02)
 
 The single-vertical-column array rebuild described above got clobbered:
-`ebys-analyze.pd` was open in Pd locally, and a save from inside Pd
+`gnumbat-analyze.pd` was open in Pd locally, and a save from inside Pd
 overwrote the file back to an earlier disk state (the wide 4-column grid
 from before the rebuild). `registry_router` and the whole analyze_reader
 batch/counter cluster (bridge_analyzeReader, stem_loader x4, the
@@ -1630,7 +1630,7 @@ Three follow-on changes:
 
 `js_buffer_manager_stub` (an 18-outlet passthrough placeholder, same idea as
 every other `js`-stub in this project) is replaced by `buffer_manager` --
-renamed in place at its existing box index in `ebys-analyze.pd` (zero
+renamed in place at its existing box index in `gnumbat-analyze.pd` (zero
 renumbering) so every pre-existing connection at outlets 8-12/14-17 (the 4
 ring `fluid.bufcompose~`, 4 bake `fluid.bufcompose~`, and `slot_router`) and
 every inbound connection (from `bridge_slicer` and the 16 `prepend
@@ -1701,7 +1701,7 @@ pure file-lookup/session bookkeeping becomes a Node/OSC bridge.
 **A note on message protocol for `play`/`preload`/`stop`/`resume`/
 `bakeSnapshot`/`bakeRestore`:** unlike `src_done`/`ring_done`/`bake_done`
 (whose `"<verb> <stem> ..."` shape is confirmed by the `prepend` boxes
-already wired into the old stub in `ebys-analyze.pd`), nothing currently
+already wired into the old stub in `gnumbat-analyze.pd`), nothing currently
 calls these six -- there was no existing wiring to confirm their shape
 against. `buffer_manager.pd`'s dispatcher assumes the same `"<verb> <stem>
 <args...>"` convention for consistency; whatever GUI/bridge component ends
@@ -1736,7 +1736,7 @@ top-level `route` needs a small adjustment if it doesn't).
 
 `validate_pd.py`: 0 structural errors across `buffer_manager.pd`,
 `buffer_manager_stem.pd`, `cycle_slot.pd`, `bridge_bufferManager.pd`, and
-`ebys-analyze.pd` after the rename (box/connect counts unchanged by the
+`gnumbat-analyze.pd` after the rename (box/connect counts unchanged by the
 rename itself, as expected for a content-only edit).
 `src/max/*.maxpat` unchanged (confirmed after every edit, throughout).
 
@@ -1810,7 +1810,7 @@ transition mode, and (b) Pd-side buttons to drive it.
   restriction) — unlock first if you want to loop/transition-score a
   locked stem independently.
 
-**`ebys-analyze.pd` changes:** 23 new message boxes in a new "LAYER /
+**`gnumbat-analyze.pd` changes:** 23 new message boxes in a new "LAYER /
 TRANSITION SCORING MODES" section next to the existing training-playback
 delay/`next <stem>` boxes — click-to-fire, same as the existing `next
 bass` etc. boxes (Pd message boxes are directly clickable in run mode, no
@@ -1910,7 +1910,7 @@ mis-read on my part, not a real bug — outlet0 already fans out to both the
 `play` message and the delay-start outlet; reverted that speculative
 edit.)
 
-`ebys-analyze.pd`'s 4 `stem_timestretch~` instances (lines ~1311–1317)
+`gnumbat-analyze.pd`'s 4 `stem_timestretch~` instances (lines ~1311–1317)
 were retargeted from stale `stem_vocals`/`stem_melo`/`stem_bass`/
 `stem_drums` (arrays that stopped existing once the raw stems were split
 into true stereo `-0`/`-1` pairs) to the correct current mono arrays:
@@ -1939,7 +1939,7 @@ end-to-end.
 
 1. Install ELSE and FluCoMa via Deken — this alone should clear the large
    majority of remaining "couldn't create" messages from your log.
-2. Re-open `ebys-analyze.pd` and paste any NEW error output — I don't have a
+2. Re-open `gnumbat-analyze.pd` and paste any NEW error output — I don't have a
    Pd binary available in this environment to test against directly, so this
    fix pass was done from your log plus Pd's published object reference, not
    verified end-to-end. Some things may need another round. The
@@ -1953,3 +1953,94 @@ end-to-end.
    `node bridge/buffer_manager_bridge.js --data-dir /path/to/EBYS/data`).
    With `buffer_manager` now built, every subsystem flagged as a stub
    earlier in this document is either done or intentionally dropped.
+
+## GUI hub built; two silent bugs and two wrong docs found on the way (2026-08-08)
+
+Built the control surface: `bridge_guiHub.pd`, `stem_telemetry~.pd`,
+`src/gui/gui_hub_bridge.js` (HTTP + WebSocket + OSC), `src/gui/gnumbat-link.js`,
+`src/gui/gnumbat-live.js`, `src/gui/panel.html`. `gnumbat-analyze.pd` gained 16
+objects and 25 connections, all additive — no existing line changed, so
+nothing that worked before can have been disturbed.
+
+Connecting a GUI is the first thing that has ever driven these inlets from
+outside the patch, and it surfaced four problems that could not have shown up
+any other way.
+
+### 1. Every inbound OSC command was missing its handler (fixed)
+
+Pd's `[oscformat]` emits a leading slash, so a message leaves the patch as
+`/next`. All four bridges dispatch on the bare selector — `DISPATCH.next` —
+because those tables were transcribed from Max, where there is no slash. So
+`DISPATCH["/next"]` was `undefined` and every command would have logged
+`no handler for '/next'` and done nothing.
+
+Latent until now precisely because nothing had ever sent a command *into* the
+patch; the bridges had only been exercised in the outbound direction. Fixed in
+`osc.js`'s `decodeMessage` rather than in four places, so all four bridges are
+fixed at once and the DISPATCH tables keep reading like the Max originals.
+`encodeMessage` got the send-side mirror. Regression test:
+`src/gui/test_osc_roundtrip.js`.
+
+### 2. The `$`-escaping entry from 2026-08-03 has it backwards (NOT yet fixed)
+
+That entry concluded Pd's backslash is "a generic literal-character escape" and
+that `\$1` is "literal, inert, never-substituted", then acted on it: it stripped
+the backslashes from 13 `[value \$0-cid]` boxes in `cycle_slot.pd` and rewrote
+`buffer_manager_stem.pd`'s 126 `\$0` object boxes the same way.
+
+That is inverted, and the vendored `timeStretch~` library settles it. It is
+unmodified upstream GPL code that demonstrably runs — it is the `karma~`
+replacement currently producing audio in this patch — and across
+`timeStretch~.pd` and `lib/timestretch-reader-abs.pd` it uses **137 escaped
+`\$n` in object boxes and zero bare ones**, including per-voice receive names
+like `[r \$1-timestretch-\$2-speed]`. If escaping made dollars inert, every
+voice would share one receive name and the multi-voice stretcher could not
+work.
+
+The actual rule: in the *file format*, the backslash is what carries a dollar
+through to the box. Bare `$` is substituted by `binbuf_read` at file-parse
+time, against arguments the canvas does not have. So the "fix" inverted correct
+code into broken code, and produced exactly the globally-shared-state failure
+it was trying to eliminate.
+
+**Not corrected here** — reverting it touches ~230 boxes across `cycle_slot.pd`
+and `buffer_manager_stem.pd` and belongs in its own change with its own smoke
+test, not bundled into GUI wiring. `src/pd/validate_pd.py` now flags bare `$`
+so the affected boxes are enumerable: `python3 src/pd/validate_pd.py "src/pd/*.pd"`.
+
+### 3. `GUI_PARAMETER_MAPPING.md`'s only two "live controls" were never live
+
+BPM and Record were listed as working today. `bpm_bar_resize~`,
+`stem_preview~` and `sfrecord~` are instantiated in **zero** patches — they
+exist as files and nothing creates one, so `[receive bpm]` and
+`[receive record_cmd]` do not exist. `peakamp~` was in the same state until
+`stem_telemetry~` became its first caller. The doc had recorded "this
+abstraction exists" as "this hook is live". Corrected in place.
+
+### 4. `readVocals` and friends go to a different object than the doc implies
+
+`analyze_reader.pd` (native Pd) owns `[route readVocals readMelo readBass
+readDrums set_track_name]`; `bridge_analyzeReader.pd` (Node) owns the batch/
+file-I/O commands. The mapping doc lists both under one heading, and the first
+draft of the hub's whitelist duly pointed `readVocals` at the bridge, which
+handles no such message. Caught by a test asserting the whitelist against the
+`[route]` line in the patch itself. They are two separate hub targets now
+(`reader` and `analyze`).
+
+### What is verified, and what still is not
+
+`test_osc_roundtrip.js` (21 assertions) covers OSC framing, the whitelist
+against the real DISPATCH tables, telemetry shaping, and WebSocket framing.
+`test_hub_e2e.js` (9 assertions) runs the real hub against a real WebSocket
+client and a fake Pd on real sockets — every link in the chain except Pd.
+
+The Pd half is code review only; no Pd binary was available. Same standing
+caveat as the rest of this conversion, now narrowed to a short list:
+
+- **`[array get]`** in `stem_telemetry~.pd` — assumed to output the whole
+  array as a list on bang. First thing to check.
+- `[route]`'s list output feeding the dynamic-send box `[; $1 $2]` in
+  `bridge_guiHub.pd` (and the deliberate absence of a `[list trim]` in front
+  of it — trimming there would silently send nothing anywhere).
+- Whether `stem_telemetry~`'s report rates hold up with five instances and DSP
+  running.

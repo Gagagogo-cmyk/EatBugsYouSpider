@@ -1,0 +1,171 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.sinefeature~ Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.sinefeature~</h1>
+  <div class="digest">Sinusoidal Peak Tracking</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Interpolated Sinusoidal Peak Tracking on the Spectrum.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>This process is tracking peaks in the spectrum, then estimating an interpolated frequency and amplitude of that peak in relation to its spectral context. It is the first part of the process used by <a href="fluid.sines~.html">fluid.sines~</a>.</p>
+
+
+    <p>Read more about fluid.sinefeature~ on the <a href='https://learn.flucoma.org/reference/sinefeature'>learn platform</a>.</p>
+    
+    <p>fluid.sinefeature~ is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Number of Sinusoidal Peaks<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: 10)</span><div class="description"><p>Shorthand argument for <code>numpeaks</code></p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">detectionthreshold
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -96.0)</span>
+      </h3>
+      <div class="description"><p>The threshold in dB above which a magnitude peak is considered to be a sinusoidal component.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">fftsettings
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: [[&#39;winSize&#39;, 1024], [&#39;hopSize&#39;, -1], [&#39;fftSize&#39;, -1]])</span>
+      </h3>
+      <div class="description"><p>FFT settings consist of three numbers representing the window size, hop size and FFT size in samples:</p>
+<p>The hop size and fft size can both be set to -1 (and are by default), with slightly different meanings:</p>
+<ul class="simple">
+<li>For the hop size, -1 = <code>windowsize/2</code></li>
+<li>For the FFT size, -1 = <code>windowsize</code> snapped to the nearest equal / greater power of 2 (e.g. <code>windowsize 1024</code> =&gt; <code>fftsize 1024</code>, but <code>windowssize 1000</code> also =&gt; <code>fftsize 1024</code>)</li>
+</ul>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>FFTSize, if != -1, will snap to the next greatest power of two &amp;gt; 4</li>
+<li>The maximum FFT size is limited to the value of the <code>maxfftsize</code> argument</li>
+<li>if FFT size != -1, then window size is clipped at FFT size</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">frequnit
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The units and scale used to report the frequency of the peaks. By default (0), it is in Hz (linear), and the alternative (1) is in MIDI (logarithmic).</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">magunit
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The units and scale used to report the magnitude of the peaks. By default (0), it is in amp (linear), and the alternative (1) is in dB (logarithmic).</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfftsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Set an explicit upper bound on the FFT size at object instantiation. The default of -1 sets this to whatever the initial FFT size is</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxnumpeaks
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Manually sets a maximum value for <code>numpeaks</code>. Can only be set at object instantiation. The default of -1 sets this equal to the initial value of <code>numpeaks</code></p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numpeaks
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 10)</span>
+      </h3>
+      <div class="description"><p>The number of peaks to search report back. It is capped at (fftSize / 2) + 1.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+<li>Maximum: MIN(<code>(fft size / 2) + 1 (see fft settings), maxnumpeaks</code>)</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">order
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>How the reported peaks are to be ordered. By default (0), it is by frequencies (lowest first), and the alternative (1) is by magnitude (loudest first).</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.bufsinefeature.html">BufSineFeature</a></h3><h3 class="seealso_name"><a href="fluid.sines~.html">Sines</a></h3></section> 
+</body>
+</html>

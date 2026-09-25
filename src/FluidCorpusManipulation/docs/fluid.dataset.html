@@ -1,0 +1,254 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.dataset Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.dataset</h1>
+  <div class="digest">A set of data associated with identifiers.</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>FluidDataSet is a container associating data points with identifiers.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    
+
+    <p>Read more about fluid.dataset on the <a href='https://learn.flucoma.org/reference/dataset'>learn platform</a>.</p>
+    
+    <p>fluid.dataset is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Name of the DataSet<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: )</span><div class="description"><p>The name of the FluidDataSet. This is unique between all FluidDataSets.</p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='addpoint'>addpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol),  </span><span class='arg'>buffer (symbol) </span><div class='description'>
+       <p>Add a new point to the FluidDataSet. The dimensionality of the FluidDataSet is governed by the size of the first point added. If the identifier already exists, or if the size of the data does not match the dimensionality of the FluidDataSet an error will be reported.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier for the point.</p>
+</li><li>buffer: <p>A array containing the data for the point.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='getpoint'>getpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol),  </span><span class='arg'>buffer (symbol) </span><div class='description'>
+       <p>Retrieve a point from the data set into a array. If the identifier does not exist an error will be reported.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier for the point to be retrieved.</p>
+</li><li>buffer: <p>A array where the retrieved data will be stored.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='setpoint'>setpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol),  </span><span class='arg'>buffer (symbol) </span><div class='description'>
+       <p>Set the point. If the identifier exists, this method behaves like updatePoint. If the identifier doesn't exist, it behaves like addPoint.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier for this point.</p>
+</li><li>buffer: <p>A array containing the data for the point.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='updatepoint'>updatepoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol),  </span><span class='arg'>buffer (symbol) </span><div class='description'>
+       <p>Update an existing identifier's data. If the identifier does not exist, or if the size of the data does not match the dimensionality of the FluidDataSet an error will be reported.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier for this point.</p>
+</li><li>buffer: <p>A array containing the data for the point.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='deletepoint'>deletepoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>identifier (symbol) </span><div class='description'>
+       <p>Remove a point from the data set. If the identifier doesn't exist an error will be reported.</p>
+
+<h5>Argument details:</h5>       <ul><li>identifier: <p>The identifier to be deleted.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='merge'>merge</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>overwrite (int) </span><div class='description'>
+       <p>Merge sourceDataSet in the current DataSet. It will replace the value of points with the same identifier if overwrite is set to 1. ​To add columns instead, see the 'transformJoin' method of FluidDataSetQuery.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>The source DataSet to be merged.</p>
+</li><li>overwrite: <p>A flag to allow overwrite points with the same identifier.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='print'>print</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Post an abbreviated content of the DataSet in the window by default, but you can supply a custom action instead.</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='size'>size</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of data points (entries / observations) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='cols'>cols</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of columns (dimensions) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='clear'>clear</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Empty the data set.</p>
+
+       <ul></ul>
+     </div>
+   </div>
+    <div class='method_group'><h3 class='method_name' name='write'>write</h3>
+      <span class='arglist'>Arguments</span>
+        <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Save the internal state of the object to a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+    </div>
+    <div class='method_group'><h3 class='method_name' name='read'>read</h3>
+      <span class='arglist'>Arguments</span>
+      <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Replace the internal state of the object from a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+     
+    </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='frombuffer'>frombuffer</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>buffer (symbol),  </span><span class='arg'>transpose (int),  </span><span class='arg'>labelSet (Unknown Type (input labelset)) </span><div class='description'>
+       <p>Import to the dataset the content of a array, with optional transposition, and a map of frames/channels to the original IDs as a FluidLabelSet.</p>
+
+<h5>Argument details:</h5>       <ul><li>buffer: <p>The buffer to read from. The dataset will be resized.</p>
+</li><li>transpose: <p>If 0, each buffer frame becomes a dataset point, and each buffer channel becomes a dataset dimension. If 1, channels become points, and frames become dimensions.</p>
+</li><li>labelSet: <p>The FluidLabelSet from which to retrieve the point's IDs associated with their reference frame number (or channel number if transposed).</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='tobuffer'>tobuffer</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>buffer (symbol),  </span><span class='arg'>transpose (int),  </span><span class='arg'>labelSet (symbol),  </span><span class='arg'>labelwise (int) </span><div class='description'>
+       <p>Dump the content of the dataset to a array, with optional transposition, and a map of frames/channels to the original IDs as a FluidLabelSet.</p>
+
+<h5>Argument details:</h5>       <ul><li>buffer: <p>The buffer to write to. It will be resized.</p>
+</li><li>transpose: <p>If 0, each dataset point becomes a buffer frame, and each dataset dimension becomes a buffer channel. If 1, points become channels, and dimensions become frames.</p>
+</li><li>labelSet: <p>The FluidLabelSet in which to dump the point's IDs associated with their reference frame number (or channel number if transposed).</p>
+</li><li>labelwise: <p>The reference order for the labelSet. By default (0), the frame number (or channel number if transposed) is the ID and the DataSet's IDs are the labels. When labelwise is set to 1, the original IDs are the IDs and the frame numbers (or channel numbers if transposed) are the labels.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='getids'>getids</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>labelSet (symbol) </span><div class='description'>
+       <p>Export the dataset identifier to a FluidLabelSet.</p>
+
+<h5>Argument details:</h5>       <ul><li>labelSet: <p>The FluidLabelSet to export to. Its content will be replaced.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='knearestdist'>knearestdist</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>buffer (symbol),  </span><span class='arg'>k (int) </span><div class='description'>
+       <p>Get the distances of the <code>k</code> nearest neighbours to a point. Note that this is a brute force distance measure, and comparatively inefficient for repeated queries against large datasets. For such cases, <a href="fluid.kdtree.html">fluid.kdtree</a> will be more efficient.</p>
+
+<h5>Argument details:</h5>       <ul><li>buffer: <p>A array containing a data point to match against. The number of frames in the buffer must match the dimensionality of the DataSet.</p>
+</li><li>k: <p>The number of nearest neighbours to return. The identifiers will be sorted, beginning with the nearest.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='knearest'>knearest</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>buffer (symbol),  </span><span class='arg'>k (int) </span><div class='description'>
+       <p>Returns the identifiers of the <code>k</code> points nearest to the one passed. Note that this is a brute force distance measure, and comparatively inefficient for repeated queries against large datasets. For such cases, <a href="fluid.kdtree.html">fluid.kdtree</a> will be more efficient.</p>
+
+<h5>Argument details:</h5>       <ul><li>buffer: <p>A array containing a data point to match against. The number of frames in the buffer must match the dimensionality of the DataSet.</p>
+</li><li>k: <p>The number of nearest neighbours to return. The identifiers will be sorted, beginning with the nearest.</p>
+</li></ul>
+     </div>
+   </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.dataset object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.dataset objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.labelset.html">LabelSet</a></h3><h3 class="seealso_name"><a href="fluid.datasetquery.html">DataSetQuery</a></h3><h3 class="seealso_name"><a href="fluid.kdtree.html">KDTree</a></h3><h3 class="seealso_name"><a href="fluid.knnclassifier.html">KNNClassifier</a></h3><h3 class="seealso_name"><a href="fluid.kmeans.html">KMeans</a></h3></section> 
+</body>
+</html>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS Max Patch — Dead Object Cleanup Script
+Gnumbat Max Patch — Dead Object Cleanup Script
 ============================================
 Removes 25 dead objects left over from the multitrack upgrade.
 These are the old segment-duration calculation chains
@@ -19,7 +19,7 @@ Run from the MAX/ folder:
 
 import json, shutil, os
 
-PATCH_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ebys-analyze.maxpat")
+PATCH_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gnumbat-analyze.maxpat")
 BACKUP_PATH = PATCH_PATH + ".pre_cleanup.bak"
 
 with open(PATCH_PATH) as f:
@@ -63,4 +63,4 @@ with open(PATCH_PATH, "w") as f:
 print(f"Written: {PATCH_PATH}")
 print(f"\nRemoved {removed_boxes} dead objects and {removed_lines} patchlines.")
 print(f"Patch: {len(boxes)} objects, {len(lines)} lines remaining.")
-print("\nDone. Reload ebys-analyze.maxpat in Max.")
+print("\nDone. Reload gnumbat-analyze.maxpat in Max.")

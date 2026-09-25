@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-patch_waveform_tap.py — add a master-output waveform tap to ebys-analyze.maxpat.
+patch_waveform_tap.py — add a master-output waveform tap to gnumbat-analyze.maxpat.
 
 Taps the four master channels (obj-mj_final_FL/FR/RL/RR), sums them to a mono
 signal, and extracts the per-frame signed peak pair:
@@ -15,7 +15,7 @@ to the TUI. `peakamp~ 40` reports every 40ms (~25Hz) — a waveform needs a much
 faster refresh than the VU meters' slow interval.
 
 Idempotent: re-running does nothing if the tap is already present.
-Reversible: `git checkout ebys-analyze.maxpat` undoes it. Reload the Max patch
+Reversible: `git checkout gnumbat-analyze.maxpat` undoes it. Reload the Max patch
 after running so the new DSP takes effect.
 
 Usage:  python3 patch_waveform_tap.py
@@ -23,7 +23,7 @@ Usage:  python3 patch_waveform_tap.py
 
 import json, os, sys
 
-PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ebys-analyze.maxpat')
+PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gnumbat-analyze.maxpat')
 GATE  = 'obj-7013'                       # gate 1 → ws_server
 SRC   = ['obj-mj_final_FL', 'obj-mj_final_FR', 'obj-mj_final_RL', 'obj-mj_final_RR']
 

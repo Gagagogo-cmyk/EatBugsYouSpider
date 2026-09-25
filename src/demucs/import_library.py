@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-import_library.py — Import EBYS JSON files into SQLite (ebys.db).
+import_library.py — Import Gnumbat JSON files into SQLite (gnumbat.db).
 
 Reads:
   MAX/analysis_library.json   — FluCoMa slices per stem per track
@@ -8,7 +8,7 @@ Reads:
   downbeats.json              — madmom downbeat/BPM data per track
 
 Writes:
-  ebys.db                     — canonical queryable store for PD migration
+  gnumbat.db                     — canonical queryable store for PD migration
 
 This script is ADDITIVE and IDEMPOTENT — safe to run multiple times.
 It uses INSERT OR REPLACE / ON CONFLICT DO UPDATE so existing rows are
@@ -23,7 +23,7 @@ Usage:
 import json, sqlite3, math, os, sys, argparse
 from collections import defaultdict
 
-# Relative to this file: src/demucs/ → src/ → EBYS/ (repo root)
+# Relative to this file: src/demucs/ → src/ → Gnumbat/ (repo root)
 _src_dir   = os.path.dirname(os.path.abspath(__file__))
 _root_dir  = os.path.dirname(os.path.dirname(_src_dir))
 _data_root = os.path.join(_root_dir, 'data')
@@ -43,7 +43,7 @@ def _current_session_id():
 
 _data_dir = os.path.join(_data_root, 'sessions', _current_session_id())
 
-DB_PATH        = os.path.join(_data_dir, 'ebys.db')
+DB_PATH        = os.path.join(_data_dir, 'gnumbat.db')
 LIB_PATH       = os.path.join(_data_dir, 'analysis_library.json')  # per-session primary copy
 GENRES_PATH    = os.path.join(_data_dir, 'genres.json')
 DOWNBEATS_PATH = os.path.join(_data_dir, 'downbeats.json')
@@ -88,7 +88,7 @@ def strip_suffix(name):
 # clobbered back to 'human' by a later import that doesn't know a track
 # came from the generative pipeline. This is what finetune_generative.py's
 # WHERE t.source = 'human' guard depends on to keep the two pipelines apart
-# even though they share ebys.db and the Max analysis step downstream.
+# even though they share gnumbat.db and the Max analysis step downstream.
 def source_for_name(name):
     return 'generated' if name.startswith('GEN__') else 'human'
 
@@ -167,7 +167,7 @@ def create_schema(conn):
     """)
     # Migration for DBs created before the 'source' column existed. CREATE
     # TABLE IF NOT EXISTS above is a no-op on an already-existing tracks
-    # table, so older ebys.db files need this ALTER separately. Idempotent:
+    # table, so older gnumbat.db files need this ALTER separately. Idempotent:
     # SQLite raises OperationalError on a duplicate column, which we treat
     # as "already migrated" rather than an error.
     try:
@@ -392,7 +392,7 @@ def _connect(journal):
     return conn
 
 def open_db():
-    """Open (creating + migrating) the session ebys.db. Prefers WAL, but WAL
+    """Open (creating + migrating) the session gnumbat.db. Prefers WAL, but WAL
     needs a shared-memory mmap that some filesystems (network / FUSE / certain
     cloud-synced mounts) reject with 'disk I/O error' on the first write. If
     that happens, fall back to a plain rollback journal, which works
@@ -409,7 +409,7 @@ def open_db():
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Import EBYS JSON files into SQLite')
+    parser = argparse.ArgumentParser(description='Import Gnumbat JSON files into SQLite')
     parser.add_argument('--track',  help='Import only this track (partial name match)')
     parser.add_argument('--status', action='store_true', help='Print DB counts and exit')
     args = parser.parse_args()
@@ -423,7 +423,7 @@ def main():
         n_beats   = conn.execute("SELECT COUNT(DISTINCT track_id) FROM downbeats").fetchone()[0]
         n_human     = conn.execute("SELECT COUNT(*) FROM tracks WHERE source = 'human'").fetchone()[0]
         n_generated = conn.execute("SELECT COUNT(*) FROM tracks WHERE source = 'generated'").fetchone()[0]
-        print(f'ebys.db — {n_tracks} tracks  {n_slices} slices  '
+        print(f'gnumbat.db — {n_tracks} tracks  {n_slices} slices  '
               f'{n_genres} with genres  {n_beats} with downbeats')
         print(f'  source: {n_human} human  {n_generated} generated')
         conn.close()
@@ -455,7 +455,7 @@ def main():
     # Summary
     n_tracks = conn.execute("SELECT COUNT(*) FROM tracks").fetchone()[0]
     n_slices = conn.execute("SELECT COUNT(*) FROM slices").fetchone()[0]
-    print(f'\nebys.db: {n_tracks} tracks  {n_slices} total slices')
+    print(f'\ngnumbat.db: {n_tracks} tracks  {n_slices} total slices')
 
     conn.close()
 

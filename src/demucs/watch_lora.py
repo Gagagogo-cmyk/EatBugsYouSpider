@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Watch LoRA raw/ and keep clean/train/val automatically in sync
+Gnumbat — Watch LoRA raw/ and keep clean/train/val automatically in sync
 
 Alex: "I want the preparation of the file to be automatic, but the
 training that takes hours to be manual. I want to enter a :command for it
@@ -41,8 +41,8 @@ import time
 import subprocess
 from pathlib import Path
 
-SRC_DIR = Path(__file__).parent                       # EBYS/src/demucs/
-ROOT_DIR = SRC_DIR.parent.parent                       # EBYS/
+SRC_DIR = Path(__file__).parent                       # Gnumbat/src/demucs/
+ROOT_DIR = SRC_DIR.parent.parent                       # Gnumbat/
 LORA_DIR = ROOT_DIR / "data" / "lora_corpus"
 RAW_DIR = LORA_DIR / "raw"
 CLEAN_DIR = LORA_DIR / "clean"
@@ -63,7 +63,7 @@ FILE_STABLE_S = 5          # ignore files still mid-copy (mtime younger than thi
 DEBOUNCE_S = 30             # wait this long with no NEW stable files before running prep+build
 LOCK_STALE_S = 6 * 60 * 60   # a lock this old is assumed abandoned, not a real still-running job
 
-CAPTION = "ebys user style"  # only used as the DEFAULT if nothing's been set yet — see updateLoraState()/state['caption']
+CAPTION = "gnumbat user style"  # only used as the DEFAULT if nothing's been set yet — see updateLoraState()/state['caption']
 
 
 def log(msg):

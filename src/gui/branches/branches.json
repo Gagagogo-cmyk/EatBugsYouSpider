@@ -1,0 +1,15 @@
+{
+  "seed": {
+    "id": "gnumbat-agpl-3.0",
+    "name": "Gnumbat AGPL 3.0",
+    "hashes": {
+      "src/gui/panel.html": "0fac1a2af7e96838731fd068ee7dcbca21916b045de7c66d72608b0f991b1e19",
+      "src/gui/ebys-live.js": "8f714ee5dfd117f875222591e72cb50e8685afabbf4adeaa0720a50aaa97704e",
+      "src/gui/ebys-link.js": "224e0a582d0b26d16c986757db8807ee4397a3c003dbb31a041541b7e95be36d",
+      "src/backend/event-crawler/frontend/base.html": "b4f9ab3194b548375d878b72039db8a82a3cfdf130b1d5fe3e70df68a118aa5d"
+    },
+    "createdAt": "2026-09-22T03:00:33.719Z"
+  },
+  "branches": [],
+  "head": "gnumbat-agpl-3.0"
+}

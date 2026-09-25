@@ -1,0 +1,196 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.mfcc~ Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.mfcc~</h1>
+  <div class="digest">Mel-Frequency Cepstral Coefficients as Spectral Descriptors in Realtime</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>A classic timbral audio descriptor, the Mel-Frequency Cepstral Coefficients (MFCCs).</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>MFCC stands for Mel-Frequency Cepstral Coefficients (&quot;cepstral&quot; is pronounced like &quot;kepstral&quot;). This analysis is often used for timbral description and timbral comparison. It compresses the overall spectrum into a smaller number of coefficients that, when taken together, describe the general contour of the spectrum.</p>
+<p>The MFCC values are derived by first computing a mel-frequency spectrum, just as in <a href="fluid.melbands~.html">fluid.melbands~</a>. <code>numcoeffs</code> coefficients are then calculated by using that mel-frequency spectrum as input to the discrete cosine transform. This means that the shape of the mel-frequency spectrum is compared to a number of cosine wave shapes (different cosine shapes created from different frequencies). Each MFCC value (i.e., &quot;coefficient&quot;) represents how similar the mel-frequency spectrum is to one of these cosine shapes.</p>
+<p>Other than the 0th coefficient, MFCCs are unchanged by differences in the overall energy of the spectrum (which relates to how we perceive loudness). This means that timbres with similar spectral contours, but different volumes, will still have similar MFCC values, other than MFCC 0. To remove any indication of loudness but keep the information about timbre, we can ignore MFCC 0 by setting the parameter <code>startcoeff</code> to 1.</p>
+
+
+    <p>Read more about fluid.mfcc~ on the <a href='https://learn.flucoma.org/reference/mfcc'>learn platform</a>.</p>
+    
+    <p>fluid.mfcc~ is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Number of Cepstral Coefficients<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: 13)</span><div class="description"><p>Shorthand argument for <code>numcoeffs</code></p>
+</div>
+      <!--  --><h3 class="argument_name">Number of Bands<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: 40)</span><div class="description"><p>Shorthand argument for <code>numbands</code></p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">fftsettings
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: [[&#39;winSize&#39;, 1024], [&#39;hopSize&#39;, -1], [&#39;fftSize&#39;, -1]])</span>
+      </h3>
+      <div class="description"><p>FFT settings consist of three numbers representing the window size, hop size and FFT size in samples:</p>
+<p>The hop size and fft size can both be set to -1 (and are by default), with slightly different meanings:</p>
+<ul class="simple">
+<li>For the hop size, -1 = <code>windowsize/2</code></li>
+<li>For the FFT size, -1 = <code>windowsize</code> snapped to the nearest equal / greater power of 2 (e.g. <code>windowsize 1024</code> =&gt; <code>fftsize 1024</code>, but <code>windowssize 1000</code> also =&gt; <code>fftsize 1024</code>)</li>
+</ul>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>FFTSize, if != -1, will snap to the next greatest power of two &amp;gt; 4</li>
+<li>The maximum FFT size is limited to the value of the <code>maxfftsize</code> argument</li>
+<li>if FFT size != -1, then window size is clipped at FFT size</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfreq
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 20000.0)</span>
+      </h3>
+      <div class="description"><p>The upper bound of the frequency band to use in analysis, in Hz.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfftsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Set an explicit upper bound on the FFT size at object instantiation. The default of -1 sets this to whatever the initial FFT size is</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxnumbands
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Manually sets a maximum value for <code>numbands</code>. Can only be set at object instantiation. The default of -1 sets this equal to the initial value of <code>numbands</code></p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxnumcoeffs
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Manually sets a maximum value for <code>numcoeffs</code>. Can only be set at object instantiation. The default of -1 sets this equal to the initial value of <code>numcoeffs</code></p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">minfreq
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 20.0)</span>
+      </h3>
+      <div class="description"><p>The lower bound of the frequency band to use in analysis, in Hz.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numbands
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 40)</span>
+      </h3>
+      <div class="description"><p>The number of mel-bands that will be perceptually equally distributed between <code>minfreq</code> and <code>maxfreq</code> to describe the spectral shape before the cepstral coefficients are computed.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: MAX(<code>numcoeffs, 2</code>)</li>
+<li>Maximum: MIN(<code>(fft size / 2) + 1 (see fft settings), maxnumbands</code>)</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numcoeffs
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 13)</span>
+      </h3>
+      <div class="description"><p>The number of cepstral coefficients to output. It is limited by the <code>maxnumcoeffs</code> parameter. When the number is smaller than the maximum, the output is zero-padded.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>2</code></li>
+<li>Maximum: MIN(<code>numbands, maxnumcoeffs</code>)</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startcoeff
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The lowest index of the output cepstral coefficients to return, zero-counting. This can be useful to skip over the 0th coefficient (by indicating <code>startcoeff</code> = 1), because the 0th coefficient is representative of the overall energy in spectrum, while the rest of the coefficients are not affected by overall energy, only the mel-frequency spectral contour.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+<li>Maximum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.bufmfcc.html">BufMFCC</a></h3><h3 class="seealso_name"><a href="fluid.pitch~.html">Pitch</a></h3><h3 class="seealso_name"><a href="fluid.melbands~.html">MelBands</a></h3><h3 class="seealso_name"><a href="fluid.loudness~.html">Loudness</a></h3><h3 class="seealso_name"><a href="fluid.spectralshape~.html">SpectralShape</a></h3></section> 
+</body>
+</html>

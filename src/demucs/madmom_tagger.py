@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Downbeat / Meter Tagger  v1
+Gnumbat — Downbeat / Meter Tagger  v1
 
 Uses madmom's DBNDownBeatTrackingProcessor to detect:
   - Time signature (meter: 2, 3, or 4)
@@ -26,8 +26,8 @@ Output JSON:
 
 Installation (madmom requires Python ≤ 3.11 — won't compile on 3.12+):
   brew install python@3.11
-  python3.11 -m venv ~/ebys-env
-  source ~/ebys-env/bin/activate
+  python3.11 -m venv ~/gnumbat-env
+  source ~/gnumbat-env/bin/activate
   pip install madmom --no-build-isolation
   # If Cython build fails, try:
   #   pip install cython==0.29.37 && pip install madmom --no-build-isolation
@@ -35,7 +35,7 @@ Installation (madmom requires Python ≤ 3.11 — won't compile on 3.12+):
   #   pip install git+https://github.com/CPJKU/madmom
 
 Usage:
-  cd ~/wherever/EBYS   # from repo root
+  cd ~/wherever/Gnumbat   # from repo root
 
   # Single file
   python3 madmom_tagger.py /path/to/original_track.mp3
@@ -248,7 +248,7 @@ def analyze_file(audio_path, beats_per_bar=(2, 3, 4)):
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main():
-    ap = argparse.ArgumentParser(description='EBYS Downbeat/Meter Tagger (madmom)')
+    ap = argparse.ArgumentParser(description='Gnumbat Downbeat/Meter Tagger (madmom)')
     ap.add_argument('mix', nargs='?', help='Original mix audio file')
     ap.add_argument('--stems-folder',
                     help='htdemucs stems folder — script finds the original mix')
@@ -306,7 +306,9 @@ def main():
 
     # ── Analyse ───────────────────────────────────────────────────────────────
     newly_analyzed = []
-    for mix_path, track_name in jobs:
+    # "PROGRESS i/n" lines are read live by watch_demucs.py (the plugin's status bars).
+    print(f'PROGRESS 0/{len(jobs)}', file=sys.stderr, flush=True)
+    for job_i, (mix_path, track_name) in enumerate(jobs):
         print(f'\n→ {track_name}', file=sys.stderr)
         print(f'  mix: {mix_path}', file=sys.stderr)
         try:
@@ -321,6 +323,7 @@ def main():
             newly_analyzed.append(track_name)
         else:
             print(f'  WARN: no result for "{track_name}" — will not be written', file=sys.stderr)
+        print(f'PROGRESS {job_i + 1}/{len(jobs)}', file=sys.stderr, flush=True)
 
     # ── Output ────────────────────────────────────────────────────────────────
     if not newly_analyzed:
@@ -343,8 +346,8 @@ if __name__ == '__main__':
 
 # ── Quick usage ───────────────────────────────────────────────────────────────
 #
-#   source ~/ebys-env/bin/activate       # Python 3.11 venv with madmom
-#   cd ~/wherever/EBYS   # from repo root
+#   source ~/gnumbat-env/bin/activate       # Python 3.11 venv with madmom
+#   cd ~/wherever/Gnumbat   # from repo root
 #
 #   # Single track (mix file directly):
 #   python3 madmom_tagger.py /path/to/track.mp3 --out downbeats.json

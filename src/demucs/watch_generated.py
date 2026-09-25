@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Watch Generated Dump Folder
+Gnumbat — Watch Generated Dump Folder
 
 The generative-pipeline counterpart to watch_demucs.py, but one layer up:
 watch_demucs.py watches raw_uploads/ for new audio and turns it into
@@ -32,7 +32,7 @@ What this script does NOT do, deliberately:
   docstring for the full pipeline-shape comparison.
 - No FluCoMa analysis. That still only runs inside the Max patch (FluCoMa's
   buf~ externals aren't callable outside Max — see GENERATIVE_LAYER.md).
-  This script gets a batch as far into stems/htdemucs/ + ebys.db as any
+  This script gets a batch as far into stems/htdemucs/ + gnumbat.db as any
   Python-only process can; the Max patch still has to be open to actually
   compute C/S/E/F/P/H/T for the new buffers, exactly as it does for real
   uploads.
@@ -50,15 +50,15 @@ from pathlib import Path
 from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 
-SRC_DIR      = Path(__file__).parent               # EBYS/src/demucs/
-ROOT_DIR     = SRC_DIR.parent.parent                # EBYS/ (repo root)
+SRC_DIR      = Path(__file__).parent               # Gnumbat/src/demucs/
+ROOT_DIR     = SRC_DIR.parent.parent                # Gnumbat/ (repo root)
 DUMP_DIR     = ROOT_DIR / "data" / "generated"       # generate_agent.py's own out_dir default
 INGEST_SCRIPT = SRC_DIR / "ingest_generated.py"
 
 DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
 # Serial processing queue — same reasoning as watch_demucs.py's: ingest_generated.py
-# ends in import_library.py, a write to the shared ebys.db. Two of those racing
+# ends in import_library.py, a write to the shared gnumbat.db. Two of those racing
 # concurrently is the failure mode being avoided, not anything specific to generation.
 _work_queue: queue.Queue = queue.Queue()
 _queued: set = set()

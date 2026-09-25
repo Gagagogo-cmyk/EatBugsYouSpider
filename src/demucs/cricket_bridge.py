@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Cricket → Generative Agent bridge
+Gnumbat — Cricket → Generative Agent bridge
 
 Closes the Phase 5 gap flagged in docs/instrument/USER_LORA.md: Cricket
 speaks in slicer.js commands (setDirPref, setWeight, setSegmentBars, ...)
@@ -56,9 +56,9 @@ deliberate human actions.
 
 Usage:
   # from a live intent file written by cricket.js
-  python3 cricket_bridge.py --stem melody --seed-from-db ../../data/current/ebys.db \
+  python3 cricket_bridge.py --stem melody --seed-from-db ../../data/current/gnumbat.db \
       --lora-ckpt-path ../../lora_out/lora_step1000.safetensors \
-      --invoke-phrase "ebys user style"
+      --invoke-phrase "gnumbat user style"
 
   # direct testing, no Max/Ollama/intent file needed
   python3 cricket_bridge.py --stem drums --genre "deep house" --bpm 124 \
@@ -217,12 +217,12 @@ def main():
     ap.add_argument("--genre", default=None)
     ap.add_argument("--bpm", type=float, default=None)
     ap.add_argument("--seed-from-db", default=None,
-                     help="default: ../../data/current/ebys.db, if it exists and --genre/--bpm weren't given")
+                     help="default: ../../data/current/gnumbat.db, if it exists and --genre/--bpm weren't given")
 
     ap.add_argument("--model", default=None, help="passthrough to generate_agent.py --model")
     ap.add_argument("--lora-ckpt-path", action="append", dest="lora_ckpt_path", metavar="PATH")
     ap.add_argument("--lora-strength", type=float, default=None)
-    ap.add_argument("--invoke-phrase", default="ebys user style",
+    ap.add_argument("--invoke-phrase", default="gnumbat user style",
                      help="should match build_lora_dataset.py's --caption used during training")
 
     ap.add_argument("--count", type=int, default=4)
@@ -244,7 +244,7 @@ def main():
 
     here = os.path.dirname(os.path.abspath(__file__))
     intent_path = args.intent_file or os.path.join(here, "..", "..", "data", "current", "cricket_intent.json")
-    default_db_path = os.path.join(here, "..", "..", "data", "current", "ebys.db")
+    default_db_path = os.path.join(here, "..", "..", "data", "current", "gnumbat.db")
     genres_path = args.genres_path or os.path.join(here, "..", "..", "data", "current", "genres.json")
     downbeats_path = args.downbeats_path or os.path.join(here, "..", "..", "data", "current", "downbeats.json")
 
@@ -288,7 +288,7 @@ def main():
         cmd += ["--genre", args.genre, "--bpm", str(args.bpm)]
     else:
         sys.exit("either --seed-from-db, or both --genre and --bpm, are required "
-                  f"(and no ebys.db found at the default path {default_db_path})")
+                  f"(and no gnumbat.db found at the default path {default_db_path})")
 
     if style_fragment:
         cmd += ["--style-fragment", style_fragment]

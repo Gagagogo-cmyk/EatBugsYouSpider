@@ -1,4 +1,4 @@
-# EBYS — Tech Stack
+# Gnumbat — Tech Stack
 
 ## Stem Separation
 **HTDemucs** (Facebook Research)

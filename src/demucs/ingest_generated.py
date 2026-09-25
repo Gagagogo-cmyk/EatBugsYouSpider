@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Ingest Generated Clips
+Gnumbat — Ingest Generated Clips
 
 This is the "raw upload" entry point for generate_agent.py's output — the
 generative-pipeline counterpart to watch_demucs.py, which is (and stays)
@@ -11,7 +11,7 @@ Why a separate file instead of teaching watch_demucs.py a second mode:
   Human pipeline:      raw_uploads/ → ffmpeg → Demucs stem separation →
                         genre_tagger.py / madmom_tagger.py (real audio,
                         real detection) → stems/htdemucs/<track>/ →
-                        Max/FluCoMa analysis → import_library.py → ebys.db
+                        Max/FluCoMa analysis → import_library.py → gnumbat.db
                         → (separately, on demand) finetune_generative.py
                         trains Stable Audio Open Small on these stems.
 
@@ -24,9 +24,9 @@ Why a separate file instead of teaching watch_demucs.py a second mode:
                         tag_generated.py (fabricated genre/BPM from the
                         generation prompt, not detected) → same
                         stems/htdemucs/ tree → same Max/FluCoMa analysis →
-                        same import_library.py → same ebys.db.
+                        same import_library.py → same gnumbat.db.
 
-Both pipelines converge on stems/htdemucs/ and ebys.db because that's
+Both pipelines converge on stems/htdemucs/ and gnumbat.db because that's
 where the SAME downstream analysis system (Max/FluCoMa descriptors,
 slicer.js candidate scoring) legitimately treats every isolated stem the
 same way, generated or not. What must NOT converge is training data:
@@ -56,8 +56,8 @@ import urllib.request
 from pathlib import Path
 from datetime import datetime, timezone
 
-SRC_DIR   = Path(__file__).parent          # EBYS/src/demucs/
-ROOT_DIR  = SRC_DIR.parent.parent          # EBYS/ (repo root)
+SRC_DIR   = Path(__file__).parent          # Gnumbat/src/demucs/
+ROOT_DIR  = SRC_DIR.parent.parent          # Gnumbat/ (repo root)
 DATA_ROOT = ROOT_DIR / "data"
 
 WS_SERVER_PROGRESS_URL = "http://localhost:8080/progress"
@@ -145,7 +145,7 @@ def update_generated_manifest_log(data_dir: Path, jobs, manifest_path):
     session came from generate_agent.py, from which batch manifest, and
     when they were ingested. The DB `source` column is the mechanism that
     actually keeps training data clean; this file is so a person looking at
-    a session folder doesn't have to open ebys.db to answer 'wait, which of
+    a session folder doesn't have to open gnumbat.db to answer 'wait, which of
     these tracks did I record and which did the model make?'"""
     log_path = data_dir / "generated_manifest.json"
     try:
@@ -171,7 +171,7 @@ def update_generated_manifest_log(data_dir: Path, jobs, manifest_path):
 def main():
     ap = argparse.ArgumentParser(
         description="Ingest generate_agent.py output into a session's stems/htdemucs/ "
-                    "tree, tag it, and import it into ebys.db — WITHOUT going through "
+                    "tree, tag it, and import it into gnumbat.db — WITHOUT going through "
                     "raw_uploads/ or Demucs, and WITHOUT it ever counting as training data."
     )
     ap.add_argument("--manifest", required=True, help="path to a generate_agent.py manifest_*.json")
@@ -281,7 +281,7 @@ def main():
     n_lines = regenerate_stream_txt(data_dir, stems_dir)
     print(f"stream.txt refreshed — {n_lines} stem line(s)")
 
-    # Import genres/downbeats into ebys.db now; slices come later once Max's
+    # Import genres/downbeats into gnumbat.db now; slices come later once Max's
     # FluCoMa buf~ has actually analyzed these files — that part can't be
     # faked (same limitation tag_generated.py documents).
     import_script = SRC_DIR / "import_library.py"

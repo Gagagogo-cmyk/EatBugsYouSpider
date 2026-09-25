@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-EBYS Max Patch — Multi-Track Upgrade Script
+Gnumbat Max Patch — Multi-Track Upgrade Script
 ============================================
-Modifies ebys-analyze.maxpat to support multi-source-track playback:
+Modifies gnumbat-analyze.maxpat to support multi-source-track playback:
 
 1. Renames play_vocals/drums/bass/melo buffer~/karma~/info~ objects to play_0_* scheme
 2. Adds 4 new buffer~ objects for slot 1 (play_1_voc/drm/bss/mel)
@@ -19,7 +19,7 @@ Run from the MAX/ folder:
 
 import json, copy, sys, os
 
-PATCH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ebys-analyze.maxpat")
+PATCH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gnumbat-analyze.maxpat")
 BACKUP_PATH = PATCH_PATH + ".pre_multitrack.bak"
 
 # ── Load ──────────────────────────────────────────────────────────────────────
@@ -208,4 +208,4 @@ print(f"\n{len(changes)} change(s) applied:")
 for c in changes:
     print(f"  {c}")
 
-print("\nDone. Open ebys-analyze.maxpat in Max to verify.")
+print("\nDone. Open gnumbat-analyze.maxpat in Max to verify.")

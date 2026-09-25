@@ -2,7 +2,7 @@ import os
 import time
 from pathlib import Path
 
-# Relative to this file: src/demucs/ → src/ → EBYS/ → data/
+# Relative to this file: src/demucs/ → src/ → Gnumbat/ → data/
 _data_dir = Path(__file__).parent.parent.parent / "data"
 folder   = str(_data_dir / "stems" / "htdemucs")
 out_file = str(_data_dir / "stream.txt")

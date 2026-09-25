@@ -7,7 +7,7 @@
 // below) -- only the platform glue changed:
 //
 //   - `File` (Max's built-in file I/O)         -> Node's `fs` module.
-//   - `patcher.filepath`                       -> --data-dir / EBYS_DATA_DIR,
+//   - `patcher.filepath`                       -> --data-dir / GNUMBAT_DATA_DIR,
 //     same convention as streamWatcher_bridge.js.
 //   - `Task`/`.schedule(ms)`                   -> `setTimeout`.
 //   - `post(...)`                              -> `console.log(...)`.
@@ -54,12 +54,12 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const dataDir = args["data-dir"] || process.env.EBYS_DATA_DIR;
+const dataDir = args["data-dir"] || process.env.GNUMBAT_DATA_DIR;
 const recvPort = parseInt(args["recv-port"] || "9002", 10); // Pd -> here
 const sendPort = parseInt(args["send-port"] || "9003", 10); // here -> Pd
 
 if (!dataDir) {
-  console.error("slice_writer_bridge: need --data-dir (or EBYS_DATA_DIR env var)");
+  console.error("slice_writer_bridge: need --data-dir (or GNUMBAT_DATA_DIR env var)");
   process.exit(1);
 }
 
@@ -83,7 +83,7 @@ function getDataDir() {
 }
 function getLibraryPath() {
   const p = path.join(getDataDir(), "analysis_library.json");
-  post("EBYS SliceWriter: library path = " + p + "\n");
+  post("Gnumbat SliceWriter: library path = " + p + "\n");
   return p;
 }
 
@@ -120,7 +120,7 @@ var skipIfExists = false;
 function set_bpm_gate(v) {
   BPM_MIN_CONFIDENCE = parseFloat(v);
   post(
-    "EBYS: BPM gate -> " +
+    "Gnumbat: BPM gate -> " +
       BPM_MIN_CONFIDENCE +
       (BPM_MIN_CONFIDENCE === 0.0 ? " (disabled)" : "") +
       "\n"
@@ -171,7 +171,7 @@ function resetMemory() {
   try {
     fs.writeFileSync(getLibraryPath(), "{}", "utf8");
   } catch (e) {}
-  post("EBYS SliceWriter: memory cleared -- library wiped\n");
+  post("Gnumbat SliceWriter: memory cleared -- library wiped\n");
 }
 
 // saveLibrary — writes `library` to analysis_library.json.
@@ -198,14 +198,14 @@ function saveLibrary() {
         }
       }
     } catch (mergeErr) {
-      post("EBYS SliceWriter: save merge-read skipped -- " + mergeErr + "\n");
+      post("Gnumbat SliceWriter: save merge-read skipped -- " + mergeErr + "\n");
     }
     var str = JSON.stringify(nested);
     fs.mkdirSync(path.dirname(getLibraryPath()), { recursive: true });
     fs.writeFileSync(getLibraryPath(), str, "utf8");
-    post("EBYS SliceWriter: saved " + str.length + " chars to library\n");
+    post("Gnumbat SliceWriter: saved " + str.length + " chars to library\n");
   } catch (e) {
-    post("EBYS SliceWriter: save failed -- " + e + "\n");
+    post("Gnumbat SliceWriter: save failed -- " + e + "\n");
   }
 }
 
@@ -215,7 +215,7 @@ function loadLibrary() {
     try {
       raw = fs.readFileSync(getLibraryPath(), "utf8");
     } catch (e) {
-      post("EBYS SliceWriter: no library file found -- starting fresh\n");
+      post("Gnumbat SliceWriter: no library file found -- starting fresh\n");
       return;
     }
     var parsed = JSON.parse(raw);
@@ -230,17 +230,17 @@ function loadLibrary() {
       }
       trackCount++;
     }
-    post("EBYS SliceWriter: restored " + trackCount + " tracks, " + sliceCount + " slices from library\n");
+    post("Gnumbat SliceWriter: restored " + trackCount + " tracks, " + sliceCount + " slices from library\n");
     sendTotalSlices(sliceCount);
   } catch (e) {
-    post("EBYS SliceWriter: library load failed -- " + e + "\n");
+    post("Gnumbat SliceWriter: library load failed -- " + e + "\n");
   }
 }
 
 function trackExists() {
   var name = Array.prototype.slice.call(arguments).map(String).join("_");
   var exists = library.hasOwnProperty(name) && Object.keys(library[name]).length > 0;
-  post("EBYS SliceWriter: trackExists('" + name + "') = " + (exists ? 1 : 0) + "\n");
+  post("Gnumbat SliceWriter: trackExists('" + name + "') = " + (exists ? 1 : 0) + "\n");
   sendTrackExistsResult(exists ? 1 : 0);
 }
 
@@ -250,9 +250,9 @@ function forgetTrack() {
     delete library[name];
     forgottenTracks[name] = true;
     saveLibrary();
-    post("EBYS SliceWriter: removed '" + name + "' from library\n");
+    post("Gnumbat SliceWriter: removed '" + name + "' from library\n");
   } else {
-    post("EBYS SliceWriter: forgetTrack -- '" + name + "' not found\n");
+    post("Gnumbat SliceWriter: forgetTrack -- '" + name + "' not found\n");
   }
 }
 
@@ -262,7 +262,7 @@ function set_track_name() {
     track_name !== "" && library.hasOwnProperty(track_name) && Object.keys(library[track_name]).length > 0;
   if (!skipIfExists && track_name !== "") library[track_name] = {};
   post(
-    "EBYS: track='" +
+    "Gnumbat: track='" +
       track_name +
       "' " +
       (skipIfExists ? "EXISTS -- skipping writes" : "NEW -- analyzing") +
@@ -451,11 +451,11 @@ function writeMetaStem(stemName) {
   wr(dn + "::metadata::BPM_confidence", m.conf);
   if (m.conf >= BPM_MIN_CONFIDENCE) {
     wr(dn + "::metadata::BPM", m.bpm);
-    post("EBYS " + cfg3(stemName) + " BPM=" + m.bpm.toFixed(1) + "  conf=" + m.conf.toFixed(3) + "\n");
+    post("Gnumbat " + cfg3(stemName) + " BPM=" + m.bpm.toFixed(1) + "  conf=" + m.conf.toFixed(3) + "\n");
   } else {
     wr(dn + "::metadata::BPM", 0.0);
     post(
-      "EBYS " +
+      "Gnumbat " +
         cfg3(stemName) +
         " BPM=0 (gated -- conf=" +
         m.conf.toFixed(3) +
@@ -468,7 +468,7 @@ function writeMetaStem(stemName) {
     var key = detectKey(pitches[stemName]);
     wr(dn + "::metadata::key", key);
     var top = topPcs(pitches[stemName]);
-    post("EBYS " + cfg3(stemName) + " key=" + key + "  top:" + top + "  n=" + pitches[stemName].length + "\n");
+    post("Gnumbat " + cfg3(stemName) + " key=" + key + "  top:" + top + "  n=" + pitches[stemName].length + "\n");
   }
   saveLibrary();
 }
@@ -485,13 +485,13 @@ function reset() {
   pitches.vocals = [];
   pitches.melo = [];
   pitches.bass = [];
-  post("EBYS: counters + pitch buffers reset\n");
+  post("Gnumbat: counters + pitch buffers reset\n");
   sendTotalSlices(0);
 }
 function resetStem(stemName) {
   counters[stemName] = 0;
   if (pitches[stemName]) pitches[stemName] = [];
-  post("EBYS: " + stemName + " counter reset\n");
+  post("Gnumbat: " + stemName + " counter reset\n");
 }
 
 // ── DISPATCH TABLE ────────────────────────────────────────────────────

@@ -72,6 +72,11 @@ func main() {
 
 		mux.HandleFunc("/venues/add", handleAddVenue)
 
+		// /api/events.json -- EventService for the Gnumbat consumer app's SHOWS
+		// screen (spec §13). Same ?when=/?venue=/?genre=/?q= filters as the HTML
+		// routes above, see handleEventsJSON (server.go).
+		mux.HandleFunc("/api/events.json", handleEventsJSON)
+
 		// /img-proxy -- see handleImageProxy's own comment (server.go, next
 		// to baseTmpl) for why poster images are routed through this
 		// server instead of hotlinked from their original host directly.
@@ -99,8 +104,16 @@ func main() {
 		// route it started with. cricket_greenkey.mp4/cricket_transparent.mov/
 		// cricket_transparent.webm are still sitting in frontend/, unused --
 		// safe to delete, or revisit transparency later from those.
-		mux.HandleFunc("/static/cricket.mp4", func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "frontend/cricket.mp4")
+		// FIX -- base.html's <video> (the .Scraping-gated overlay above)
+		// actually points at /static/cricket_transparent.mov, and that's
+		// the only one of cricket.mp4/cricket_greenkey.mp4/
+		// cricket_transparent.mov/cricket_transparent.webm that exists in
+		// frontend/ right now -- cricket.mp4 was never actually present in
+		// this checkout, so this route always 404'd regardless of what the
+		// ROLLBACK comment above assumed. Serving the file that's actually
+		// there instead.
+		mux.HandleFunc("/static/cricket_transparent.mov", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, "frontend/cricket_transparent.mov")
 		})
 		srv := &http.Server{
 			Addr:    addr,

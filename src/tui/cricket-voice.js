@@ -33,7 +33,7 @@ if (fs.existsSync(SAMPLES_FILE)) {
   console.log(`\x1b[90m(${userMessages.length} previous messages loaded)\x1b[0m`);
 }
 
-const SYSTEM = `You are Cricket, the AI interface for EBYS — a generative audio collage engine.
+const SYSTEM = `You are Cricket, the AI interface for Gnumbat — a generative audio collage engine.
 You are in a voice training session. The person is talking so you can learn how they speak.
 Respond naturally and briefly. Ask follow-up questions when curious. Keep it short.`;
 
@@ -187,7 +187,7 @@ function bakeFranglais() {
 
   const samples = userMessages.map(m => `"${m}"`).join('\n');
 
-  const bakePrompt = `Here are messages written by a québécois person talking about music and a generative audio system called EBYS:
+  const bakePrompt = `Here are messages written by a québécois person talking about music and a generative audio system called Gnumbat:
 
 ${samples}
 

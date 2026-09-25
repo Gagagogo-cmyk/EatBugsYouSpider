@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS Max Patch — Ring Buffer + bufcompose~ Upgrade Script
+Gnumbat Max Patch — Ring Buffer + bufcompose~ Upgrade Script
 ==========================================================
 Transforms the patch from the multi-track state (play_0/1_* buffers) to
 the two-level ring buffer + fluid.bufcompose~ architecture:
@@ -31,7 +31,7 @@ Run from the MAX/ folder:
 
 import json, shutil, os
 
-PATCH_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ebys-analyze.maxpat")
+PATCH_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gnumbat-analyze.maxpat")
 BACKUP_PATH = PATCH_PATH + ".pre_ringbuf.bak"
 
 with open(PATCH_PATH) as f:
@@ -264,4 +264,4 @@ print(f"Written: {PATCH_PATH}")
 print(f"\n{len(changes)} change(s) applied:")
 for c in changes:
     print(f"  {c}")
-print("\nDone. Reload ebys-analyze.maxpat in Max.")
+print("\nDone. Reload gnumbat-analyze.maxpat in Max.")

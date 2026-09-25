@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Tag Generated Clips
+Gnumbat — Tag Generated Clips
 
 Takes a manifest.json written by generate_agent.py and merges entries into
 genres.json / downbeats.json in the exact format import_library.py already

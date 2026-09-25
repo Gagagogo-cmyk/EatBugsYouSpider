@@ -1,0 +1,280 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.bufampgate Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.bufampgate</h1>
+  <div class="digest">Gate Detection on a Buffer</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Absolute amplitude threshold gate detector on audio in a buffer</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>BufAmpGate outputs a two-channel buffer containing open and close positions of the gates. Each frame of the buffer contains an onset (opening) position on channel 0 and the corresponding offset (closing) position on channel 1 (both in samples). The buffer will have as many frames as gate events detected.</p>
+<p>The gate detects an onset (opens) when the internal envelope follower (controlled by <code>rampup</code> and <code>rampdown</code>) goes above a specified <code>onthreshold</code> (in dB) for at least <code>minlengthabove</code> samples. The gate will stay open until the envelope follower goes below <code>offthreshold</code> (in dB) for at least <code>minlengthbelow</code> samples, which triggers an offset.</p>
+
+
+    <p>Read more about fluid.bufampgate on the <a href='https://learn.flucoma.org/reference/ampgate'>learn platform</a>.</p>
+    
+    <p>fluid.bufampgate is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Maximum Total Latency<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: 88200)</span><div class="description"><p>The amount of memory allocated at instantiation. It limits how other parameters can be modulated: <code>minlengthbelow</code>, <code>lookahead</code>, and <code>minlengthabove + lookback</code> should not exceed <code>maxsize</code>.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">highpassfreq
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 85.0)</span>
+      </h3>
+      <div class="description"><p>The frequency of the fourth-order Linkwitz-Riley high-pass filter (<a class="reference external" href="https://en.wikipedia.org/wiki/Linkwitz%E2%80%93Riley_filter">https://en.wikipedia.org/wiki/Linkwitz%E2%80%93Riley_filter</a>) applied to the signal to minimise low frequency intermodulation with very short ramp lengths. A frequency of 0 bypasses the filter.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">indices
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer to write the gate information into. Buffer will be resized appropriately so that each frame contains an onset (opening) position on channel 0 and the corresponding offset (closing) position on channel 1 (both in samples). The buffer will have as many frames as gate events detected.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">lookahead
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>When an offset is detected, the algorithm will wait this duration (in samples) to find a minimum in the envelope follower to identify as the offset point.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">lookback
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>When an onset is detected, the algorithm will look in the recent past (this length in samples) for a minimum in the envelope follower to identify as the onset point.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">minlengthabove
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>The length in samples that the envelope must be above the threshold to consider it a valid onset. The onset will be triggered at the first sample when the condition is met.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">minlengthbelow
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>The length in samples that the envelope must be below the threshold to consider it a valid offset. The offset will be triggered at the first sample when the condition is met.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">minsilencelength
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>The minimum length in samples for which the gate will stay closed. Changes of states during that period after an offset will be ignored.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">minslicelength
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>The minimum length in samples for which the gate will stay open. Changes of states during this period after an onset will be ignored.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numchans
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>For multichannel sources, how many channels should be included in the analysis (starting from <code>startchan</code>). The default of -1 indicates to include all the channels from <code>startchan</code> through the rest of the buffer. If more than one channel is specified, the channels will be summed to mono for analysis.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numframes
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>How many frames (audio samples) to analyse. The default of -1 indicates to analyse through end of the buffer</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">offthreshold
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -90.0)</span>
+      </h3>
+      <div class="description"><p>The threshold in dB of the envelope follower to trigger an offset.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>144</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">onthreshold
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -90.0)</span>
+      </h3>
+      <div class="description"><p>The threshold in dB of the envelope follower to trigger an onset.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>144</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">rampdown
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 10)</span>
+      </h3>
+      <div class="description"><p>The number of samples the envelope follower will take to reach the next value when falling.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">rampup
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 10)</span>
+      </h3>
+      <div class="description"><p>The number of samples the envelope follower will take to reach the next value when rising.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">source
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer to analyse for gate information. Multichannel buffers will be summed to mono for analysis.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startchan
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>For multichannel sources, at which channel to begin the analysis. The default is 0.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startframe
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Where in <code>source</code> to begin the analysis (in samples). The default is 0.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="bang">bang</h3>
+      <div class="description"> A bang will commence processing on object given its current settings, unless it is already busy. In that case, the behaviour depends on the value of the <span class="messagename" data-message="queue"> queue </span>
+        attribute. </div>
+    </div>
+    <div class="method_group">
+      <h3 class="method_name" name="cancel">cancel</h3>
+      <div class="description"> When processing in non-blocking mode, this will cancel the job underway, without updating destination buffers. </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.ampgate~.html">AmpGate</a></h3><h3 class="seealso_name"><a href="fluid.bufampslice.html">BufAmpSlice</a></h3><h3 class="seealso_name"><a href="fluid.ampslice~.html">AmpSlice</a></h3><h3 class="seealso_name"><a href="fluid.bufonsetslice.html">BufOnsetSlice</a></h3><h3 class="seealso_name"><a href="fluid.bufnoveltyslice.html">BufNoveltySlice</a></h3><h3 class="seealso_name"><a href="fluid.buftransientslice.html">BufTransientSlice</a></h3></section> 
+</body>
+</html>

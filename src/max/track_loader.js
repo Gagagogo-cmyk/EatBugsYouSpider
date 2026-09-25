@@ -1,4 +1,4 @@
-// EBYS — Track Loader  v2  (multi-track)
+// Gnumbat — Track Loader  v2  (multi-track)
 //
 // Scans the htdemucs stems folder and loads ALL tracks at startup.
 // Each track is assigned a SLOT (0-based, alphabetical order).

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Bake Converter  v1
+Gnumbat — Bake Converter  v1
 
 Converts training_log.jsonl (raw :bake snapshots) into cricket_finetune.jsonl
 (MLX / Llama fine-tuning format).
@@ -24,16 +24,16 @@ from pathlib import Path
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 INFRA_DIR   = Path(__file__).parent
-EBYS_DIR    = INFRA_DIR.parent
+GNUMBAT_DIR    = INFRA_DIR.parent
 LOG_PATH    = INFRA_DIR / 'training_log.jsonl'
 OUTPUT_PATH = INFRA_DIR / 'cricket_finetune.jsonl'
-CRICKET_MD  = EBYS_DIR  / 'CRICKET.md'
+CRICKET_MD  = GNUMBAT_DIR  / 'CRICKET.md'
 
 # ── System prompt ─────────────────────────────────────────────────────────────
 def load_system_prompt():
     if CRICKET_MD.exists():
         return CRICKET_MD.read_text().strip()
-    return "You are Cricket, the control interface for EBYS."
+    return "You are Cricket, the control interface for Gnumbat."
 
 # ── State formatter ───────────────────────────────────────────────────────────
 def format_stems(stems):
@@ -151,7 +151,7 @@ def convert(log_path, output_path, stats_only=False):
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Convert EBYS bake log to fine-tuning format')
+    parser = argparse.ArgumentParser(description='Convert Gnumbat bake log to fine-tuning format')
     parser.add_argument('--input',  default=str(LOG_PATH),    help='Path to training_log.jsonl')
     parser.add_argument('--output', default=str(OUTPUT_PATH), help='Path to output JSONL')
     parser.add_argument('--stats',  action='store_true',      help='Print stats only, no output file')
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     if not os.path.exists(args.input):
         print(f"No training log found at {args.input}")
-        print("Play EBYS and use :bake to collect training data first.")
+        print("Play Gnumbat and use :bake to collect training data first.")
         sys.exit(1)
 
     convert(args.input, args.output, stats_only=args.stats)

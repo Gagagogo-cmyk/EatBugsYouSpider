@@ -45,12 +45,12 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const dataDir = args["data-dir"] || process.env.EBYS_DATA_DIR;
+const dataDir = args["data-dir"] || process.env.GNUMBAT_DATA_DIR;
 const recvPort = parseInt(args["recv-port"] || "9008", 10); // Pd -> here
 const sendPort = parseInt(args["send-port"] || "9009", 10); // here -> Pd
 
 if (!dataDir) {
-  console.error("buffer_manager_bridge: need --data-dir (or EBYS_DATA_DIR env var)");
+  console.error("buffer_manager_bridge: need --data-dir (or GNUMBAT_DATA_DIR env var)");
   process.exit(1);
 }
 

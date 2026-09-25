@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-EBYS — Extract genre labels from the Discogs-EffNet model metadata.
+Gnumbat — Extract genre labels from the Discogs-EffNet model metadata.
 
 The genre_discogs400 .pb file stores the class names in its SignatureDef.
 This script reads them out and writes genre_discogs400_labels.json.
 
-Usage (with ebys-env active):
+Usage (with gnumbat-env active):
   python3 extract_labels.py
   python3 extract_labels.py --models /path/to/essentia_models
 """

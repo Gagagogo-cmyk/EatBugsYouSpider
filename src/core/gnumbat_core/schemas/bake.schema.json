@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/bake.schema.json",
+  "title": "Bake manifest (immutable facts)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.bake/0\\.[0-9]+$"
+    },
+    "bake_id": {
+      "type": "string",
+      "pattern": "^bk_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "The OS account that made this Bake (juce::SystemStats::getLogonName() / getpass.getuser()). Absent on Bakes made before this field existed."
+    },
+    "origin": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "capture",
+            "import"
+          ]
+        },
+        "app": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "audio": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sample_rate": {
+          "type": "integer",
+          "minimum": 8000
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "frames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "duration_s": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sample_format": {
+          "enum": [
+            "float32",
+            "pcm16",
+            "pcm24"
+          ]
+        }
+      },
+      "required": [
+        "file",
+        "sha256",
+        "sample_rate",
+        "channels",
+        "frames",
+        "duration_s"
+      ]
+    },
+    "capture": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          }
+        },
+        "plugin_version": {
+          "type": "string"
+        },
+        "session": {
+          "type": "string"
+        },
+        "track_name": {
+          "type": "string"
+        },
+        "timeline": {
+          "type": "object",
+          "properties": {
+            "start_sample": {
+              "type": "integer"
+            },
+            "end_sample": {
+              "type": "integer"
+            },
+            "sample_rate": {
+              "type": "number"
+            },
+            "start_ppq": {
+              "type": "number"
+            },
+            "end_ppq": {
+              "type": "number"
+            }
+          }
+        },
+        "tempo_bpm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "time_signature": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "offline": {
+          "type": "boolean"
+        }
+      }
+    },
+    "import": {
+      "type": "object",
+      "properties": {
+        "original_name": {
+          "type": "string"
+        },
+        "source_path": {
+          "type": "string"
+        }
+      }
+    },
+    "preview": {
+      "type": "object",
+      "properties": {
+        "peaks": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "description": "Set when the plugin also wrote this Bake's audio into the EBYS instrument's raw_uploads/ so its Demucs + FluCoMa pipeline processes it. Machine-local paths.",
+      "properties": {
+        "status": {
+          "enum": [
+            "written",
+            "failed"
+          ]
+        },
+        "target": {
+          "const": "ebys_raw_uploads"
+        },
+        "session": {
+          "type": "string"
+        },
+        "track": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "stems_dir": {
+          "type": "string"
+        },
+        "written_at": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "bake_id",
+    "created_at",
+    "origin",
+    "audio"
+  ],
+  "additionalProperties": true
+}

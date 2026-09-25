@@ -1,0 +1,297 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.bufstats Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.bufstats</h1>
+  <div class="digest">Statistically summarise a time series in a Buffer</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Statistical analysis on buffer channels.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p><a href="fluid.bufstats.html">fluid.bufstats</a> statistically summarises a time-series (or any values) that is in a buffer, returning seven statistics for each channel: the buffer channel's mean, standard deviation, skewness, kurtosis, low, middle, and high values. See the <code>low</code>, <code>middle</code> and <code>high</code> parameters below for more description on these values.</p>
+<p>For a detailed explanation of <a href="fluid.bufstats.html">fluid.bufstats</a> features visit <a class="reference external" href="http://learn.flucoma.org/reference/bufstats">http://learn.flucoma.org/reference/bufstats</a>.</p>
+<p>The <code>stats</code> output buffer of <a href="fluid.bufstats.html">fluid.bufstats</a> will have the same number of channels as the input buffer, each one containing the statistics of its corresponding channel in the input buffer. Because the dimension of time is summarised statistically, the frames in the <code>stats</code> buffer do not represent time as they normally would. The first seven frames in every channel of the <code>stats</code> buffer will have the seven statistics computed on the input buffer channel. After these first seven frames, there will be seven more frames for each derivative requested, each containing the seven statistical summaries for the corresponding derivative.</p>
+<p>For example if the input to <a href="fluid.bufstats.html">fluid.bufstats</a> is a three-channel buffer and <code>numderivs</code> = 1 the output <code>stats</code> buffer would contain:</p>
+<blockquote>
+<table border="1" class="docutils">
+<colgroup>
+<col width="4%" />
+<col width="6%" />
+<col width="6%" />
+<col width="6%" />
+<col width="4%" />
+<col width="5%" />
+<col width="4%" />
+<col width="8%" />
+<col width="10%" />
+<col width="10%" />
+<col width="10%" />
+<col width="8%" />
+<col width="9%" />
+<col width="8%" />
+</colgroup>
+<tbody valign="top">
+<tr><td>ch 0 mean</td>
+<td>ch 0 std dev</td>
+<td>ch 0 skewness</td>
+<td>ch 0 kurtosis</td>
+<td>ch 0 low</td>
+<td>ch 0 middle</td>
+<td>ch 0 high</td>
+<td>ch 0 deriv 1 mean</td>
+<td>ch 0 deriv 1 std dev</td>
+<td>ch 0 deriv 1 skewness</td>
+<td>ch 0 deriv 1 kurtosis</td>
+<td>ch 0 deriv 1 low</td>
+<td>ch 0 deriv 1 middle</td>
+<td>ch 0 deriv 1 high</td>
+</tr>
+<tr><td>ch 1 mean</td>
+<td>ch 1 std dev</td>
+<td>ch 1 skewness</td>
+<td>ch 1 kurtosis</td>
+<td>ch 1 low</td>
+<td>ch 1 middle</td>
+<td>ch 1 high</td>
+<td>ch 1 deriv 1 mean</td>
+<td>ch 1 deriv 1 std dev</td>
+<td>ch 1 deriv 1 skewness</td>
+<td>ch 1 deriv 1 kurtosis</td>
+<td>ch 1 deriv 1 low</td>
+<td>ch 1 deriv 1 middle</td>
+<td>ch 1 deriv 1 high</td>
+</tr>
+<tr><td>ch 2 mean</td>
+<td>ch 2 std dev</td>
+<td>ch 2 skewness</td>
+<td>ch 2 kurtosis</td>
+<td>ch 2 low</td>
+<td>ch 2 middle</td>
+<td>ch 2 high</td>
+<td>ch 2 deriv 1 mean</td>
+<td>ch 2 deriv 1 std dev</td>
+<td>ch 2 deriv 1 skewness</td>
+<td>ch 2 deriv 1 kurtosis</td>
+<td>ch 2 deriv 1 low</td>
+<td>ch 2 deriv 1 middle</td>
+<td>ch 2 deriv 1 high</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+
+
+    <p>Read more about fluid.bufstats on the <a href='https://learn.flucoma.org/reference/stats'>learn platform</a>.</p>
+    
+    <p>fluid.bufstats is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">high
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 100.0)</span>
+      </h3>
+      <div class="description"><p>The value at this percentile (indicated as 0.0-100.0) will be written into frame 6 (zero-counting). By default, it is percentile 100.0, which is the maximum value of the channel.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: MAX(<code>middle, 0</code>)</li>
+<li>Maximum: <code>100</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">low
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.0)</span>
+      </h3>
+      <div class="description"><p>The value at this percentile (indicated as 0.0-100.0) will be written into frame 4 (zero-counting). By default, it is percentile 0.0, which is the minimum value of the channel.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+<li>Maximum: MIN(<code>middle, 100</code>)</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">middle
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 50.0)</span>
+      </h3>
+      <div class="description"><p>The value at this percentile (indicated as 0.0-100.0) will be written into frame 5 (zero-counting). By default, it is percentile 50.0, which is the median value of the channel.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: MAX(<code>low, 0</code>)</li>
+<li>Maximum: MIN(<code>high, 100</code>)</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numchans
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>The number of channels to compute statistics for. The default of -1 indicates to compute statistics through the last channel in the <code>source</code> buffer.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numderivs
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The number of derivatives of the original time-series to compute statistics on. The default of 0 will compute statistics on no derivatives, only the original time-series itself. Setting this parameter &gt; 0 (maximum of 2) will return the same seven statistics computed on consecutive derivatives of the channel's time-series. (<code>numderivs</code> = 1 will return the channel's statistics and the statistics of the first derivative, <code>numderivs</code> = 2 will return the channel's statistics and the statistics of the first and second derivatives.) The derivative statistics are useful to describe the rate of change of the time series.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+<li>Maximum: <code>2</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numframes
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>The number of frames to use in the statistical analysis. The default of -1 indicates to use all the frames from <code>startframe</code> through the end of the <code>source</code> buffer.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">outlierscutoff
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1.0)</span>
+      </h3>
+      <div class="description"><p>A ratio of the inter quantile range (IQR) that defines a range from the median, outside of which data will be considered an outlier and not used to compute the statistical summary. For each frame, if a single value in any channel of that frame is considered an outlier (when compared to the rest of the values in its channel), the whole frame (on all channels) will not be used for statistical calculations. The default of -1 bypasses this function, keeping all frames in the statistical measurements.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">select
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: [&#39;mean&#39;, &#39;std&#39;, &#39;skew&#39;, &#39;kurtosis&#39;, &#39;low&#39;, &#39;mid&#39;, &#39;high&#39;])</span>
+      </h3>
+      <div class="description"><p>An array of <code>symbols</code> indicating which statistics to return. The options are <code>mean</code>, <code>std</code>, <code>skewness</code>, <code>kurtosis</code>, <code>low</code>, <code>mid</code>, and <code>high</code>. If nothing is specified, the object will return all the statistics. The statistics will always appear in their normal order, this argument just allows for a selection of them to be returned. Reordering the options in this argument will not reorder how the statistics are returned.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">source
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer to statistically summarise. Each channel of multichannel buffers will be computed independently.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startchan
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The channel from which to begin computing statistics for. The default is 0.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startframe
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The position (in frames) to begin the statistical analysis. <a href="fluid.bufstats.html">fluid.bufstats</a> is unaware of what kind of time-series is in <code>source</code> and what the sample rate might be (whether it is audio samples or audio descriptors). It will begin analysis at the indicated frame index in <code>source</code>. The default is 0.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">stats
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer to write the statistical summary into.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">weights
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>A buffer to provide relative weighting of each frame in the <code>source</code> buffer when computing the statistics. Not providing a <code>weights</code> buffer will cause all the frames to be considered equally. This may be useful for weighting certain descriptors by the value of other descriptors (such as the loudness or pitch confidence of the sound). The provided buffer has to satisfy all of the following conditions:</p>
+<ul class="simple">
+<li>a single-channel</li>
+<li>exactly the same amount of frames as <code>source</code></li>
+<li>all values must be positive (anything lower than 0 will be rejected)</li>
+</ul>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="bang">bang</h3>
+      <div class="description"> A bang will commence processing on object given its current settings, unless it is already busy. In that case, the behaviour depends on the value of the <span class="messagename" data-message="queue"> queue </span>
+        attribute. </div>
+    </div>
+    <div class="method_group">
+      <h3 class="method_name" name="cancel">cancel</h3>
+      <div class="description"> When processing in non-blocking mode, this will cancel the job underway, without updating destination buffers. </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.bufloudness.html">BufLoudness</a></h3><h3 class="seealso_name"><a href="fluid.bufpitch.html">BufPitch</a></h3><h3 class="seealso_name"><a href="fluid.bufmelbands.html">BufMelBands</a></h3><h3 class="seealso_name"><a href="fluid.bufmfcc.html">BufMFCC</a></h3><h3 class="seealso_name"><a href="fluid.bufspectralshape.html">BufSpectralShape</a></h3></section> 
+</body>
+</html>

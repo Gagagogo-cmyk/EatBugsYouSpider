@@ -1,0 +1,1344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gnumbat — plugin panel mockup (VST roadmap Step 1)</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   Gnumbat plugin panel — mockup only, no wiring.
+
+   HEADER — state chips, then the PLAYBACK block (LUFS / tracks / genre /
+   beats / slice), laid out as the TUI header does it.
+
+   BAKE RECIPE — per-stem, per-descriptor. slicer.js holds WEIGHTS[stem][dim]
+   and DIR_PREF[stem][dim] (-1 / 0 / +1) over dims C S E F P H T D, set by
+   `setWeight <stem|all> <dim> <val>` and `setDirPref <stem|all> <dim> <val>`.
+   A flat "weight / dirWeight" pair cannot represent a prompt like "darker" —
+   that has to compile to a negative direction on C (and here T). The matrix
+   shows those cells in white wherever the bake departs from the defaults, so
+   the prompt and the machine commands can be read against each other.
+
+   SCOPE NOTE — EQ, pitch/formant, pan/width and the quad meters were all
+   removed from gnumbat-analyze.pd across four passes (CONVERSION_NOTES.md).
+   The VU and spatial readouts have no Pd source until that chain goes back.
+
+   ZONES — hairline demarcations at --g4, only where a zone genuinely ends.
+   Horizontals separate the six bands (menu / header / map / stems / console
+   / footer); verticals are pseudo-elements floated in the middle of the
+   existing column gaps, so they divide without costing any layout width.
+   No boxes or frames — a zone is bounded by lines it shares with its
+   neighbours, never enclosed on four sides.
+   MONOCHROME + ONE TYPE SIZE — every glyph is --fs, no bold.
+
+   WAVEFORM — true min/max peak reduction, not a mirrored envelope, with RMS
+   drawn inside the peak envelope. Slice boundaries are GAPS cut into the
+   trace, not lines drawn over it, so nothing is added on top and the height
+   is unchanged. Three tonal zones carry playback state: rest of file darkest,
+   armed slice mid-grey, already-played white — the white's leading edge is
+   the playhead, so no cursor is needed.
+
+   DOTS — HTML with border-radius:50%, never SVG circles: the plots stretch
+   to fill width, which would turn an SVG circle into an ellipse.
+
+   TYPEFACE — the TUI has no typeface of its own; blessed writes characters
+   and the terminal renders them. This stack resolves to the terminal's own
+   font (SF Mono, then Menlo, then Monaco). Not Courier — that's a slab-
+   serifed typewriter face and isn't a terminal default on current macOS.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root{
+  /* PALE FIELD. --w is still "maximum emphasis", but on a light ground that
+     means near-black rather than white; every other step darkens toward it.
+     Selection stays a light chip on dark text (see .brow.sel) — inverted
+     from the old scheme so the highlight still reads as a lit surface. */
+  --bg:#d7d8d6; --w:#15181a; --g1:#2b2f32; --g2:#5b6064; --g3:#7f8386;
+  --g4:#a9adac; --fill:#bfc1bf;
+  /* plots keep a black ground so the traces stay bright: the spectrum,
+     the peer-traffic strip, and anything else using .fld */
+  /* Plots are SURROUNDS, not filled boxes: transparent interiors bounded by
+     a contour, so they share the field instead of sitting on it. Everything
+     is written in source space and the filter inverts it — a value at --w
+     comes out WHITE, --g2..--g4 come out MID, --fill/--bg come out BLACK and
+     would disappear. So the contour and the markers sit at --w, and the
+     traces sit in the mid band. */
+  --plotbg:transparent; --plotink:var(--w); --plotdata:var(--g3);
+  --plotedge:var(--w);
+  /* NOTE: a custom property whose value contains var() is resolved at the
+     element where it is DECLARED, then inherits as that literal. So these
+     four freeze to the light palette here and do NOT re-resolve inside the
+     dark region — they have to be redeclared there. See #bands below. */
+  /* waveform items sit on the panel itself — same ground as the field, with
+     a dark trace, so the clip belongs to the surface rather than floating
+     on a tinted rectangle */
+  --itembg:var(--bg);
+  --dot:5px; --fs:12px;
+  /* one row unit. Every readout line in a band — info lines, weight/dir
+     rows, recipe rows — is exactly this tall, so the four columns share a
+     baseline grid instead of each drifting to its own content height. */
+  --row:16px;
+  /* --col sizes the spectrum BOX; the drawing area is --col minus the two
+     --lh2 insets. At 112 that leaves an 96px field, the same height as the
+     t-SNE plot (--row * 6), so the two graphs read as one row of equal
+     boxes. The dB labels are pinned by percentage at line-height:1, so six
+     of them need 72px and have room to spare. */
+  /* --gh is THE graph height: the weight/dir matrix is 8 dim rows, and the
+     t-SNE, spectrum, entropy slot and VU meters all match it, so the whole
+     band is one rectangle of equal-height bodies starting on row 1. */
+  --gh:calc(var(--row) * 8);
+  --col:112px; --lh2:8px;
+  /* meters and faders run the exact height of the spectrum's plotted area,
+     so a meter body and the frequency content line up top and bottom */
+  --fadh:var(--gh);
+  /* one block rhythm shared by the spectrum, the weight/dir histograms and
+     the waveform's column reduction — 3px block + 1px gutter = 4px cell */
+  --blk:3px; --blkgap:1px; --cell:4px; --bands:64;
+  /* spectrum gets a wider block than the histograms: same 1px gutter, so
+     the rhythm still reads as related, but the field is big enough that
+     the frequency scale never crowds the zone divider */
+  --sblk:4px;
+  /* Symbol faces (not emoji faces) appended so U+26BF has a glyph — the
+     terminal monos carry no lock character at all, which is why it was tofu */
+  --mono:ui-monospace,"SF Mono","SFMono-Regular",Menlo,Monaco,"DejaVu Sans Mono",
+         "Apple Symbols","Segoe UI Symbol",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;border:0;background:none}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--g1);font-family:var(--mono);font-size:var(--fs);
+  line-height:1.3;font-weight:400;-webkit-font-smoothing:antialiased}
+.plugin,.plugin *{font-size:var(--fs)!important;font-weight:400!important}
+
+/* fit-to-window: laid out at a fixed width, scaled from its MEASURED height,
+   so the whole panel is always visible and nothing is ever cut or scrolled.
+   Narrower design width than before — with EQ/pitch/spatial gone the content
+   needs far less room, and a tighter canvas means the scale factor lands
+   higher, so everything renders LARGER in the same window. */
+.plugin{position:absolute;top:0;left:0;width:1920px;height:auto;
+  transform-origin:top left;display:flex;flex-direction:column;
+  filter:url(#posterize3)}
+
+/* ── menu header row ──────────────────────────────────────────────────── */
+/* no rule under the menu row — the header block below it already opens
+   with its own content, and two divisions that close together read as a
+   boxed strip rather than as a heading */
+.states{padding:4px 10px 4px;display:flex;color:var(--g3);white-space:nowrap}
+.states .grp{display:flex;gap:10px;align-items:center}
+.states .mid-grp{margin:0 auto}
+.states .r{margin-left:auto}
+.states .on{color:var(--w)}
+.states .off{color:var(--g3)}
+.states .rd{display:inline-block;width:var(--dot);height:var(--dot);
+  border-radius:50%;background:var(--g3);vertical-align:2px}
+.states .on .rd{background:var(--w)}
+
+/* ── header region: audition list (far left) + bake detail ────────────── */
+/* Both views reserve the same box: the middle track is a fixed width and
+   the head a fixed min-height, so switching with ^O swaps content without
+   moving a divider, a column edge, or the stem bands underneath. */
+.head{padding:5px 10px 6px;display:grid;gap:20px;flex-shrink:0;
+  /* both views reserve the same box so ^O never moves the bands */
+  min-height:212px;align-content:start;
+  grid-template-columns:246px 1fr}
+
+.sect-h{display:flex;gap:10px;align-items:baseline;margin-bottom:2px}
+.sect-h .z{color:var(--g3)}
+/* uppercase headings only — monospace already carries wide sidebearings, so
+   added tracking made short caps words like DETAIL read as gappy. Pulled
+   negative here; body text and values keep the font's natural metrics. */
+.sect-h .t{color:var(--w);letter-spacing:-.045em}
+.sect-h .n{color:var(--g3);margin-left:auto;white-space:nowrap}
+.rt2{margin-left:auto}
+
+.views{display:flex;gap:14px;height:var(--row);line-height:var(--row)}
+.views .v{color:var(--g3);cursor:pointer}
+.views .v.on{color:var(--w)}
+.hide{display:none!important}
+.pb .ln{white-space:nowrap;height:var(--row);line-height:var(--row)}
+.pb .k{color:var(--g3)}
+.pb .v{color:var(--w)}
+.lufs{display:inline-block;width:104px;height:9px;
+  position:relative;vertical-align:-1px;margin:0 6px}
+.lufs i{position:absolute;left:0;top:0;bottom:0;background:var(--w)}
+.conf{display:inline-flex;gap:1px;vertical-align:0;margin-left:6px}
+/* unfilled dots are rings, not dark discs — matches the TUI's ○ / ● pair.
+   Drawn with an inset box-shadow rather than a border so the global
+   border:0 reset doesn't strip it and the box size stays exact. */
+.cd{width:var(--dot);height:var(--dot);border-radius:50%;background:transparent;
+  box-shadow:inset 0 0 0 1px var(--g2);align-self:center;flex-shrink:0}
+.cd.on{background:var(--w);box-shadow:none}
+
+/* ── bake list / detail ───────────────────────────────────────────────── */
+/* six rows visible, the rest scrolls — 1.3 is the body line-height, so the
+   cap lands exactly on a row boundary rather than clipping the seventh */
+/* the bake list is a recessed black well like the plots — it is a data
+   surface you scan and select from, not panel chrome */
+.blist{max-height:calc(6 * var(--row));overflow-y:auto;overscroll-behavior:contain;padding:0}
+.blist::-webkit-scrollbar{width:4px}
+.blist::-webkit-scrollbar-thumb{background:var(--g3)}
+.blist::-webkit-scrollbar-track{background:transparent}
+.blist{scrollbar-width:thin;scrollbar-color:var(--g3) transparent}
+
+/* bake mode reuses the RMX|GEN toggle idiom rather than the list's inverse
+   highlight — same kind of control, same appearance, and it can't be
+   mistaken for a selected row or a footer chip */
+.bopts{display:grid;grid-template-columns:auto max-content;gap:0 12px;
+  justify-content:start;grid-auto-rows:var(--row);align-items:center;
+  margin-top:var(--row);cursor:pointer}
+.bopts .mode span{cursor:pointer}
+.bopts .lb{color:var(--g3)}
+/* dots hard left, value hard right, inside the column the toggle sizes */
+.srow{display:flex;align-items:center;justify-content:space-between}
+.srow .val2{color:var(--w);font-variant-numeric:tabular-nums}
+/* the toggle is inline, the scores are blocks below it — extra space on the
+   first one so the pair reads as belonging to the toggle rather than
+   running on from it */
+
+.brow{color:var(--g2);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  padding:0 6px;height:var(--row);line-height:var(--row)}
+.brow:hover{color:var(--w)}
+.brow.sel{background:var(--w);color:var(--bg)}
+.brow .m{color:var(--g4)}.brow.sel .m{color:var(--g3)}
+
+/* detail splits in two: context + prompt on the left, recipe + scoring on
+   the right, with the heading spanning both */
+.bdet>div{position:relative}
+.bdet>div.span2{position:static}
+.bdet>div+div:not(.span2)::before{content:"";position:absolute;left:-9px;
+  top:0;bottom:0;width:1px;background:var(--g4)}
+/* overflow:hidden on every column is the guard: these lines are nowrap, so
+   without it an over-long value silently prints across the divider into
+   the next zone instead of being clipped where you can see the problem. */
+.bdet>div{overflow:hidden;min-width:0}
+/* one column now: the library moved out to its own tab, so detail is just
+   context + prompt and the rest of the header width stays empty. */
+.bdet{line-height:1.25;display:grid;gap:0 26px;align-content:start;
+  grid-template-columns:1fr}
+.bdet .span2{grid-column:1/-1}
+.bdet .lbl2{color:var(--g3);margin-top:0;height:var(--row);line-height:var(--row)}
+.bdet .lbl2:first-child{margin-top:0}
+/* three rows tall so the prompt wraps rather than running off on one line,
+   and contoured like every other data surface instead of being a filled
+   well. white-space:pre-wrap keeps typed line breaks as well as soft wraps. */
+/* ~46 characters. A full-width prompt is unreadable at this measure and
+   the extra room is better spent on the info column; 331px cuts the sample
+   text after "narrow". */
+.prompt{width:331px;background:transparent;color:var(--w);font-family:var(--mono);
+  padding:2px 5px;outline:none;resize:none;
+  height:calc(var(--row) * 3);line-height:var(--row);white-space:pre-wrap}
+
+/* Two lists, sized to their content and separated by a rule. Both tracks
+   were `1fr` before, which stretched them apart and pushed every value to
+   the far right — the middle went empty and the two halves read as one
+   broken table rather than as two lists. */
+/* pushed to the right edge of its cell — the tables are content-sized, so
+   the slack now falls between the prompt column and the recipe */
+.rcp2{display:grid;justify-content:end;align-items:start;margin-left:auto}
+/* name | value | scope, scope fixed at the width of "vcl/mel/bas" like the
+   dimension table so the two columns line up with each other */
+
+.diff{display:grid;grid-template-columns:auto auto auto auto;justify-content:start;
+  gap:0 14px;margin-top:1px;align-items:center;grid-auto-rows:var(--row)}
+.diff .rh2{display:contents}
+.diff .rh2 span{color:var(--g3)}
+.diff .c1{color:var(--g1)}
+.diff .c2,.diff .c3{color:var(--g3)}
+.diff .c4{color:var(--w);text-align:right;font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+
+/* on the --row grid like every other readout: the ad-hoc margin-top meant
+   these two sat a couple of pixels off every line beside them */
+.score-row{display:flex;align-items:center;gap:10px;
+  height:var(--row);line-height:var(--row)}
+.score-row .lb{color:var(--g3);width:60px}
+/* scores use the same dot scale as the genre/beats confidence readouts */
+.scale{cursor:pointer}
+.scale .cd{cursor:pointer}
+.scale .cd:hover{box-shadow:inset 0 0 0 1px var(--w)}
+.score-row .val2{color:var(--w);margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}
+
+/* overflow:hidden so a dot near the edge of the cloud can't spill past the
+   plot and into the neighbouring zone — the scatter is generated from a
+   spread, so some points land outside 0-100% */
+.plot-box{height:var(--gh);position:relative;overflow:hidden;background:var(--plotbg)}
+/* scatter dots stay smaller than the readout dots — there are 200+ of them */
+/* on the black plot ground the cloud reads as mid-grey and the live slice
+   as the plot ink — the pale-field --g3/--w pair would invert wrongly here */
+.dot{position:absolute;width:2px;height:2px;border-radius:50%;
+  background:var(--g3);transform:translate(-50%,-50%)}
+/* live slice stays a step larger — at 2px a white dot would disappear
+   into the cloud rather than reading as the one that's playing */
+.dot.live{background:var(--plotink);width:4px;height:4px}
+.axes{display:flex;justify-content:center;color:var(--g3);
+  height:var(--row);line-height:var(--row)}
+
+/* ── DARK REGION ──────────────────────────────────────────────────────────
+   The whole panel is dark now — menu row, header block, stem bands, console
+   and footer chip bar. Rather than restating every colour,
+   the palette variables are REDECLARED on those containers — CSS custom properties inherit, so every descendant, plot and
+   contour re-resolves against the dark values with no other rule touched.
+   --plotink/--plotdata/--plotedge are derived from --w/--g3/--w, so they
+   follow automatically. */
+/* Every value is chosen for which of the three posterize bands it lands in
+   (edges at 0.333 and 0.667 luminance), not for how it looks unfiltered:
+     --w/--g1  -> WHITE   values, emphasis, plot contours, markers
+     --g2..g4  -> MID     labels, hairlines, dividers, traces
+     --bg/fill -> BLACK   the field
+   --g4 at #464b4a fell into BLACK, which made every column divider vanish
+   on a black field; --g2 at #a9aead tipped into WHITE and flattened the
+   label/value hierarchy. Both are pulled back into the middle band. */
+#bands,.conv,.touched,.rule,.head,.states,.zoneF{
+  --bg:#0d0e0e; --w:#ffffff; --g1:#e2e4e3; --g2:#8e9392; --g3:#7d8281;
+  --g4:#5e6362; --fill:#2a2e2d; --itembg:#0d0e0e;
+  /* redeclared, not inherited: --plotedge etc. were computed against the
+     light --w at :root and came down as near-black literals, which is why
+     the spectrum and VU outlines were invisible on a black band */
+  --plotink:var(--w); --plotdata:var(--g3);
+  --plotedge:var(--w);
+  background:var(--bg); color:var(--g1)}
+
+
+/* ── stem bands ───────────────────────────────────────────────────────── */
+/* no separator between bands: the waveform strip already opens each one,
+   and the console rule is the panel's only horizontal division now */
+.band{padding:1px 10px 3px;line-height:1.18}
+/* The rule is lifted 21px and the padding puts the same 21px back, so the
+   line moves up into the header's empty bottom margin while every box on
+   the panel stays exactly where it was. Changing .head's min-height would
+   have achieved the same look by moving the whole layout instead. */
+#bands{border-top:1px solid var(--g4);margin-top:-21px;padding-top:21px}
+#bands .band:last-child{border-bottom:0}
+/* the waveform stays on the panel — it just needs air beneath it. Butted
+   straight against the readouts it read as part of the same block rather
+   than as the band's own timeline. */
+.prog{display:flex;align-items:center;gap:8px;color:var(--g3);padding:0;
+  margin-bottom:9px}
+/* a DAW media item, not a plot well: mid-grey ground with a DARK trace,
+   and a centre line running the full width so silence still reads as a
+   timeline rather than as empty space */
+.prog .wv{flex:1;position:relative;height:26px;background:var(--itembg)}
+.prog .wv svg{display:block;width:100%;height:100%}
+/* time sits beside the trace, not over it — overlaid it needed an opaque
+   plate to stay legible, and that plate punched a hole in the waveform */
+/* waveform layers, darkest to brightest. Only the played portion is --w,
+   so white is unambiguous: it means "this has gone past". */
+.wv .w-axis{fill:var(--g4)}
+.wv .w-un{fill:var(--g4)}
+.wv .w-un2{fill:var(--g3)}
+.wv .w-sel{fill:var(--g3)}
+.wv .w-sel2{fill:var(--g2)}
+.wv .w-play,.wv .w-play2{fill:var(--w)}
+.wv .w-edge{stroke:var(--w);stroke-width:1;vector-effect:non-scaling-stroke}
+.prog .stem{color:var(--w);white-space:nowrap}
+.prog .t{color:var(--g2);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* six columns: info | map | weight-dir | entropy | spectrum | meters */
+/* info flush left, spectrum centre, then weight/dir and gain/VU */
+/* fixed track widths, not max-content — max-content lets each band size its
+   own columns from its own longest string, which is exactly what knocks the
+   four bands out of alignment with each other */
+/* spectrum column sized to the block rhythm: 26px dB scale + 5px gap +
+   64 bands x 4px cell = 287px. The info column takes the slack instead. */
+/* Per-boundary spacing: grid `gap` is uniform, so each column carries its
+   own padding-left instead — wide after the spectrum, tight before the
+   meters. Each divider is a pseudo-element centred in that column's own
+   padding, so it costs no layout width. */
+.brow2>div{position:relative}
+/* the info header runs on into the map column, so it must not clip */
+.bc1{overflow:visible;z-index:1}
+/* the info column is two columns of its own now: the stem's own source
+   menu, then the readings taken off whatever it has selected */
+.b1grid{display:grid;grid-template-columns:256px 1fr;gap:0 22px}
+.bc-map{padding-left:26px}   /* same gap as map | weight-dir, so the
+                                t-SNE sits evenly between its dividers */
+/* the header row carries the plot type on the left and the slice count
+   on the right; "near = alike" is dropped — it is what a t-SNE IS, so
+   naming the projection already says it */
+.bc-map .hdr{display:flex}
+.bc2{padding-left:26px}   /* map | weight-dir — widest gap in the band */
+/* Centred on the span BETWEEN the two dividers, not on the column box.
+   The left divider is 13px into this column's own padding; the right one
+   belongs to the spectrum column and sits 8px past this column's right
+   edge. So the true centre is at x=41.5 of 62 — asymmetric padding
+   (26 left, 5 right) puts the content box's centre exactly there. */
+.bc-ent{padding-left:28px;padding-right:2px}
+.bc3{padding-left:16px}
+.bc4{padding-left:18px}
+/* five dividers, one per column boundary: info | map | weight-dir |
+   entropy | spectrum | meters. Each is centred in its own column's
+   padding, so it costs no layout width. */
+/* the dividers run the graphs' own span — row 1 to row 8 — rather than the
+   full column height, so they bracket the bodies instead of cutting through
+   the header row and the space under the shortest column */
+.bc-map::before,.bc2::before,.bc-ent::before,.bc3::before,.bc4::before{
+  content:"";position:absolute;top:var(--row);height:var(--gh);
+  width:1px;background:var(--g4)}
+.bc-map::before{left:13px}
+.bc2::before{left:13px}
+.bc-ent::before{left:13px}
+.bc3::before{left:8px}
+.bc3{padding-right:14px}
+.bc4::before{left:9px}
+.brow2{display:grid;gap:0;align-items:stretch;
+/* order changed: entropy now sits between the map and the weight/dir
+   matrix, and the momentum field takes everything the other columns don't
+   need. 26 padding + 15 label + 6 + 72 wgt/dir + 6 + 721 momentum + 6 +
+   42 value = 894. The info column absorbs the remainder (304 at 1920). */
+  grid-template-columns:minmax(500px,1fr) 166px 62px 662px 378px 96px}
+.hdr{color:var(--g2);white-space:nowrap;height:var(--row);line-height:var(--row);
+  margin-bottom:2px}
+/* track name reads as a value, same --g1 as [fullfile] and beat — it's
+   context, not a heading, so it shouldn't outrank the stem name */
+.hdr .n{color:var(--g1)}
+.hdr.rt{text-align:right}
+/* the cluster is wider than the meter column it heads, so it overhangs to
+   the left rather than widening the column or wrapping */
+.hdr.rt.src{position:absolute;right:0;top:0;white-space:nowrap;margin:0}
+.bc4{position:relative}
+/* RMX|GEN is a toggle, so the two states have to be unmistakable: the
+   active side is white, the inactive one drops to --g3 — matching the
+   lockSource label, since both are the "not currently in play" state of
+   this header. */
+.mode{color:var(--g3)}
+.mode .on{color:var(--w)}
+.mode .sep2{color:var(--g3)}
+
+/* info block + entropy fader.
+   Alignment across the four bands: the info column is fixed-width (not
+   max-content) so it can't resize per band, the lines don't wrap, and every
+   number is tabular — so "slices:0" and "slices:182" occupy the same width
+   and nothing downstream shifts from one band to the next. */
+/* one blank row between the stem header and its readouts, so [STEM] + track
+   name reads as a title rather than as the first line of the block. Only
+   the info column shifts — the spectrum and meters keep their own tops. */
+/* no flex-grow: the text block takes its own width so the entropy fader
+   sits directly beside it. With flex:1 it stretched to fill the column
+   and pushed the fader to the far edge, opening a dead gap between. */
+.infolines{min-width:0;white-space:nowrap;overflow:hidden}
+.infolines>div{height:var(--row);line-height:var(--row)}
+.infolines .val{font-variant-numeric:tabular-nums}
+.lbl{color:var(--g3)}
+.val{color:var(--g1)}.val.hi{color:var(--w)}
+
+/* the frequency scale is pinned to the bottom of the band row, so it lands
+   on the weight/dir column's last line (D) instead of floating mid-column */
+.brow2>.col-spx{display:flex;flex-direction:column}
+.col-spx .spx{flex:none}
+/* width = exactly the bars: 64 cells of (blk+gap), less the trailing gap.
+   Without this the 1fr track stretched the space-between labels wider
+   than the bars, pushing "20K" up against the column divider. */
+.spx-body{display:flex;flex-direction:column;
+  width:calc(var(--bands) * (var(--sblk) + var(--blkgap)) - var(--blkgap))}
+.spx{display:grid;grid-template-columns:26px max-content;gap:5px}
+/* dB SCALE — each label is absolutely pinned to its own gridline instead of
+   being distributed with space-between. The old approach only lined up if
+   the scale box height and the inherited line-height happened to agree; when
+   they didn't, the labels overflowed and the bars read against the wrong
+   line (baseline on -40, -50 stranded beside the frequency row).
+   Scale and field now share one box — same top offset, same height — so
+   top:0% IS 0 dB and top:100% IS -50 dB, whatever the leading. */
+/* no inset: the field starts on row 1 like every other graph body. The
+   0 dB label half-overhangs into the header row, which is empty. */
+/* the dB scale starts one row down, level with the field: the frequency
+   scale occupies row 0 (aligned with "weight / dir  dirWgt") and the field
+   runs rows 1-8 like every other graph body */
+.spx .sc{position:relative;height:var(--gh);margin-top:var(--row);color:var(--g3)}
+.spx .sc span{position:absolute;right:0;transform:translateY(-50%);line-height:1}
+.spx .fld,.fld{background:var(--plotbg)}
+.spx .fld{position:relative;height:var(--gh);display:flex;align-items:flex-end;
+  gap:var(--blkgap)}
+/* spectrum lines at the shared block width rather than flex:1 — so a
+   spectrum band, a histogram bar and a waveform column are all the same
+   size on screen */
+/* spectrum bars share the momentum histograms' grey rather than the plot
+   ink — data traces sit one step below full brightness so the peak-hold
+   and live-slice marks stay the brightest things on a black ground */
+.spx .bar{width:var(--sblk);flex:0 0 var(--sblk);background:var(--plotdata);position:relative;z-index:1}
+/* clipping: the band lights to plot ink. It is the only state on the panel
+   that promotes a trace to the marker level, which is the point — an over
+   should out-rank every other reading in the plot. */
+.spx .bar.clip{background:var(--plotink)}
+/* the frequency scale sits ABOVE the field, in the header row the spectrum
+   column was leaving empty */
+.spx .fz{display:flex;justify-content:space-between;color:var(--g3);
+  height:var(--row);line-height:var(--row)}
+
+.sld{position:relative;height:11px;margin:2px 0 4px}
+.sld .ln{position:absolute;top:5px;left:0;right:0;height:1px;background:var(--fill)}
+.sld .kn{position:absolute;top:2px;width:7px;height:7px;border-radius:50%;background:var(--g1);transform:translateX(-50%)}
+
+/* the histogram gets a FIXED track, not 1fr. As a flexible column it took
+   whatever space the row had left over, so its contour width drifted and
+   the value column collided with it. Everything is pinned now:
+     label 14 + wgt/dir 72 + hist 78 + value 42 + 3 gaps = 224 of 226. */
+.wd{display:grid;grid-template-columns:15px 72px 489px 42px;gap:0 6px;align-items:center;
+  grid-auto-rows:var(--row)}
+/* nowrap on both label cells. Grid `auto` tracks are allowed to shrink to
+   min-content, and the min-content of "2.0 / -1.0" is "2.0" because it can
+   break at the spaces — the cell then wrapped to two lines inside a fixed
+   --row-tall track and the rows printed over each other. The histogram is
+   the flexible track, so it is the one that should absorb any shortfall. */
+.wd .k,.wd .wv2{white-space:nowrap}
+/* the dim letter and the live value stay recessive; the weight/dir pair is
+   white, because that is the part you set rather than the part the engine
+   reports back */
+.wd .k{color:var(--g2)}
+.wd .wv2,.wd .wv2.chg{color:var(--w)}
+/* 1px of inset so the bars stop short of the contour instead of painting
+   over it, and overflow:hidden so a tall bar cannot escape the box */
+.hist{height:11px;width:489px;display:flex;align-items:flex-end;gap:var(--blkgap);
+  position:relative;padding:1px;overflow:hidden;
+  background:var(--plotbg)}
+.hist i{width:var(--blk);flex:0 0 var(--blk);background:var(--plotdata);
+  position:relative;z-index:1}
+/* the slice currently sounding is one bar lit white against the grey run —
+   it moves along as the slicer advances, so the histogram doubles as a
+   position readout without needing a separate cursor */
+.hist i.now{background:var(--plotink)}
+.hist.empty{color:var(--g4);letter-spacing:1px;display:block;line-height:9px;overflow:hidden;white-space:nowrap}
+/* fixed width so the readout column is identical on every band AND so the
+   header can reserve the same width and land dirWgt on the histogram's
+   right edge rather than the column's */
+.wd .rv{width:42px;color:var(--g2);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* the header shares the body's tracks: 15+6+72 = 93 for the two label
+   columns, then the momentum field, then the value column. Anything
+   printed over the momentum field is therefore guaranteed to sit inside
+   its contour rather than near it. */
+.wdh{display:grid;grid-template-columns:93px 489px 42px;gap:0 6px}
+.wdh-m{display:flex;justify-content:space-between;white-space:nowrap}
+
+/* vertical L/R meters + gain fader, right-aligned in the last column.
+   Level reads above, channel label below, same for the fader. */
+.meters{display:flex;gap:11px;justify-content:flex-end;align-items:flex-start}
+.mcol{display:flex;flex-direction:column;align-items:center;gap:2px}
+/* entropy sits one row higher than the text block, with zero internal gaps,
+   so its stack (16 label + 80 fader + 16 label + 16 value = 128) starts at
+   -1 row and its value lands exactly on the "lock:" line at row 6 */
+/* the fader is the spectrum field: same height and the same --lh2 inset
+   below the header row, so its slot starts and ends level with the
+   frequency content beside it. Derived from --col/--lh2 rather than being
+   a separate number, so the two cannot drift apart. */
+.bc-ent .vfad{height:calc(var(--gh) - 2 * var(--row))}
+.bc-ent .mcol{gap:0}
+/* the entropy markers were riding the ends of the slot, where the glyph sat
+   on top of the track and the cap could park over it. They now take a row
+   each, above and below: the slot loses 2 * --row and the stack still totals
+   --gh, so nothing beside it moves.
+     ☀ 0..16 | slot 16..112 | ❄ 112..128 */
+.bc-ent .mcol .sym{color:var(--g4);pointer-events:none;
+  height:var(--row);line-height:var(--row);font-variant-emoji:text}
+.meth{display:flex;justify-content:space-between}
+.bc-ent .mcol .ml,.bc-ent .mcol .mv{height:var(--row);line-height:var(--row)}
+/* one --lh2 of air under the slot, mirroring the inset above it, which
+   also lands the value on the D row of the weight/dir matrix:
+     fader 24..104, snowflake 112..128, 0.35 128..144 = D */
+
+.mpair{display:flex;gap:3px}
+/* monochrome again — the fill is --plotdata like every other trace, and the
+   peak hold is the one bright mark */
+.vmtr{display:block;width:11px;height:var(--fadh);background:var(--plotbg);position:relative;
+  overflow:hidden}
+.vmtr i{position:absolute;left:0;right:0;bottom:0;background:var(--plotdata)}
+.vmtr b{position:absolute;left:0;right:0;height:1px;background:var(--plotink)}  /* peak hold */
+/* fader: the track runs the full height and stays visible above and below
+   the cap; the cap is a rounded slab with a centre index line, so it reads
+   as a fader rather than as another dot */
+.vfad{width:13px;height:var(--fadh);position:relative;display:flex;justify-content:center}
+/* the slot is a recessed channel, not a hairline: wider and darker than the
+   field so the cap reads as sitting IN it rather than on top of it */
+.vfad .ln{width:3px;height:100%;background:var(--w)}
+/* cap is taller than it is wide, like a desk fader — narrow horizontally
+   so it doesn't crowd the meters, tall enough to grab */
+.vfad .kn{position:absolute;left:0;right:0;height:34px;border-radius:2px;
+  background:var(--g2);transform:translateY(50%);cursor:ns-resize;
+  display:flex;align-items:center}
+.vfad .kn i{display:block;width:100%;height:1px;background:var(--w)}
+.vfad .kn:hover{background:var(--g1)}
+.vfad.sm{width:11px}
+.vfad.sm .ln{width:2px}
+/* entropy's head is a disc rather than a desk-fader cap — a different
+   control shape for a different kind of parameter, and it can't be
+   mistaken for the gain fader at a glance */
+.vfad.sm .kn{left:0;right:0;height:11px;border-radius:50%;
+  transform:translateY(50%)}
+.vfad.sm .kn i{display:none}
+.ml{color:var(--g3)}
+/* symbol glyphs sit on their own metrics — let them overflow the row box
+   rather than being clipped to the text line-height */
+.ml.sym{line-height:1;overflow:visible;font-variant-emoji:text}
+.mv{color:var(--g1);font-variant-numeric:tabular-nums}
+/* spatial 5x5 grid removed with the rest of the pan/width subsystem —
+   quad FL/FR/RL/RR collapses back to plain stereo L/R metering */
+
+/* ── chat / command / footer ──────────────────────────────────────────── */
+/* ── command / chat zone ──────────────────────────────────────────────── */
+/* the one rule on the panel — asked for explicitly, to demarcate the chat */
+.touched{position:absolute;right:10px;top:5px;color:var(--g3);
+  line-height:var(--row);pointer-events:none}
+.touched .val{color:var(--g2)}
+
+/* two horizontal rules, both marking a change of content: the header block
+   gives way to the stem bands, and the bands give way to the console */
+.conv{padding:5px 10px 0;position:relative;border-top:1px solid var(--g4)}
+.log .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log .pre{color:var(--g3);margin-right:8px}
+.log .cmdtxt{color:var(--g1)}
+.log .restxt{color:var(--g2)}
+.log .restxt b{color:var(--w)}
+.cline{position:relative;height:17px}
+.cline .mirror{color:var(--w);white-space:pre}
+.cline .cur{display:inline-block;width:7px;height:12px;background:var(--w);
+  vertical-align:-2px;animation:blink 1.06s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.cline input{position:absolute;inset:0;width:100%;opacity:0;
+  font-family:var(--mono);cursor:text}
+
+.zoneF{padding:5px 10px 4px;display:flex;align-items:baseline}
+.fg{display:flex;gap:12px;white-space:nowrap}
+.chip{color:var(--g1);cursor:pointer;white-space:nowrap}
+.chip:hover{color:var(--w)}
+.chip b{background:var(--w);color:var(--bg);padding:0 4px;margin-right:6px}
+.chip.on{color:var(--w)}.chip.on b{background:var(--w)}
+
+/* ═══ REAPER-STYLE SKIN ═══════════════════════════════════════════════════
+   Layered on top of the flat design rather than replacing it, so it can be
+   deleted in one block to get the flat version back.
+
+   What makes REAPER look like REAPER, and what's borrowed here:
+   1. ENGRAVED separators — every zone edge is a dark line with a 1px light
+      line under it, so boundaries read as cut into the surface. This is the
+      one place the earlier "no contours" rule is deliberately broken; a
+      bevel is a lit edge, not an outline, and it still never encloses a
+      zone on four sides.
+   2. RECESSED wells — plots, meters and inputs sit below the surface via an
+      inset shadow, which is why REAPER's black meter areas read as inset
+      hardware rather than as black rectangles painted on.
+   3. RAISED controls — fader caps, chips and the selected row get a top
+      highlight and a bottom shadow so they sit above the panel.
+   4. A vertical panel gradient, light at the top, so the surface has a
+      direction and the bevels have a consistent light source.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#c7c8c5;
+  /* the panel darkened by a step, so the two lightest text greys darken with
+     it — otherwise recessive labels fall from 2.7:1 to 2.3:1 */
+  --g3:#71767a; --g4:#9da2a1;
+  --bev-hi:rgba(255,255,255,.62);
+  --bev-lo:rgba(0,0,0,.30);
+}
+body{background:#0d0e0e}
+.plugin{background:#0d0e0e}
+
+/* 1 — engraved zone edges */
+/* the header is dark now, so it takes the same plain hairline as the
+   bands rather than the light region's engraved bevel pair */
+.head{box-shadow:none}
+/* bands keep their plain --g4 border from the base sheet — the engraved
+   bevel pair belongs to the light region and would double the weight */
+.band{box-shadow:none}
+
+.zoneF{box-shadow:none}
+/* Console separator. 1px is the floor in design space, and fit() scales the
+   whole panel, so at scale > 1 that 1px thickens with everything else. The
+   fix is to divide it back out: --rule-h is 1 design pixel divided by the
+   live scale factor, which fit() writes onto the panel. The line therefore
+   lands on one DEVICE pixel whatever the window size. Opacity would have
+   been the obvious lever and is the wrong one — it pushes the line into the
+   mid posterize band and it stops being white. */
+/* Console separator = band separator. Same colour (--g4) and same 1px
+   weight as the line between two waveform bands, so every horizontal
+   division inside the dark region is one object rather than three.
+   Full bleed: the old `margin:6px 10px 0` was letting the LIGHT panel
+   gradient show through between the black bands and the black console, and
+   that strip of panel was what read as a thick white line — not the rule. */
+.rule{background:var(--g4);box-shadow:none;height:1px;margin:0}
+.bdet>div+div:not(.span2)::before{background:var(--g4);box-shadow:none}
+
+/* 2 — recessed wells: plots, meters, inputs */
+/* CONTOURS. Every data surface is a box outlined in --plotedge and left
+   unfilled — spectrum field, descriptor map, momentum histograms, both VU
+   meters, the entropy and gain fader slots, and the bake list. --plotedge
+   resolves to --w, so it inverts with the region: black outline on the light
+   header, white outline on the dark bands. */
+.spx .fld,.fld,.plot-box,.vmtr,.blist,.smenu{
+  box-shadow:inset 0 0 0 1px var(--plotedge)}
+/* the momentum histograms outline in grey rather than white: they are a
+   readout inside a band, not a plot you read values off, so they sit a
+   step below the spectrum, map and meters */
+.hist{box-shadow:inset 0 0 0 1px var(--g4)}
+/* L and R each get their own box — they are two independent meters, and one
+   shared surround read as a single stereo bar */
+.mpair{box-shadow:none}
+/* no edge: the item shares the panel's ground, so an outline would turn it
+   back into the box we just removed */
+/* grey contour: the prompt is an input, not a data surface, so it sits
+   one step below the white-outlined plots */
+.prompt{box-shadow:inset 0 0 0 1px var(--g3)}
+/* the LUFS meter is a contoured instrument like the VUs, not a well */
+.lufs{box-shadow:inset 0 0 0 1px var(--plotedge)}
+/* the ring must survive: listed first so it isn't replaced by the well */
+.cd{box-shadow:inset 0 0 0 1px var(--g2), inset 0 1px 2px rgba(0,0,0,.22)}
+.vfad .ln{box-shadow:inset 0 0 2px rgba(0,0,0,.9)}
+
+/* 3 — raised controls.
+   Chip keys and the selected row get NO near-white gradient: those highlights
+   invert to black and swallow the element. They stay flat --w fills, which
+   come out as solid white caps. */
+.vfad .kn{
+  background-image:linear-gradient(180deg,#8f9398 0%,#6b7075 48%,#5c6165 100%);
+  box-shadow:0 1px 2px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.38)}
+.vfad .kn:hover{background-image:linear-gradient(180deg,#a2a6ab 0%,#7f8386 48%,#6b7075 100%)}
+.cd.on{box-shadow:0 1px 1px var(--bev-lo), inset 0 1px 0 rgba(255,255,255,.9)}
+
+.head{position:relative}
+
+/* ── LIBRARY ─────────────────────────────────────────────────────────────
+   Two rows per file: the file itself (name / genre / bpm), then its four
+   stems with slice counts. Capped at ten rows — five files — and scrolls,
+   the same treatment the bake list gets. */
+.lib .lbl2{display:flex;gap:10px;align-items:baseline}
+.libn{margin-left:auto;color:var(--g4)}
+/* no contour: the list is text on the panel ground like the rest of the
+   header, and the rows themselves are enough structure */
+.libbox{max-height:calc(6 * var(--row));overflow-y:auto;overscroll-behavior:contain}
+.libbox{scrollbar-width:thin;scrollbar-color:var(--g3) transparent}
+.libbox::-webkit-scrollbar{width:4px}
+.libbox::-webkit-scrollbar-thumb{background:var(--g3)}
+.libbox::-webkit-scrollbar-track{background:transparent}
+
+/* ── PER-STEM SOURCE MENU ────────────────────────────────────────────────
+   One per band, and each one only lists files that actually produced this
+   stem: the rows ARE the t-SNE cloud beside them, so a file with zero
+   slices for this stem has nothing in the plot and no row here. Six rows
+   visible, the rest scrolls — same box as the bake list above. */
+.smenu{max-height:calc(6 * var(--row));overflow-y:auto;overscroll-behavior:contain;
+  background:var(--plotbg)}
+.smenu{scrollbar-width:thin;scrollbar-color:var(--g3) transparent}
+.smenu::-webkit-scrollbar{width:4px}
+.smenu::-webkit-scrollbar-thumb{background:var(--g3)}
+.smenu::-webkit-scrollbar-track{background:transparent}
+.srow2{display:flex;justify-content:space-between;gap:10px;
+  height:var(--row);line-height:var(--row);padding:0 6px;
+  white-space:nowrap;overflow:hidden;cursor:pointer;color:var(--g2)}
+.srow2 .sname{overflow:hidden;text-overflow:ellipsis}
+.srow2 .scnt{color:var(--g4);font-variant-numeric:tabular-nums}
+.srow2:hover{color:var(--w)}
+.srow2.sel{background:var(--w);color:var(--bg)}
+.srow2.sel .scnt{color:var(--bg)}
+.srow2.none{color:var(--g4);cursor:default}
+.srow2.none:hover{color:var(--g4)}
+
+.lrow{display:grid;grid-template-columns:1fr auto auto;gap:0 12px;
+  height:var(--row);line-height:var(--row);padding:0;
+  white-space:nowrap;cursor:pointer;color:var(--g2)}
+.lrow:hover{color:var(--w)}
+.lrow .lname{overflow:hidden;text-overflow:ellipsis}
+.lrow .lgen{color:var(--g4)}
+.lrow .lbpm{color:var(--g4);font-variant-numeric:tabular-nums}
+
+/* the stem row: four cells, each a stem and its slice count. Three states
+   within three values — grey = on disk and idle, white = the engine's
+   proposal, inverse = pinned by hand. The inverse chip is the same
+   "selected" idiom the bake list uses. */
+.lsrow{display:flex;gap:24px;height:var(--row);line-height:var(--row);
+  padding:0;white-space:nowrap;justify-content:flex-start}
+.st{color:var(--g4);cursor:pointer}
+.st:hover{color:var(--w)}
+.st.prop{color:var(--w)}
+.st.pin{background:var(--w);color:var(--bg)}
+.st .sn{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<!-- ── POSTERIZE ────────────────────────────────────────────────────────────
+     3 levels, applied to the whole panel. feComponentTransfer type="discrete"
+     is the posterize primitive: with n tableValues it quantises input into n
+     bands and emits the matching value, so "0 0.5 1" collapses everything to
+     black / mid / white. The light-header / dark-bands split is a real
+     two-tone palette (see "DARK REGION" below), not a filter inversion.
+
+     Two details that matter:
+     - color-interpolation-filters="sRGB". The default is linearRGB, which
+       moves the band edges and quantises somewhere other than where the
+       values look like they sit.
+     - the saturate(0) pass. Posterizing per channel lets the R, G and B of a
+       near-grey straddle a threshold and come out tinted — #53565a would
+       resolve to R=0, G=0.5, B=0.5, i.e. cyan. Flattening to luminance first
+       guarantees the palette stays neutral. The panel is exactly three
+       values: black, grey, white.
+
+     Delete this block and the filter line in .plugin to switch it off.
+     ───────────────────────────────────────────────────────────────────── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="posterize3" color-interpolation-filters="sRGB">
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncR type="discrete" tableValues="0 0.5 1"/>
+      <feFuncG type="discrete" tableValues="0 0.5 1"/>
+      <feFuncB type="discrete" tableValues="0 0.5 1"/>
+    </feComponentTransfer>
+  </filter>
+</svg>
+
+<div class="plugin">
+
+  <!-- ── menu header — three groups: session state, identity/network,
+       mode chips. Matches the TUI's own header row. ─────────────────── -->
+  <div class="states">
+    <span class="grp">
+      <span class="on">[MODEL: CHIRP!]</span>
+      <span class="off">[STOP]</span>
+      <span class="on">[ENG CONN]</span>
+    </span>
+    <span class="grp mid-grp">
+      <span class="off">[Gnumbat 0.1.19]</span>
+      <span class="off">[&#127279;AGPL-3.0]</span>
+      <span class="off">network: <span class="on">[wifi]</span> <span class="on">192.168.0.20</span></span>
+    </span>
+    <span class="grp r">
+      <span class="off" id="capToggle">[REC <span class="rd"></span>]</span>
+      <span class="on">[TRAINING MODE]</span>
+    </span>
+  </div>
+
+  <!-- ── header region ──────────────────────────────────────────────── -->
+  <div class="head" id="headPlayback">
+
+    <!-- audition list, far left — replaces the old PLAYBACK/Master/Link zone -->
+    <div>
+      <div class="views">
+        <span class="v on" id="tabTrain">TRAIN</span><span class="v on" id="tabBake">Bake</span>
+        <span class="v" id="tabLib">library</span>
+      </div>
+      <div id="blist" class="blist"></div>
+      <!-- same slot, same box: the library is a third thing this list can
+           show, so it swaps in here rather than taking a column of its own.
+           Link keeps its ^O binding in the footer. -->
+      <div class="libbox hide" id="libList"></div>
+      <!-- bake modes map onto the two scoring axes: scoreLyr rates the
+           layering, scoreTrs rates the cut between segments -->
+      <!-- one grid, so the toggle and the two score rows share a column: the
+           toggle is the widest thing in it, which puts its right edge on the
+           score values and its left edge on the first dot -->
+      <div class="bopts hide" id="libOpts">
+        <span class="lbl">library</span>
+        <span class="mode" id="libmode"><span class="on">[AUTO</span><span class="sep2">|</span><span>MANUAL]</span></span>
+        <span class="lb" id="libCount"></span>
+        <span></span>
+      </div>
+      <div class="bopts" id="bakeOpts">
+        <span class="lbl">Bake mode</span>
+        <span class="mode" id="bmode"><span class="on">[LAYERS</span><span class="sep2">|</span><span>TRANSITION]</span></span>
+        <span class="lb">scoreLyr</span>
+        <span class="srow"><span class="conf scale" data-t="lyr"></span><span class="val2">+0.60</span></span>
+        <span class="lb">scoreTrs</span>
+        <span class="srow"><span class="conf scale" data-t="trs"></span><span class="val2">-0.20</span></span>
+      </div>
+    </div>
+
+    <!-- detail — also carries the track/session readout that used to sit in
+         the playback zone, since it's the context the bake was made in -->
+    <div class="bdet">
+      <div class="pb">
+        <div class="lbl2" style="margin-top:var(--row)">details &mdash; master track</div>
+        <!-- tracks / genre / beats are AGGREGATES across the four stems, not
+             the master's own values: stems can come from different sources,
+             so genre is a set rather than one label and its confidence dots
+             read as "how much the stems agree". stay / match / quant and the
+             slice counts were dropped — all per-stem, and each band already
+             carries its own (slcs sits above that stem's descriptor map), so
+             on the master they were duplicates with no single owner. -->
+        <div class="ln"><span class="k">tracks: </span><span class="v">ESRGDtb923043@$#%_$sdndn-001</span></div>
+        <div class="ln"><span class="k">key: </span><span class="v">Bb minor</span></div>
+        <div class="ln"><span class="k">genre: </span><span class="v">electro techno &middot; rock alt</span><span class="conf" id="cGenre"></span></div>
+        <div class="ln"><span class="k">beats: </span><span class="v">4/4 120bpm</span><span class="conf" id="cBeats"></span></div>
+        <div class="ln"><span class="k">LUFSs:</span><span class="lufs"><i style="width:6%"></i></span><span class="k">-inf</span></div>
+        <div class="lbl2">prmpt</div>
+        <textarea class="prompt">darker, keep the low end, less bright — narrow spread on vocals</textarea>
+      </div>
+
+      <!-- The full recipe, not a diff. A bake IS the complete parameter set
+           (app.js calls bakeComportment "the live, authoritative, EDITABLE
+           recipe"), so listing only the departures raised the question of
+           departures from WHAT. Everything is shown; values that differ from
+           slicer.js's defaults are white, defaults stay recessive — so the
+           diff is still readable without the table having to imply a
+           reference it never stated. -->
+    </div>
+
+  </div>
+
+  <div id="bands"></div>
+
+  <!-- ── command / chat zone — one rule above it, the last three lines of
+       scrollback, then the live input with a block cursor ─────────── -->
+  <div class="conv">
+    <!-- last touched rides the console's first line, flush right. It used to
+         sit outside .conv and be pulled up with a negative margin, but once
+         the console got its own black background that background painted
+         straight over it. -->
+    <div class="touched"><span class="lbl">last touched: </span><span class="val">:--</span></div>
+    <div class="log" id="clog"></div>
+    <div class="cline" id="cline">
+      <span class="mirror" id="mirror"></span><span class="cur"></span>
+      <input id="cin" spellcheck="false" autocomplete="off">
+    </div>
+  </div>
+
+  <footer class="zoneF">
+    <span class="fg"><span class="chip" id="chatChip"><b>^C</b>Chat</span></span>
+    <span style="width:12px"></span>
+    <span class="fg"><span class="chip" id="startChip"><b>^S</b>Start</span></span>
+    <span style="width:12px"></span>
+    <span class="fg"><span class="chip otrain"><b>^T</b>Close</span><span class="chip ogen"><b>^G</b>Gen</span>
+      <span class="chip" style="margin-left:9px"><b>^B/^Y</b>&uarr;&darr; Bake</span></span>
+    <span style="flex-grow:1"></span>
+    <span class="fg"><span class="chip"><b>^L</b>Log out</span></span>
+  </footer>
+</div>
+
+<script>
+const rng=s=>()=>{s=(s*9301+49297)%233280;return s/233280;};
+const TRACK='ESRGDtb923043@$#%_$sdndn-001';
+/* Sparse ticks. The 16-band EQ labels were carried over from the removed
+   EQ column; as a frequency scale they need ~350px of text and the field
+   is 255px, so they ran together and spilled into the next zone. */
+const FREQ=['20','200','1K','5K','20K'];
+const DBS=['0','-10','-20','-30','-40','-50'];
+
+/* ── SLICER STATE MODEL ──────────────────────────────────────────────────
+   Mirrors slicer.js: eight dims, per-stem WEIGHTS[stem][dim] and per-stem
+   DIR_PREF[stem][dim] in {-1, 0, +1}. D (density) is real — defaultDirPref()
+   and norm both carry it, and add_tension.py writes it per slice.
+   ────────────────────────────────────────────────────────────────────── */
+const DIMS=['C','S','E','F','P','H','T','D'];
+const DEF_W={C:1.0,S:0.8,E:2.0,F:0.5,P:1.5,H:1.0,T:1.5,D:1.0};   /* defaultWeights() */
+const DEF_D={C:0,S:0,E:0,F:0,P:0,H:0,T:0,D:0};                    /* defaultDirPref() */
+
+/* The applied bake. "darker, keep the low end, less bright" compiles to a
+   falling centroid and timbre preference plus extra centroid weight so it
+   actually steers selection; E and P stay at default, which is what "keep
+   the low end" means in this model. "narrow spread on vocals" is a per-stem
+   override on S, not an `all` command — hence the scope line. */
+const BAKE_W={...DEF_W, C:2.0};
+const BAKE_D={...DEF_D, C:-1, T:-1};
+/* THE RECIPE, IN FULL.
+   A bake is a complete parameter set, so the whole thing is listed and the
+   departures from slicer.js's defaults are simply marked. Scope is written
+   as the stems the command was actually applied to — vcl/mel/bas/drm, or
+   "all" when it covers every stem — rather than naming one stem and hiding
+   the rest. */
+const STEM_ABBR={vocals:'vcl',melody:'mel',bass:'bas',drums:'drm'};
+const ALL_STEMS=['vocals','melody','bass','drums'];
+const scopeOf=list=>list.length===ALL_STEMS.length ? 'all'
+  : list.map(x=>STEM_ABBR[x]||x).join('/');
+
+/* ── STEM STATE ──────────────────────────────────────────────────────────
+   sel — the segment currently playing, as [start, end] fractions of the file
+   ph  — playhead position, also a fraction. live:false = a silent file. */
+/* ── LIBRARY ─────────────────────────────────────────────────────────────
+   prop = the layer/transition the engine is proposing for that stem slot;
+   pin  = the user overrode it by hand. Everything else is on disk and idle.
+   Normally the engine drives this, which is why AUTO is the default. */
+const LIB=[
+ {f:'ESRGDtb923043@$#%_$sdndn-001', g:'electro techno', b:'120.0',
+  s:{vcl:284,mel:331,bas:196,drm:473}, prop:['mel','drm'], pin:[]},
+ {f:'set_0731_take2',               g:'rock alt',       b:'128.0',
+  s:{vcl:0,  mel:66, bas:2,  drm:182}, prop:[],           pin:['bas']},
+ {f:'warehouse_b',                  g:'breaks',         b:'174.0',
+  s:{vcl:412,mel:0,  bas:301,drm:688}, prop:['vcl'],   pin:[]},
+ {f:'rehearsal_a',                  g:'ambient',        b:'92.0',
+  s:{vcl:118,mel:204,bas:87, drm:0},   prop:[],           pin:[]},
+ {f:'late_set',                     g:'uk bass',        b:'140.0',
+  s:{vcl:96, mel:150,bas:243,drm:390}, prop:[],           pin:[]},
+ {f:'sketch_03',                    g:'experimental',   b:'110.0',
+  s:{vcl:41, mel:77, bas:33, drm:129}, prop:[],           pin:[]},
+];
+const STEM_ORDER=['vcl','mel','bas','drm'];
+
+/* which library column feeds which band */
+const STEM_KEY={VOCALS:'vcl',MELODY:'mel',BASS:'bas',DRUMS:'drm'};
+/* the band's own source list. A file only appears if it actually produced
+   this stem — zero slices means nothing of it is in the t-SNE beside it,
+   so listing it would be offering a scan target that isn't there. */
+function stemMenu(name){
+  const k=STEM_KEY[name], rows=LIB.filter(t=>t.s[k]>0);
+  if(!rows.length)
+    return `<div class="smenu"><div class="srow2 none">[no ${k} material]</div></div>`;
+  return `<div class="smenu">${rows.map((t,i)=>
+    `<div class="srow2${i===0?' sel':''}" data-k="${k}">`+
+    `<span class="sname">${t.f}</span><span class="scnt">${t.s[k]}</span></div>`).join('')}</div>`;
+}
+
+const STEMS=[
+ {n:'VOCALS',mel:'mel ⚿',t:'0:00:21',slices:0,  live:false,seed:97,
+  v:{C:'0',S:'0',E:'0.0',F:'0.0',P:'--',H:'0.00',T:'0.0',D:'0.00'},sel:null,ph:null},
+ {n:'MELODY',mel:'--',       t:'0:00:24',slices:66, live:true, seed:710,
+  v:{C:'2144',S:'3089',E:'-24.9',F:'-17.7',P:'--',H:'0.91',T:'22.3',D:'0.55'},sel:[.34,.52],ph:.44},
+ {n:'BASS',  mel:'mel ⚿',t:'0:00:23',slices:0,  live:false,seed:1323,
+  v:{C:'0',S:'0',E:'0.0',F:'0.0',P:'--',H:'0.00',T:'0.0',D:'0.00'},sel:null,ph:null},
+ {n:'DRUMS', mel:'mel ⚿',t:'0:00:23',slices:182,live:true, seed:1936,
+  v:{C:'5684',S:'4410',E:'-14.2',F:'-13.0',P:'--',H:'0.55',T:'19.6',D:'0.87'},sel:[.18,.30],ph:.27}];
+
+/* TRUE MIN/MAX WAVEFORM — min and max found separately per column, never
+   negated, so the halves differ as they do in a DAW. Peak-normalised. */
+function signal(seed,n){
+  const r=rng(seed),out=new Float32Array(n);let env=0,peak=0;
+  for(let i=0;i<n;i++){
+    if(r()<0.0035) env=0.55+r()*0.45;
+    env*=0.9994;
+    const macro=0.78+0.22*Math.pow(Math.sin(i/n*Math.PI*3.1)*0.5+0.5,1.3);
+    const noise=r()*2-1, tone=Math.sin(i*0.011)*0.5+Math.sin(i*0.023)*0.3;
+    let v=(noise*0.5+tone*0.5)*env*macro*1.6;
+    /* polarity asymmetry as gain + one-sided soft clip, not a ^n curve —
+       that lifts quiet samples and fills the strip in solid */
+    v = v>0 ? Math.tanh(v*1.4)/Math.tanh(1.4) : v*0.66;
+    out[i]=Math.max(-1,Math.min(1,v));
+    const a=Math.abs(out[i]); if(a>peak) peak=a;
+  }
+  if(peak>0){const g=0.98/peak; for(let i=0;i<n;i++) out[i]*=g;}
+  return out;
+}
+
+let waveUid=0;
+/* live=false means the file has no audio: the strip shows its centre line
+   and nothing else, and the whole min/max reduction is skipped. */
+function drawWave(seed,sel,ph,cols=278,h=26,live=true){
+  if(!live) return `<svg viewBox="0 0 ${cols} ${h}" preserveAspectRatio="none"><rect class="w-axis" x="0" y="${(h/2-.5).toFixed(1)}" width="${cols}" height="1"/></svg>`;
+  const N=cols*64,buf=signal(seed,N),half=h/2,per=N/cols;
+
+  /* pass 1 — per-column min/max/rms, and the slice boundaries */
+  const MN=[],MX=[],RV=[],cut=new Set();
+  let prev=0;
+  for(let c=0;c<cols;c++){
+    let mn=1,mx=-1,sq=0;
+    for(let i=c*per;i<(c+1)*per;i++){const v=buf[i|0];if(v<mn)mn=v;if(v>mx)mx=v;sq+=v*v;}
+    const rv=Math.sqrt(sq/per);
+    MN[c]=mn;MX[c]=mx;RV[c]=rv;
+    if(rv-prev>0.16) cut.add(c);
+    prev=rv;
+  }
+
+  /* pass 2 — draw, SKIPPING boundary columns: slice marks are gaps cut into
+     the trace rather than lines drawn over it */
+  let peak='',rms='';
+  for(let c=0;c<cols;c++){
+    if(cut.has(c)) continue;
+    const y0=half-MX[c]*(half-.5), y1=half-MN[c]*(half-.5), rv=RV[c];
+    peak+=`<rect x="${c}" y="${y0.toFixed(2)}" width="1" height="${Math.max(.6,y1-y0).toFixed(2)}"/>`;
+    rms +=`<rect x="${c}" y="${(half-rv*(half-.5)).toFixed(2)}" width="1" height="${Math.max(.5,rv*2*(half-.5)).toFixed(2)}"/>`;
+  }
+
+  const u=waveUid++, idSeg='sg'+u, idPl='pl'+u;
+  let ov='';
+  if(sel){
+    const x=sel[0]*cols, w=(sel[1]-sel[0])*cols, played=Math.max(0,ph*cols-x);
+    /* the armed slice sits a step above the rest of the file; the played part
+       of it is WHITE and grows from the slice start, so the white's leading
+       edge IS the playhead. The edges are drawn too, so an armed-but-not-yet-
+       playing slice is still bracketed. */
+    ov=`<defs>
+        <clipPath id="${idSeg}"><rect x="${x}" y="0" width="${w}" height="${h}"/></clipPath>
+        <clipPath id="${idPl}"><rect x="${x}" y="0" width="${played}" height="${h}"/></clipPath>
+      </defs>
+      <g clip-path="url(#${idSeg})"><g class="w-sel">${peak}</g><g class="w-sel2">${rms}</g></g>
+      <g clip-path="url(#${idPl})"><g class="w-play">${peak}</g><g class="w-play2">${rms}</g></g>
+      <line class="w-edge" x1="${x.toFixed(2)}" y1="0" x2="${x.toFixed(2)}" y2="${h}"/>
+      <line class="w-edge" x1="${(x+w).toFixed(2)}" y1="0" x2="${(x+w).toFixed(2)}" y2="${h}"/>`;
+  }
+  /* classes, not literal fills: the bands are a dark region and the ink has
+     to invert with it, so every layer resolves through the palette */
+  return `<svg viewBox="0 0 ${cols} ${h}" preserveAspectRatio="none">
+    <rect class="w-axis" x="0" y="${(h/2-.5).toFixed(1)}" width="${cols}" height="1"/>
+    <g class="w-un">${peak}</g><g class="w-un2">${rms}</g>
+    ${ov}</svg>`;
+}
+
+/* 64 bands — the telemetry shape `spectrum <stem> <band 0-63>`. A band at the
+   clip threshold lights --plotink instead of --plotdata. CLIP_AT is in dB
+   against the plot's own 0..-50 scale, so it survives a rescale. */
+const DB_FLOOR=-50, CLIP_AT=-1.5;
+const CLIP_PCT=(CLIP_AT-DB_FLOOR)/(0-DB_FLOOR);
+function spectrum(seed,live){
+  const r=rng(seed);let h='';
+  for(let i=0;i<64;i++){
+    const t=Math.pow(1-i/64,.6);
+    /* low bands run a little hotter so a couple go over — tuned to 0-4 per
+       stem; stronger and a third of the spectrum lights up, which reads as a
+       broken level rather than as clipping */
+    const hot=1+0.08*Math.pow(1-i/64,5);
+    const v=live?Math.min(1,Math.max(.02,(t*.78+r()*.3*t)*hot)):0.008;
+    h+=`<div class="bar${v>=CLIP_PCT?' clip':''}" style="height:${(v*100).toFixed(1)}%"></div>`;
+  }
+  /* no gridlines: the dB scale down the side already gives the reading, and
+     lines behind the bars only compete with them */
+  return h;
+}
+
+function hist(seed,live){
+  if(!live) return `<div class="hist empty">${'·'.repeat(58)}</div>`;
+  const r=rng(seed);let h='';
+  /* 122 bars at the shared 4px cell = 487px, inside the 487px drawing area
+     (489 less 1px of padding each side). One of them is the slice sounding
+     right now and lights white. */
+  const N=122, now=Math.floor(r()*N);
+  for(let i=0;i<N;i++)
+    h+=`<i class="${i===now?'now':''}" style="height:${(18+r()*82).toFixed(0)}%"></i>`;
+  return `<div class="hist">${h}</div>`;
+}
+
+document.getElementById('bands').innerHTML=STEMS.map(s=>`
+<div class="band">
+  <div class="prog"><span class="stem">[${s.n}]</span><span class="wv">${drawWave(s.seed,s.sel,s.ph,900,26,s.live)}</span><span class="t">${s.t}</span></div>
+  <div class="brow2">
+
+    <div class="bc1">
+      <div class="hdr"><span class="mode"><span class="on">[RMX</span><span class="sep2">|</span><span>GEN]</span></span></div>
+      <!-- every value is bracketed, and an empty one prints [--] rather than
+           an empty bracket or a blank — so a silent stem reads as "measured,
+           nothing there" instead of "not measured yet" -->
+      <div class="b1grid">
+      ${stemMenu(s.n)}
+      <div class="infolines">
+        <div><span class="lbl">beats:</span><span class="val">[${s.live?'4/4 120bpm':'--'}]</span><span class="lbl"> [${s.live?'99 %':'--'}]</span></div>
+        <div><span class="lbl">genre:</span><span class="val">[${s.live?'Experimental':'--'}]</span><span class="lbl"> [${s.live?'16 %':'--'}]</span></div>
+        <div><span class="lbl">key:</span><span class="val">[${s.live?'Bb minor':'--'}]</span></div>
+        <div><span class="lbl">file:</span><span class="n">[${TRACK}]</span></div>
+        <div><span class="lbl">bars:</span><span class="val">[fullfile]</span></div>
+        <div><span class="lbl">quant:</span><span class="val">[beat]</span></div>
+        <div>&nbsp;</div>
+        <div>&nbsp;</div>
+      </div>
+      </div>
+    </div>
+
+    <!-- descriptor map, one per stem: one cloud (this stem's material) and
+         one white dot (the slice playing) -->
+    <div class="bc-map">
+      <div class="hdr"><span class="lbl">t-SNE</span>
+        <span class="rt2"><span class="lbl">slcs:</span><span class="val hi">${s.slices}</span></span></div>
+      <div class="plot-box">${stemMap(s.seed,s.live)}</div>
+      <div class="axes">&nbsp;</div>
+    </div>
+
+    <div class="bc-ent">
+      <!-- the sun occupies the header row, level with "dirWgt: +1.0" -->
+      <!-- value on the header row, level with "weight / dir  dirWgt" -->
+      <div class="hdr rt"><span class="mv">0.35</span></div>
+      <div class="mcol">
+        <span class="sym">&#9728;&#65038;</span>
+        <span class="vfad sm"><span class="ln"></span><span class="kn" style="bottom:35%"><i></i></span></span>
+        <span class="sym">&#10052;&#65038;</span>
+      </div>
+    </div>
+
+    <div class="bc2">
+      <div class="hdr wdh"><span class="lbl">weight / dir</span>
+        <span class="wdh-m">
+          <span><span class="lbl">stay: </span><span class="val">[0.4]</span><span class="lbl">  match: </span><span class="val">[0.7]</span></span>
+          <span><span class="lbl">lockSource: </span><span class="val">[${s.mel}]</span></span>
+          <span><span class="lbl">dirWgt: </span><span class="val">+1.0</span></span>
+        </span><span></span></div>
+      <div class="wd">${DIMS.map(d=>{
+        return `<span class="k">${d}:</span>
+        <span class="wv2">${BAKE_W[d].toFixed(1)} / ${BAKE_D[d]>=0?'+':''}${BAKE_D[d].toFixed(1)}</span>
+        ${hist(s.seed+d.charCodeAt(0),s.live)}<span class="rv">${s.v[d]}</span>`;}).join('')}</div>
+    </div>
+
+    <div class="col-spx bc3">
+      <div class="spx"><div class="sc">${DBS.map((d,i)=>`<span style="top:${(i/(DBS.length-1)*100).toFixed(2)}%">${d}</span>`).join('')}</div>
+        <div class="spx-body">
+          <div class="fz">${FREQ.map(f=>`<span>${f}</span>`).join('')}</div>
+          <div class="fld">${spectrum(s.seed+3,s.live)}</div>
+        </div></div>
+    </div>
+
+    <div class="bc4">
+      <!-- readouts on the header row too -->
+      <div class="hdr meth"><span class="mv">${s.live?'-8.2':'-inf'}</span><span class="mv">1.00</span></div>
+      <div class="meters">
+        <div class="mcol">
+          <span class="mpair">
+            ${[62,54].map((v,i)=>`<span class="vmtr">${s.live
+              ?`<i style="height:${v}%"></i><b style="bottom:${[70,61][i]}%"></b>`:''}</span>`).join('')}
+          </span>
+          <span class="ml">L R</span>
+        </div>
+        <div class="mcol">
+          <span class="vfad"><span class="ln"></span><span class="kn" style="bottom:62%"><i></i></span></span>
+          <span class="ml">gain</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`).join('');
+
+document.getElementById('libCount').textContent =
+  `${LIB.length} files · ${LIB.length*4} stems`;
+document.getElementById('libList').innerHTML = LIB.map(t=>
+  `<div class="lrow"><span class="lname">${t.f}</span>`+
+  `<span class="lgen">${t.g}</span><span class="lbpm">${t.b}</span></div>`+
+  `<div class="lsrow">${STEM_ORDER.map(k=>{
+     const cls = t.pin.includes(k) ? 'pin' : t.prop.includes(k) ? 'prop' : '';
+     return `<span class="st ${cls}" data-f="${t.f}" data-s="${k}">${k}<span class="sn"> ${t.s[k]}</span></span>`;
+   }).join('')}</div>`
+).join('');
+
+/* picking a source scopes that band's scan to it — one selection per band,
+   which is why the reset is limited to the menu the click came from */
+document.querySelectorAll('.srow2:not(.none)').forEach(el=>el.onclick=()=>{
+  el.closest('.smenu').querySelectorAll('.srow2').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel');
+});
+
+/* clicking a stem pins it by hand — the manual path the toggle describes */
+document.querySelectorAll('.st').forEach(el=>el.onclick=()=>{
+  el.classList.remove('prop');
+  el.classList.toggle('pin');
+});
+/* TRAIN/Bake and library share the list slot */
+function setLib(on){
+  libList.classList.toggle('hide',!on); libOpts.classList.toggle('hide',!on);
+  blist.classList.toggle('hide',on);    bakeOpts.classList.toggle('hide',on);
+  tabLib.classList.toggle('on',on);
+  tabTrain.classList.toggle('on',!on);  tabBake.classList.toggle('on',!on);
+}
+tabLib.onclick=()=>setLib(true);
+tabTrain.onclick=tabBake.onclick=()=>setLib(false);
+
+document.querySelectorAll('#libmode span:not(.sep2)').forEach(el=>el.onclick=()=>{
+  document.querySelectorAll('#libmode span:not(.sep2)').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');});
+
+/* BAKE LIST */
+const BAKES=[['2026-08-06 22:14','set_0731_take2','+0.60'],['2026-08-06 19:02','set_0731_take1','+0.20'],
+ ['2026-08-05 23:41','rehearsal_b','-0.40'],['2026-08-04 21:18','rehearsal_a','+0.80'],
+ ['2026-08-02 20:55','first_pass','--'],['2026-08-01 22:07','soundcheck','+0.40'],
+ ['2026-07-30 21:33','warehouse_b','-0.20'],['2026-07-29 20:11','warehouse_a','+0.60'],
+ ['2026-07-27 23:58','late_set','+1.00'],['2026-07-26 19:44','sketch_03','-0.60']];
+document.getElementById('blist').innerHTML=BAKES.map(([d,n,s],i)=>
+ `<div class="brow${i===0?' sel':''}">${d} <span class="m">${n} ${s}</span></div>`).join('');
+document.querySelectorAll('.brow').forEach(el=>el.onclick=()=>{
+ document.querySelectorAll('.brow').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');});
+/* bake mode: LAYERS rates the stack (scoreLyr), TRANSITION rates the cut
+   between segments (scoreTrs) */
+document.querySelectorAll('#bmode span:not(.sep2)').forEach(el=>el.onclick=()=>{
+ document.querySelectorAll('#bmode span:not(.sep2)').forEach(x=>x.classList.remove('on'));
+ el.classList.add('on');});
+
+/* SCORING — same dot scale as the genre/beats confidence readouts.
+   11 dots spanning -1..1 (:scoreLyr / :scoreTrs), so the centre dot is 0. */
+document.querySelectorAll('.scale').forEach(el=>{
+ el.innerHTML=Array.from({length:11},(_,i)=>`<span class="cd" data-v="${(i-5)/5}"></span>`).join('');
+ const set=v=>{[...el.children].forEach(b=>b.classList.toggle('on',+b.dataset.v<=v+1e-9));
+   el.parentElement.querySelector('.val2').textContent=(v>=0?'+':'')+v.toFixed(2);};
+ [...el.children].forEach(b=>b.onclick=()=>set(+b.dataset.v));
+ set(el.dataset.t==='lyr'?0.6:-0.2);});
+
+/* CONFIDENCE DOTS — 10 each, filled to the percentage in the header */
+const conf=(el,pct)=>{el.innerHTML=Array.from({length:10},(_,i)=>
+  `<span class="cd${i<Math.round(pct/10)?' on':''}"></span>`).join('');};
+conf(document.getElementById('cGenre'),16);
+conf(document.getElementById('cBeats'),99);
+
+/* DESCRIPTOR MAP, per stem. One cloud = that stem's own slices in the C x T
+   projection; one white dot = the slice currently playing. Positions are
+   clamped to an inset so nothing lands on the contour. */
+function stemMap(seed,live){
+  /* nothing indexed, nothing to draw */
+  if(!live) return '';
+  const r=rng(seed+41), PAD=0.06, fit=v=>Math.max(PAD,Math.min(1-PAD,v))*100;
+  let o='';
+  for(let i=0;i<58;i++){
+    /* a diagonal-ish cloud, tighter at the middle — reads as one grouping
+       rather than a uniform spray */
+    const t=r(), j=(r()-.5)*.34;
+    o+=`<span class="dot" style="left:${fit(.18+t*.64+j).toFixed(2)}%;top:${fit(.82-t*.62+j*.9).toFixed(2)}%"></span>`;
+  }
+  if(live) o+=`<span class="dot live" style="left:${fit(.46+(r()-.5)*.3).toFixed(2)}%;top:${fit(.5+(r()-.5)*.3).toFixed(2)}%"></span>`;
+  return o;
+}
+
+/* ── COMMAND / CHAT LOG — last three lines only, then the live input.
+   '→' is a command you typed, '○' is the engine or Cricket answering. */
+const MAXLOG=3;
+let LOG=[
+ ['cmd','start'],
+ ['cmd','stop'],
+ ['res','stop queued — freezing at next downbeat (1808ms)'],
+];
+const clog=document.getElementById('clog');
+function renderLog(){
+  clog.innerHTML=LOG.slice(-MAXLOG).map(([k,t])=>
+   `<div class="l"><span class="pre">${k==='cmd'?'&rarr;':'&#9675;'}</span><span class="${k==='cmd'?'cmdtxt':'restxt'}">${t}</span></div>`).join('');
+}
+renderLog();
+
+const cin=document.getElementById('cin'), mirror=document.getElementById('mirror');
+cin.addEventListener('input',()=>{mirror.textContent=cin.value;});
+cin.addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  const v=cin.value.trim(); if(!v) return;
+  LOG.push(['cmd',v]);
+  /* stand-in for the engine/Cricket reply */
+  LOG.push(['res', v==='start' ? 'running — 4 stems armed'
+    : v==='stop' ? 'stop queued — freezing at next downbeat (1808ms)'
+    : 'compiled — setDirPref all C -1, setWeight all C 2.0']);
+  cin.value=''; mirror.textContent=''; renderLog(); fit();
+});
+document.getElementById('cline').onclick=()=>cin.focus();
+cin.focus();
+
+document.getElementById('chatChip').onclick=function(){cin.focus();};
+let running=false;
+document.getElementById('startChip').onclick=function(){
+ running=!running;this.innerHTML=`<b>^S</b>${running?'Stop':'Start'}`;this.classList.toggle('on',running);};
+let cap=false;
+document.getElementById('capToggle').onclick=function(){
+ cap=!cap;this.className=cap?'on':'off';};
+
+addEventListener('keydown',e=>{
+ if(e.ctrlKey&&e.key.toLowerCase()==='c'){e.preventDefault();document.getElementById('chatChip').click();}});
+
+
+/* ── ^T / ^G ─────────────────────────────────────────────────────────────
+   Train is not a separate screen any more — it IS the playback page. So ^T
+   reads "Close" while you're on it and "Train" once Gen has taken over,
+   exactly like the TUI's footerChip(appMode === 'learn' ? 'Close' : 'Train').
+   Gen mirrors it. */
+let genOpen=false;
+function setGen(on){
+  genOpen=on;
+  const t=document.querySelector('.chip.otrain'), g=document.querySelector('.chip.ogen');
+  t.innerHTML=`<b>^T</b>${on?'Train':'Close'}`;
+  g.innerHTML=`<b>^G</b>${on?'Close':'Gen'}`;
+  t.classList.toggle('on',!on);
+  g.classList.toggle('on',on);
+}
+setGen(false);
+document.querySelector('.chip.otrain').onclick=()=>setGen(false);
+document.querySelector('.chip.ogen').onclick=()=>setGen(!genOpen);
+addEventListener('keydown',e=>{
+  if(!e.ctrlKey) return;
+  const k=e.key.toLowerCase();
+  if(k==='t'){e.preventDefault();setGen(false);}
+  if(k==='g'){e.preventDefault();setGen(!genOpen);}
+});
+
+/* ── FIT TO WINDOW — measure the natural height, then scale, so the whole
+   panel is visible at any size and nothing is ever cut or scrolled. */
+const DESIGN_W=1920, panel=document.querySelector('.plugin');
+function fit(){
+  panel.style.transform='none';
+  const H=panel.offsetHeight;
+  const k=Math.min(innerWidth/DESIGN_W, innerHeight/H);
+  panel.style.transform=`scale(${k})`;
+  /* hairlines are specified in design px but rendered through the scale, so
+     divide the scale back out to keep them at one device pixel */
+  panel.style.setProperty('--rule-h', (1/k)+'px');
+  panel.style.left=`${Math.max(0,(innerWidth -DESIGN_W*k)/2)}px`;
+  panel.style.top =`${Math.max(0,(innerHeight-H*k)/2)}px`;
+}
+addEventListener('resize',fit); fit();
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fit);
+</script>
+</body>
+</html>

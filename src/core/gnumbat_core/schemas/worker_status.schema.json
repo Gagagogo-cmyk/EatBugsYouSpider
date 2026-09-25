@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/worker_status.schema.json",
+  "title": "Worker heartbeat (worker.json)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.worker_status/0\\.[0-9]+$"
+    },
+    "pid": {
+      "type": "integer"
+    },
+    "version": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "heartbeat_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "heartbeat_unix": {
+      "type": "number"
+    },
+    "library_id": {
+      "type": "string"
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "decompose": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "analyze": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tag": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional additional taggers available machine-wide, e.g. [\"madmom\", \"essentia\"] -- see analysis/external_tags.py."
+        },
+        "project": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "current_job": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "pid",
+    "version",
+    "started_at",
+    "heartbeat_at",
+    "heartbeat_unix",
+    "capabilities",
+    "current_job"
+  ],
+  "additionalProperties": true
+}

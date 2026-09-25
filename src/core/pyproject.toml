@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnumbat-core"
+version = "0.1.0"
+description = "Gnumbat core: Bake library, job worker, analysis, Bake Map, portable datasets"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "jsonschema>=4.17"]
+
+[project.optional-dependencies]
+demucs = ["demucs"]      # stem separation; run in its own environment (GNUMBAT_DEMUCS_PYTHON) if it conflicts
+torch = ["torch"]        # only for gnumbat_core.torch_dataset
+test = ["pytest"]
+
+[project.scripts]
+gnumbat = "gnumbat_core.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["gnumbat_core*"]
+
+[tool.setuptools.package-data]
+gnumbat_core = ["schemas/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

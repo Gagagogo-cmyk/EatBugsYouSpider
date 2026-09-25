@@ -1,0 +1,244 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.kmeans Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.kmeans</h1>
+  <div class="digest">Cluster data points with K-Means</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Uses the K-means algorithm to learn clusters from a <a href="fluid.dataset.html">fluid.dataset</a>.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p><code>kmeans</code> facilitates learning of clusters from a <a href="fluid.dataset.html">fluid.dataset</a>. This allows you to assign each point in the data a discrete membership to a group or cluster. The algorithm works by partitioning points into discrete clumps that ideally have <em>equal variance</em>. See the Scitkit-learn reference for a more technical explanation: <a class="reference external" href="https://scikit-learn.org/stable/modules/clustering.html#k-means">https://scikit-learn.org/stable/modules/clustering.html#k-means</a></p>
+
+
+    <p>Read more about fluid.kmeans on the <a href='https://learn.flucoma.org/reference/kmeans'>learn platform</a>.</p>
+    
+    <p>fluid.kmeans is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Name<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: )</span><div class="description"><p>Name for this instance, so that it can be reused or referred to by other data objects. If none is given, a name will be generated</p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">maxiter
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 100)</span>
+      </h3>
+      <div class="description"><p>The maximum number of iterations the algorithm will use whilst fitting.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numclusters
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 4)</span>
+      </h3>
+      <div class="description"><p>The number of clusters to classify data into.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='fit'>fit</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)) </span><div class='description'>
+       <p>Identify <code>numclusters</code> clusters in a <a href="fluid.dataset.html">fluid.dataset</a>. It will optimise until no improvement is possible, or up to <code>maxiter</code>, whichever comes first. Subsequent calls will continue training from the stopping point with the same conditions.</p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> of data points.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='predict'>predict</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)),  </span><span class='arg'>labelSet (symbol) </span><div class='description'>
+       <p>Given a trained object, return the cluster ID for each data point in a <a href="fluid.dataset.html">fluid.dataset</a> to a <a href="fluid.labelset.html">fluid.labelset</a>.</p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> containing the data to predict.</p>
+</li><li>labelSet: <p>A <a href="fluid.labelset.html">fluid.labelset</a> to retrieve the predicted clusters.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='transform'>transform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>srcDataSet (Unknown Type (input dataset)),  </span><span class='arg'>dstDataSet (symbol) </span><div class='description'>
+       <p>Given a trained object, return for each item of a provided <a href="fluid.dataset.html">fluid.dataset</a> its distance to each cluster as an array, often referred to as the cluster-distance space.</p>
+
+<h5>Argument details:</h5>       <ul><li>srcDataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> containing the data to transform.</p>
+</li><li>dstDataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> to contain the new cluster-distance space.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='predictpoint'>predictpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>buffer (symbol) </span><div class='description'>
+       <p>Given a trained object, return the cluster ID for a data point in a array</p>
+
+<h5>Argument details:</h5>       <ul><li>buffer: <p>A array containing a data point.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='transformpoint'>transformpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceBuffer (symbol),  </span><span class='arg'>targetBuffer (symbol) </span><div class='description'>
+       <p>Given a trained object, return the distance of the provided point to each cluster centroid. Both points are handled as array</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceBuffer: <p>A array containing a data point.</p>
+</li><li>targetBuffer: <p>A array to write in the distance to all the cluster centroids.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='fittransform'>fittransform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>srcDataSet (Unknown Type (input dataset)),  </span><span class='arg'>dstDataSet (symbol) </span><div class='description'>
+       <p>Run <code>fit</code> and <code>transform</code> in a single pass: i.e. train the model on the incoming <a href="fluid.dataset.html">fluid.dataset</a> and then return its cluster-distance space in the destination <a href="fluid.dataset.html">fluid.dataset</a></p>
+
+<h5>Argument details:</h5>       <ul><li>srcDataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> containing the data to fit and transform.</p>
+</li><li>dstDataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> to contain the new cluster-distance space.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='getmeans'>getmeans</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (symbol) </span><div class='description'>
+       <p>Given a trained object, retrieve the means (centroids) of each cluster as a <a href="fluid.dataset.html">fluid.dataset</a></p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> of clusters with a mean per column.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='setmeans'>setmeans</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)) </span><div class='description'>
+       <p>Overwrites the means (centroids) of each cluster, and declare the object trained.</p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> of clusters with a mean per column.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='fitpredict'>fitpredict</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)),  </span><span class='arg'>labelSet (symbol) </span><div class='description'>
+       <p>Run <code>fit</code> and <code>predict</code> in a single pass: i.e. train the model on the incoming <a href="fluid.dataset.html">fluid.dataset</a> and then return the learned clustering to the passed <a href="fluid.labelset.html">fluid.labelset</a></p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> containing the data to fit and predict.</p>
+</li><li>labelSet: <p>A <a href="fluid.labelset.html">fluid.labelset</a> to retrieve the predicted clusters.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='cols'>cols</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of columns (dimensions) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='clear'>clear</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Reset the object status to not fitted and untrained.</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='size'>size</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of data points (entries / observations) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+    <div class='method_group'><h3 class='method_name' name='write'>write</h3>
+      <span class='arglist'>Arguments</span>
+        <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Save the internal state of the object to a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+    </div>
+    <div class='method_group'><h3 class='method_name' name='read'>read</h3>
+      <span class='arglist'>Arguments</span>
+      <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Replace the internal state of the object from a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+     
+    </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.kmeans object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.kmeans objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.skmeans.html">SKMeans</a></h3><h3 class="seealso_name"><a href="fluid.knnclassifier.html">KNNClassifier</a></h3><h3 class="seealso_name"><a href="fluid.mlpclassifier.html">MLPClassifier</a></h3><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3><h3 class="seealso_name"><a href="fluid.labelset.html">LabelSet</a></h3></section> 
+</body>
+</html>

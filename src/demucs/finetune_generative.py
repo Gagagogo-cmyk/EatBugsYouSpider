@@ -18,9 +18,9 @@ downstream of it depends on it existing.
 
 ── Original docstring, kept for context ─────────────────────────────────────
 
-EBYS — Fine-tune Stable Audio Open on the EBYS catalog
+Gnumbat — Fine-tune Stable Audio Open on the Gnumbat catalog
 
-Prepares a caption/audio manifest from EBYS's own already-computed metadata
+Prepares a caption/audio manifest from Gnumbat's own already-computed metadata
 (genres + tracks tables — same source generate_agent.py's --seed-from-db
 reads) and runs a fine-tuning pass so Stable Audio Open's output drifts
 toward this catalog's genre/style/timbre rather than its original generic
@@ -34,7 +34,7 @@ hours of wall-clock time even on a rented GPU. Written to be correct and
 usable on your own hardware / cloud instance, not runnable here.
 
 Usage:
-  python3 finetune_generative.py --db ../../data/current/ebys.db \
+  python3 finetune_generative.py --db ../../data/current/gnumbat.db \
       --audio-root /path/to/stem/wavs --out-dir ./finetuned_model \
       --epochs 10
 """
@@ -52,7 +52,7 @@ def build_manifest(db_path, audio_root, stem_filter=None):
     generation-time prompts use the identical format. Model can't be
     expected to respond to a prompt style it never saw during fine-tuning.
 
-    WHERE t.source = 'human' is load-bearing, not a style choice: ebys.db
+    WHERE t.source = 'human' is load-bearing, not a style choice: gnumbat.db
     is shared by both pipelines (real catalog tracks AND generate_agent.py's
     synthesized clips, once ingested via ingest_generated.py), and
     import_library.py stamps every row's source column from the track name
@@ -155,9 +155,9 @@ def run_finetune(manifest, base_model_id, out_dir, epochs, lr, batch_size):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Fine-tune Stable Audio Open on EBYS's own catalog")
-    ap.add_argument("--db", required=True, help="path to ebys.db")
-    ap.add_argument("--audio-root", required=True, help="folder containing the real stem WAVs referenced by ebys.db")
+    ap = argparse.ArgumentParser(description="Fine-tune Stable Audio Open on Gnumbat's own catalog")
+    ap.add_argument("--db", required=True, help="path to gnumbat.db")
+    ap.add_argument("--audio-root", required=True, help="folder containing the real stem WAVs referenced by gnumbat.db")
     ap.add_argument("--stem", default=None, choices=["vocals", "melody", "bass", "drums"], help="fine-tune on one stem type only (recommended — see GENERATIVE_LAYER.md on why one generator can't credibly cover all instrument types)")
     ap.add_argument("--base-model", default="stabilityai/stable-audio-open-small")
     ap.add_argument("--out-dir", default="./finetuned_model")

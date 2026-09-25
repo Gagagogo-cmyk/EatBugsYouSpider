@@ -1,6 +1,6 @@
-# EBYS — System Architecture
+# Gnumbat — System Architecture
 
-> **EBYS** (Eat Bugs You Spider!) is a neural DJ instrument, a web radio, and an open tipping protocol. This document covers the full system — all layers from the instrument to the backend, Stripe, the database, the registrar, and infrastructure.
+> **Gnumbat** (Gnumbat!) is a neural DJ instrument, a web radio, and an open tipping protocol. This document covers the full system — all layers from the instrument to the backend, Stripe, the database, the registrar, and infrastructure.
 >
 > For the instrument internals (Max patch, slicer, buffer engine, Cricket), see `docs/instrument/ARCHITECTURE.md`.
 
@@ -83,7 +83,7 @@ The instrument runs locally on a laptop. It handles everything audio: stem separ
 
 **Key processes:**
 - `watch_demucs.py` — daemon that ingests audio, runs Demucs + Essentia + madmom
-- `ebys-analyze.maxpat` — Max/MSP patch (FluCoMa analysis + playback engine)
+- `gnumbat-analyze.maxpat` — Max/MSP patch (FluCoMa analysis + playback engine)
 - `sdj-tui.js` — terminal control surface
 
 **Backend communication:** the instrument POSTs to the backend every 4 bars (ping), on each slice change (log), and when the DJ opens/closes a session. It does not receive commands from the backend — the instrument is authoritative over what played.
@@ -114,7 +114,7 @@ Four route modules:
 
 ## 4. Database
 
-The database is the source of truth for who can receive payouts and what tracks are in the EBYS corpus.
+The database is the source of truth for who can receive payouts and what tracks are in the Gnumbat corpus.
 
 ### Users table
 ```sql
@@ -180,7 +180,7 @@ POST /slices/session/open  { venue, mode, deck }
         │ returns { sessionId }
         │
         ▼
-EBYS plays (instrument running)
+Gnumbat plays (instrument running)
         │
         ├── POST /slices/log  { sessionId, trackName, durationMs }
         │     — on every slice change (per stem)
@@ -210,7 +210,7 @@ pings (
 )
 ```
 
-`simultaneous_n` and `seg_variance` are the two signals the split equation uses to detect transformation level. They come from EBYS's live state — not computed after the fact.
+`simultaneous_n` and `seg_variance` are the two signals the split equation uses to detect transformation level. They come from Gnumbat's live state — not computed after the fact.
 
 ---
 
@@ -297,7 +297,7 @@ per_artist  = artist_pool × artist.proportion
 
 ### Direct mode
 
-When `deck = 'direct'` (non-EBYS performance, card reader only): full tip goes to the DJ, no split.
+When `deck = 'direct'` (non-Gnumbat performance, card reader only): full tip goes to the DJ, no split.
 
 ---
 
@@ -313,7 +313,7 @@ When `deck = 'direct'` (non-EBYS performance, card reader only): full tip goes t
 ### Stripe Connect (DJ and artist payouts)
 
 - **`stripe.accounts.create`** — called on `/accounts/onboard`. Creates an Express account (type `'express'`, country `'CA'`).
-- **`stripe.accountLinks.create`** — generates a hosted onboarding URL. The DJ/artist fills out their bank details directly with Stripe. EBYS never sees banking info.
+- **`stripe.accountLinks.create`** — generates a hosted onboarding URL. The DJ/artist fills out their bank details directly with Stripe. Gnumbat never sees banking info.
 - **`stripe.transfers.create`** — called inside `runSplit()` after the split equation runs. One transfer per recipient. `transfer_group = paymentIntentId` links all transfers from the same tip.
 
 **Current blocker:** DJs and artists don't have connected Stripe accounts yet. Transfers fail with "no destination account." Fix: build the DJ profile page with the Stripe Connect onboarding flow (`/accounts/onboard`).
@@ -331,7 +331,7 @@ Both are Railway env vars. Never committed to git.
 
 ## 9. The LINK Protocol
 
-LINK is the multi-deck synchronization layer for live performance with two or more EBYS decks in the same space.
+LINK is the multi-deck synchronization layer for live performance with two or more Gnumbat decks in the same space.
 
 **What it does:**
 - **Clock sync** — all decks share the same bar grid. Bar boundaries are synchronized.
@@ -350,7 +350,7 @@ See `docs/instrument/LINK.md` for full command reference.
 
 ## 10. Web Radio
 
-The radio streams live EBYS performances to listeners anywhere.
+The radio streams live Gnumbat performances to listeners anywhere.
 
 ```
 Max/MSP audio output (stereo 44.1kHz)
@@ -388,7 +388,7 @@ The backend runs on Railway. Environment variables are set in Railway's dashboar
 |---|---|---|---|
 | `demucs_env/` | 3.14 | torch, demucs | Stem separation |
 | System | 3.10–3.11 | essentia, madmom | Genre + downbeat analysis |
-| `~/ebys-mlx-env` | — | mlx-lm | Cricket LoRA fine-tuning (Apple Silicon) |
+| `~/gnumbat-mlx-env` | — | mlx-lm | Cricket LoRA fine-tuning (Apple Silicon) |
 
 ---
 

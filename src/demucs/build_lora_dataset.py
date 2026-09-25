@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Build a Stable Audio 3 LoRA training folder from cleaned clips
+Gnumbat — Build a Stable Audio 3 LoRA training folder from cleaned clips
 
 Takes the WAV output of prep_lora_corpus.py (or any flat folder of WAVs)
 and writes the audio+caption pairs Stable Audio 3's train_lora.py /
@@ -13,8 +13,8 @@ pre_encode_dataset.py actually expect:
       clip_000001.txt
       ...
 
-This corpus has NOT been through EBYS's own genre_tagger.py/madmom_tagger.py
-(no ebys.db entries to pull genre/BPM from — see prep_lora_corpus.py's
+This corpus has NOT been through Gnumbat's own genre_tagger.py/madmom_tagger.py
+(no gnumbat.db entries to pull genre/BPM from — see prep_lora_corpus.py's
 docstring). So captions here are a single consistent trigger phrase across
 the whole dataset by default, not a per-clip genre/BPM string the way
 generate_agent.py builds captions for the real catalog. This matches
@@ -27,7 +27,7 @@ same phrase later in generate_agent.py's prompts once the LoRA is trained
 A held-out validation split is written to a SEPARATE directory
 (--val-out-dir) that train_lora.py should never be pointed at — keep it
 around for the descriptor-space comparison in Phase 4 of USER_LORA.md
-(generate with the LoRA, run through EBYS's own FluCoMa analysis, compare
+(generate with the LoRA, run through Gnumbat's own FluCoMa analysis, compare
 against real corpus including the held-out clips).
 
 By default clips are symlinked (not copied) into --out-dir/--val-out-dir —
@@ -41,7 +41,7 @@ off by default).
 Usage:
   python3 build_lora_dataset.py --clips-dir ./lora_corpus_clean \
       --out-dir ./my_data --val-out-dir ./my_data_val \
-      --caption "ebys user style"
+      --caption "gnumbat user style"
 """
 
 import os
@@ -89,7 +89,7 @@ def main():
     ap.add_argument("--out-dir", required=True, help="training data_dir to write (pass to train_lora.py / pre_encode_dataset.py)")
     ap.add_argument("--val-out-dir", default=None, help="if set, hold out --val-fraction of clips here instead of --out-dir, for post-training comparison — never point train_lora.py at this folder")
     ap.add_argument("--val-fraction", type=float, default=0.05, help="fraction of clips held out for --val-out-dir")
-    ap.add_argument("--caption", default="ebys user style", help="caption written into every .txt file — this is the LoRA's invoke phrase (see docstring)")
+    ap.add_argument("--caption", default="gnumbat user style", help="caption written into every .txt file — this is the LoRA's invoke phrase (see docstring)")
     ap.add_argument("--bpm-tag", action="store_true", help="append a detected BPM to each clip's caption (needs librosa; slow over thousands of clips)")
     ap.add_argument("--limit", type=int, default=None, help="only use the first N clips found (smoke test)")
     ap.add_argument("--seed", type=int, default=0, help="random seed for the train/val split")

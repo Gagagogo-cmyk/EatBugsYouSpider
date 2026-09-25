@@ -1,0 +1,128 @@
+#N canvas 100 100 1250 780 12;
+#X obj 40 20 inlet~;
+#X obj 620 20 loadbang;
+#X msg 620 60 1;
+#X obj 620 110 metro 50;
+#X obj 620 150 t b b;
+#X obj 300 60 env~ 1024;
+#X obj 300 100 dbtorms;
+#X obj 300 200 f;
+#X obj 300 240 t f f;
+#X obj 40 110 peakamp~;
+#X obj 40 240 t f f;
+#X obj 40 300 pack f f f f;
+#X obj 40 340 list prepend meter \$1;
+#X obj 40 380 list trim;
+#X obj 40 700 outlet;
+#N canvas 100 100 560 460 fft 0;
+#X obj 30 20 inlet~;
+#X obj 320 20 block~ 128 1;
+#X obj 200 70 tabreceive~ \$0-hann;
+#X obj 30 110 *~;
+#X obj 30 160 rfft~;
+#X obj 30 210 *~;
+#X obj 160 210 *~;
+#X obj 30 260 +~;
+#X obj 30 300 sqrt~;
+#X obj 30 340 *~ 0.015625;
+#X obj 30 390 tabsend~ \$0-spx;
+#X text 330 110 Hann window \, then a 128-point real FFT: 64 usable
+magnitude bins \, which is exactly the 64 the panel draws. [block~ 128
+1] reblocks this subpatch only -- the rest of the patch keeps running
+at its normal block size., f 44;
+#X text 330 260 sqrt(re^2 + im^2) \, scaled by 1/64 (N/2) so a full-scale
+sine lands near 1.0. Sent LINEAR: Pd vanilla has no [log~] \, and the
+panel rescales for its own plot height anyway \, so the dB conversion
+lives in JS -- see gui_hub_bridge.js's TELEMETRY table., f 44;
+#X connect 0 0 3 0;
+#X connect 2 0 3 1;
+#X connect 3 0 4 0;
+#X connect 4 0 5 0;
+#X connect 4 0 5 1;
+#X connect 4 1 6 0;
+#X connect 4 1 6 1;
+#X connect 5 0 7 0;
+#X connect 6 0 7 1;
+#X connect 7 0 8 0;
+#X connect 8 0 9 0;
+#X connect 9 0 10 0;
+#X restore 40 460 pd fft;
+#X obj 880 110 metro 100;
+#X obj 880 150 array get \$0-spx;
+#X obj 880 190 list split 64;
+#X obj 880 230 list prepend spectrum \$1;
+#X obj 880 270 list trim;
+#N canvas 0 0 300 200 (subpatch) 0;
+#X array \$0-spx 128 float 0;
+#A color 0;
+#A width 1;
+#X coords 0 1 128 -1 200 80 1 0 0;
+#X restore 880 340 graph;
+#N canvas 0 0 300 200 (subpatch) 0;
+#X array \$0-hann 128 float 0;
+#A color 0;
+#A width 1;
+#X coords 0 1 128 -1 200 80 1 0 0;
+#X restore 880 470 graph;
+#X msg 620 250 cosinesum 128 0.5 -0.5;
+#X obj 620 300 s \$0-hann;
+#X text 40 40 stem_telemetry~ <name>: a listen-only tap. Takes one mono
+signal and reports what it is doing to bridge_guiHub \, which relays it
+to the panel. It touches nothing -- no gain \, no routing \, no state --
+so an instance can be dropped anywhere in the signal path without
+changing a sample of what you hear. <name> is the stem label that goes
+out in every message (vocals/melo/bass/drums \, or master on the sum)., f 68;
+#X text 620 320 REPORT RATES. Meters at 20Hz \, spectrum at 10Hz. Both
+are display rates \, not analysis rates -- the FFT itself runs every
+128-sample block regardless \, and [tabsend~] just keeps overwriting
+the array \, so what goes out is the most recent block rather than an
+average. Deliberate: a meter that averages over 100ms hides exactly
+the transients this instrument is built to chop up., f 68;
+#X text 40 540 WHY L AND R CARRY THE SAME NUMBER. Every stem in this
+patch is mono -- stem_timestretch~ has a single outlet~ \, and the
+4-channel quad path the Max version metered was stripped during the
+conversion (see CONVERSION_NOTES.md \, "4 channel quad meters"). The
+message shape keeps the pair anyway \, because the master sum IS stereo
+and because the panel and any later DAW-side build both expect L/R.
+When per-stem stereo comes back \, feed inlet~ twice and split the
+[t f f] pairs -- nothing downstream changes., f 68;
+#X text 40 660 NOT LUFS. The RMS figure here is [env~] -> [dbtorms] \,
+i.e. plain unweighted RMS. Real BS.1770 LUFS needs K-weighting (a
+high-shelf plus a high-pass biquad \, coefficients that depend on the
+sample rate) and gated integration \, none of which is here. It goes out
+as "rmsdb" rather than "lufs" so nothing downstream can mistake it for
+a calibrated loudness number. Adding true LUFS is two [biquad~] objects
+and a gate -- real work \, but small \, and worth doing before anyone
+uses this figure to make a mastering decision., f 68;
+#X text 880 560 [array get] is the one object here not verified against
+a running Pd -- it should output the whole array as a list on bang.
+If it turns out to need an explicit onset/count \, that is a one-object
+change. Flagged in CONVERSION_NOTES.md as the first thing to check on
+a live smoke test., f 44;
+#X connect 0 0 9 0;
+#X connect 0 0 5 0;
+#X connect 0 0 15 0;
+#X connect 1 0 2 0;
+#X connect 1 0 23 0;
+#X connect 2 0 3 0;
+#X connect 2 0 16 0;
+#X connect 3 0 4 0;
+#X connect 4 0 9 1;
+#X connect 4 1 7 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 1;
+#X connect 7 0 8 0;
+#X connect 8 0 11 2;
+#X connect 8 1 11 3;
+#X connect 9 0 10 0;
+#X connect 10 0 11 0;
+#X connect 10 1 11 1;
+#X connect 11 0 12 0;
+#X connect 12 0 13 0;
+#X connect 13 0 14 0;
+#X connect 16 0 17 0;
+#X connect 17 0 18 0;
+#X connect 18 0 19 0;
+#X connect 19 0 20 0;
+#X connect 20 0 14 0;
+#X connect 23 0 24 0;

@@ -1,4 +1,4 @@
-// session_manager.js — multi-session support for the EBYS TUI ("hardware").
+// session_manager.js — multi-session support for the Gnumbat TUI ("hardware").
 //
 // A "session" is a named, isolated workspace: its own analysis library
 // (uploaded/analyzed tracks), its own learned "brain" (song-structure tags,
@@ -40,7 +40,7 @@ const DEFAULT_ID      = 'default';
 // copied) into data/sessions/default/ the first time this module loads on
 // an install that doesn't have sessions.json yet. Includes the three files
 // ws_server.js has always written next to itself in src/max/ instead of
-// data/ (ebys_index.json, stem_ranges.json, umap_coords.json) — folding
+// data/ (gnumbat_index.json, stem_ranges.json, umap_coords.json) — folding
 // those into the session dir here also fixes that long-standing leak.
 const LEGACY_DATA_FILES = [
   'analysis_library.json', 'downbeats.json', 'genres.json', 'stream.txt',
@@ -55,7 +55,7 @@ const LEGACY_DATA_FILES = [
   'training_log_transition.jsonl', 'training_log_horizontal.jsonl',
 ];
 const LEGACY_DATA_DIRS  = ['stems'];
-const LEGACY_MAX_FILES  = ['ebys_index.json', 'stem_ranges.json', 'umap_coords.json'];
+const LEGACY_MAX_FILES  = ['gnumbat_index.json', 'stem_ranges.json', 'umap_coords.json'];
 const MAX_DIR           = path.join(__dirname, '..', 'max');
 
 function ensureDir(p) { fs.mkdirSync(p, { recursive: true }); }

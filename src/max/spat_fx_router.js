@@ -1,4 +1,4 @@
-// EBYS — Spatialization Router  v1
+// Gnumbat — Spatialization Router  v1
 //
 // ── Role ──────────────────────────────────────────────────────────────────────
 // spat_fx_router.js owns all stereo and FX routing parameters.
@@ -32,7 +32,7 @@ var TRACKS       = ['vocals', 'melody', 'bass', 'drums'];
 var LIVE_TRACKS  = ['live1', 'live2'];
 var ALL_TRACKS   = TRACKS.concat(LIVE_TRACKS);
 
-// *** THIS is the file Max actually loads (the object box in ebys-analyze.maxpat
+// *** THIS is the file Max actually loads (the object box in gnumbat-analyze.maxpat
 // is literally typed "js spat_fx_router.js" — that argument is what the js
 // object uses to load its script; a stray saved_object_attributes.filename
 // on the same box pointed at "ms_router.js", but per Max's own docs the box's

@@ -1,4 +1,4 @@
-// EBYS — Offline Analyzer Reader  v3
+// Gnumbat — Offline Analyzer Reader  v3
 //
 // Reads FluCoMa buf~ output buffers and writes slices + metadata to slice_writer.js.
 // Call AFTER the FluCoMa buf~ objects have finished processing.

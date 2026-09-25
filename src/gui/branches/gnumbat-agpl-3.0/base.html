@@ -1,0 +1,2754 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} -- Eat Bugs you Spiders!</title>
+    <!-- Leaflet REMOVED -- user: "remove the map from the show scraper. just keep address." The venue map (OpenStreetMap/CARTO tiles + per-venue pins, #map/#map-details below) is gone; each event card still prints its own plain venue/address line (.event p, unchanged) -- that is the address being kept. -->
+
+    <!-- ── dark/mono/posterize redesign — user: "make the typeface the same
+         as the rest of the website. terminal style. and apply the same 3
+         channels posterize sharp effect... make sure the background is
+         always the same color [as the OMGM panel]. no white. just the
+         dark." This page used to be its own plain light-mode site (Verdana,
+         white body, blue links) — it's now styled to match src/gui/panel.html
+         directly: same --mono font stack, same #0e130e/white/grey palette,
+         and the SAME #posterize3 SVG filter (identical tableValues), applied
+         to <body> here since this page has no .plugin-style wrapper of its
+         own to hang it on.
+         Colour note: #posterize3's feColorMatrix saturate(0) desaturates
+         everything before quantizing it into exactly 3 luminance bands
+         (black/mid/white) — see panel.html's own POSTERIZE comment for the
+         full reasoning. That means hue carries NO information here once the
+         filter runs: the old green "notice-ok" / red "notice-error" tint
+         distinction is impossible to preserve, so those are told apart by a
+         bracketed [OK]/[ERROR]/[PENDING] label instead, same convention
+         panel.html itself uses everywhere (e.g. [SPECTATOR MODE]) rather
+         than relying on colour. Every colour below is one of exactly three
+         literal values already proven (in panel.html) to land in the
+         correct band — #0e130e (black), #7d8281 (mid), #fff (white) — reused
+         rather than re-derived, since anything landing in the same band
+         renders pixel-identical after the filter regardless of its
+         pre-filter hex. -->
+    <style>
+        :root {
+            --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Monaco,
+                "DejaVu Sans Mono", "Apple Symbols", "Segoe UI Symbol", monospace;
+            --bg: #000000;   /* black band -- true black, was #0e130e */
+            --mid: #7d8281;  /* mid band -- same final pixel as any other mid-band grey */
+            --w: #fff;       /* white band */
+            /* UPDATE — user: panel.html's stylized cursor (a hollow green
+               square instead of the native arrow/pointer) was "glitching
+               back to default... especially above the iframe." This page
+               IS that iframe's content (panel.html's #omscFrame, src=
+               http://localhost:6969/ -- see server.go's ListenAndServe) --
+               a real separate document on a different origin, so no CSS in
+               panel.html can ever reach into it. Every cursor here was the
+               plain native pointer/default, which is exactly why hovering
+               the G-ANS panel read as the stylized cursor "reverting": it
+               wasn't reverting, this document just never had it. Same
+               11x11 hollow-square SVG (identical markup/colours) as
+               panel.html's own --cursor-cross, defined locally here since
+               custom properties don't cross document/origin boundaries. */
+            --cursor-cross: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            /* --cursor-textbox -- panel.html's "][" text-zone cursor, copied
+               verbatim (same reason --cursor-cross is defined locally: this
+               page is a cross-origin iframe, panel.html's variables cannot
+               reach it). */
+            --cursor-textbox: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHBhdGggZD0iTTIuNSwxIEw0LjUsMSBNNC41LDEgTDQuNSwxMCBNMi41LDEwIEw0LjUsMTAgTTYuNSwxIEw4LjUsMSBNNi41LDEgTDYuNSwxMCBNNi41LDEwIEw4LjUsMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzBhMGQwYSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMi41LDEgTDQuNSwxIE00LjUsMSBMNC41LDEwIE0yLjUsMTAgTDQuNSwxMCBNNi41LDEgTDguNSwxIE02LjUsMSBMNi41LDEwIE02LjUsMTAgTDguNSwxMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNWJmZjZhIiBzdHJva2Utd2lkdGg9IjEiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==') 5 5, text;
+        }
+        /* Map REMOVED -- see the <head> comment on the deleted Leaflet <link>/<script> tags for why. That was the one place on this page a CSS filter would have had to reach into third-party map imagery. */
+        /* html gets the literal dark colour directly (not var(--bg), not
+           going through the filter) -- html is body's PARENT, and
+           filter:url(#posterize3) below is set on body, so it only ever
+           covers body's own subtree, never html itself. On a short page
+           (few events, or the "Scraping…" empty state) body's content can
+           be shorter than the viewport, and without this, whatever sliver
+           of html shows below/around it would stay the browser's default
+           white -- same structural reason panel.html's own <body> (outside
+           .plugin's filtered subtree) needs a literal #0e130e rather than
+           var(--bg), see that file's own comment on this exact point.
+           min-height:100% on both keeps that sliver as small as possible
+           in the first place, so this is a backstop, not the only guard. */
+        html { background: #000000; min-height: 100%; cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default; }
+        /* UPDATE — user screenshot: the sidebar and the main content were
+           rendering on top of each other, overlapping into unreadable
+           double-exposed text, and the events grid showed 0 events despite
+           the sidebar itself looking fine. Root cause of the overlap:
+           filter:url(...) on an ancestor establishes a new containing
+           block for that ancestor's position:fixed/absolute descendants —
+           the same CSS rule panel.html's own .plugin relies on deliberately
+           (see .plugin's own comment). filter used to be on <body> here,
+           and .sidebar (a body child) is position:fixed — so instead of
+           positioning against the real viewport like it's supposed to,
+           .sidebar started positioning against BODY's own box, which is
+           itself offset by body's margin-left:200px. Net result: the
+           sidebar rendered ~200px further right than intended, landing
+           almost exactly on top of the main content column instead of in
+           the gutter to its left.
+           Fix: the filter moved off <body> and onto new wrapper .page,
+           which wraps everything EXCEPT <nav class="sidebar"> (see its own
+           markup, below) -- .sidebar is now a <body> child that sits
+           OUTSIDE the filtered subtree entirely, so position:fixed on it
+           goes back to meaning "relative to the real viewport," same as
+           before dark/posterize was ever added. .page also took over the
+           max-width/margin/min-height/filter duties body used to carry
+           itself, since a new element needed to own the "this is the
+           positioned/filtered content column" job. At the time, .sidebar's
+           own colours were already flat band-safe literals (var(--w)/
+           var(--mid)), so leaving it out of the filtered subtree entirely
+           cost it nothing visually — it just didn't get quantized.
+           UPDATE — .sidebar now carries its OWN filter:url(#posterize3)
+           (see its own CSS rule, below) so the whole page posterizes, sidebar
+           included, matching panel.html's look. That's safe against THIS
+           exact bug specifically because the filter lives directly ON
+           .sidebar rather than on some ancestor of it: a filter changes how
+           an element's OWN descendants resolve position:fixed/absolute, not
+           how the filtered element itself is positioned, and .sidebar has no
+           fixed/absolute descendants of its own (just links, a <select>, a
+           form) for a new containing block to break. */
+        body {
+            font-family: var(--mono);
+            font-size: 12px;
+            margin: 0;
+            /* UPDATE -- user: "sorry now its white, keep the black
+               background, i just dont want any background behind the
+               items of the panel and base.html." html's own rule (top
+               of this file) already carries #000000, so body doesn't
+               need its own copy of it -- reverted to var(--bg) (which
+               is #000000 too, see :root) rather than truly removing the
+               declaration, so nothing regresses if html's rule ever
+               changes independently. The actual grid-hiding culprit is
+               a specific content container's own opaque background,
+               fixed separately -- see that rule's own comment. */
+            background: var(--bg);
+            color: var(--mid);
+            /* FIX -- user: "the show posters/cards... larger than the
+               screen, I have to scroll horizontally... they must all fit
+               into the screen... the only scroll is vertical." Root cause
+               below (.events-grid/.bandTag), but overflow-x:hidden here is
+               a hard backstop: even if some future card content is an
+               unbreakable string wide enough to push a grid track past its
+               track's own size, the page itself can never grow a
+               horizontal scrollbar with this in place.
+               overflow-y:hidden -- separate fix, separate ask: "the search
+               bar must NEVER scroll... the content/results underneath must
+               scroll instead (the page itself should not scroll)." .page
+               (below) is now a fixed height:100vh flex column with its own
+               internal .pageScroll region owning the vertical scrollbar
+               instead (see .page/.pageScroll's own comments) -- body no
+               longer needs or should offer a second, redundant scrollbar
+               of its own in EITHER axis, so both are hidden here now. */
+            overflow: hidden;
+        }
+        /* FIX -- user: "the filter appears by itself... i have to pass over
+           with my mouse for it to appear" / "a bunch of venues act the same
+           too. i have to hover above them for them to appear." Root cause:
+           a known WebKit/Safari bug where an element using filter:url(#id)
+           against a zero-sized SVG filter definition (see the <svg width="0"
+           height="0"> block, below <body>) doesn't get PAINTED on load --
+           the browser leaves it invisible until something forces a repaint
+           (a hover, a scroll, a resize). That's exactly why hovering
+           "revealed" content that was already there in the DOM the whole
+           time -- the events grid, the sidebar's venue links, all of it
+           lives inside .page or .sidebar, both filtered. will-change:filter
+           (plus a translateZ(0) nudge, belt-and-suspenders for older
+           WebKit) forces this element onto its own GPU compositing layer
+           up front instead of lazily, which sidesteps the bug entirely --
+           purely a paint-timing fix, doesn't change how #posterize3 looks. */
+        /* min-height:100vh -> height:calc(100vh - 20px) + flex column --
+           user: "the search bar must never scroll and must stay fixed in
+           position... the content/results underneath must scroll instead
+           (the page itself should not scroll while browsing results)."
+           .page used to be a plain block that just grew as tall as its
+           content (min-height was only ever a FLOOR, for short pages) --
+           with a long events list that made .page taller than the
+           viewport, and body free to scroll (see body's own overflow
+           comment for the flip to overflow:hidden there), the search bar
+           at the top scrolled away with everything else same as any other
+           in-flow element. Now .page is a fixed-height flex column
+           exactly one viewport tall (the -20px accounts for this rule's
+           own 10px top+bottom margins, so the box plus its margins still
+           totals exactly 100vh, same visual breathing room as before) --
+           .search-bar used to be a plain flex child here (flex:0 0 auto)
+           for exactly this reason -- it's since moved into the sidebar
+           entirely (see its own HTML comment, "When" filter-group) rather
+           than sitting in .page's own flow, so .pageScroll (new wrapper --
+           see its own rule) is simply .page's one real child now, not
+           specifically "everything below the search bar" any more. Still
+           grows/shrinks to fill the remaining height and owns its own
+           independent vertical scrollbar, same as when the search bar was
+           here.
+           Side benefit, not the goal but worth flagging: #cityModal
+           (further down) is `position:fixed;inset:0` against THIS element
+           (transform: translateZ(0), below, makes .page a containing block
+           for fixed descendants -- ANY of transform/filter/perspective/
+           will-change-referencing-them does this, not filter specifically,
+           see the POSTERIZE ARCHITECTURE comment further down for why that
+           distinction now matters) -- while .page could grow taller
+           than one viewport, that modal's `inset:0` was sized against
+           .page's own (potentially very tall) box, not the actual visible
+           viewport. Pinning .page to exactly 100vh fixes that as a
+           consequence, not a separate change. */
+        /* filter: url(#posterize3) / will-change: filter REMOVED from here
+           -- see the big POSTERIZE ARCHITECTURE comment further down (right
+           before .search-bar) for the full reasoning: this ambient,
+           whole-subtree filter is exactly what was crushing the show
+           posters back to grey, and a CSS filter can't be selectively
+           bypassed by one descendant. transform: translateZ(0) STAYS --
+           unrelated to the filter, it's the thing that actually keeps
+           #cityModal's containing block unchanged (see this rule's own
+           comment above), and was ALSO already here as its own WebKit
+           paint-timing nudge (see the FIX comment near body{}, above). */
+        /* UPDATE -- top margin 10px -> 0, height's matching 20px -> 10px.
+           User: "enlarge the .event zone up to the top of the website."
+           .search-bar no longer lives in .page (it moved into the
+           sidebar's own "When" filter-group, see the HTML comment where
+           it now sits) -- .pageScroll (wrapping every notice/the events
+           grid/the map) is .page's ONLY child now, so .page's own top
+           margin was the one remaining thing holding the scroll zone
+           down away from the browser's real top edge. Bottom margin
+           (10px) stays -- only asked to move the top up, and .events-
+           grid's own new padding-bottom (see that rule's own UPDATE)
+           is the real fix for the BOTTOM scrolling endpoint, not this
+           margin. max-width/the 200px left margin/horizontal centering
+           are all untouched -- user: "the zone dont spread left,
+           right," this is a vertical-only change. */
+        .page {
+            /* one column of posters -- user: "I only want one row of poster
+               instead of 3." Was 1100px for the three-column grid; panel.html
+               now shows this page in a ~580px-wide strip left of the chat. */
+            max-width: 420px;
+            height: calc(100vh - 10px);
+            margin: 0 auto 10px 200px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+        /* ── POSTERIZE ARCHITECTURE — user: "why are they still posterize
+           white grey black. i want posterize color... the show cards
+           images must be posterized in 6 channels" + "correct the
+           username/password information that is now blue. it must be
+           grey. the text must always be white black or grey."
+           .page used to carry the ONE ambient filter:url(#posterize3) for
+           this entire content column, .events-grid (and its poster <img>
+           tags) included. That's the whole problem: a CSS filter applies
+           to an element's ENTIRE rendered subtree as one unit -- a
+           descendant can declare its own different filter, but the
+           ancestor's filter still reprocesses the composited result on
+           top of it. So as long as .event img lived inside .page's
+           filtered box, no per-image filter could survive being crushed
+           back to grey by .page on the way out, no matter what the server
+           already did to the poster's own colour (see .event img's own
+           comment -- posters are pre-quantized to real colour server-side
+           already; this was purely a client-side rendering problem).
+           Fix: .page itself now carries NO filter. Every other piece of
+           UI that needs the grey/white/black look carries filter:url(
+           #posterize3) directly and individually instead -- .search-bar,
+           h2, .updated, .notice, .notice-empty, #map, and .eventText (the
+           new per-card text wrapper, see the HTML comment where it wraps
+           the old bare h3/p/p/p/a) -- same "own filter, not an inherited
+           one" move this file already made for .sidebar, for a different
+           bug (see .sidebar's own comment).
+           UPDATE -- user: "remove all effect on the images. i just want
+           the normal images." The whole colourized-poster feature
+           (#posterize6color, .eventImgWrap's sibling-filter split) is
+           gone. .event img now carries NO filter at all -- plain,
+           unfiltered image, real colour, as fetched (see that rule's own
+           comment, and server.go for the matching removal of the
+           server-side quantization step).
+           .event itself (the card's border/padding) and .events-grid
+           (pure grid layout, paints nothing of its own) carry no filter at
+           all now -- .event's border colour is var(--mid), a literal
+           already chosen to land dead-center in the SAME mid band
+           #posterize3 would have quantized it to, so skipping the filter
+           there costs nothing visible (see the top-of-file POSTERIZE
+           comment's "every value already proven to land in the correct
+           band" note) -- only its hard-alpha edge-snap is lost, and a 1px
+           solid border has negligible anti-aliasing to begin with.
+           #cityModal already carried its OWN filter:url(#posterize3) even
+           before this change (see that rule, below) -- it was never
+           relying on .page's copy for its own visuals, only .page's
+           TRANSFORM for its containing block (see .page's own comment,
+           above), which is untouched. #map's kick-on-load JS (mapEl,
+           further down in the <script> block) used to target .page
+           itself, relying on kicking that ancestor to force-repaint
+           everything beneath it including the map -- now that .page has
+           no filter to kick, mapEl was moved to point at #map directly,
+           which carries its own filter now same as everything else here. */
+        /* .pageScroll -- the one scrolling region "underneath" the fixed
+           search bar (see .page's own comment for the full reasoning).
+           Wraps every notice/the events grid/the map -- everything that
+           used to just be .page's own in-flow children below the search
+           bar -- see the matching HTML comment at its opening tag.
+           min-height:0 is required, not decorative: a flex child's
+           default min-height is `auto` (its own content size), which
+           would let this grow past the flex column's remaining space
+           instead of clipping to it and scrolling -- the same class of
+           flex-shrink bug already documented on .events-grid's own
+           minmax(0,1fr) fix, one level up the box model. */
+        .pageScroll {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+        }
+        .events-grid {
+            display: grid;
+            /* minmax(0, 1fr) not bare 1fr -- ROOT CAUSE of the horizontal-
+               scroll bug: a bare `1fr` track's minimum size is `auto`, which
+               means "never shrink a track below its content's own
+               min-content width." Any unbreakable string inside a card (the
+               likeliest offender: .bandTag, below, is white-space:nowrap by
+               design so a band/DJ name stays one unit) forces THAT track --
+               and every other track sized off the same `1fr`, plus the grid
+               itself, .page, and the page -- wider than the viewport instead
+               of wrapping/clipping inside its own card. minmax(0, 1fr)
+               explicitly floors the track's minimum at 0, so tracks size to
+               the available space like the grid always visually appeared to
+               do, and any card content that's still too wide has to be
+               handled INSIDE that card (see .bandTag's own fix) rather than
+               inflating the whole page. Same fix mirrored into both
+               @media variants below (2-col and 1-col) -- same bug, same root
+               cause, at each of those track counts. */
+            grid-template-columns: minmax(0, 1fr);
+            gap: 16px;
+            margin-top: 8px;
+            /* UPDATE -- padding-bottom:200px ADDED. User: "for the bottom
+               of the scrolling endpoint, put it lower, aligned with the
+               artist name" -- with no filler space after the last row,
+               .pageScroll's own max scroll position landed right at the
+               last card's bottom edge, cutting the scroll off exactly
+               where the card's own border/padding ends rather than
+               leaving room for its h3 (the show/artist name -- see
+               .event h3's own rule) to settle lower in the viewport once
+               scrolled all the way down. Posters/cards themselves are
+               UNCHANGED SIZE (user: "the posters remain the same length,
+               they simply move further in the page when scrolling up and
+               down") -- this is pure extra scroll travel, not a resize:
+               .events-grid's own total content height grows by 200px of
+               blank space, which is what lets .pageScroll's scrollTop
+               reach further before hitting its max. 200px is a starting
+               guess, not a measured value -- nudge it up/down once this
+               is actually visible if the last row's name doesn't land
+               where it should yet. */
+            padding-bottom: 200px;
+        }
+        h1, h2, h3 { font-weight: 400; }
+        /* FIX -- user: "make sure nothing is bold in the text. if something
+           is more important, its in MAJ." A blanket rule rather than
+           chasing every individual bold declaration one at a time: any
+           <b>/<strong> anywhere on this page (including ones injected by
+           the map popup JS, below) renders at normal weight and uppercase
+           instead -- MAJ standing in for bold as the one emphasis signal
+           this page uses, same idea as .filter-group-title's own
+           text-transform:uppercase, below. */
+        b, strong { font-weight: 400; text-transform: uppercase; }
+        /* FIX -- user: "always use the same font size." Every font-size
+           declaration on this page is 12px, full stop -- no more per-element
+           10/11/13/14/16px variations. Importance is signalled by MAJ (see
+           b/strong above, and .filter-group a.active / .event-when /
+           .filter-toggle > summary below) and by colour (var(--w) vs
+           var(--mid)), never by size. */
+        h1 {
+            font-size: 12px;
+            color: var(--w);
+            border-bottom: 1px solid var(--mid);
+            padding-bottom: 4px;
+        }
+        /* search bar -- sits where <h1>mtl-shows</h1> used to (see the HTML
+           comment right above the <form> itself), so it took over that
+           bottom rule as its own outer border instead of leaving a bare
+           unbordered row up top.
+           UPDATE — user: "remove the search button... put a → at the far
+           right/end of the search bar... keep only the search bar, no
+           separate button outside the search field." The bordered
+           rectangle used to be the plain <input>'s own border with a
+           SEPARATE bordered <button> sitting next to it (two boxes, not
+           one) — that border moved to a new .search-field wrapper (see
+           its own rule, right below) around BOTH the input and the arrow,
+           and .search-input/.search-arrow both went borderless/
+           transparent inside it, so the whole thing reads as one field
+           with → living at its own far right edge, not a field-plus-
+           button pair. .search-bar itself is now just the outer flex row
+           (field + the [clear] link, when present), no border/padding of
+           its own to carry any more.
+           (padding was "6px px" here before — invalid CSS, silently
+           dropped by every browser — replaced with a real value as part
+           of this same pass rather than left in place.)
+           UPDATE — flex:0 0 auto added. .search-bar was a fixed-height
+           flex child of .page directly at the time (see .page's own
+           comment for the full "must never scroll" reasoning) rather than
+           part of .pageScroll's own scrolling content below it.
+           UPDATE — .search-bar MOVED into the sidebar entirely (see its
+           own HTML comment, "When" filter-group) -- flex:0 0 auto/
+           margin-bottom above are harmless leftovers from the .page-flex-
+           child era (a .filter-group column child just sizes to its own
+           content regardless), kept rather than trimmed since removing
+           them changes nothing visible. */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 0;
+            margin-bottom: 8px;
+            flex: 0 0 auto;
+            /* own filter now -- see the POSTERIZE ARCHITECTURE comment
+               near .page, above. */
+            filter: url(#posterize3);
+            will-change: filter;
+            transform: translateZ(0);
+        }
+        /* FIX -- user (earlier pass): "make the research bar of the scraper
+           under 'All'. make it quite short. maybe 210 px wide." flex:1
+           (stretched to .search-bar's/.page's full content width, back
+           when it lived at the top of .page) replaced with a fixed 210px
+           guess at the time.
+           UPDATE -- now that .search-bar has actually MOVED into the
+           sidebar (HTML, see that div's own comment) the 210px guess
+           doesn't fit any more -- .sidebar itself is only 170px wide (see
+           that rule's own CSS). flex:1/min-width:0 instead: .search-field
+           just fills whatever width its actual container has, same
+           convention .add-venue-form's own input[type=url] already uses
+           for a sidebar-width control, rather than a second hardcoded
+           number likely to go stale the same way this one did. */
+        .search-field {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+            background: var(--bg);
+            border: 1px solid var(--mid);
+        }
+        .search-field:focus-within {
+            border-color: var(--w);
+        }
+        .search-input {
+            flex: 1;
+            min-width: 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 3px 4px;
+            /* UPDATE -- user: "make sure the backgrounds of the scraper
+               menu buttons and search bars are black." Was transparent
+               (relying on .search-field's own black background showing
+               through) -- made explicit so this search bar is black on
+               its own terms, not just by accident of what's behind it. */
+            background: var(--bg);
+            color: var(--w);
+            border: none;
+        }
+        .search-input:focus {
+            outline: none;
+        }
+        /* grey placeholder -- user: "in grey" -- same var(--mid)/opacity
+           pairing .dj-search::placeholder already uses below, so both
+           search fields' placeholder text reads identically. */
+        /* UPDATE -- user: "make sure the search bars display their
+           placeholder text." opacity:.65 -> 1. The placeholder WAS in the
+           DOM, it just never painted: this element sits under
+           filter:url(#posterize3), whose feFuncA snaps alpha to 0 or 1 at
+           the 50% mark (see that filter's own comment), and a 12px
+           monospace glyph is ~1px strokes -- at 65% opacity nearly every
+           stroke pixel lands below 50% coverage*opacity and gets erased,
+           leaving an apparently empty field. Full opacity + the mid-band
+           grey keeps every stroke pixel alive and still reads as a hint
+           (grey), not as typed text (white). */
+        .search-input::placeholder {
+            color: var(--mid);
+            opacity: 1;
+        }
+        /* → sits INSIDE the field, its far-right end -- a plain submit
+           control styled to blend into the field rather than read as a
+           second, separate box next to it. */
+        .search-arrow {
+            flex: 0 0 auto;
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 3px 8px;
+            border: none;
+            /* UPDATE -- user: "make sure the backgrounds of the scraper
+               menu buttons and search bars are black." Same as
+               .search-input above -- was transparent, now explicit. */
+            background: var(--bg);
+            color: var(--mid);
+            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+        }
+        .search-arrow:hover {
+            color: var(--w);
+        }
+        .search-clear {
+            font-size: 12px;
+            color: var(--mid);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .search-clear:hover { color: var(--w); }
+        /* own filter now -- see the POSTERIZE ARCHITECTURE comment near
+           .page. Covers both this page's own <h2> title and the "Map"
+           <h2> inside #map-details' <summary>. */
+        h2 {
+            font-size: 12px;
+            color: var(--mid);
+            filter: url(#posterize3);
+            will-change: filter;
+            transform: translateZ(0);
+        }
+        /* Same WebKit paint bug as .page above (see that rule's own comment)
+           -- .sidebar carries its own filter:url(#posterize3) too (that's
+           the whole reason it needs one: see the "UPDATE" comment near the
+           top of this file explaining why .sidebar sits OUTSIDE .page's
+           filtered box but still needs the same filter applied to itself),
+           so it needs the same fix. */
+        /* UPDATE (reversed) -- overflow-y:auto / max-height:calc(100vh -
+           20px) REMOVED. User, with a screenshot showing the filter-group
+           list cut off mid-way down: "dont scroll this menu, just show it
+           all in one shot. the scroll is only for the posters." This was
+           the sidebar's own SECOND scroll region -- on top of base.html's
+           already-fixed .pageScroll (see that rule's own comment) owning
+           the posters -- clipping/scrolling the menu itself whenever its
+           real content (When/This-Weekend/Venues/G-ANS/Genres/DJs, all
+           stacked in one position:fixed column) ran taller than the
+           viewport. position:fixed (kept, see the @media(max-width:800px)
+           block's own UPDATE for why this stays fixed at every width) no
+           longer pairs with a height cap of its own -- the sidebar just
+           renders at its full natural content height now, same as any
+           other position:fixed element with nothing telling it to clip,
+           so every filter group shows at once and the ONE scrollbar left
+           anywhere on this page is .pageScroll's, over the posters. */
+        /* top:10px -> 0. User: "make sure the poster scrolling goes to
+           the top of the page." .page's own top margin is 0 (see that
+           rule's own "enlarge the .event zone up to the top of the
+           website" comment) but .sidebar (a totally separate
+           position:fixed element, not in .page's flow at all) was still
+           sitting 10px lower than that -- the menu and the poster grid
+           never actually shared the same top edge, even though .page/
+           .pageScroll's OWN scroll range already starts at the true
+           y:0. Matches .page's own 0 now instead of introducing a new
+           10px top margin back on .page, which would undo that earlier
+           fix. left:10px is untouched -- only asked about the top. */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 10px;
+            width: 170px;
+            z-index: 9999;
+            filter: url(#posterize3);
+            will-change: filter;
+            transform: translateZ(0);
+        }
+        /* min-height:100vh (wide layouts only) -- an SVG filter's default
+           region is the element's own box +10%. The dropdown menus are now
+           absolutely positioned and can hang well below the last sidebar
+           group; without a full-height sidebar box the filter region would
+           clip them. The sidebar is a transparent 170px column with nothing
+           underneath it but empty margin, so this catches no clicks. */
+        @media (min-width: 401px) {
+            .sidebar { min-height: 100vh; box-sizing: border-box; pointer-events: none; }
+            .sidebar > * { pointer-events: auto; }
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: 12px;
+        }
+        .filter-group-title {
+            font-size: 12px;
+            color: var(--mid);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .filter-group a {
+            color: var(--mid);
+            font-size: 12px;
+            text-decoration: none;
+            line-height: 1.6;
+            padding: 0 4px;
+            border-left: 2px solid transparent;
+        }
+        .filter-group a:hover {
+            color: var(--w);
+        }
+        .filter-group a.active {
+            color: var(--w);
+            border-left-color: var(--w);
+            text-transform: uppercase;
+        }
+        /* "This Weekend" dropdown -- user: "Safari has nothing to style.
+           It's just HTML/CSS." Root cause: this used to be a plain
+           <select> (see the CSS this replaced). A <select>'s CLOSED box
+           can be restyled (appearance:none + custom border/font), but its
+           OPEN popup list is native OS chrome -- Safari (and every other
+           browser) refuses to let CSS touch that part at all, so the
+           result was a custom-looking closed box that popped open into an
+           unstyled system menu, breaking the posterized/terminal look the
+           instant you clicked it.
+           Fix: swap the <select>/<option> pair for a <details>/<summary>
+           pair instead -- same idiom .filter-toggle above (and the mobile
+           "Filters" summary bar) already uses, so there's nothing new to
+           teach the browser. <details> has NO native popup to fail to
+           style: "open" just reveals its own child markup in normal page
+           flow, and that markup is plain <a> tags this stylesheet already
+           fully controls. That also means it needs only ONE ruleset here
+           (below) instead of the old setup's second, mobile-only
+           appearance:none copy (see the @media (max-width: 800px) block
+           this replaced) -- one styled box, every screen size. */
+        /* UPDATE -- user: "make sure these dropdown boxes are not missing the
+           lower side of their rectangles. and make the background pure
+           black." Two causes. (1) Height: the box was 23px with a 1px border
+           each side = 21px of content, but its <summary> is 22px tall, so the
+           summary overhung by 1px and its own background painted over the
+           box's bottom border. Box is 24px now (22 + 2 border). (2) Colour:
+           .sidebar carries filter:url(#posterize3), which lifts any opaque
+           black inside it to the filter's black band (#0d0d0d) -- so a
+           background:#000 here can never render as real #000. The box and its
+           summary are transparent instead: alpha 0 survives the filter and
+           the page's own #000 shows through. The open menu can't be
+           transparent (it has to hide what's under it), so an unfiltered
+           black underlay does that job -- see #ddUnderlay and the
+           dropdownUnderlay script. */
+        .weekend-dropdown {
+            width: 100%;
+            height: 24px;
+            box-sizing: border-box;
+            background: transparent;
+            border: 1px solid var(--mid);
+        }
+        /* UPDATE -- user: "center the information vertically within
+           .weekend and .venues menu. they are a little to high in the
+           rectangle frame." height:15px (box-sizing:border-box) minus
+           this rule's own 4px top+bottom padding left only 7px of real
+           content box -- too short for a 12px-font single line (which
+           alone needs roughly 14-16px of line-height), so the label/
+           arrow overflowed the box rather than actually sitting centered
+           inside it. 15px -> 22px gives align-items:center a content box
+           (22 - 8 = 14px) that comfortably fits the text instead of
+           fighting a height that was never tall enough to begin with. */
+        .weekend-dropdown > summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+            height: 22px;
+            padding: 4px 7px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--mid);
+            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            list-style: none;
+            /* transparent, not #000 -- see the .weekend-dropdown UPDATE above
+               (the sidebar's posterize filter turns opaque black into #0d0d0d). */
+            background: transparent;
+        }
+        /* two different ways browsers draw a <summary>'s built-in
+           disclosure triangle -- Chrome/Safari via this pseudo-element,
+           Firefox via list-style (killed above). Removed so the only
+           arrow on screen is .weekend-dropdown-arrow's own ▾, below --
+           same "kill the native marker, draw our own" move
+           .filter-toggle > summary::-webkit-details-marker already makes
+           for the mobile Filters bar. */
+        .weekend-dropdown > summary::-webkit-details-marker {
+            display: none;
+        }
+        .weekend-dropdown > summary:hover,
+        .weekend-dropdown[open] > summary {
+            color: var(--w);
+        }
+        /* divider between the closed box's header row and the open
+           menu -- exactly the "├──┤" line in the mockup. Only drawn once
+           OPEN: closed, the box is just the header row and shouldn't show
+           a bottom rule with nothing under it. */
+        .weekend-dropdown[open] > summary {
+            border-bottom: 1px solid var(--mid);
+        }
+        /* UPDATE -- user: "the dropdown doesnt move down the existing
+           information when appearing. it gets hidden behind the next
+           section." Root cause found: this rule had NO [open] qualifier
+           at all -- display:flex was unconditional, which is an author-
+           origin "normal" declaration, and author-normal always beats
+           user-agent-normal in the cascade regardless of selector
+           specificity. That silently overrode the browser's own built-in
+           `details:not([open]) > *:not(summary){display:none}` rule, so
+           .weekend-dropdown-menu was ALWAYS part of the layout -- open
+           attribute or not. The next .filter-group was never failing to
+           move: it was already sitting wherever this always-present menu
+           put it, and clicking the summary only ever toggled the
+           border-bottom rule (see .weekend-dropdown[open] > summary,
+           right above), never any actual reflow. Explicitly scoping
+           display:flex to [open], plus an explicit :not([open]) ->
+           display:none (belt-and-suspenders -- doesn't rely on the UA
+           default alone, matching how .filter-toggle > summary's own
+           display:none is handled explicitly elsewhere in this file
+           rather than left to native behavior), restores the real
+           toggle: closed contributes zero height, open actually inserts
+           the menu's real height into flow and pushes everything after
+           it down by exactly that amount. */
+        .weekend-dropdown[open] .weekend-dropdown-menu {
+            display: flex;
+            flex-direction: column;
+        }
+        .weekend-dropdown:not([open]) .weekend-dropdown-menu {
+            display: none;
+        }
+        /* extra ".filter-group" prefix bumps specificity above the plain
+           ".filter-group a" rule above (nav links inside this same
+           .filter-group) so this component's own padding/layout always
+           wins regardless of source order. */
+        /* padding 6px 7px -> 3px 7px — user: "make the dropdown items
+           vertically more compact. reduce the vertical spacing/padding
+           between items." Typography/font-size untouched, only the
+           vertical padding that was spacing them apart — same rule also
+           covers the new Venues dropdown's own menu (it reuses this exact
+           class, see that markup's own comment), so both get the
+           compaction. */
+        .filter-group .weekend-dropdown-menu a {
+            display: block;
+            padding: 3px 7px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--mid);
+            text-decoration: none;
+            border-left: none;
+            background: transparent; /* see the .weekend-dropdown UPDATE */
+        }
+        .filter-group .weekend-dropdown-menu a:hover {
+            color: var(--w);
+        }
+        /* .active is added by the same "which link matches the current
+           URL" script that already highlights every other .filter-group
+           link (see the <script> block near the end of <body>) -- these
+           <a> hrefs are plain paths just like that script expects, so
+           they picked up matching/highlighting for free, no extra JS. */
+        .filter-group .weekend-dropdown-menu a.active {
+            color: var(--w);
+            text-transform: uppercase;
+        }
+        /* DROPDOWNS AS OVERLAYS -- user: "fix the dropdown menu so they open
+           above the existing text with a black background making sure the
+           information is easily readable. Cause right now they arent usable
+           as they open behind the other sections."
+           Root cause: .weekend-dropdown is a fixed 23px-tall box
+           (overflow visible), and its menu was an in-flow child, so an open
+           menu spilled out of that 23px box and painted UNDER the later
+           .filter-group siblings (later in DOM order = painted on top),
+           overlapping their text. Now the menu leaves the flow: absolute,
+           anchored to the bottom edge of its own <details>, with a real
+           z-index and a solid black background, so it sits on top of
+           whatever is below instead of behind it. The opened <details> is
+           also lifted (z-index) so it out-stacks the sibling groups that
+           follow it. Capped at 60vh and scrollable, because the venue list
+           is long. Items are white (was mid-grey) and invert on hover, so
+           the list reads clearly on top of the busy sidebar. */
+        .weekend-dropdown {
+            position: relative;
+        }
+        .weekend-dropdown[open] {
+            z-index: 50;
+        }
+        /* #ddUnderlay -- real, unfiltered #000 behind an open dropdown. Sits
+           just under the sidebar (9999), over the posters; the script below
+           sizes it to the open box and hides any sidebar item it would
+           otherwise leave showing through the transparent menu. */
+        #ddUnderlay {
+            position: fixed;
+            display: none;
+            background: #000;
+            z-index: 9998;
+            pointer-events: none;
+        }
+        .sidebar .ddCovered { visibility: hidden !important; }
+        .weekend-dropdown[open] .weekend-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: -1px;
+            right: -1px;
+            z-index: 50;
+            box-sizing: border-box;
+            max-height: min(60vh, 420px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: transparent; /* #ddUnderlay supplies the real #000 */
+            /* UPDATE -- user: "the dropdown should be grey surround boxes."
+               Was white left/right/bottom against a grey top; the whole
+               open dropdown (header row + list) is now one grey box. */
+            border: 1px solid var(--mid);
+            padding: 2px 0;
+        }
+        .filter-group .weekend-dropdown-menu a {
+            color: var(--w);
+            background: transparent;
+            line-height: 1.5;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .filter-group .weekend-dropdown-menu a:hover {
+            color: #000;
+            background: var(--w);
+        }
+        .filter-group .weekend-dropdown-menu a.active {
+            color: var(--w);
+            background: transparent;
+            text-transform: none;
+            border-left: 2px solid var(--w);
+            padding-left: 5px;
+        }
+        .filter-group .weekend-dropdown-menu a.active:hover {
+            color: #000;
+            background: var(--w);
+        }
+        /* own filter now -- see the POSTERIZE ARCHITECTURE comment near
+           .page. */
+        .updated {
+            font-size: 12px;
+            color: var(--mid);
+            filter: url(#posterize3);
+            will-change: filter;
+            transform: translateZ(0);
+        }
+        /* .notice-empty -- style-free, filter-only class for the plain
+           <p>No events found.</p> fallback (see the HTML, further down).
+           No box/border/padding of its own (unlike .notice, below) since
+           that paragraph never had any -- this exists purely so it still
+           carries filter:url(#posterize3) now that .page no longer blankets
+           it for free. See the POSTERIZE ARCHITECTURE comment near .page. */
+        .notice-empty {
+            filter: url(#posterize3);
+            will-change: filter;
+            transform: translateZ(0);
+        }
+
+        .add-venue-form {
+            display: flex;
+            gap: 4px;
+            margin-top: 2px;
+        }
+        .add-venue-form input[type="url"] {
+            flex: 1;
+            min-width: 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 3px 4px;
+            background: var(--bg);
+            color: var(--w);
+            border: 1px solid var(--mid);
+        }
+        .add-venue-form button {
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 3px 8px;
+            border: 1px solid var(--mid);
+            background: var(--bg);
+            color: var(--mid);
+            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+        }
+        .add-venue-form button:hover {
+            color: var(--w);
+            border-color: var(--w);
+        }
+        /* #djsGroup -- see its own HTML comment (right above the markup)
+           for why this lives here now instead of panel.html's own
+           external #djPanel. Same visual language every other sidebar
+           control already uses (.add-venue-form's own input/border
+           colours, .filter-group-title's own uppercase/--mid label) --
+           this isn't a new component, just the DJ list rendered with the
+           sidebar's own existing vocabulary instead of panel.html's
+           separate one (.djRow/.rd/etc, which this document has no
+           access to -- different origin). */
+        .dj-search {
+            width: 100%;
+            box-sizing: border-box;
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 3px 4px;
+            background: var(--bg);
+            color: var(--w);
+            border: 1px solid var(--mid);
+            margin-top: 2px;
+        }
+        /* opacity 1 -- see .search-input::placeholder for why .65 erased it. */
+        .dj-search::placeholder { color: var(--mid); opacity: 1; }
+        .dj-onair {
+            font-size: 12px;
+            color: var(--mid);
+            margin-top: 4px;
+        }
+        .dj-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--mid);
+            padding: 2px 0;
+            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+        }
+        .dj-row:hover { color: var(--w); }
+        /* .dj-dot -- plain dot, not .bandTag's own bordered-box language:
+           this is a live/offline STATUS glyph, not a filter chip, same
+           distinction .rd/.on/.off already draws in panel.html for the
+           identical data. */
+        /* UPDATE -- user (panel.html side): "add a green led knob to
+           rollypolly dj. so red means disconnected and green means
+           connected." Flips the convention from plain var(--mid) grey
+           default: the base/off state is now a literal #f00 (disconnected)
+           and .live is #0f0 (connected) instead of the old #f00. Both need
+           the same posterize whitelist treatment #f00 alone had before --
+           see #posterize3's own "greenness" chain, added right after its
+           existing "redness" one, below. */
+        .dj-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #f00;
+            flex-shrink: 0;
+        }
+        .dj-dot.live { background: #0f0; }
+        .dj-empty { font-size: 12px; color: var(--mid); }
+        /* own filter now -- see the POSTERIZE ARCHITECTURE comment near
+           .page. Covers all three variants (notice-ok/notice-error/
+           notice-pending) via this shared base class. */
+        .notice {
+            font-size: 12px;
+            padding: 8px 10px;
+            margin: 8px 0;
+            border: 1px solid var(--mid);
+            background: var(--bg);
+            color: var(--mid);
+            filter: url(#posterize3);
+            will-change: filter;
+            transform: translateZ(0);
+        }
+        /* [OK]/[ERROR]/[PENDING] — see this file's own top-of-<style> note:
+           hue (the old green/red tint) can't survive #posterize3, so these
+           read by a bracketed label + brightness instead, same idiom
+           panel.html uses throughout. */
+        .notice-ok { color: var(--w); border-color: var(--w); }
+        .notice-ok::before { content: "[OK] "; }
+        .notice-error { color: var(--w); border-color: var(--w); }
+        .notice-error::before { content: "[ERROR] "; }
+        .notice-pending strong::before { content: "[PENDING] "; }
+        .notice-pending ul {
+            margin: 4px 0 0 0;
+            padding-left: 18px;
+        }
+
+        /* no filter here (or on .events-grid, above -- pure grid layout,
+           paints nothing of its own) -- see the POSTERIZE ARCHITECTURE
+           comment near .page. var(--mid)'s literal RGB already lands
+           dead-center in the SAME mid band #posterize3 would have
+           quantized it to, so skipping the filter costs nothing visible
+           here; only the hard-alpha edge-snap is lost, and a 1px solid
+           border has negligible anti-aliasing to begin with. */
+        .event {
+            border: 1px solid var(--mid);
+            padding: 6px;
+        }
+        .event.event-today { border-color: var(--w); }
+        /* .event-empty -- the placeholder card shown when nothing matches.
+           Filled with "No events scraped" / "N/A" text so it looks like a
+           real card; .event-noimg stands in for the poster <img> (same
+           160px slot and border as .event img, below). */
+        .event .event-noimg {
+            width: 100%;
+            height: 160px;
+            border: 1px solid var(--mid);
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--mid);
+            text-transform: uppercase;
+        }
+        .event.event-today .event-when { color: var(--w); }
+        /* user: "remove all effect on the images. i just want the normal
+           images." No filter of any kind on the poster now -- plain,
+           unfiltered <img>, real colour, as fetched. .eventImgWrap (the
+           wrapper this needed to keep the border un-tinted while the
+           image itself carried a colour filter) is gone along with it --
+           see the matching HTML comment where the wrapper used to sit. */
+        .event img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border: 1px solid var(--mid);
+            box-sizing: border-box;
+        }
+        /* .eventText -- see the HTML comment where this wraps the card's
+           h3/p/p/p/a (and, via h3.insertAdjacentElement, .bandTags) group,
+           and the POSTERIZE ARCHITECTURE comment near .page. Plain block
+           wrapper, no layout properties of its own -- .event was never a
+           flex/grid container (margin-top:auto on .event a, below, has no
+           effect outside one and was already inert before this change),
+           so nesting these children one level deeper doesn't shift
+           anything. Exists purely to give the card's TEXT one shared
+           filter:url(#posterize3) attachment point, now that .page no
+           longer blankets it for free -- see that filter, below. */
+        .eventText {
+            filter: url(#posterize3);
+            will-change: filter;
+            transform: translateZ(0);
+        }
+        .event h3 {
+            font-size: 12px;
+            color: var(--w);
+            margin: 6px 0 2px 0;
+            /* same horizontal-overflow backstop as .bandTag, above -- a
+               show/venue name that's one long unbreakable word (no spaces
+               for normal wrapping to break on) shouldn't be able to bleed
+               past the card's own border. Normal titles are unaffected. */
+            overflow-wrap: anywhere;
+        }
+        .event p {
+            margin: 2px 0;
+            color: var(--mid);
+            overflow-wrap: anywhere;
+        }
+        .event .event-when {
+            color: var(--mid);
+            font-size: 12px;
+            margin: 4px 0;
+            text-transform: uppercase;
+        }
+        .event a {
+            font-size: 12px;
+            color: var(--mid);
+            margin-top: auto;
+            padding-top: 4px;
+        }
+        .event a:hover { color: var(--w); }
+        /* Band/artist tag boxes -- user: "add minimal rectangular band/
+           artist tag boxes on posts, only for scenes with large community
+           involvement/lineups/hardcore/rave-DJ scenes -- not on every
+           show." There's no structured artist-list field anywhere in the
+           Go event data (just the single free-text .Name field the template
+           already prints in <h3>, above) -- so which shows get tags is a
+           client-side heuristic on that text, see splitLineup() in the
+           <script> block below. Deliberately minimal/rectangular per the
+           spec's own literal "[ BAND NAME ] [ BAND NAME ]" mockup -- same
+           bordered-box language as .search-field/.weekend-dropdown
+           elsewhere on this page, not a new visual idiom. Only appended
+           when splitLineup() actually finds a large lineup; ordinary
+           single-act shows get no .bandTags element at all, so this never
+           adds empty space to a normal card. */
+        .event .bandTags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 4px 0;
+        }
+        .event .bandTag {
+            border: 1px solid var(--mid);
+            padding: 1px 4px;
+            font-size: 12px;
+            color: var(--mid);
+            /* was white-space:nowrap alone -- kept a normal-length band name
+               on one line, but gave it no shrink floor: as a flex item
+               (.bandTags is display:flex;flex-wrap:wrap) its default
+               min-width is `auto`, same class of bug as the grid track fix
+               above, one level down. An unusually long single band/DJ name
+               (no spaces for flex-wrap's own line-break to catch) could
+               still force this one tag wider than the card, bleeding past
+               .event's own border.
+               TRIED overflow-wrap:anywhere first (matching the h3/p fix
+               below) but verified via Playwright at 500px width that
+               Chromium does NOT honor overflow-wrap under white-space:
+               nowrap -- the tag still rendered ~865px of scrollWidth inside
+               a 464px parent, i.e. it did nothing. min-width:0 lets the tag
+               actually shrink below its own content's width instead of
+               insisting on it; overflow:hidden + text-overflow:ellipsis is
+               the real fix for the nowrap case specifically -- an
+               oversized name truncates with "…" instead of either
+               overflowing (old bug) or silently failing to wrap (the
+               overflow-wrap attempt). Ordinary short/normal band names,
+               which already fit, are completely unaffected either way. */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            min-width: 0;
+        }
+        /* .filter-group .bandTags/.bandTag -- spec item 6's genre tags
+           (sidebar, underneath "Add a venue"). A parallel selector rather
+           than broadening ".event .bandTag" itself: these render inside
+           .filter-group (the sidebar), never inside .event (the card
+           grid), so the original selector's own scope never reaches them
+           on its own -- same box/padding/font-size/color/ellipsis
+           declarations, copied verbatim, so the two read as the identical
+           component wherever either one appears. text-decoration:none +
+           cursor:pointer are the only additions, since these are real
+           <a href="?genre=..."> filter links (splitLineup()'s own
+           .bandTag is a plain <span>, nothing to click) -- hover/active
+           reuse .filter-group a's own existing "white + left border"
+           selected-state language one rule down for everything else in
+           this sidebar, translated to this box's own all-around border
+           (a left-border alone wouldn't read against a already-bordered
+           rectangle). */
+        .filter-group .bandTags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 4px 0 0;
+        }
+        .filter-group .bandTag {
+            border: 1px solid var(--mid);
+            padding: 1px 4px;
+            font-size: 12px;
+            color: var(--mid);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            min-width: 0;
+            text-decoration: none;
+            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            /* UPDATE -- user: "make sure the backgrounds of the scraper
+               menu buttons and search bars are black." These are the
+               Genres filter buttons in the sidebar menu -- had no
+               background of their own at all. */
+            background: var(--bg);
+        }
+        .filter-group .bandTag:hover,
+        .filter-group .bandTag.active {
+            color: var(--w);
+            border-color: var(--w);
+        }
+        .filter-toggle > summary {
+            display: none;
+        }
+        /* (the old 1200px two-column step is gone: the grid is one column at
+           every width now -- see .events-grid.) */
+        @media (max-width: 400px) {
+            /* UPDATE (reversed) -- body overflow-y:auto / .page's
+               height:auto;display:block;overflow:visible / .pageScroll's
+               overflow-y:visible / .sidebar's position:static block, all
+               REMOVED. User: "the base.html iframe isnt responding
+               correctly. the posters should be able to scroll from the
+               top of the page to +/- 800 pixels down from the top[.] the
+               menu of the base.html visible always." This page is loaded
+               inside panel.html's own #omscFrame (see the <head> comment,
+               top of this file) at a width that tracks THAT panel's own
+               window -- a real plugin-panel host, not a phone -- and
+               .plugin's own width:min(100%,max(1498px,72%)) (panel.html)
+               means a panel window anywhere near/under 800px CSS px wide
+               lands #omscFrame right at (or under) this exact 800px
+               breakpoint. Every time it did, THIS block fired: .sidebar
+               (the menu) dropped position:fixed for position:static --
+               no longer "visible always," it scrolled away with the rest
+               of the document the instant .page/.pageScroll (right below)
+               ALSO gave up their own fixed-height/internal-scroll box for
+               plain auto-height/overflow:visible -- collapsing the
+               contained ~840px poster-scroll zone (see #omscFrame's own
+               850px comment, panel.html) into one open-ended document
+               scroll instead, which is the "isnt responding correctly"
+               symptom: neither "stop around 800px down" nor "menu stays
+               put" holds once the whole page itself starts scrolling.
+               Original intent (see this comment's own history, below)
+               was a real phone-width concession, not something this
+               embedded, never-actually-mobile context needs -- .sidebar/
+               .page/.pageScroll now stay in their fixed/contained desktop
+               configuration at every width; .events-grid's column count/
+               .filter-toggle's summary collapse (both still below) are
+               untouched, that responsiveness is harmless on its own. */
+            /* ORIGINAL COMMENT (kept for history) -- height:100vh flex
+               column (see .page's own comment, above) reverted back to
+               plain auto-height block here -- that fixed layout assumed
+               .sidebar stays position:fixed, entirely outside the body's
+               own document flow (see .sidebar's own comment on why THAT
+               position:fixed's containing block is safe). Right below,
+               this same media query switches .sidebar to position:static
+               -- back in normal flow, stacked above .page in the body --
+               which means .page no longer starts at the true top of the
+               viewport, so a hard `height:100vh` budget on it would run
+               off the bottom of the screen (or get clipped, now that
+               body is overflow:hidden) instead of fitting. Simplest
+               correct fix at this width: go back to the page scrolling
+               as one normal document, sidebar-then-content, same as it
+               always did on mobile -- .filter-toggle already collapses
+               the sidebar into a single-tap summary here, so a
+               permanently-pinned search bar matters far less on a phone
+               than it does on a tall desktop events list. */
+            .events-grid {
+                /* minmax(0, 1fr) -- same fix/reason as the base rule above,
+                   at a single full-width column. */
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .filter-toggle > summary {
+                display: block;
+                cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+                font-size: 12px;
+                text-transform: uppercase;
+                padding: 12px;
+                background: var(--bg);
+                color: var(--mid);
+                border: 1px solid var(--mid);
+                list-style: none;
+            }
+            .filter-toggle > summary::-webkit-details-marker {
+                display: none;
+            }
+            .filter-toggle > summary::after {
+                content: " ▸";
+                float: right;
+            }
+            .filter-toggle[open] > summary::after {
+                content: " ▾";
+            }
+            .filter-group a {
+                padding: 12px 8px;
+                line-height: 1.2;
+            }
+            .event a {
+                font-size: 12px;
+                padding: 12px 0;
+            }
+            /* .weekend-select / .weekend-select-wrapper / .weekend-arrow
+               (the old <select>-based mobile styling) removed here --
+               .weekend-dropdown above is now one unstyled-by-Safari-proof
+               <details> component that already looks the same at every
+               width, so there's no separate mobile variant left to keep. */
+        }
+        /* City/room switcher -- user: "add a keyboard shortcut that opens a
+           simple modal/map of cities with community involvement (uploaded
+           venues), for switching rooms/cities, while preserving the current
+           city/room concept and keeping it extensible." This site is
+           currently Montréal-only (no City field anywhere in the Go venue/
+           event structs -- confirmed against venues.go/discovered_venues.go
+           -- so there is no real multi-city backend to route this modal
+           against yet). Driven entirely by the CITIES array in the <script>
+           block below -- extensibility lives in that array's shape
+           (key/name/active/url); adding a real second city later is a
+           one-line addition there, nothing in this CSS or the modal markup
+           needs to change. .hide is a new, minimal convention here
+           (base.html had none before); deliberately named/shaped like
+           panel.html's own .hide toggle class rather than inventing a
+           differently-named equivalent.
+           UPDATE (second pass) -- user, with a plain vertical link list:
+           "a 'neural-map-style' network visualization of available cities
+           (not necessarily geographic -- a network/community map)... only
+           include cities that actually exist in the site's data... framed
+           as 'changing rooms' rather than logging out." The vertical
+           .cityList (below, kept as-is for its own CSS/JS reasoning where
+           still relevant) is REPLACED by .cityMapWrap: an SVG line layer
+           plus absolutely-positioned .cityNode boxes -- a hub node (the
+           room you're currently in) with every OTHER real city in CITIES
+           orbiting it as a connected satellite, laid out by
+           renderCityMap() below rather than stacked top-to-bottom. Still
+           only ever draws from the same CITIES array (still just one real
+           entry, 'mtl') -- no placeholder/fake cities invented for the
+           sake of a fuller-looking graph. Nodes keep this site's own
+           bordered-rectangle language (border, not border-radius) rather
+           than switching to circles for a generic "graph" look -- "keep
+           the existing visual language" applies here same as everywhere
+           else in this pass. */
+        /* !important -- matches panel.html's own .hide convention exactly
+           (src/gui/panel.html: ".hide{display:none!important}") rather
+           than relying on source order against .cityModal's own
+           display:flex below: a plain (unimportant) display:none here
+           would otherwise lose that specificity tie to whichever of the
+           two rules happens to come second in the stylesheet, which is
+           exactly the kind of silent regression a later, unrelated CSS
+           edit above this block could reintroduce by accident. */
+        .hide { display: none !important; }
+        /* UPDATE -- user: "make sure the background of the network tab is pure
+           black." Two things kept it from being pure black: the overlay was
+           rgba(0,0,0,.8) (posters bleeding through behind it), and the
+           overlay ITSELF carried filter:url(#posterize3), which maps black to
+           the filter's "black band" (0.0549 -> #0e0e0e), not to real #000.
+           Now the overlay is an opaque #000 with NO filter, and the filter
+           moved down onto .cityModalBody (below), whose own background is
+           transparent -- so the black you see everywhere behind the box is
+           the unfiltered #000, and only the text/borders get posterized. */
+        .cityModal {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+        /* width 260px -> 420px -- a vertical link list fit in a narrow
+           column; a network layout (hub + satellites, see .cityMapWrap's
+           own comment below) needs real 2D room to lay nodes out in,
+           not a single column. max-width:calc(100vw - 40px) unchanged, so
+           this still degrades to a comfortably smaller box on a narrow
+           viewport instead of overflowing it. */
+        .cityModalBody {
+            width: 560px;
+            max-width: calc(100vw - 20px);
+            background: transparent;
+            border: 1px solid var(--mid);
+            padding: 12px;
+            filter: url(#posterize3);
+            will-change: filter;
+            transform: translateZ(0);
+        }
+        /* .cityMapWrap -- the network/community map itself (spec: "neural-
+           map-style... not necessarily geographic"). Plain relatively-
+           positioned box; .cityMapLines (an absolute, full-size SVG) draws
+           the hub-to-satellite connectors underneath, .cityNode boxes
+           (also absolute, positioned in px by renderCityMap()'s own JS —
+           the layout is computed, not fixed in CSS, since it has to adapt
+           to however many real cities CITIES actually holds) sit on top.
+           Height is a fixed value rather than aspect-ratio/vh so the
+           radial layout math in renderCityMap() has a stable box to
+           measure and position against on first render. */
+        .cityMapWrap {
+            position: relative;
+            height: 300px;
+            margin: 4px 0 2px;
+        }
+        .cityMapLines {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+        /* stroke-width:2, not this file's usual 1px hairline -- verified via
+           Playwright that 1px was actually invisible here: .cityModal
+           carries filter:url(#posterize3) same as everywhere else on this
+           page, and that filter's hard luminance-band cutoff (see the big
+           POSTERIZE comment up top) erases a 1px anti-aliased SVG stroke
+           the same way it's already documented elsewhere in this codebase
+           as erasing sub-pixel-coverage borders -- the line elements were
+           present in the DOM with the right coords/color/opacity:1, just
+           not actually painted. 2px gives the stroke enough solid-covered
+           pixels to survive the same filter that erased 1px. */
+        .cityMapLines line { stroke: var(--mid); stroke-width: 2; }
+        .cityNode {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 64px;
+            padding: 4px 8px;
+            border: 1px solid var(--mid);
+            background: transparent;
+            color: var(--mid);
+            text-decoration: none;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .cityNode:hover { color: var(--w); border-color: var(--w); }
+        /* .cityNode.hub -- the room you're currently in, per "framed as
+           changing rooms rather than logging out": you start AT a room
+           (the hub), satellites are the other rooms you could switch to.
+           Not a real <a> (there's nowhere to navigate to -- you're already
+           here), so it's the one node with no href and no hover state of
+           its own; the solid fill (var(--w) background, var(--bg) text --
+           an inverted box, same "selected" language .brow.sel/
+           .filter-group a.active use elsewhere in this app) is what marks
+           it as "you are here" instead. */
+        /* .cityNode.hub is now .cityNode.current -- the branch the working
+           copy is on ("you are here"). The seed is always drawn, but only
+           inverted while it IS the current one. text-transform:none --
+           user: the seed "should be called Gnumbat AGPL 3.0", so it is
+           shown exactly as written, not forced to caps. */
+        .cityNode { text-transform: none; cursor: default; }
+        .cityNode.current {
+            border-color: var(--w);
+            background: var(--w);
+            color: #000;
+        }
+        .cityNode.seed:not(.current) { color: var(--w); border-color: var(--w); }
+        .cityModalHead {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--mid);
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+            color: var(--w);
+            text-transform: uppercase;
+        }
+        .cityModalHead .cityModalClose {
+            color: var(--mid);
+            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+        }
+        .cityModalHead .cityModalClose:hover {
+            color: var(--w);
+        }
+        /* .cityList/.cityList a/.cityList a.active (the vertical link-list
+           styling) lived here -- removed wholesale, replaced by
+           .cityMapWrap/.cityNode above (see that comment for why).
+           #cityHint (still just plain text, unchanged in meaning: "no
+           other real city to show yet") is no longer scoped under
+           .cityList since it's rendered as .cityMapWrap's own sibling now
+           (see the HTML), not a row inside a list that no longer exists. */
+        .cityHint {
+            color: var(--mid);
+            font-size: 12px;
+            padding: 4px 6px 0;
+        }
+        /* ── sidebar additions (GUI pass, 2026-09-21) ─────────────────────
+           .all-row / .filter-count / .last-updated: the "All (x)" row and
+           the "last updated:..." line under it (replaces the h2 + .updated
+           that used to head the poster grid). */
+        .all-row { display: flex; align-items: baseline; gap: 4px; }
+        .filter-count { color: var(--mid); font-size: 12px; white-space: nowrap; }
+        .last-updated {
+            display: block;
+            font-size: 12px;
+            color: var(--mid);
+            padding: 0 4px 0 6px;
+            margin: 0 0 6px;
+        }
+        /* #showsGroup -- the "When" heading that used to open this group was
+           ~19px tall and, sitting under panel.html's [SHOWS]/[M-RLCF] tab
+           pills, doubled as the spacer that keeps "All" clear of them. With
+           the heading gone that spacer has to be explicit, or the All row
+           slides up underneath the tabs. */
+        #showsGroup { padding-top: 19px; }
+        .genre-empty { font-size: 12px; color: var(--mid); margin-top: 4px; }
+        /* (#modelsGroup styling removed with the group -- see the note in the sidebar markup.) */
+        .dj-row .dj-votes { margin-left: auto; color: var(--mid); white-space: nowrap; }
+        .dj-row .dj-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        /* Scraper-loading video animation REMOVED -- user: "remove the
+           video animation." .scraperOverlay (the cricket_transparent.mov
+           overlay, .Scraping-gated) and its CSS are gone; the
+           /static/cricket_transparent.mov route in main.go is now unused
+           but left in place (harmless dead route). "Scraping…" text next
+           to "Last updated" (see the HTML below, near the events grid)
+           still indicates a scrape is in progress. */
+        /* GRID INSPECTOR -- user (in src/gui/panel.html, then asked for it
+           here too): "Any item i click would show the name of the variable
+           in the panel or base.html file." Same dev tool as panel.html's own
+           #gridOverlay/#gridInspector (identical 30px-cell letter+number
+           coordinate grid, live cursor readout, click-to-reveal-selector),
+           duplicated here rather than shared since this page is served by a
+           completely separate process (the Go server, :6969) with no access
+           to panel.html's markup -- same reasoning as this file's own
+           #posterize3 filter comment above. panel.html hangs this off its
+           existing EDIT INTERFACE on/off toggle; this page has no such
+           toggle at all, so it gets its own standalone one instead (see the
+           keydown listener in the <script> block near the end of <body>):
+           Ctrl+Shift+G. Reuses #5bff6a, the same accent green already used
+           by --cursor-cross above, for visual consistency. */
+        /* UPDATE -- this copy of the grid overlay was never brought in
+           line with panel.html's own #gridOverlay after the user's later
+           rounds there (smaller cells, grey not green, sit BEHIND normal
+           content). z-index alone moved here to match panel.html's own
+           fix (positive z-index -- even 999997 down to 1 -- always
+           paints above ordinary un-positioned content once an element
+           establishes its own stacking context the way a position:fixed
+           element always does; negative z-index is what actually sits
+           behind it). The 30px/green styling below is untouched --
+           ask if you want the rest of panel.html's grid changes mirrored
+           here too. */
+        #gridOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            display: none;
+            background-image:
+                repeating-linear-gradient(to right, rgba(91,255,106,.35) 0 1px, transparent 1px 30px),
+                repeating-linear-gradient(to bottom, rgba(91,255,106,.35) 0 1px, transparent 1px 30px);
+        }
+        /* UPDATE -- user: "remove the grid, its useless since i have
+           the coordinates in the top right corner anyway." (said about
+           panel.html's copy; matched here for consistency since this is
+           the identical feature.) #gridOverlay stays defined, just
+           never shown -- #gridPosIndicator/#gridInspector are untouched. */
+        #gridColLabels, #gridRowLabels {
+            position: fixed;
+            z-index: 999998;
+            pointer-events: none;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: #5bff6a;
+            display: none;
+        }
+        body.gridMode #gridColLabels, body.gridMode #gridRowLabels { display: block; }
+        #gridColLabels { top: 0; left: 0; right: 0; height: 14px; }
+        #gridColLabels span { position: absolute; top: 1px; }
+        #gridRowLabels { top: 0; left: 0; bottom: 0; width: 22px; }
+        #gridRowLabels span { position: absolute; left: 2px; }
+        #gridPosIndicator {
+            position: fixed;
+            top: 4px;
+            right: 4px;
+            z-index: 999999;
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            background: #5bff6a;
+            padding: 2px 7px;
+            border-radius: 2px;
+            pointer-events: none;
+            display: none;
+        }
+        body.gridMode #gridPosIndicator { display: block; }
+        #gridInspector {
+            position: fixed;
+            left: 4px;
+            top: 18px;
+            z-index: 999999;
+            max-width: 340px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: #5bff6a;
+            background: #000;
+            border: 1px solid #5bff6a;
+            padding: 5px 7px;
+            white-space: pre-wrap;
+            pointer-events: auto;
+            user-select: text;
+            display: none;
+        }
+        body.gridMode #gridInspector { display: block; }
+    
+        /* ][ CURSOR OVER THE SEARCH BARS -- user: "the cursor should become ][
+           above the search bar." panel.html already does this for every text
+           field (input,textarea{cursor:var(--cursor-textbox)}); this page
+           never got it, so the search bars here kept the square cursor. The
+           wrapper (.search-field, the bordered box) gets it too so the cursor
+           does not flip back to the square over the box's own padding. The
+           submit arrow inside the box is a button and keeps its own cursor.
+           !important because several of the rules above set the square cursor
+           on the row/wrapper elements. */
+        input, textarea, .search-field, .search-field .search-input, .dj-search {
+            cursor: var(--cursor-textbox) !important;
+        }
+        /* SCROLLBARS -- user: "use the scrollbar style we created last week.
+           The one currently used in the command list." That is panel.html's
+           page-wide `*::-webkit-scrollbar` block: an 8px bar with no track and
+           no fill, only a 4px cap at the top and bottom of the thumb (the
+           "two small rectangles" look). Ported here so this page's scrolling
+           areas (the dropdown menus, the page itself, the model list) match.
+           Cap colour is var(--mid) -- this page's own mid grey, the same band
+           panel.html's var(--g4) lands in. No scrollbar-width/scrollbar-color:
+           WebKit prefers those over the pseudo-elements below and would draw a
+           plain flat bar (panel.html's comment on the same block has the
+           full story). */
+        *::-webkit-scrollbar { width: 8px; height: 8px; }
+        *::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-top: 4px solid var(--mid);
+            border-bottom: 4px solid var(--mid);
+            border-radius: 0;
+        }
+        *::-webkit-scrollbar-track { background: transparent; }
+        *::-webkit-scrollbar-corner { background: transparent; }
+    </style>
+</head>
+<body>
+<!-- GRID INSPECTOR overlay markup -- see the CSS comment above (search
+     "GRID INSPECTOR") for the full explanation. Toggled by Ctrl+Shift+G,
+     see the <script> block near the end of <body>. -->
+<div id="gridOverlay"></div>
+<div id="gridColLabels"></div>
+<div id="gridRowLabels"></div>
+<div id="gridPosIndicator"></div>
+<div id="gridInspector"></div>
+<!-- ── POSTERIZE — identical filter to panel.html's own (same id, same
+     tableValues); duplicated here rather than shared since this page is
+     served by a completely separate process (the Go server, :6969) with no
+     access to panel.html's markup. Delete this <svg> block and the
+     filter:url(#posterize3) line on body above to switch it off. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="posterize3" color-interpolation-filters="sRGB">
+    <feColorMatrix in="SourceGraphic" type="saturate" values="0"/>
+    <feComponentTransfer result="mono">
+      <feFuncR type="discrete" tableValues="0.0549 0.5 1"/>
+      <feFuncG type="discrete" tableValues="0.0549 0.5 1"/>
+      <feFuncB type="discrete" tableValues="0.0549 0.5 1"/>
+      <!-- FIX -- user: "the posterize 3 channel with sharp edges didnt work
+           for the base.html. its still soft edged. the text isnt pixel
+           sharp." Root cause: feFuncR/G/B above quantize COLOR into exactly
+           3 bands, but every anti-aliased edge pixel a browser draws around
+           a glyph (or a border, an icon) isn't just an in-between COLOR --
+           it's a partially-covered pixel with in-between ALPHA (e.g. 40%
+           opaque), and nothing above ever touched alpha. Quantizing R/G/B
+           alone still leaves that pixel 40% see-through once it's composited
+           back over the page, which reads as a soft/blurry edge no matter
+           how hard the 3 colour bands themselves are. feFuncA here snaps
+           alpha to fully-opaque or fully-transparent at the 50% mark --
+           every edge pixel becomes either "on" or "off," so glyphs (and
+           everything else under this filter) render pixel-hard instead of
+           anti-aliased. Doesn't touch color-interpolation-filters or the
+           3 colour bands above -- this is purely the alpha half of the same
+           idea. NOTE: panel.html's own copy of this filter (src/gui/
+           panel.html) has this identical gap -- it was never actually
+           alpha-thresholded there either, so if panel.html's text still
+           looks soft too, the same <feFuncA> line fixes it there. -->
+      <feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer>
+    <!-- UPDATE -- user: "make the online dots red for the dj section...
+         posterized red." Ported from panel.html's own #posterize3 filter,
+         which already had this exact mechanism (see panel.html's comment:
+         "the online indicator dots for the djs must be red"). The 3-band
+         mono pass above crushes any pure-red source pixel (like
+         .dj-dot.live{background:#f00}) down to grey along with everything
+         else, so this sub-chain whitelists pixels that were pure #f00 in
+         the SOURCE markup and re-composites them as red AFTER the mono
+         pass: feColorMatrix's bottom row (1 -1 -1 0 0) computes
+         R-G-B into the alpha channel, so only genuinely red source pixels
+         (R=1,G=0,B=0) survive with alpha=1; feComposite operator="in"
+         gates that against the source's own alpha (so transparent pixels
+         can't leak through); feFuncA hard-thresholds the result so there's
+         no partial/soft red; feFlood paints solid #f00 everywhere, gated
+         down to just the whitelisted mask; then that red layer composites
+         operator="over" on top of the mono layer as the filter's final
+         output. To whitelist a genuinely new colour later, copy this same
+         chain shape with a different matrix row/flood-color. -->
+    <feColorMatrix in="SourceGraphic" type="matrix"
+      values="0 0 0 0 0
+              0 0 0 0 0
+              0 0 0 0 0
+              1 -1 -1 0 0" result="rednessRaw"/>
+    <feComposite in="rednessRaw" in2="SourceGraphic" operator="in" result="rednessGated"/>
+    <feComponentTransfer in="rednessGated" result="redMask">
+      <feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer>
+    <feFlood flood-color="#f00" flood-opacity="1" result="redFlood"/>
+    <feComposite in="redFlood" in2="redMask" operator="in" result="redLayer"/>
+    <feComposite in="redLayer" in2="mono" operator="over" result="withRed"/>
+    <!-- greenness chain -- ADDED, ported from panel.html's own #posterize3
+         filter the same way the redness chain above already was (see this
+         filter's own comment on that). Exact mirror, just G-R-B instead
+         of R-G-B and #0f0 instead of #f00; composites over "withRed" (not
+         "mono") so both whitelisted colours survive together -- see
+         panel.html's own copy of this exact comment for the full
+         reasoning. -->
+    <feColorMatrix in="SourceGraphic" type="matrix"
+      values="0 0 0 0 0
+              0 0 0 0 0
+              0 0 0 0 0
+              -1 1 -1 0 0" result="greennessRaw"/>
+    <feComposite in="greennessRaw" in2="SourceGraphic" operator="in" result="greennessGated"/>
+    <feComponentTransfer in="greennessGated" result="greenMask">
+      <feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer>
+    <feFlood flood-color="#0f0" flood-opacity="1" result="greenFlood"/>
+    <feComposite in="greenFlood" in2="greenMask" operator="in" result="greenLayer"/>
+    <feComposite in="greenLayer" in2="withRed" operator="over"/>
+  </filter>
+  <!-- #posterize6color REMOVED -- user: "remove all effect on the images.
+       i just want the normal images." Posters render unfiltered now (see
+       .event img's own CSS comment). -->
+</svg>
+<!-- Scraper-loading video overlay REMOVED -- user: "remove the video
+     animation." See the <style> block's own comment (search
+     "video animation REMOVED") for what else this touched. -->
+<nav class="sidebar">
+    <details class="filter-toggle" open>
+        <summary>Filters</summary>
+        <div class="filter-group" id="showsGroup">
+            <!-- "When" title REMOVED -- user: "remove the WHEN tag." The
+                 group itself (All / search / Right Now ... This Week) is
+                 unchanged; it just no longer carries a heading.
+                 "All" row -- user: "remove All event (number) and Last
+                 updated [from above the posters]. instead, write events
+                 number (x) next to ALL. and under ALL, write the 'last
+                 updated:...'." The page-title h2 (title plus count) and the
+                 p.updated line that used to head .pageScroll are gone;
+                 the same two values (the event count and the last-scraped
+                 time) render here instead. #viewCount is a single span so the
+                 page script can slide it onto whichever time link
+                 (Right Now/Tonight/...) is the active view -- "ALL (3)"
+                 on the Tonight page would be a lie, since the count
+                 is always the size of the list currently on screen. -->
+            <div class="all-row"><a href="/" id="allLink">All</a><span class="filter-count" id="viewCount">({{.EventCount}})</span></div>
+            <span class="last-updated" id="lastUpdated">last updated : {{if .LastScrapedAt}}{{.LastScrapedAt}}{{else}}scraping…{{end}}</span>
+            <!-- .search-bar MOVED here -- user: "put the scraper research
+                 bar in between ALL and Right now." Was a flex child of
+                 .page itself, right where the old "mtl-shows" h1 used to
+                 sit (see the comment left at that old spot) -- markup and
+                 GET/?q= behavior are otherwise untouched, only the
+                 location (and .search-field's own width, see its CSS
+                 comment) changed. -->
+            <form method="GET" action="" class="search-bar">
+                {{if .VenueFilter}}<input type="hidden" name="venue" value="{{.VenueFilter}}">{{end}}
+                <div class="search-field">
+                    <!-- placeholder=": search" ADDED -- user: "add a little
+                         placeholder text inside, like : search. in grey.
+                         disappears when entering actual text." Native
+                         placeholder attribute -- browsers already grey it
+                         out and clear it once real text is typed, no JS
+                         needed (see .search-input::placeholder, right
+                         below, for the explicit grey -- same treatment
+                         #ganDjSearch's own placeholder already gets via
+                         .dj-search::placeholder). -->
+                    <input type="text" name="q" value="{{.SearchQuery}}" class="search-input" placeholder=": search">
+                    <!-- &rarr; -> &#9166; (⏎). user: "remove the arrows for
+                         the poster search bar... replace it for the
+                         keyboard enter symbol." Still the same <button
+                         type="submit">, still submits the form -- only
+                         the glyph inside it changed. -->
+                    <button type="submit" class="search-arrow" aria-label="Search">&#9166;</button>
+                </div>
+                {{if .SearchQuery}}<a href="{{if .VenueFilter}}?venue={{.VenueFilter}}{{else}}/{{end}}" class="search-clear">[clear]</a>{{end}}
+            </form>
+            <a href="/right-now">Right Now</a>
+            <a href="/tonight">Tonight</a>
+            <a href="/tomorrow">Tomorrow</a>
+            <a href="/this-week">This Week</a>
+        </div>
+        <div class="filter-group">
+            <span class="filter-group-title">This Weekend</span>
+            <details class="weekend-dropdown">
+                <summary>
+                    <span class="weekend-dropdown-label">All weekend</span>
+                    <span aria-hidden="true">▾</span>
+                </summary>
+                <div class="weekend-dropdown-menu">
+                    <a href="/this-weekend">All weekend</a>
+                    <a href="/this-weekend/friday">Friday</a>
+                    <a href="/this-weekend/saturday">Saturday</a>
+                    <a href="/this-weekend/sunday">Sunday</a>
+                </div>
+            </details>
+        </div>
+        <!-- Venue list -> dropdown — user: "put VENUES inside a dropdown to
+             save vertical space. the venue list should be accessible
+             through this dropdown. also remove the city name from
+             individual venue titles [...] the city is already established
+             by the UI context and is redundant."
+             Reuses .weekend-dropdown verbatim (same <details>/<summary>
+             component "This Weekend" already uses right above, same
+             reasoning for why THAT one isn't a native <select> — see its
+             own CSS comment) rather than a new dropdown pattern; only the
+             extra venue-dropdown class hooks the label-sync script below
+             without touching the weekend dropdown's own. City-suffix
+             stripping happens in the <script> block further down
+             (stripVenueCitySuffix()) rather than here, since it needs to
+             apply the same way whether a name comes from the seeded list
+             (venues.go) or a submitted/discovered one — a template-only
+             fix couldn't cover both. -->
+        <div class="filter-group">
+            <span class="filter-group-title">Venues</span>
+            <details class="weekend-dropdown venue-dropdown">
+                <summary>
+                    <span class="venue-dropdown-label">All venues</span>
+                    <span aria-hidden="true">▾</span>
+                </summary>
+                <div class="weekend-dropdown-menu">
+                    <a href="/">All venues</a>
+                    {{range .Venues}}<a href="?venue={{.Key}}">{{.Name}}</a>
+                    {{end}}
+                </div>
+            </details>
+        </div>
+        <!-- G-ANS group REMOVED -- user: "remove G-ANS." This was the
+             "Add a venue" URL box (form POST /venues/add) that had been
+             renamed G-ANS. The server-side POST /venues/add route (main.go)
+             is untouched, just no longer reachable from this sidebar. -->
+        <!-- Genres -- MOVED up to sit directly under Venues (user: "move the
+             GENRES section above DJS, under VENUES"). Renders EVERY time now
+             (the old not-empty guard hid the whole section when the
+             list was empty) so the section is always there; the <script>
+             near the bottom of <body> (sanitizeGenreTags) then drops any
+             tag that is not a real genre -- user: "make sure the GENRES
+             section is actually displaying genres. Cause right now its
+             displaying some events title." Root cause is upstream of this
+             file: the Ollama extractor (discover_extractor.go) copied its
+             own prompt placeholder into Event.Genre for one Quai des Brumes
+             show, and DistinctGenres (events.go) publishes whatever string
+             an event carries. Filtering here means it is fixed as soon as
+             the server is restarted, no rebuild needed. -->
+        <div class="filter-group" id="genresGroup">
+            <span class="filter-group-title">Genres</span>
+            <div class="bandTags" id="genreTags">
+                {{range .Genres}}<a href="?genre={{.}}" class="bandTag" data-genre="{{.}}">[ {{. | upper}} ]</a>
+                {{end}}
+            </div>
+            <div class="genre-empty hide" id="genreEmpty">no genres tagged yet</div>
+        </div>
+        <!-- MODELS group REMOVED from this sidebar -- user: "Models should be moved
+             within the chat zone, above the room name." It lives in
+             panel.html now (#chatModels, in the chat's bottom-right dock);
+             nothing here renders or relays the model list any more. -->
+    </details>
+</nav>
+
+<!-- .page — see the CSS comment on .page (near <style>'s own body{}/.page{}
+     rules) for why this wrapper exists: it owns the max-width/margin/
+     filter this content used to get from <body> directly, so that
+     <nav class="sidebar">'s position:fixed (above, OUTSIDE this div) keeps
+     positioning against the real viewport instead of against a filtered
+     ancestor's box. -->
+<div class="page">
+
+<!-- .search-bar (h1 "mtl-shows" title's old replacement) MOVED -- user:
+     "put the scraper research bar in between ALL and Right now." The form
+     itself (GET, ?q=, venue filter carried as a hidden field, the arrow-
+     only search-field design -- all unchanged) now lives in the sidebar's
+     own "When" filter-group instead, between the All/Right Now links --
+     see it there for the actual markup, and .search-field's own CSS
+     comment for how its width adapted to that much narrower column. -->
+
+<!-- .pageScroll — the ONE scrolling region below the search bar (see
+     .page/.pageScroll's own CSS comments for the full "search bar must
+     never scroll, results scroll instead" reasoning). Wraps every notice,
+     the events grid, and the map -- everything that used to just be
+     .page's own in-flow children. #cityModal (further down) is
+     deliberately left OUTSIDE this wrapper: it's a position:fixed overlay
+     dialog, not scrolling page content, and .page itself (not this div)
+     is its real containing block (see .page's own comment on that). -->
+<div class="pageScroll">
+
+{{if .VenueSubmitted}}
+<p class="notice notice-ok">Thanks -- spiderbots are scraping events for that venue now. It'll show up in the list above once it's ready; check back in a minute or two.</p>
+{{end}}
+{{if .VenueError}}
+<p class="notice notice-error">{{.VenueError}}</p>
+{{end}}
+{{if .PendingSubmissions}}
+<div class="notice notice-pending">
+    <strong>Venue submissions:</strong>
+    <ul>
+        {{range .PendingSubmissions}}
+        <li>{{.URL}} -- {{if eq .Status "failed"}}couldn't find events there ({{.Message}}){{else}}still looking, submitted {{.SubmittedAt.Format "3:04 PM"}}{{end}}</li>
+        {{end}}
+    </ul>
+</div>
+{{end}}
+
+<!-- the page-title h2 (title plus count) and the p.updated line REMOVED --
+     user: "Remove All event (number) and Last updated." Both values now
+     live in the sidebar's All row (#viewCount / #lastUpdated, above). -->
+
+{{if .Events}}
+<div class="events-grid">
+    {{range .Events}}
+    <div class="event{{if .IsToday}} event-today{{else if .IsThisWeek}} event-week{{end}}">
+        {{if .EventImage}}<img src="{{proxyImg .EventImage}}" alt="{{.Name}}">{{end}}
+        <!-- .eventText -- see its own CSS comment (near .event h3): wraps
+             everything that isn't the poster image, so this whole block
+             (plus .bandTags, appended as h3's sibling by the <script>
+             below) can carry ONE shared filter:url(#posterize3), now that
+             .page no longer blankets the whole card for free. See the
+             POSTERIZE ARCHITECTURE comment near .page's own CSS rule for
+             the full reasoning. -->
+        <div class="eventText">
+        <h3>{{.Name}}</h3>
+        <p>{{.Venue}} — {{.Address}}</p>
+        <p class="event-when">{{.Date}} · {{.Time}}</p>
+        <p>{{.Price}}</p>
+        <!-- target="_blank" rel="noopener noreferrer" -- user: "make sure
+             that the link to the event tickets redirect to another page by
+             opening a new web page and not opening straight in the
+             website... trust wise, i would never pay tickets on a third
+             party scraper website." TicketURL always points OFF-SITE (the
+             venue's own ticket vendor, never this app) -- without target=
+             "_blank" a click would navigate this scraper's own tab away to
+             that third-party checkout, which is exactly the "am I still on
+             the real site?" confusion that erodes trust before anyone
+             enters payment info. rel="noopener" is the required pairing:
+             a target="_blank" link without it lets the new tab's page
+             reach back into this one via window.opener (a real, if narrow,
+             security/tracking gap for an unknown third-party destination);
+             "noreferrer" additionally withholds the Referer header, so the
+             ticket vendor site doesn't see it was linked from a scraper. -->
+        {{if .TicketURL}}<a href="{{.TicketURL}}" target="_blank" rel="noopener noreferrer">Link to event ↗</a>{{end}}
+        </div>
+    </div>
+    {{end}}
+</div>
+{{else}}
+<!-- no events found -- user: "when no shows are scraped, put an empty
+     card... dont put the empty card 'empty'. Make it as an existing card,
+     but fill up the informations with 'no events scraped' or 'not
+     available'." Same skeleton as a real card above (poster slot, h3, venue
+     line, date line, price, link line) so it reads as a card whose data
+     just isn't there. The poster slot is a div, not an img, because there
+     is no image to fetch. -->
+<div class="events-grid">
+    <div class="event event-empty" aria-label="no events scraped">
+        <div class="event-noimg">poster not available</div>
+        <div class="eventText">
+        <h3>No events scraped</h3>
+        <p>Venue not available — Address not available</p>
+        <p class="event-when">Date N/A · Time N/A</p>
+        <p>Price N/A</p>
+        <p>Link not available</p>
+        </div>
+    </div>
+</div>
+{{end}}
+
+<!-- Map REMOVED -- user: "remove the map from the show scraper. just keep address." Each event card above already prints its own plain address line (venue/address, see .eventText's <p>) -- that stays; this was the separate Leaflet venue map. -->
+
+</div><!-- /.pageScroll -->
+</div><!-- /.page -->
+
+<!-- City/room switcher modal -- see the .cityModal CSS comment (above,
+     in <style>) for the network-map layout this now renders. Hidden by
+     default (.hide); opened by ^M or closed by [esc]/outside click/[esc]
+     link, all wired in the <script> block below. -->
+<div id="cityModal" class="cityModal hide" role="dialog" aria-label="switch rooms">
+    <div class="cityModalBody">
+        <div class="cityModalHead">
+            <span>Branches network</span>
+            <span class="cityModalClose" id="cityModalClose">[esc]</span>
+        </div>
+        <div class="cityMapWrap" id="cityMapWrap">
+            <svg class="cityMapLines" id="cityMapLines"></svg>
+        </div>
+        <div class="cityHint" id="cityHint"></div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // "This Weekend" dropdown -- <select> replaced with <details> (see
+        // the .weekend-dropdown CSS comment for why), so the old
+        // sel.selectedIndex-matching logic below is replaced with the
+        // equivalent for this markup: find the menu link whose href
+        // matches the current URL and copy ITS text into the closed
+        // summary's label, so the box reads e.g. "Saturday ▾" instead of
+        // always defaulting to the first item, "All weekend ▾".
+        let weekendDropdown = document.querySelector('.weekend-dropdown');
+        if (weekendDropdown) {
+            let label = weekendDropdown.querySelector('.weekend-dropdown-label');
+            let weekendLinks = weekendDropdown.querySelectorAll('.weekend-dropdown-menu a');
+            for (let i = 0; i < weekendLinks.length; i++) {
+                if (weekendLinks[i].getAttribute('href') === window.location.pathname) {
+                    label.textContent = weekendLinks[i].textContent;
+                    break;
+                }
+            }
+            // close the menu on an outside click -- <details> has no native
+            // "click elsewhere to dismiss" behavior on its own (only
+            // clicking the summary again toggles it), and without this a
+            // visitor who opens the dropdown then clicks, say, a "Tonight"
+            // link elsewhere in the sidebar would navigate away with this
+            // menu still left open in the DOM the whole time.
+            document.addEventListener('click', function(e) {
+                if (weekendDropdown.open && !weekendDropdown.contains(e.target)) {
+                    weekendDropdown.removeAttribute('open');
+                }
+            });
+        }
+
+        // Venues dropdown -- user: "put VENUES inside a dropdown to save
+        // vertical space." Same <details>/.weekend-dropdown component as
+        // "This Weekend" above (see that rule's own CSS comment), so this
+        // is the same label-sync + outside-click-close pairing, just
+        // matched against ?venue= query strings instead of a path.
+        let venueDropdown = document.querySelector('.venue-dropdown');
+        if (venueDropdown) {
+            let vLabel = venueDropdown.querySelector('.venue-dropdown-label');
+            let venueLinks = venueDropdown.querySelectorAll('.weekend-dropdown-menu a');
+            for (let i = 0; i < venueLinks.length; i++) {
+                let href = venueLinks[i].getAttribute('href');
+                let matches = href.indexOf('?') === 0 ? href === window.location.search
+                    : href === window.location.pathname;
+                if (matches) { vLabel.textContent = venueLinks[i].textContent; break; }
+            }
+            document.addEventListener('click', function(e) {
+                if (venueDropdown.open && !venueDropdown.contains(e.target)) {
+                    venueDropdown.removeAttribute('open');
+                }
+            });
+        }
+
+        // FIX -- "the venue dropdown rendering bug: opening it works
+        // initially; when scrolling down, some venues are outside the
+        // rendered/visible zone; they only appear after hovering." Root
+        // cause is the SAME WebKit "filter:url(#id) doesn't repaint until
+        // something forces it" bug already root-caused and fixed once
+        // (see kickPosterizeRepaint()/forceFilterRepaint()'s own big
+        // comment, below) -- .sidebar itself carries filter:url(#posterize3)
+        // (see .sidebar's own CSS rule) AND is the scrolling container
+        // (overflow-y:auto;max-height:calc(100vh - 20px), same rule), so
+        // it's exactly the "filtered element with content that scrolls
+        // into view after paint" shape that bug needs. forceFilterRepaint()
+        // only ever kicks .sidebar ONCE, at page load -- long before the
+        // venue dropdown even has a chance to be opened or scrolled, so it
+        // does nothing for content that scrolls into view afterward.
+        // Hovering "fixes" it purely as a side effect of :hover forcing a
+        // style recalc/repaint on whatever's under the pointer -- that's
+        // an accident of the CSS, not a real fix, and the spec explicitly
+        // asks NOT to lean on it. The real fix is the same belt-and-
+        // suspenders kick already used for the map's own tiles/toggle
+        // (tileLayer.on('load', ...) / #map-details' own 'toggle'
+        // listener, both further down): kick .sidebar's filter on the two
+        // events that actually reveal new venue rows -- opening the
+        // dropdown (a 'toggle' event, mirroring #map-details' own) and
+        // scrolling the sidebar itself (kickPosterizeRepaint's own
+        // kickPending guard, see that function's comment, makes firing it
+        // on every 'scroll' tick cheap and collision-free -- overlapping
+        // calls collapse into one shared repaint instead of stacking up).
+        // sidebarEl is looked up once, here, and reused by both listeners.
+        //
+        // UPDATE -- user: "repair the dropdown menus, the dropdown doesnt
+        // move down the existing information when appearing. it gets
+        // hidden behind the next section." This 'toggle' kick was only
+        // ever wired to venueDropdown -- weekendDropdown ("This Weekend")
+        // never got the same listener, so it was still exposed to the
+        // exact same stale-paint bug: the LAYOUT genuinely does reflow
+        // (the sections after it really do move down, in the DOM/box
+        // tree), but .sidebar's own painted pixels don't get redrawn to
+        // match until something forces it -- so on affected engines the
+        // next section's OLD position stays on screen, visually
+        // overlapping/hiding whatever the newly opened dropdown reveals
+        // underneath it, reading exactly as "doesn't move the existing
+        // info, gets hidden behind the next section" even though nothing
+        // is actually mis-positioned under the hood.
+        // querySelectorAll('.weekend-dropdown') (not two separate
+        // `if` blocks for weekendDropdown/venueDropdown by name) covers
+        // BOTH existing dropdowns with one loop, and any future one that
+        // reuses this same component for free, rather than needing a
+        // third near-identical block copy-pasted in if another dropdown
+        // is ever added here.
+        let sidebarEl = document.querySelector('.sidebar');
+        if (sidebarEl) {
+            document.querySelectorAll('.weekend-dropdown').forEach(function(dd) {
+                dd.addEventListener('toggle', function() {
+                    if (dd.open) {
+                        requestAnimationFrame(function() { kickPosterizeRepaint(sidebarEl); });
+                    }
+                });
+            });
+            sidebarEl.addEventListener('scroll', function() { kickPosterizeRepaint(sidebarEl); });
+        }
+
+        // Strip a redundant trailing city name off venue titles -- user:
+        // "since this panel is specifically showing Montréal venues, do
+        // not display 'Casa del Popolo — Montréal'... display simply
+        // 'Casa del Popolo'. the city is already established by the UI
+        // context." Done here (client-side, on whatever text actually
+        // rendered) rather than in the Go template/venues.go data itself,
+        // since a submitted or discovered venue's name (see
+        // discovered_venues.go's own VenueName) is exactly as likely to
+        // carry that suffix as a seeded one, and this one pass covers
+        // both sources without needing two separate fixes.
+        (function stripVenueCitySuffix() {
+            let citySuffix = /\s*[—-]\s*Montr[ée]al\s*$/i;
+            document.querySelectorAll('.venue-dropdown-label, .weekend-dropdown-menu a').forEach(function(el) {
+                if (citySuffix.test(el.textContent)) {
+                    el.textContent = el.textContent.replace(citySuffix, '');
+                }
+            });
+        })();
+
+        // UPDATE -- user: "make sure the filter appears by itself ... it
+        // has to appear straight when user arrives on the page" (no longer
+        // requiring a tap to reveal it, even on a narrow/mobile viewport).
+        // This used to force-close the <details class="filter-toggle" open>
+        // sidebar (see its own `open` attribute, above) the moment the page
+        // loaded on a narrow screen -- removed so `open` is left in charge:
+        // the filters are always expanded on arrival, on every screen size.
+        // A visitor can still collapse it manually by tapping the "Filters"
+        // summary bar (only shown at <=800px, see .filter-toggle > summary
+        // in <style>) -- that's native <details> behavior, untouched here.
+        const path = window.location.pathname;
+        const search = window.location.search;
+        const links = document.querySelectorAll('.filter-group a');
+        for (var j = 0; j < links.length; j++) {
+            var href = links[j].getAttribute('href');
+            if (href.indexOf('?') === 0) {
+                if (href === search) links[j].classList.add('active');
+            } else if (href === path || (href === '/' && path === '/' && !search)) {
+                if (href === '/' && (path !== '/' || search)) continue;
+                links[j].classList.add('active');
+            }
+        }
+    })();
+
+    // FIX -- user: "the venue list disappears and only reappears on
+    // hover." The CSS-only fix above (.page/.sidebar's own
+    // will-change:filter + translateZ(0), see those rules' comments) is
+    // the documented remedy for the underlying WebKit "filter:url(#id)
+    // doesn't paint until something forces a repaint" bug, but the user
+    // confirmed it still happens in their actual browser -- will-change is
+    // a *hint*, not a guarantee, and some engines only honor it once a
+    // compositing layer has already been created for other reasons.
+    // kickPosterizeRepaint() is the belt-and-suspenders JS backstop: force
+    // one real repaint of a filtered element by knocking its filter off and
+    // back on across two animation frames (one frame to let the "off"
+    // state actually commit, one to reapply "on") -- same effect as the
+    // hover/scroll/resize that was "revealing" the venue list before, just
+    // triggered programmatically instead of needing the visitor's mouse to
+    // do it. Doesn't touch how #posterize3 looks once painted, purely a
+    // paint-timing nudge, same spirit as the CSS fix it backs up.
+    // UPDATE -- this used to be a one-off IIFE (forceFilterRepaint, run
+    // once at load, only ever kicking .page/.sidebar). Pulled out into a
+    // standalone, reusable function because the exact same WebKit bug turns
+    // out to have MULTIPLE independent trigger points on this page, not
+    // just "on load": user, twice now -- "you put back the colours of the
+    // show posters, go back to 3 channels" (posters are real network
+    // fetches that can finish loading well after this one-time kick already
+    // ran) and then "its scraper is still rendering in colour" after that
+    // first fix (the Leaflet map -- OpenStreetMap tiles, and the
+    // leaflet-color-markers pins -- is a THIRD, separate instance: it's
+    // built inside a collapsed <details id="map-details">, so its tiles
+    // don't actually get PAINTED until that details element is opened,
+    // and Leaflet keeps fetching new tiles afterward as the map is panned/
+    // zoomed -- every one of those is a later paint the initial kick can't
+    // possibly cover). Restoring to the LITERAL 'url(#posterize3)' string
+    // (never re-reading el.style.filter as "the original value") is
+    // deliberate: with three independent call sites now potentially firing
+    // in the same tick (e.g. an already-cached poster image finishing
+    // "loading" in the same script run this initial kick fires in), reading
+    // the element's OWN inline style back as truth risks capturing another
+    // call's transient 'none' mid-toggle instead of the real value -- a
+    // race confirmed while building the poster-image fix. A hardcoded,
+    // known-correct string sidesteps that race entirely rather than trying
+    // to out-sequence every possible caller. `pending` (module-scoped, one
+    // per filtered element) collapses several callers firing close together
+    // into one shared repaint instead of one per caller -- harmless either
+    // way, just avoids needless thrashing (e.g. a burst of map tiles all
+    // finishing around the same moment while panning). */
+    // kickPending -- WeakMap keyed by the ELEMENT itself, not a
+    // className/id string. UPDATE -- the POSTERIZE ARCHITECTURE change
+    // (see .page's own CSS comment) put filter:url(#posterize3) directly
+    // on .eventText and filter:url(#posterize6color) on .event img, BOTH
+    // repeated once per card -- the old `el.className || el.id` key
+    // collapsed every card's kick into the SAME shared key ("eventText"),
+    // so kicking card #2 while card #1's kick was still in-flight would
+    // silently no-op instead of running. A WeakMap keyed by the element
+    // reference itself can't collide this way no matter how many elements
+    // share a class name.
+    var kickPending = new WeakMap();
+    // filterUrl param -- defaults to '#posterize3' (every existing caller
+    // below still wants that), but .event img now needs its own filter
+    // restored instead (#posterize6color) -- restoring the wrong hardcoded
+    // string would silently flatten a poster back to grey the next time
+    // its kick fires.
+    function kickPosterizeRepaint(el, filterUrl) {
+        if (!el) return;
+        if (kickPending.get(el)) return;
+        filterUrl = filterUrl || 'url(#posterize3)';
+        kickPending.set(el, true);
+        el.style.filter = 'none';
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                el.style.filter = filterUrl;
+                kickPending.set(el, false);
+            });
+        });
+    }
+    // forceFilterRepaint -- UPDATE, see the POSTERIZE ARCHITECTURE comment
+    // near .page's own CSS rule: .page used to be the one thing kicked
+    // here (kicking an ANCESTOR's filter force-repaints its ENTIRE
+    // subtree, which is why one kick used to cover .page's whole content
+    // column, posters included). Now that no single ambient filter exists
+    // to kick, every element that carries its own filter:url(...) needs
+    // its own kick call instead -- .sidebar and #cityModal already had
+    // their own filter independently of .page's (unchanged, still listed/
+    // handled below); .search-bar/h2/.updated/.notice/.notice-empty/
+    // .eventText/.event img are new. #map/mapEl and their own tile-'load'/
+    // details-toggle repaint kicks are gone too -- see the <head> comment
+    // on the removed Leaflet <link>/<script> tags.
+    (function forceFilterRepaint() {
+        [
+            document.querySelector('.sidebar'),
+            document.querySelector('.cityModal'),
+            document.querySelector('.search-bar')
+        ].forEach(function(el) { kickPosterizeRepaint(el); });
+        document.querySelectorAll('h2, .updated, .notice, .notice-empty, .eventText')
+            .forEach(function(el) { kickPosterizeRepaint(el); });
+    })();
+    // .event img is deliberately NOT in the list above -- it carries no
+    // filter at all any more (see .event img's own CSS comment and
+    // server.go), so there's nothing on it to kick-repaint.
+
+    // POSTERIZE POSTERS -- FULLY REMOVED. user: "yep you fucked up again.
+    // now remove all effect on the images. i just want the normal images."
+    // This used to be a client-side canvas quantization pass, then a
+    // server-side one (server.go's handleImageProxy decoding, quantizing,
+    // and re-encoding every poster before ever responding to the browser --
+    // see posterizeQuantR/G/B, now deleted). Both are gone. The <img> tag
+    // above still requests the proxyImg-wrapped URL -- that same-origin
+    // proxy stays, it's what avoids CORS/hotlink issues, unrelated to
+    // quantization -- but server.go now serves the original bytes straight
+    // through, untouched. Real image, real colour, no processing.
+
+    // City/room switcher -- user: "add a keyboard shortcut... that opens
+    // a simple modal/map of cities with community involvement (uploaded
+    // venues), for switching rooms/cities, while preserving the current
+    // city/room concept and keeping it extensible." ^M chosen for the
+    // shortcut ("Map" of cities, mnemonic) -- checked against common
+    // browser-reserved combos (^L address bar, ^T/^N/^W tabs/windows,
+    // ^F find, ^R reload, ^D bookmark, ^H history, ^J downloads, ^K/^E
+    // omnibox search, ^P print, ^S save, ^U view source) and ^M isn't
+    // one of them in any mainstream browser.
+    // UPDATE (second pass) -- re-checked ^M specifically against every
+    // OTHER shortcut this file defines before keeping it: this same
+    // keydown listener is still the only one base.html registers (the
+    // weekend-dropdown/venue-filter controls below are plain links/
+    // <details>, no keybindings of their own), so ^M has no new conflict
+    // to check against and stays the mnemonic choice ("Map").
+    //
+    // CITIES is the entire extensibility surface the spec asked for:
+    // this room (MTL) is the only entry with real community-uploaded
+    // venue data right now (see the CSS comment on .cityModal for why
+    // there's no City field anywhere in the Go venue/event structs yet),
+    // so it's the only one listed as active=true. A future city with its
+    // own room/venue set slots in as one more object of this same shape
+    // -- nothing else in this modal's markup, CSS, or JS needs to change
+    // to support it. renderCityMap() (below) draws ONLY from this array --
+    // "only include cities that actually exist in the site's data" means
+    // there is still exactly one real node most of the time, same as the
+    // old list version; the network layout is written to hold up at N=1
+    // as cleanly as at N=6, not designed around assuming several cities
+    // exist.
+    // BRANCHES NETWORK -- user: "The branches network shouldnt have a
+    // preexisting Montreal seed. The seed should be called Gnumbat AGPL 3.0.
+    // Then users will be able to branch out. The branches created from
+    // editing the website would appear on the network tab."
+    // The old hard-coded CITIES = [Montreal] list is gone. The graph now
+    // draws a tree: one seed node ("Gnumbat AGPL 3.0", always present,
+    // hard-coded here only as the OFFLINE default) plus one node per branch
+    // that edit mode has committed (^E to edit, ^R to commit -- see
+    // panel.html / gui_hub_bridge.js). Branches are NOT stored in this
+    // document: panel.html receives the list from the hub and relays it
+    // in as 'gnumbat-branch-list' (cross-origin, so postMessage is the one
+    // channel -- same reason #cityModalChip relays the open/close toggle).
+    // Shape: {seed:{id,name}, branches:[{id,name,parent,createdAt}],
+    // head:<id of the branch the working copy is on>}.
+    var BRANCH_STATE = {
+        seed: { id: 'gnumbat-agpl-3.0', name: 'Gnumbat AGPL 3.0' },
+        branches: [],
+        head: 'gnumbat-agpl-3.0'
+    };
+    const cityModal = document.getElementById('cityModal');
+    const cityMapWrap = document.getElementById('cityMapWrap');
+    const cityMapLines = document.getElementById('cityMapLines');
+    const cityHint = document.getElementById('cityHint');
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    // edgePoint -- where the straight line from a node's centre toward
+    // (tx,ty) crosses that node's own box edge. Lines are drawn edge-to-
+    // edge (not centre-to-centre) because the nodes have a transparent
+    // background now: they must be transparent so the modal's unfiltered
+    // #000 shows through (see .cityModal's own CSS comment), which means a
+    // centre-to-centre line would run visibly through the label text.
+    function edgePoint(cx, cy, hw, hh, tx, ty) {
+        var dx = tx - cx, dy = ty - cy;
+        if (dx === 0 && dy === 0) return { x: cx, y: cy };
+        var k = Math.min(dx !== 0 ? hw / Math.abs(dx) : Infinity, dy !== 0 ? hh / Math.abs(dy) : Infinity);
+        return { x: cx + dx * k, y: cy + dy * k };
+    }
+    // layoutBranchTree -- radial tree layout. Depth = ring, each node gets
+    // an angular slice proportional to how many leaves sit under it, so a
+    // branch with three children fans out instead of overlapping its
+    // sibling. Rings are ellipses (the wrap is much wider than tall). One
+    // child of the seed lands straight to its right; a chain of single
+    // children just runs off to the right in a line.
+    function layoutBranchTree(w, h) {
+        var seed = BRANCH_STATE.seed;
+        var byId = {};
+        byId[seed.id] = { id: seed.id, name: seed.name, isSeed: true, kids: [], depth: 0 };
+        (BRANCH_STATE.branches || []).forEach(function(b) {
+            byId[b.id] = { id: b.id, name: b.name, createdAt: b.createdAt, kids: [], parentId: b.parent };
+        });
+        Object.keys(byId).forEach(function(id) {
+            var n = byId[id];
+            if (n.isSeed) return;
+            var p = byId[n.parentId] && n.parentId !== id ? byId[n.parentId] : byId[seed.id];
+            n.parentNode = p;
+            p.kids.push(n);
+        });
+        var root = byId[seed.id], maxDepth = 0;
+        (function measure(n, d) {
+            n.depth = d; if (d > maxDepth) maxDepth = d;
+            n.leaves = 0;
+            n.kids.forEach(function(k) { measure(k, d + 1); n.leaves += k.leaves; });
+            if (!n.kids.length) n.leaves = 1;
+        })(root, 0);
+        var cx = w / 2, cy = h / 2;
+        // With branches the seed sits on the left so the tree has room to
+        // grow rightwards; alone, it stays centred.
+        var rx = 0, ryStep = 0;
+        if (maxDepth > 0) {
+            cx = Math.min(w / 2, 90);
+            rx = (w - 90 - cx) / maxDepth;      // leave room for the widest label
+            ryStep = (h / 2 - 22) / maxDepth;
+        }
+        var out = [];
+        // Every node takes the middle of its angular slice; depth 1 fans over
+        // the right half-plane around the seed, deeper nodes subdivide their
+        // parent's slice.
+        (function place(n, a0, a1) {
+            var mid = (a0 + a1) / 2;
+            n.x = cx + n.depth * rx * Math.cos(mid);
+            n.y = cy + n.depth * ryStep * Math.sin(mid);
+            out.push(n);
+            var acc = a0;
+            n.kids.forEach(function(k) {
+                var span = (a1 - a0) * (k.leaves / n.leaves);
+                place(k, acc, acc + span);
+                acc += span;
+            });
+        })(root, -Math.PI / 2, Math.PI / 2);
+        return { nodes: out, root: root };
+    }
+    /* renderCityMap -- draws the seed + branch tree. Recomputed every time
+       the modal opens (openCityModal(), below) and whenever a new branch
+       list arrives while it is open, since it measures cityMapWrap's own
+       rendered size -- doing that while the modal is display:none would
+       measure a 0x0 box. */
+    function renderCityMap() {
+        cityMapLines.innerHTML = '';
+        cityMapWrap.querySelectorAll('.cityNode').forEach(function(n) { n.remove(); });
+        var w = cityMapWrap.clientWidth, h = cityMapWrap.clientHeight;
+        var lay = layoutBranchTree(w, h);
+        var els = {};
+        lay.nodes.forEach(function(n) {
+            var el = document.createElement('div');
+            el.className = 'cityNode' + (n.isSeed ? ' seed' : '') + (n.id === BRANCH_STATE.head ? ' current' : '');
+            el.textContent = n.name;
+            el.style.left = n.x + 'px';
+            el.style.top = n.y + 'px';
+            el.title = n.isSeed ? 'seed' : ('branch' + (n.createdAt ? ' -- ' + String(n.createdAt).replace('T', ' ').slice(0, 16) : ''));
+            cityMapWrap.appendChild(el);
+            els[n.id] = el;
+        });
+        lay.nodes.forEach(function(n) {
+            if (!n.parentNode) return;
+            var a = n.parentNode, ea = els[a.id], eb = els[n.id];
+            var pa = edgePoint(a.x, a.y, ea.offsetWidth / 2, ea.offsetHeight / 2, n.x, n.y);
+            var pb = edgePoint(n.x, n.y, eb.offsetWidth / 2, eb.offsetHeight / 2, a.x, a.y);
+            var line = document.createElementNS(SVG_NS, 'line');
+            line.setAttribute('x1', pa.x); line.setAttribute('y1', pa.y);
+            line.setAttribute('x2', pb.x); line.setAttribute('y2', pb.y);
+            cityMapLines.appendChild(line);
+        });
+        var count = (BRANCH_STATE.branches || []).length;
+        cityHint.textContent = count === 0
+            ? 'No branches yet. Enter edit mode (^E), change the page, then commit with ^R to branch out.'
+            : count + (count === 1 ? ' branch' : ' branches') + ' -- working copy is on "' +
+              ((BRANCH_STATE.branches.filter(function(b) { return b.id === BRANCH_STATE.head; })[0] || BRANCH_STATE.seed).name) + '".';
+    }
+    function openCityModal() {
+        cityModal.classList.remove('hide');
+        renderCityMap();
+    }
+    function closeCityModal() {
+        cityModal.classList.add('hide');
+    }
+    // Relay from src/gui/panel.html's own #cityModalChip -- when this page
+    // is loaded inside OMSC's iframe (see panel.html's #omscFrame), it sits
+    // on a different port than the panel itself, which counts as a
+    // different origin for same-origin-policy purposes even on localhost --
+    // the panel can't reach openCityModal() (or anything else in this
+    // document) directly, so postMessage is the one channel still open
+    // across that boundary. No origin check on the received message: this
+    // is a same-machine dev tool with one known caller, not a page that
+    // ever embeds untrusted third-party content, so the added complexity
+    // of pinning an exact parent origin didn't seem worth it here -- revisit
+    // if that ever changes. Works identically (does nothing extra, breaks
+    // nothing) when this page is opened directly, not inside the iframe at
+    // all, since nothing ever posts that message in that case.
+console.log('[OMSC] PAGE LOADED:', location.href);
+
+window.addEventListener('message', function(e) {
+    console.log('[OMSC] RECEIVED MESSAGE:', e.origin, e.data);
+
+    if (e.data && e.data.type === 'gnumbat-toggle-city-modal') {
+        console.log('[OMSC] TOGGLING CITY MODAL');
+
+        if (cityModal.classList.contains('hide')) {
+            openCityModal();
+        } else {
+            closeCityModal();
+        }
+    }
+    // Branches network -- see BRANCH_STATE's own comment (map code above).
+    if (e.data && e.data.type === 'gnumbat-branch-list' && e.data.seed) {
+        BRANCH_STATE = {
+            seed: e.data.seed,
+            branches: e.data.branches || [],
+            head: e.data.head || e.data.seed.id
+        };
+        if (!cityModal.classList.contains('hide')) renderCityMap();
+    }
+});
+function escapeHtmlDj(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+}
+(function announceReady(){
+    // 'gnumbat-ready' -- panel.html's first posts can fire before this
+    // document's message listener exists. Asking once we are ready makes it
+    // re-send the branch list.
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage({type: 'gnumbat-ready'}, '*');
+    }
+})();
+
+document.getElementById('cityModalClose')
+    .addEventListener('click', closeCityModal);
+
+cityModal.addEventListener('click', function(e) {
+    if (e.target === cityModal) {
+        closeCityModal();
+    }
+});
+
+    // sanitizeGenreTags -- user: "make sure the GENRES section is actually
+    // displaying genres. Cause right now its displaying some events title."
+    // The server publishes whatever string an event carries in Event.Genre
+    // (DistinctGenres, events.go). Only MTelus's API exposes a real genre
+    // field; for everything else the Ollama extractor may fill it, and it
+    // once copied its own prompt placeholder ("Musique qui ... (no genre
+    // explicitly stated)") into a show's genre. So each tag is checked here:
+    //   1. shape -- short, no brackets/ellipsis, no digits (except 90s/2-step/
+    //      8-bit), no "+ / x" lineup separators, no "no genre stated"-style
+    //      filler;
+    //   2. it must not be (or be contained in / contain) an event or venue
+    //      name shown on this page -- that is what "an event title in the
+    //      genre list" means;
+    //   3. it must name a music genre (GENRE_WORDS, English + French).
+    // Anything failing is removed. If nothing survives, "no genres tagged yet"
+    // shows instead of a made-up list -- the crawler simply has no genre data
+    // for most venues (see events.go).
+    var GENRE_WORDS = /\b(?:rock|rockabilly|punk|post-?punk|pop|indie|folk|blues|jazz|soul|funk|disco|metal|grunge|shoegaze|post-?rock|psych|psychedelic|noise|ambient|drone|experimental|electro|electronic|electronica|electronique|techno|house|trance|dubstep|dub|drum ?(?:and|&|n)? ?bass|dnb|jungle|garage|breakbeat|idm|synth|synthwave|new wave|no wave|cold wave|darkwave|hip[ -]?hop|rap|trap|r&b|rnb|reggae|reggaeton|dancehall|ska|latin|salsa|cumbia|afrobeat|afrohouse|world music|musique du monde|country|bluegrass|americana|gospel|classical|classique|opera|orchestral|baroque|chamber|new age|hardstyle|edm|acoustic|singer-?songwriter|chanson|swing|bossa|tango|k-?pop|j-?pop|lo-?fi|vaporwave|goth|industrial|ebm|math ?rock|stoner|doom|sludge|thrash|screamo|emo|\w*core)\b/i;
+    function normGenre(t) {
+        return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function isRealGenre(tok, names) {
+        var t = String(tok).trim();
+        if (t.length < 2 || t.length > 30) return false;
+        if (t.split(/\s+/).length > 4) return false;
+        if (/[()\[\]{}<>"“”:;|\/\\@#*+=~^]|\.{2,}|…/.test(t)) return false;
+        if (/\d/.test(t) && !/^(?:[1-9]0s\b|2-step|8-?bit)/i.test(t)) return false;
+        if (/\b(?:no genre|not stated|not specified|unspecified|unknown|none|n\/a|tba|tbd|explicit|various|other|misc|genre)\b/i.test(t)) return false;
+        var n = normGenre(t);
+        if (!n) return false;
+        for (var i = 0; i < names.length; i++) {
+            var nm = names[i];
+            if (!nm) continue;
+            // the tag IS an event/venue name, or swallows a whole one
+            if (nm === n || (nm.length >= 6 && n.indexOf(nm) !== -1)) return false;
+        }
+        return GENRE_WORDS.test(t);
+    }
+    (function sanitizeGenreTags() {
+        var box = document.getElementById('genreTags');
+        var empty = document.getElementById('genreEmpty');
+        if (!box) return;
+        var names = [];
+        document.querySelectorAll('.event:not(.event-empty) h3, .event:not(.event-empty) p:first-of-type').forEach(function(el) {
+            var raw = el.textContent;
+            var full = normGenre(raw);
+            if (full) names.push(full);
+        });
+        document.querySelectorAll('.venue-dropdown .weekend-dropdown-menu a').forEach(function(a) {
+            var v = normGenre(a.textContent);
+            if (v) names.push(v);
+        });
+        var kept = 0;
+        box.querySelectorAll('.bandTag').forEach(function(a) {
+            var g = a.getAttribute('data-genre') || a.textContent;
+            if (isRealGenre(g, names)) { kept++; } else { a.remove(); }
+        });
+        if (empty) empty.classList.toggle('hide', kept > 0);
+        box.classList.toggle('hide', kept === 0);
+    })();
+
+    // "last updated : monday 21-09-2026 at 17:26 UTC-4" -- the server hands
+    // over "Monday, September 21 at 4:09 PM" (no year, no zone), so the year
+    // is recovered here: the scrape is always in the past, and the weekday
+    // name has to agree with the date, which picks between this year and last
+    // year. The UTC offset is the browser's own for that date (the server
+    // formats in its local time, and this runs on the same machine), so it
+    // reads UTC-4 in summer and UTC-5 in winter without being hard-coded. If
+    // anything does not parse, the text is left exactly as the server sent it.
+    (function tightenLastUpdated() {
+        var el = document.getElementById('lastUpdated');
+        if (!el) return;
+        var m = /^(last updated\s*:\s*)(\w+),\s+(\w+)\s+(\d+)\s+at\s+(\d+):(\d+)\s*(AM|PM)/i.exec(el.textContent.trim());
+        if (!m) return;
+        var months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+        var days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        var mo = months.indexOf(m[3].toLowerCase());
+        var wd = m[2].toLowerCase();
+        if (mo < 0) return;
+        var hh = parseInt(m[5], 10) % 12 + (m[7].toUpperCase() === 'PM' ? 12 : 0);
+        var mm = parseInt(m[6], 10);
+        var now = new Date();
+        var found = null;
+        for (var y = now.getFullYear(); y >= now.getFullYear() - 1 && !found; y--) {
+            var d = new Date(y, mo, parseInt(m[4], 10), hh, mm);
+            if (days[d.getDay()] === wd && d.getTime() <= now.getTime() + 36e5) found = d;
+        }
+        if (!found) return;
+        function two(n) { return (n < 10 ? '0' : '') + n; }
+        var off = -found.getTimezoneOffset();               // minutes east of UTC
+        var zone = 'UTC' + (off < 0 ? '-' : '+') + Math.floor(Math.abs(off) / 60) +
+            (Math.abs(off) % 60 ? ':' + two(Math.abs(off) % 60) : '');
+        el.textContent = 'last updated : ' + wd + ' ' + two(found.getDate()) + '-' + two(found.getMonth() + 1) + '-' +
+            found.getFullYear() + ' at ' + two(found.getHours()) + ':' + two(found.getMinutes()) + '\u00a0' + zone;
+    })();
+
+    // "All (x)" count -- see #viewCount's own HTML comment. The count is the
+    // size of the list on screen, so it sits next to ALL only on the
+    // unfiltered home page; on Right Now/Tonight/Tomorrow/This Week it moves
+    // beside that link instead, and on a venue/genre/search view (no time
+    // link active) it stays next to ALL but says "shown" so it is not
+    // mistaken for the total.
+    (function placeViewCount() {
+        var count = document.getElementById('viewCount');
+        var allLink = document.getElementById('allLink');
+        if (!count || !allLink) return;
+        var active = document.querySelector('.filter-group a.active:not(#allLink)');
+        var timeLinks = ['/right-now', '/tonight', '/tomorrow', '/this-week'];
+        var target = null;
+        var nodes = document.querySelectorAll('.filter-group > a');
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].classList.contains('active') && timeLinks.indexOf(nodes[i].getAttribute('href')) !== -1) target = nodes[i];
+        }
+        if (target) {
+            var row = document.createElement('div');
+            row.className = 'all-row';
+            target.parentNode.insertBefore(row, target);
+            row.appendChild(target);
+            row.appendChild(count);
+        } else if (!allLink.classList.contains('active')) {
+            count.textContent = count.textContent.replace(')', ' shown)');
+        }
+    })();
+
+    // Dropdowns -- one open at a time; Escape or a click anywhere else
+    // (including outside this iframe, which blurs its window) closes them.
+    (function dropdownBehaviour() {
+        var dds = Array.prototype.slice.call(document.querySelectorAll('details.weekend-dropdown'));
+        dds.forEach(function(d) {
+            d.addEventListener('toggle', function() {
+                if (!d.open) return;
+                dds.forEach(function(o) { if (o !== d) o.removeAttribute('open'); });
+            });
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') dds.forEach(function(d) { d.removeAttribute('open'); });
+        });
+        window.addEventListener('blur', function() {
+            dds.forEach(function(d) { d.removeAttribute('open'); });
+        });
+    })();
+
+    // Band/artist tag boxes -- see the .bandTags CSS comment (above, in
+    // <style>) for why this reads the .Name field instead of a real artist-list
+    // field. splitLineup() tries the delimiters an actual multi-act bill
+    // gets typed with ("A / B / C", "A + B", "A, B, B2B, w/ B", "A x B",
+    // "A & B") and only counts it as a genuine lineup once splitting
+    // leaves 3+ non-empty names -- 2 names is exactly as likely to be one
+    // band's real title containing a stray "&" or "/" as it is to be a
+    // co-bill, so 2-way splits are deliberately left untagged rather than
+    // guessing wrong on ordinary single-act shows. The scene-keyword
+    // check (hardcore/rave/dj/b2b/fest/showcase, matched against the
+    // venue name too, since that's where a room's usual scene shows up,
+    // e.g. a venue named for a rave collective) lets a 2-name co-bill
+    // through as well when the show is clearly one of the community-
+    // heavy scenes the spec called out by name, without lowering the
+    // threshold for everything else.
+    function splitLineup(name) {
+        var parts = name.split(/\s*(?:\/|\+|,|&|\bx\b|\bb2b\b|\bw\/\b)\s*/i)
+            .map(function(s) { return s.trim(); })
+            .filter(function(s) { return s.length > 0; });
+        return parts;
+    }
+    var SCENE_KEYWORDS = /hardcore|rave|b2b|showcase|festival|\bfest\b|\bdj\b/i;
+    document.querySelectorAll('.event:not(.event-empty)').forEach(function(card) {
+        var h3 = card.querySelector('h3');
+        var venueLine = card.querySelector('p');
+        if (!h3) return;
+        var name = h3.textContent;
+        var parts = splitLineup(name);
+        var sceneMatch = SCENE_KEYWORDS.test(name) || (venueLine && SCENE_KEYWORDS.test(venueLine.textContent));
+        var isLargeLineup = parts.length >= 3 || (parts.length >= 2 && sceneMatch);
+        if (!isLargeLineup) return;
+        var tags = document.createElement('div');
+        tags.className = 'bandTags';
+        parts.forEach(function(p) {
+            var tag = document.createElement('span');
+            tag.className = 'bandTag';
+            tag.textContent = '[ ' + p.toUpperCase() + ' ]';
+            tags.appendChild(tag);
+        });
+        h3.insertAdjacentElement('afterend', tags);
+    });
+
+    // Map REMOVED -- user: "remove the map from the show scraper. just keep
+    // address." This used to be the Leaflet map init (dark CARTO tiles,
+    // per-venue markerColor()/markerIcon() pins built from .VenuesJSON, a
+    // popup per venue) -- all gone, along with #map/#map-details and the
+    // Leaflet <link>/<script> includes in <head>. Each event card's own
+    // plain venue/address line (.eventText, above) is the
+    // address info that stays.
+
+    // GRID INSPECTOR -- user: "Any item i click would show the name of the
+    // variable in the panel or base.html file." Ported from src/gui/
+    // panel.html's own copy (see that file's IIFE right before its
+    // setEditMode() function for the original). This page has no existing
+    // edit-mode toggle to hook into -- unlike panel.html, which flips this
+    // on/off together with its own EDIT INTERFACE state -- so it gets a
+    // standalone Ctrl+Shift+G keydown listener instead (bottom of this
+    // block). No editLocking-style pointer-events lock exists on this page
+    // either, so, unlike panel.html's realElementAt(), plain
+    // document.elementFromPoint() is enough here -- there is nothing to
+    // temporarily un-hide first.
+    (function() {
+        var CELL_PX = 30; // user: "make the grid tighter. half sized." (was 60) -- same as panel.html's copy
+        var active = false;
+        function colLabel(n) {
+            var s = '', m = n + 1;
+            while (m > 0) {
+                var rem = (m - 1) % 26;
+                s = String.fromCharCode(65 + rem) + s;
+                m = Math.floor((m - 1) / 26);
+            }
+            return s;
+        }
+        function buildLabels() {
+            var colEl = document.getElementById('gridColLabels');
+            var rowEl = document.getElementById('gridRowLabels');
+            if (!colEl || !rowEl) return;
+            colEl.innerHTML = ''; rowEl.innerHTML = '';
+            var cols = Math.ceil(window.innerWidth / CELL_PX);
+            var rows = Math.ceil(window.innerHeight / CELL_PX);
+            for (var c = 0; c < cols; c++) {
+                var s = document.createElement('span');
+                s.style.left = (c * CELL_PX + 2) + 'px';
+                s.textContent = colLabel(c);
+                colEl.appendChild(s);
+            }
+            for (var r = 0; r < rows; r++) {
+                var s2 = document.createElement('span');
+                s2.style.top = (r * CELL_PX + 1) + 'px';
+                s2.textContent = String(r);
+                rowEl.appendChild(s2);
+            }
+        }
+        function cellAt(x, y) {
+            return colLabel(Math.floor(x / CELL_PX)) + Math.floor(y / CELL_PX);
+        }
+        function describeElement(el) {
+            while (el && el !== document.body && el !== document.documentElement) {
+                if (el.id && !/^grid(Overlay|ColLabels|RowLabels|PosIndicator|Inspector)$/.test(el.id)) return '#' + el.id;
+                if (typeof el.className === 'string' && el.className.trim()) {
+                    var first = el.className.trim().split(/\s+/)[0];
+                    if (first) return '.' + first;
+                }
+                el = el.parentElement;
+            }
+            return '(body)';
+        }
+        function onMouseMove(e) {
+            var ind = document.getElementById('gridPosIndicator');
+            if (ind) ind.textContent = cellAt(e.clientX, e.clientY);
+        }
+        function onClickCapture(e) {
+            if (e.target.closest && e.target.closest('#gridInspector')) return;
+            var el = document.elementFromPoint(e.clientX, e.clientY);
+            var insp = document.getElementById('gridInspector');
+            if (insp) insp.textContent = describeElement(el) + '  @ ' + cellAt(e.clientX, e.clientY) + '  -- base.html';
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        // Cross-frame identification -- user (in src/gui/panel.html): "when
+        // clicking on base.html material, it doesnt just display
+        // #omscFrame." panel.html's own grid inspector can click-identify
+        // anything in ITS document, but this page is loaded there as a
+        // real iframe on a different origin (:6969 vs panel.html's own
+        // port) -- the same cross-origin wall #cityModalChip's/#djsGroup's
+        // postMessage relays already document elsewhere in this file --
+        // so panel.html can never call elementFromPoint() into THIS
+        // document directly. This answers that gap: whenever a click over
+        // there resolves to #omscFrame itself, panel.html now forwards it
+        // in as 'gnumbat-grid-inspect-query' (coordinates already
+        // translated into this iframe's own viewport space, so
+        // elementFromPoint/cellAt below just work as if the click had
+        // happened directly on this page), and this replies with
+        // 'gnumbat-grid-inspect-result' carrying both the identified name
+        // AND this page's own cellAt() reading -- the coordinate that
+        // actually matches this document's own grid (see
+        // setGridInspectorActive below), not panel.html's outer one.
+        // Answers unconditionally, whether or not THIS page's own
+        // Ctrl+Shift+G grid happens to be on -- the query only ever
+        // arrives because panel.html's own grid mode is active, so gating
+        // it on this page's `active` flag too would make it silently do
+        // nothing the one time it's actually needed.
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'gnumbat-grid-inspect-query') {
+                var el = document.elementFromPoint(e.data.x, e.data.y);
+                var name = describeElement(el);
+                var cell = cellAt(e.data.x, e.data.y);
+                if (e.source) e.source.postMessage({type: 'gnumbat-grid-inspect-result', reqId: e.data.reqId, name: name, cell: cell}, e.origin || '*');
+            }
+        });
+        function setGridInspectorActive(on) {
+            if (on === active) return;
+            active = on;
+            document.body.classList.toggle('gridMode', on);
+            if (on) {
+                buildLabels();
+                window.addEventListener('resize', buildLabels);
+                document.addEventListener('mousemove', onMouseMove, true);
+                document.addEventListener('click', onClickCapture, true);
+                var insp = document.getElementById('gridInspector');
+                if (insp) insp.textContent = '(click any item to see its name -- Ctrl+Shift+G to exit)';
+            } else {
+                window.removeEventListener('resize', buildLabels);
+                document.removeEventListener('mousemove', onMouseMove, true);
+                document.removeEventListener('click', onClickCapture, true);
+            }
+        }
+        // Standalone toggle -- this page (unlike panel.html) has no
+        // existing edit-mode control to piggyback on.
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'g' || e.key === 'G')) {
+                e.preventDefault();
+                setGridInspectorActive(!active);
+            }
+        });
+    })();
+
+    // dropdownUnderlay -- pure-black backing for an OPEN dropdown (user: "make
+    // the background pure black"). The sidebar's posterize filter lifts any
+    // opaque black inside it to #0d0d0d, so the open menu is transparent and
+    // this unfiltered #000 div sits under the sidebar instead. Sidebar items
+    // that the box overlaps are hidden (visibility) so they don't show through
+    // the transparent menu; everything is restored when the box closes.
+    (function dropdownUnderlay() {
+        var under = document.createElement('div');
+        under.id = 'ddUnderlay';
+        document.body.appendChild(under);
+        function hits(a, b) {
+            return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        }
+        function refresh() {
+            var side = document.querySelector('.sidebar');
+            if (side) {
+                side.querySelectorAll('.ddCovered').forEach(function(el) { el.classList.remove('ddCovered'); });
+            }
+            var open = document.querySelector('.weekend-dropdown[open]');
+            var menu = open && open.querySelector('.weekend-dropdown-menu');
+            if (!open || !menu || !side) { under.style.display = 'none'; return; }
+            var a = open.getBoundingClientRect();
+            var m = menu.getBoundingClientRect();
+            var box = {
+                left: Math.min(a.left, m.left),
+                top: Math.min(a.top, m.top),
+                right: Math.max(a.right, m.right),
+                bottom: Math.max(a.bottom, m.bottom)
+            };
+            under.style.cssText = 'display:block;left:' + box.left + 'px;top:' + box.top + 'px;width:' +
+                (box.right - box.left) + 'px;height:' + (box.bottom - box.top) + 'px';
+            side.querySelectorAll('*').forEach(function(el) {
+                if (el === open || open.contains(el) || el.contains(open)) return;
+                var bordered = parseFloat(getComputedStyle(el).borderTopWidth) > 0;
+                if (el.children.length && !bordered) return;
+                if (hits(el.getBoundingClientRect(), box)) el.classList.add('ddCovered');
+            });
+        }
+        document.addEventListener('toggle', function() { requestAnimationFrame(refresh); }, true);
+        window.addEventListener('resize', refresh);
+        refresh();
+    })();
+</script>
+</body>
+</html>
+{{end}}

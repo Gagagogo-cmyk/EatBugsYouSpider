@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/feature_set.schema.json",
+  "title": "Named selection of features (drives Map Source and embeddings)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.feature_set/0\\.[0-9]+$"
+    },
+    "feature_set_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{1,40}$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$"
+      }
+    },
+    "stats": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "mean",
+          "std",
+          "min",
+          "max",
+          "slope",
+          "envelope"
+        ]
+      },
+      "minItems": 1
+    },
+    "sources": {
+      "oneOf": [
+        {
+          "const": "all"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "builtin": {
+      "type": "boolean"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": [
+    "schema",
+    "feature_set_id",
+    "name",
+    "features",
+    "stats",
+    "sources",
+    "version"
+  ],
+  "additionalProperties": true
+}

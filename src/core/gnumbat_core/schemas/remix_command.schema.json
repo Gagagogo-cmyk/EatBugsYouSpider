@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/remix_command.schema.json",
+  "title": "RemixCommand (strict LLM/UI/hardware -> engine boundary)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.remix_command/0\\.[0-9]+$"
+    },
+    "command_id": {
+      "type": "string",
+      "pattern": "^cmd_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "registry_version": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "llm",
+            "ui",
+            "hardware",
+            "script"
+          ]
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "ops": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "set"
+              },
+              "param": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,47}$"
+              },
+              "scope": {
+                "type": "string",
+                "pattern": "^(global|stem:[a-z0-9_]{1,32})$"
+              },
+              "value": {
+                "type": [
+                  "number",
+                  "string",
+                  "boolean"
+                ]
+              }
+            },
+            "required": [
+              "op",
+              "param",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "nudge"
+              },
+              "param": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,47}$"
+              },
+              "scope": {
+                "type": "string",
+                "pattern": "^(global|stem:[a-z0-9_]{1,32})$"
+              },
+              "delta": {
+                "type": "number",
+                "minimum": -1,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "op",
+              "param",
+              "delta"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "ramp"
+              },
+              "param": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,47}$"
+              },
+              "scope": {
+                "type": "string",
+                "pattern": "^(global|stem:[a-z0-9_]{1,32})$"
+              },
+              "to": {
+                "type": "number"
+              },
+              "over_beats": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 512
+              },
+              "over_seconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 3600
+              }
+            },
+            "required": [
+              "op",
+              "param",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "macro"
+              },
+              "macro": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,47}$"
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "over_beats": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 512
+              }
+            },
+            "required": [
+              "op",
+              "macro",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "query"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "op",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "enum": [
+                  "lock",
+                  "unlock"
+                ]
+              },
+              "target": {
+                "type": "string",
+                "pattern": "^(stem:[a-z0-9_]{1,32}|bake:bk_[0-9A-HJKMNP-TV-Z]{26})$"
+              }
+            },
+            "required": [
+              "op",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "trigger"
+              },
+              "action": {
+                "enum": [
+                  "transition",
+                  "repeat_last",
+                  "reset_history",
+                  "hold"
+                ]
+              }
+            },
+            "required": [
+              "op",
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "command_id",
+    "issued_at",
+    "source",
+    "ops"
+  ],
+  "additionalProperties": false
+}

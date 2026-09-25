@@ -1,4 +1,4 @@
-// cricket.js — EBYS × Ollama Bridge
+// cricket.js — Gnumbat × Ollama Bridge
 // Max node.script object
 //
 // ── Inlet messages (from Max) ────────────────────────────────────────────────
@@ -72,7 +72,7 @@ const CRICKET_BRIDGE_PATH = path.join(__dirname, '..', 'demucs', 'cricket_bridge
 // build_lora_dataset.py) — leave blank to generate from the bare base
 // model with no personal sonic identity applied.
 var LORA_CKPT_PATH = '';
-var GENERATION_INVOKE_PHRASE = 'ebys user style';  // should match build_lora_dataset.py's --caption
+var GENERATION_INVOKE_PHRASE = 'gnumbat user style';  // should match build_lora_dataset.py's --caption
 var GENERATION_COUNT = 2;  // small on purpose — this is Cricket topping up a pool, not a full batch job
 
 const SYSTEM_PROMPT = `\

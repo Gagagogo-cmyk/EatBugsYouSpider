@@ -1,0 +1,230 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.sines~ Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.sines~</h1>
+  <div class="digest">Sinusoidal Modelling and Resynthesis</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Sinusoidal Modelling process on its audio input.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>It implements a mix of algorithms taken from classic papers.</p>
+<blockquote>
+<dl class="docutils">
+<dt>The algorithm will take an audio in, and will divide it in two parts:</dt>
+<dd><ul class="first last simple">
+<li>a reconstruction of what it detects as sinusoidal;</li>
+<li>a residual derived from the previous signal to allow null-summing</li>
+</ul>
+</dd>
+</dl>
+<p>The whole process is based on the assumption that signal is made of pitched steady components that have a long-enough duration and are periodic enough to be perceived as such, that can be tracked, resynthesised and removed from the original, leaving behind what is considered as non-pitched, noisy, and/or transient. It first tracks the peaks, then checks if they are the continuation of a peak in previous spectral frames, by assigning them a track.</p>
+</blockquote>
+
+
+    <p>Read more about fluid.sines~ on the <a href='https://learn.flucoma.org/reference/sines'>learn platform</a>.</p>
+    
+    <p>fluid.sines~ is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">bandwidth
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 76)</span>
+      </h3>
+      <div class="description"><p>The number of bins used to resynthesise a peak. It has an effect on CPU cost: the widest is more accurate but more computationally expensive. It is capped at (fftSize / 2) + 1.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+<li>Maximum: <code>(fft size / 2) + 1 (see fft settings)</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">birthhighthreshold
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -60.0)</span>
+      </h3>
+      <div class="description"><p>The threshold in dB above which to consider a peak to start a sinusoidal component tracking, for the high end of the spectrum. It is interpolated across the spectrum until birthLowThreshold at DC.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">birthlowthreshold
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -24.0)</span>
+      </h3>
+      <div class="description"><p>The threshold in dB above which to consider a peak to start a sinusoidal component tracking, for the low end of the spectrum. It is interpolated across the spectrum until birthHighThreshold at half-Nyquist.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">detectionthreshold
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -96.0)</span>
+      </h3>
+      <div class="description"><p>The threshold in dB above which a magnitude peak is considered to be a sinusoidal component.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">fftsettings
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: [[&#39;winSize&#39;, 1024], [&#39;hopSize&#39;, -1], [&#39;fftSize&#39;, -1]])</span>
+      </h3>
+      <div class="description"><p>FFT settings consist of three numbers representing the window size, hop size and FFT size in samples:</p>
+<p>The hop size and fft size can both be set to -1 (and are by default), with slightly different meanings:</p>
+<ul class="simple">
+<li>For the hop size, -1 = <code>windowsize/2</code></li>
+<li>For the FFT size, -1 = <code>windowsize</code> snapped to the nearest equal / greater power of 2 (e.g. <code>windowsize 1024</code> =&gt; <code>fftsize 1024</code>, but <code>windowssize 1000</code> also =&gt; <code>fftsize 1024</code>)</li>
+</ul>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>(fft size / 2) + 1 (see fft settings)</code></li>
+<li>FFTSize, if != -1, will snap to the next greatest power of two &amp;gt; 4</li>
+<li>The maximum FFT size is limited to the value of the <code>maxfftsize</code> argument</li>
+<li>if FFT size != -1, then window size is clipped at FFT size</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfftsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Set an explicit upper bound on the FFT size at object instantiation. The default of -1 sets this to whatever the initial FFT size is</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">mintracklen
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 15)</span>
+      </h3>
+      <div class="description"><p>The minimum duration, in spectral frames, for a sinusoidal track to be accepted as a partial. It allows to remove bubbly pitchy artefacts, but is more CPU intensive and might reject quick pitch material.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">trackfreqrange
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 50.0)</span>
+      </h3>
+      <div class="description"><p>The frequency difference allowed for a track to diverge between frames, in Hertz.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1.0</code></li>
+<li>Maximum: <code>10000.0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">trackmagrange
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 15.0)</span>
+      </h3>
+      <div class="description"><p>The amplitude difference allowed for a track to diverge between frames, in dB.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1.0</code></li>
+<li>Maximum: <code>200.0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">trackmethod
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The algorithm used to track the sinusoidal continuity between spectral frames. 0 is the default, &quot;Greedy&quot;, and 1 is a more expensive [^&quot;Hungarian&quot;]( Neri, J., and Depalle, P., &quot;Fast Partial Tracking of Audio with Real-Time Capability through Linear Programming&quot;. Proceedings of DAFx-2018. ) one.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">trackprob
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.5)</span>
+      </h3>
+      <div class="description"><p>The probability of the tracking algorithm to find a track.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0.0</code></li>
+<li>Maximum: <code>1.0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.bufsines.html">BufSines</a></h3><h3 class="seealso_name"><a href="fluid.transients~.html">Transients</a></h3><h3 class="seealso_name"><a href="fluid.hpss~.html">HPSS</a></h3></section> 
+</body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/dataset.schema.json",
+  "title": "Dataset (mutable working set)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.dataset/0\\.[0-9]+$"
+    },
+    "dataset_id": {
+      "type": "string",
+      "pattern": "^ds_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "modified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "membership": {
+      "type": "object",
+      "properties": {
+        "bake_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^bk_[0-9A-HJKMNP-TV-Z]{26}$"
+          }
+        },
+        "filter": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "dataset_id",
+    "name",
+    "created_at",
+    "modified_at",
+    "membership"
+  ],
+  "additionalProperties": true
+}

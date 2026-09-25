@@ -1,0 +1,252 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.mlpclassifier Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.mlpclassifier</h1>
+  <div class="digest">Classification with a multi-layer perceptron</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Perform classification between a <a href="fluid.dataset.html">fluid.dataset</a> and a <a href="fluid.labelset.html">fluid.labelset</a> using a Multi-Layer Perceptron neural network.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>For a thorough explanation of how this object works and more information on the parameters, visit the page on <strong>MLP Training</strong> (<a class="reference external" href="https://learn.flucoma.org/learn/mlp-training">https://learn.flucoma.org/learn/mlp-training</a>) and <strong>MLP Parameters</strong> (<a class="reference external" href="https://learn.flucoma.org/learn/mlp-parameters">https://learn.flucoma.org/learn/mlp-parameters</a>).</p>
+<p>Also visit the classification tutorial: (<a class="reference external" href="https://learn.flucoma.org/learn/classification-neural-network/">https://learn.flucoma.org/learn/classification-neural-network/</a>)</p>
+
+
+    <p>Read more about fluid.mlpclassifier on the <a href='https://learn.flucoma.org/reference/mlpclassifier'>learn platform</a>.</p>
+    
+    <p>fluid.mlpclassifier is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Name<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: )</span><div class="description"><p>Name for this instance, so that it can be reused or referred to by other data objects. If none is given, a name will be generated</p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">activation
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 2)</span>
+      </h3>
+      <div class="description"><p>An integer indicating which activation function each neuron in the hidden layer(s) will use. Changing this will reset the neural network, clearing any learning that has happened. The options are:</p>
+</div><div class="enumvals">      
+      <ol start='0'><li>
+          <p><strong>identity</strong> (the output range can be any value)</p>
+
+        </li><li>
+          <p><strong>sigmoid</strong> (the output will always range be greater than 0 and less than 1)</p>
+
+        </li><li>
+          <p><strong>relu</strong> (the output will always be greater than or equal to 0)</p>
+
+        </li><li>
+          <p><strong>tanh</strong> (the output will always be greater than -1 and less than 1)</p>
+
+        </li></ol>
+      </div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">batchsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 50)</span>
+      </h3>
+      <div class="description"><p>The number of data points to use in between adjustments of the MLP's internal parameters during training.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">hiddenlayers
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: [3, 3])</span>
+      </h3>
+      <div class="description"><p>An array of numbers that specifies the internal structure of the neural network. Each number in the list represents one hidden layer of the neural network, the value of which is the number of neurons in that layer. Changing this will reset the neural network, clearing any learning that has happened.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">learnrate
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.01)</span>
+      </h3>
+      <div class="description"><p>A scalar for indicating how much the neural network should adjust its internal parameters during training. This is the most important parameter to adjust while training a neural network.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0.0</code></li>
+<li>Maximum: <code>1.0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxiter
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1000)</span>
+      </h3>
+      <div class="description"><p>The number of epochs to train for when <code>fit</code> is called on the object. An epoch consists of training on all the data points one time.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">momentum
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.5)</span>
+      </h3>
+      <div class="description"><p>A scalar that applies a portion of previous adjustments to a current adjustment being made by the neural network during training.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0.0</code></li>
+<li>Maximum: <code>0.99</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">validation
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.2)</span>
+      </h3>
+      <div class="description"><p>A percentage (represented as a decimal) of the data points to randomly select, set aside, and not use for training (this &quot;validation set&quot; is reselected on each <code>fit</code>). These points will be used after each epoch to check how the neural network is performing. If it is found to be no longer improving, training will stop, even if a <code>fit</code> has not reached its <code>`maxiter</code> number of epochs.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+<li>Maximum: <code>0.9</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='fit'>fit</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>targetLabelSet (Unknown Type (input labelset)) </span><div class='description'>
+       <p>Train the network to map between a source <a href="fluid.dataset.html">fluid.dataset</a> and target <a href="fluid.labelset.html">fluid.labelset</a></p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>Source data</p>
+</li><li>targetLabelSet: <p>Target labels</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='predict'>predict</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>targetLabelSet (symbol) </span><div class='description'>
+       <p>Predict labels for a <a href="fluid.dataset.html">fluid.dataset</a> (given a trained network)</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>Input data</p>
+</li><li>targetLabelSet: <p><a href="fluid.labelset.html">fluid.labelset</a> to write the predicted labels into</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='predictpoint'>predictpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceBuffer (symbol) </span><div class='description'>
+       <p>Predict a label for a single data point in a array</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceBuffer: <p>Input point</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='clear'>clear</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>This will erase all the learning done in the neural network.</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='cols'>cols</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of columns (dimensions) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='size'>size</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of data points (entries / observations) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+    <div class='method_group'><h3 class='method_name' name='write'>write</h3>
+      <span class='arglist'>Arguments</span>
+        <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Save the internal state of the object to a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+    </div>
+    <div class='method_group'><h3 class='method_name' name='read'>read</h3>
+      <span class='arglist'>Arguments</span>
+      <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Replace the internal state of the object from a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+     
+    </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.mlpclassifier object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.mlpclassifier objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.mlpregressor.html">MLPRegressor</a></h3><h3 class="seealso_name"><a href="fluid.knnclassifier.html">KNNClassifier</a></h3><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3><h3 class="seealso_name"><a href="fluid.labelset.html">LabelSet</a></h3></section> 
+</body>
+</html>

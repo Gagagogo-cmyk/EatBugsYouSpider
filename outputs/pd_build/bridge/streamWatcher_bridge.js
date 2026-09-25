@@ -8,7 +8,7 @@
 //
 // What changed vs. the original streamWatcher.js, and why:
 //   - `patcher.filepath` (Max-only global, no Node equivalent) -> the data
-//     directory is passed explicitly via --data-dir (or EBYS_DATA_DIR env
+//     directory is passed explicitly via --data-dir (or GNUMBAT_DATA_DIR env
 //     var), since a standalone Node process has no patch to ask.
 //   - `File` (Max's built-in file I/O object) -> Node's `fs` module.
 //   - `Task`/`.schedule(ms)` (Max's js scheduler) -> `setTimeout`.
@@ -36,12 +36,12 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const dataDir = args["data-dir"] || process.env.EBYS_DATA_DIR;
+const dataDir = args["data-dir"] || process.env.GNUMBAT_DATA_DIR;
 const sendPort = parseInt(args["send-port"] || "9001", 10);
 const pollMs = parseInt(args["poll-ms"] || "1000", 10);
 
 if (!dataDir) {
-  console.error("streamWatcher_bridge: need --data-dir (or EBYS_DATA_DIR env var)");
+  console.error("streamWatcher_bridge: need --data-dir (or GNUMBAT_DATA_DIR env var)");
   process.exit(1);
 }
 

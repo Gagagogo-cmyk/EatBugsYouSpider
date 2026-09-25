@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/job.schema.json",
+  "title": "Spool job",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.job/0\\.[0-9]+$"
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^job_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "type": {
+      "enum": [
+        "process_bake",
+        "decompose_bake",
+        "analyze_bake",
+        "project_map",
+        "reindex",
+        "build_dataset_version",
+        "train_model"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "instance": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "app"
+      ]
+    },
+    "priority": {
+      "type": "integer"
+    },
+    "params": {
+      "type": "object"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_attempts": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": [
+    "schema",
+    "job_id",
+    "type",
+    "created_at",
+    "created_by",
+    "params",
+    "attempt",
+    "max_attempts"
+  ],
+  "additionalProperties": false
+}

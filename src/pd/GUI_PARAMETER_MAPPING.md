@@ -1,4 +1,4 @@
-# GUI parameter mapping — `ebys-analyze.pd`
+# GUI parameter mapping — `gnumbat-analyze.pd`
 
 This maps every user-facing control point that survives in the Pd patch after all the removal passes (EQ, gain, pan, width, pitch/formant, karma~ looping, fx-return, booth/rec/master gain, 4-channel hardware I/O and metering all stripped — see `CONVERSION_NOTES.md` for the full history) to a Pd hook name and a suggested GUI control, for whoever builds the real VST GUI.
 
@@ -14,12 +14,37 @@ below). `buffer_manager.js` is still a blind stub (task 32). `spat_fx_router.js`
 and `eq_router.js` were dropped entirely (their whole subsystem — spatial fx,
 EQ, gain, pan — is DAW-only in this patch, see `CONVERSION_NOTES.md`).
 
-## Live controls (working today)
+## Live controls — CORRECTION (2026-08-08): neither of these was ever live
 
-| Control | Pd hook | Type | Suggested GUI | Notes |
-|---|---|---|---|---|
-| BPM | `receive bpm` (float) | global, shared across all 4 stems | Numeric field or knob, e.g. 40–220 range | Drives `bpm_bar_resize~` for each stem array, snapping buffer length to whole 4/4 bars (44100 Hz and 4/4 assumed — see `bpm_bar_resize~.pd`). Fires on every new value, not just once. |
-| Record | `receive record_cmd` | message | Record start/stop button | Feeds `sfrecord~ 2` (stereo file recorder) directly. Confirm exact message shape (`bang`/`1`/`start` vs `stop`) against the original Max patch before wiring — this doc didn't re-derive `sfrecord~`'s expected message from the JSON, just confirmed the connection exists. |
+This table claimed BPM and Record worked today. Both claims are wrong, and
+they were found the only way they could be — by building a GUI that tried to
+send them. `grep '#X obj' src/pd/*.pd`:
+
+- **`bpm_bar_resize~.pd`, `stem_preview~.pd` and `sfrecord~` are instantiated
+  in zero patches.** They exist as files. Nothing creates one. There is no
+  `[receive bpm]` and no `[receive record_cmd]` anywhere in `gnumbat-analyze.pd`
+  — so a `bpm` message has no receiver, and the buffers are never resized to
+  bar boundaries by anything.
+- `peakamp~.pd` was in the same state until `stem_telemetry~.pd` (2026-08-08)
+  became its first caller.
+
+The likely history is that these were written as the Max objects' Pd
+equivalents during a removal pass and never wired in, and the doc recorded the
+abstraction's existence as if it were a live connection. Worth treating as a
+general caution about the rest of this file: "the abstraction exists" and "the
+patch instantiates it" were not distinguished carefully enough anywhere here.
+
+The GUI hub sends both commands anyway (`patch bpm <f>`, `patch record_cmd
+start|stop`), because the dynamic-send path delivers to a receive name and
+costs nothing while the receiver is missing. **Wiring them up is one object
+each**: an `[r bpm]` into a `bpm_bar_resize~` per stem array, and an
+`[r record_cmd]` into an `[sfrecord~ 2]`. Until then, both buttons in the
+panel are no-ops that log locally and change nothing.
+
+| Control | Pd hook | Status | Notes |
+|---|---|---|---|
+| BPM | `receive bpm` (float) | **hook does not exist** | `bpm_bar_resize~` never instantiated. Panel sends it; nothing receives it. |
+| Record | `receive record_cmd` | **hook does not exist** | No `sfrecord~` in any patch. The message shape (`start`/`stop` vs `bang`/`1`) was never re-derived from the Max patch either — still open when the receiver is added. |
 
 ## Live but not yet named (needs one small patch edit before a GUI can reach them)
 
@@ -105,18 +130,27 @@ Every command in the table above maps to a real `DISPATCH` entry in
 
 **Caveat worth flagging to whoever builds the backend:** the original Max patch already had `setGlobalBPM` and `setFallbackBPM` messages feeding the slicer, separate from the BPM hook I just added (`receive bpm` → `bpm_bar_resize~`). Now that the slicer's real logic IS ported, decide whether these should be unified into one BPM control or kept distinct (fallback BPM implies "used only if detection fails," which is a different concept from "the BPM to resize buffers to") — this decision is still open, only the porting status changed.
 
-## Status / telemetry (Pd → GUI direction)
+## Status / telemetry (Pd → GUI direction) — BUILT 2026-08-08
 
-In the original Max patch these reported out through a shared hub (`gate 1` → `js node.script ws_server.js`, a WebSocket server). That hub does **not exist in the Pd conversion at all** — `node.script`/`ws_server.js` was dropped to a documentation comment early in this conversion (no audio-critical role — see `CONVERSION_NOTES.md`, "New stand-in abstractions"). So every report below is currently a dead end on the Pd side: whatever object used to feed `gate 1` now has nowhere to send. There is no control surface wired into the live Pd instrument today at all (the old `src/tui/` terminal UI drove commands via that same websocket, and lost its path too). Rebuilding this reporting hub (a small Node/OSC bridge, same pattern as `streamWatcher_bridge.js`) is real, unscoped follow-up work if a GUI/dashboard needs these.
+This section used to say the reporting hub did not exist and that every row
+below was a dead end. That is no longer true. `bridge_guiHub.pd` +
+`src/gui/gui_hub_bridge.js` rebuild it, and `stem_telemetry~.pd` supplies the
+measurements the conversion had stripped.
 
-| Report | Message shape | Likely GUI use |
+| Report | Message shape | Status |
 |---|---|---|
-| `meter <stem>_FL/FR/RL/RR` | — **removed** (see `CONVERSION_NOTES.md`, "4 channel quad meters") | n/a — if you want stereo (L/R) master/stem meters back, say so; would need re-adding as a 2-channel version |
-| `spectrum <stem> <band 0-63>` (×5 stems incl. master) | float per band | Spectrum analyzer display, one bar per band |
-| `waveNeg master` / `wavePos master` | float | Waveform trace display |
-| `lufs` | float | Loudness meter |
-| `analysisDone` | bang/status | "Analysis complete" indicator |
-| `streamUpdated` | status | Generic "data changed, re-fetch" signal |
+| `meter <stem> <peakL> <peakR> <rmsL> <rmsR>` | linear 0..1 | **built.** Replaces the removed 4-channel quad meters with a 2-channel version. Every stem in this patch is mono, so L and R currently carry the same number — see `stem_telemetry~.pd`'s note. |
+| `spectrum <stem> <64 floats>` (×5 incl. master) | linear magnitude | **built.** Hann-windowed 128-point `rfft~`, 64 bins. Sent linear; the dB conversion happens in `gnumbat-live.js` because Pd vanilla has no `log~`. |
+| `rmsdb <stem> <f>` | dB | **built, renamed.** Was `lufs`. It is unweighted RMS with no gating — calling it LUFS invited someone to trust it for mastering. Real BS.1770 needs K-weighting biquads; see `stem_telemetry~.pd`. |
+| `waveNeg` / `wavePos master` | — | **dropped as a wrong shape.** The panel's waveform is the stem's whole file drawn from analysis with a segment bracket and playhead over it — it moves with segment *selection*, not with the signal. It is fed by `status play` below instead. |
+| `status play <stem> <slot> <startFrac> <endFrac> <ratio> <segDurMs> ...` | list | **built.** `bridge_slicer` outlet 0, tee'd (not moved) into the hub. |
+| `status desc\|seg\|ready\|slices\|sysMsg ...` | list | **built.** `bridge_slicer` outlet 1, same tee. |
+| `analysisDone` / `streamUpdated` | status | **path built, no sender.** The hub relays them; nothing in the patch emits them yet. |
+
+The playhead is interpolated in the panel from `segDurMs`, not measured:
+`stem_timestretch~` has no live position outlet (`karma~` did — see
+`slicer_bridge.js` SIMPLIFICATION 2), so there is nothing to stream. It will
+drift if the engine reschedules silently.
 
 ## Summary for whoever wires the GUI (updated 2026-08-02)
 

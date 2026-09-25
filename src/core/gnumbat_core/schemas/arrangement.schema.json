@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/arrangement.schema.json",
+  "title": "Arrangement: the engine's only output \u2014 references into a corpus",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.arrangement/0\\.[0-9]+$"
+    },
+    "arrangement_id": {
+      "type": "string",
+      "pattern": "^arr_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "engine_version": {
+      "type": "string"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "corpus_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "model_version_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "remix_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sample_rate": {
+      "type": "integer"
+    },
+    "tempo_bpm": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "length_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "placements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "placement_id": {
+            "type": "string",
+            "pattern": "^pl_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "t_on": {
+            "type": "number",
+            "minimum": 0
+          },
+          "duration": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "bake_id": {
+                "type": "string",
+                "pattern": "^bk_[0-9A-HJKMNP-TV-Z]{26}$"
+              },
+              "decomposition_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "stem": {
+                "type": "string"
+              },
+              "start_s": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end_s": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "bake_id",
+              "decomposition_id",
+              "stem",
+              "start_s",
+              "end_s"
+            ],
+            "additionalProperties": false
+          },
+          "transforms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "op": {
+                  "enum": [
+                    "gain",
+                    "fade",
+                    "reverse",
+                    "repeat",
+                    "time_stretch",
+                    "pitch_shift",
+                    "filter",
+                    "pan",
+                    "trim"
+                  ]
+                },
+                "params": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "op"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "gain_db": {
+            "type": "number"
+          },
+          "fade_in_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "fade_out_s": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "placement_id",
+          "t_on",
+          "duration",
+          "source",
+          "transforms"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "arrangement_id",
+    "created_at",
+    "engine_version",
+    "seed",
+    "corpus_hash",
+    "sample_rate",
+    "length_s",
+    "placements"
+  ],
+  "additionalProperties": false
+}

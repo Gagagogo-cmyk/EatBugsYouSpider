@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/map.schema.json",
+  "title": "Bake Map projection (derived; rebuildable)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.map/0\\.[0-9]+$"
+    },
+    "map_id": {
+      "type": "string",
+      "pattern": "^(em|mp)_[0-9a-f]{20}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "space": {
+      "type": "object",
+      "properties": {
+        "embedding_id": {
+          "type": "string",
+          "pattern": "^(em|mp)_[0-9a-f]{20}$"
+        },
+        "feature_set_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "embedding_id",
+        "feature_set_id",
+        "label"
+      ]
+    },
+    "method": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "enum": [
+            "tsne",
+            "pca",
+            "umap"
+          ]
+        },
+        "requested": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "warm_start": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "params",
+        "seed"
+      ]
+    },
+    "scale": {
+      "type": "number",
+      "description": "raw = normalised * scale (used to warm-start the next projection)"
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bake_id": {
+            "type": "string",
+            "pattern": "^bk_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "x": {
+            "type": "number",
+            "minimum": -1.0001,
+            "maximum": 1.0001
+          },
+          "y": {
+            "type": "number",
+            "minimum": -1.0001,
+            "maximum": 1.0001
+          }
+        },
+        "required": [
+          "bake_id",
+          "x",
+          "y"
+        ]
+      }
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "trustworthiness": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "k": {
+          "type": "integer"
+        }
+      }
+    },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bake_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bake_id",
+          "reason"
+        ]
+      }
+    },
+    "disclaimer": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "map_id",
+    "created_at",
+    "space",
+    "method",
+    "points"
+  ],
+  "additionalProperties": true
+}

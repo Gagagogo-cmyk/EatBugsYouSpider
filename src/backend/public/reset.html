@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gnumbat -- reset password</title>
+<style>
+  body { background:#000; color:#8a908c; font:13px/1.5 Menlo, "DejaVu Sans Mono", monospace; margin:0; padding:40px 16px; }
+  main { max-width:360px; margin:0 auto; }
+  h1 { color:#fff; font-size:13px; font-weight:normal; margin:0 0 20px; }
+  input { display:block; width:100%; box-sizing:border-box; margin:0 0 10px; padding:6px 8px; border:0; background:#fff; color:#000; font:inherit; }
+  button { background:#fff; color:#000; border:0; padding:6px 14px; font:inherit; cursor:pointer; }
+  #msg { margin-top:16px; color:#fff; min-height:1.5em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>&gt; RESET PASSWORD</h1>
+  <form id="f">
+    <input id="p1" type="password" placeholder="NEW PASSWORD" autocomplete="new-password" required minlength="8">
+    <input id="p2" type="password" placeholder="NEW PASSWORD AGAIN" autocomplete="new-password" required minlength="8">
+    <button type="submit">SAVE</button>
+  </form>
+  <div id="msg"></div>
+</main>
+<script>
+  const token = new URLSearchParams(location.search).get('token') || '';
+  const msg = document.getElementById('msg');
+  if (!token) msg.textContent = 'This link is missing its reset token.';
+  document.getElementById('f').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const a = document.getElementById('p1').value, b = document.getElementById('p2').value;
+    if (a !== b) { msg.textContent = 'The two passwords are not the same.'; return; }
+    msg.textContent = '...';
+    try {
+      const r = await fetch('/auth/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                             body: JSON.stringify({ token, password: a }) });
+      const j = await r.json();
+      msg.textContent = r.ok ? `Done. Yo ${j.username}! Log in from the plugin with your new password.` : (j.error || 'Something went wrong.');
+    } catch { msg.textContent = 'Could not reach the server.'; }
+  });
+</script>
+</body>
+</html>

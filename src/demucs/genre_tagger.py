@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Genre Tagger  v2
+Gnumbat — Genre Tagger  v2
 
 Classifies the ORIGINAL (unseparated) audio file using Essentia + Discogs-EffNet,
 then writes the genre result to ALL stems from that track.
@@ -11,8 +11,8 @@ Why the original file, not the stems?
   alone, or vocals alone all give noisy or wrong results.
 
 Usage:
-  source ~/ebys-env/bin/activate
-  cd ~/wherever/EBYS   # from repo root
+  source ~/gnumbat-env/bin/activate
+  cd ~/wherever/Gnumbat   # from repo root
 
   # Classify one track — pass the original mix file
   python3 genre_tagger.py /path/to/original_track.mp3
@@ -146,7 +146,7 @@ def stems_for_folder(stems_folder):
 
 def main():
     ap = argparse.ArgumentParser(
-        description='EBYS Genre Tagger — classify original mix, tag all stems'
+        description='Gnumbat Genre Tagger — classify original mix, tag all stems'
     )
     ap.add_argument('mix', nargs='?', default=None,
                     help='Original (unseparated) audio file to classify')
@@ -257,7 +257,9 @@ def main():
             print(f'WARN: could not read existing {args.out} to merge ({e}) — starting fresh', file=sys.stderr)
             results = {}
 
-    for mix_path, track_name, stem_files in jobs:
+    # "PROGRESS i/n" lines are read live by watch_demucs.py (the plugin's status bars).
+    print(f'PROGRESS 0/{len(jobs)}', file=sys.stderr, flush=True)
+    for job_i, (mix_path, track_name, stem_files) in enumerate(jobs):
         print(f'\n→ {track_name}', file=sys.stderr)
         print(f'  mix: {os.path.basename(mix_path)}', file=sys.stderr)
 
@@ -282,6 +284,7 @@ def main():
             }
         }
         results[track_name] = track_result
+        print(f'PROGRESS {job_i + 1}/{len(jobs)}', file=sys.stderr, flush=True)
 
     # ── Output ────────────────────────────────────────────────────────────────
     output = json.dumps(results, indent=2, ensure_ascii=False)
@@ -300,8 +303,8 @@ if __name__ == '__main__':
 
 # ── Quick usage ───────────────────────────────────────────────────────────────
 #
-# source ~/ebys-env/bin/activate
-# cd ~/wherever/EBYS   # from repo root
+# source ~/gnumbat-env/bin/activate
+# cd ~/wherever/Gnumbat   # from repo root
 #
 # # Pass the original mix directly:
 # python3 genre_tagger.py /path/to/track.mp3

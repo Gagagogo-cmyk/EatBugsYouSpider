@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Train + score + promote one User LoRA checkpoint
+Gnumbat — Train + score + promote one User LoRA checkpoint
 
 Alex: "I want the preparation of the file to be automatic, but the
 training that takes hours to be manual. I want to enter a :command for it
@@ -26,7 +26,7 @@ train handler) acquires/releases that around this process, same as it
 already did before this script existed.
 
 Usage:
-  python3 train_and_score_lora.py --caption "ebys user style"
+  python3 train_and_score_lora.py --caption "gnumbat user style"
   python3 train_and_score_lora.py --steps 1500 --max-attempts 5
 """
 
@@ -86,7 +86,7 @@ def main():
     ap.add_argument("--data-dir", default=str(LORA_DIR / "train"))
     ap.add_argument("--val-dir", default=str(LORA_DIR / "val"))
     ap.add_argument("--checkpoint-root", default=str(LORA_DIR / "checkpoints"))
-    ap.add_argument("--caption", default=None, help="invoke phrase for self-test generation — defaults to whatever build last used (see .watch_lora_state.json), then 'ebys user style'")
+    ap.add_argument("--caption", default=None, help="invoke phrase for self-test generation — defaults to whatever build last used (see .watch_lora_state.json), then 'gnumbat user style'")
     ap.add_argument("--rank", default="16")
     ap.add_argument("--adapter-type", default="dora-rows")
     ap.add_argument("--exclude", default="seconds_total")
@@ -104,7 +104,7 @@ def main():
 
     caption = args.caption
     if caption is None:
-        caption = read_json(STATE_PATH, {}).get("caption", "ebys user style")
+        caption = read_json(STATE_PATH, {}).get("caption", "gnumbat user style")
 
     if not data_dir.is_dir() or not any(data_dir.glob("*.wav")):
         sys.exit(f"no training pairs in {data_dir} — run :lora prep/build first (or drop files in raw/ and let the watcher catch up)")

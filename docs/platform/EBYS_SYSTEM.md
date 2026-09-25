@@ -1,4 +1,4 @@
-# Système EBYS
+# Système Gnumbat
 
 Instrument de DJ génératif, radio web et protocole de pourboire — montréal
 
@@ -6,7 +6,7 @@ Instrument de DJ génératif, radio web et protocole de pourboire — montréal
 
 ## Vue d'ensemble
 
-EBYS est un instrument de DJ basé sur l'intelligence artificielle. Il découpe des pistes musicales en tranches spectrales et les réassemble en temps réel, créant des mélanges qui maintiennent une continuité sonore à travers les coupures tout en permettant au DJ de piloter l'énergie et la direction.
+Gnumbat est un instrument de DJ basé sur l'intelligence artificielle. Il découpe des pistes musicales en tranches spectrales et les réassemble en temps réel, créant des mélanges qui maintiennent une continuité sonore à travers les coupures tout en permettant au DJ de piloter l'énergie et la direction.
 
 L'instrument tourne localement sur un ordinateur portable. La radio web diffuse les performances en direct. Le protocole de pourboire permet aux auditeurs de rémunérer les DJs et les artistes en quelques secondes, sans application, sans compte.
 
@@ -14,7 +14,7 @@ L'instrument tourne localement sur un ordinateur portable. La radio web diffuse 
 
 ## Radio web
 
-La radio diffuse en continu les performances EBYS — live ou archivées. La page montre ce qui joue : la piste, l'artiste, le niveau de transformation. Le bouton de pourboire est toujours visible.
+La radio diffuse en continu les performances Gnumbat — live ou archivées. La page montre ce qui joue : la piste, l'artiste, le niveau de transformation. Le bouton de pourboire est toujours visible.
 
 Les auditeurs écoutent sans compte. Le pourboire passe par Stripe (carte, Apple Pay) — 30 secondes, terminé.
 
@@ -22,7 +22,7 @@ Les auditeurs écoutent sans compte. Le pourboire passe par Stripe (carte, Apple
 
 ## Le déclencheur de température
 
-L'entropie du moteur EBYS varie avec la température extérieure :
+L'entropie du moteur Gnumbat varie avec la température extérieure :
 
 ```
 entropy = clamp(0.5 + (δT / 5.0), 0.0, 1.0)
@@ -46,7 +46,7 @@ La page radio affiche un calendrier d'événements à venir : performances live,
 
 ## Console de mixage (visualisation)
 
-La page radio inclut une visualisation en direct du deck EBYS : les quatre tiges (voix, mélodie, basse, batterie), les niveaux de transformation par tige, les VU-mètres, l'indicateur de momentum.
+La page radio inclut une visualisation en direct du deck Gnumbat : les quatre tiges (voix, mélodie, basse, batterie), les niveaux de transformation par tige, les VU-mètres, l'indicateur de momentum.
 
 Ce n'est pas juste une visualisation — c'est la fenêtre sur le processus de curation. L'auditeur voit les choix que le moteur fait en temps réel.
 
@@ -54,7 +54,7 @@ Ce n'est pas juste une visualisation — c'est la fenêtre sur le processus de c
 
 ## Araignée (spider)
 
-Le personnage central de la marque EBYS est une araignée — l'EatBugsYouSpider. Elle apparaît sur la page radio, dans la visualisation du deck, dans les visuels de marque.
+Le personnage central de la marque Gnumbat est une araignée — l'Gnumbat. Elle apparaît sur la page radio, dans la visualisation du deck, dans les visuels de marque.
 
 L'araignée n'est pas expliquée. Elle est là. Elle mange des bugs. Elle mange votre musique. Elle vous regarde.
 
@@ -68,7 +68,7 @@ L'araignée n'est pas expliquée. Elle est là. Elle mange des bugs. Elle mange 
 | Moteur de lecture | Max/MSP, karma~, fluid.bufstretch~ |
 | Interface de contrôle | Node.js TUI (cricket-voice.js / sdj-tui.js) |
 | Backend API | Node.js, Express, Railway |
-| Base de données | SQLite (ebys.db) |
+| Base de données | SQLite (gnumbat.db) |
 | Paiements | Stripe, Stripe Connect |
 | Streaming | Icecast, Liquidsoap, BlackHole (macOS) |
 | Index de similarité | FAISS |

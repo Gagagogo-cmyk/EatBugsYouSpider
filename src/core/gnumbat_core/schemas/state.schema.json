@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/state.schema.json",
+  "title": "Bake pipeline state (machine-owned after CAPTURED)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.bake_state/0\\.[0-9]+$"
+    },
+    "bake_id": {
+      "type": "string",
+      "pattern": "^bk_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "state": {
+      "enum": [
+        "CAPTURED",
+        "DECOMPOSING",
+        "DECOMPOSED",
+        "ANALYZING",
+        "ANALYZED",
+        "READY",
+        "ERROR"
+      ]
+    },
+    "rev": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "current": {
+      "type": "object",
+      "properties": {
+        "decomposition_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "analysis_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "decomposition_id",
+        "analysis_id"
+      ]
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "at"
+        ]
+      }
+    },
+    "error": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "from_state": {
+          "type": "string"
+        },
+        "resume_state": {
+          "enum": [
+            "CAPTURED",
+            "DECOMPOSED",
+            "ANALYZED",
+            "READY"
+          ]
+        },
+        "stage": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "job_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_state",
+        "resume_state",
+        "code",
+        "message",
+        "retryable",
+        "at"
+      ]
+    },
+    "stage_from": {
+      "enum": [
+        "CAPTURED",
+        "DECOMPOSED",
+        "ANALYZED",
+        "READY"
+      ]
+    },
+    "progress": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "stage": {
+          "type": "string"
+        },
+        "fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "message": {
+          "type": "string"
+        },
+        "tools": {
+          "type": "object",
+          "description": "Per-tool 0..1 fraction (demucs / pd-flucoma / python-ref / madmom / essentia / ...), accumulated across the whole process_bake job -- see Library.begin_stage.",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "required": [
+        "stage",
+        "fraction"
+      ]
+    },
+    "card": {
+      "type": "object",
+      "properties": {
+        "n_slices": {
+          "type": "integer"
+        },
+        "tempo_estimate": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "key_estimate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "spark": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "stems": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "stale": {
+      "type": "object",
+      "properties": {
+        "analysis": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "bake_id",
+    "state",
+    "rev",
+    "updated_at",
+    "current",
+    "history",
+    "error"
+  ],
+  "additionalProperties": true
+}

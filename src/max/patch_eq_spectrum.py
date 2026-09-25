@@ -64,7 +64,7 @@ touching one is removed first, then the full filterbank is rebuilt fresh at
 whatever N_BANDS/BAND_LO/BAND_HI/BAND_Q are currently set below — so changing
 the band count is just editing N_BANDS and re-running, not a manual
 git-checkout-then-reapply dance. Everything else in the patch (including any
-other uncommitted work sitting in ebys-analyze.maxpat) is untouched — the
+other uncommitted work sitting in gnumbat-analyze.maxpat) is untouched — the
 removal filter only matches the obj-spec_ id prefix this script itself always
 uses, never anything else in the file. Reload the Max patch after running.
 
@@ -72,7 +72,7 @@ Usage:  python3 patch_eq_spectrum.py
 """
 import json, math, os, sys
 
-PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ebys-analyze.maxpat')
+PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gnumbat-analyze.maxpat')
 GATE  = 'obj-7013'   # gate 1 → ws_server (same funnel every other analysis tap uses)
 SR    = 44100.0
 

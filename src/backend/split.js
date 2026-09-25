@@ -46,7 +46,7 @@ function detectLevel(N, segmentLengths) {
 // dj:             { stripeAccountId }
 // contributions:  [{ stripeAccountId, proportion }] — from getWeightedContributions()
 // sessionStats:   { N, segmentLengths: { VOC, MEL, BAS, DRM, avg } }
-// deck:           'ebys' | 'direct'
+// deck:           'gnumbat' | 'direct'
 function calculateSplit(amountCents, dj, contributions, sessionStats, deck) {
 
   // Direct mode — tip goes entirely to the DJ, no artist split
@@ -57,7 +57,7 @@ function calculateSplit(amountCents, dj, contributions, sessionStats, deck) {
     }
   }
 
-  // EBYS mode — full split equation
+  // Gnumbat mode — full split equation
   const { N, segmentLengths } = sessionStats
 
   const level = detectLevel(N, segmentLengths)

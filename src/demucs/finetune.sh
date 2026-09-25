@@ -1,5 +1,5 @@
 #!/bin/bash
-# EBYS — Fine-tune Cricket on Apple Silicon (MLX + LoRA)
+# Gnumbat — Fine-tune Cricket on Apple Silicon (MLX + LoRA)
 #
 # Prerequisites (run once):
 #   pip install mlx-lm
@@ -11,7 +11,7 @@
 
 set -e
 INFRA_DIR="$(cd "$(dirname "$0")" && pwd)"
-EBYS_DIR="$(dirname "$INFRA_DIR")"
+GNUMBAT_DIR="$(dirname "$INFRA_DIR")"
 
 LOG="$INFRA_DIR/training_log.jsonl"
 DATA="$INFRA_DIR/cricket_finetune.jsonl"
@@ -23,7 +23,7 @@ BASE_MODEL="meta-llama/Meta-Llama-3-8B-Instruct"
 # ── Check log exists ──────────────────────────────────────────────────────────
 if [ ! -f "$LOG" ]; then
     echo "No training_log.jsonl found."
-    echo "Play EBYS and use :bake to collect training data first."
+    echo "Play Gnumbat and use :bake to collect training data first."
     exit 1
 fi
 
@@ -81,4 +81,4 @@ echo "    --model $BASE_MODEL \\"
 echo "    --adapter-path $MODEL_OUT \\"
 echo "    --prompt 'make it darker'"
 echo ""
-echo "To use in EBYS: run ./use_cricket_local.sh (coming soon)"
+echo "To use in Gnumbat: run ./use_cricket_local.sh (coming soon)"

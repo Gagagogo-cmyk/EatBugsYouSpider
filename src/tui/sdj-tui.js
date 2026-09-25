@@ -1,4 +1,4 @@
-// sdj-tui.js — EBYS entry point: login / session picker.
+// sdj-tui.js — Gnumbat entry point: login / session picker.
 //
 // This is what `node sdj-tui.js` actually runs now. It shows a session
 // picker — list existing sessions, create new ones, unlock password-
@@ -22,7 +22,7 @@ const sessionMgr = require('./session_manager');
 const screen = blessed.screen({
   smartCSR:    false,   // see app.js's SCREEN + LAYOUT comment — same repaint-corruption reasons apply here
   fullUnicode: true,
-  title:       'EBYS — login',
+  title:       'Gnumbat — login',
 });
 
 process.on('exit', () => process.stdout.write('\x1b[?1003l\x1b[?1006l\x1b[?1000l'));
@@ -45,7 +45,7 @@ const title = blessed.text({
 const version = blessed.text({
   parent: root, top: 0, left: 'center', height: 1,
   tags: true,
-  content: '{grey-fg}[EBYS 0.1.19]{/grey-fg}  {grey-fg}[{bold}🄯{/bold} AGPL-3.0]{/grey-fg}',
+  content: '{grey-fg}[Gnumbat 0.1.19]{/grey-fg}  {grey-fg}[{bold}🄯{/bold} AGPL-3.0]{/grey-fg}',
 });
 
 const list = blessed.list({

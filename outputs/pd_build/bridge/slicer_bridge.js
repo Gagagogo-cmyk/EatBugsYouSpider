@@ -2,7 +2,7 @@
 // slicer_bridge.js — Node.js replacement for the Max `js slicer.js` object,
 // talking to Pd over OSC/UDP instead of Max's inline outlet() calls.
 //
-// slicer.js is EBYS's sequencing brain — it owns segment selection, BPM/
+// slicer.js is Gnumbat's sequencing brain — it owns segment selection, BPM/
 // downbeat-aware timing, and transport (start/stop/next/loop). Per its own
 // header comment: "Slicer does NOT touch audio objects or DSP parameters
 // directly. It emits play triggers on outlet 0 that buffer_manager.js
@@ -85,12 +85,12 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const dataDir = args["data-dir"] || process.env.EBYS_DATA_DIR;
+const dataDir = args["data-dir"] || process.env.GNUMBAT_DATA_DIR;
 const recvPort = parseInt(args["recv-port"] || "9004", 10); // Pd -> here
 const sendPort = parseInt(args["send-port"] || "9005", 10); // here -> Pd
 
 if (!dataDir) {
-  console.error("slicer_bridge: need --data-dir (or EBYS_DATA_DIR env var)");
+  console.error("slicer_bridge: need --data-dir (or GNUMBAT_DATA_DIR env var)");
   process.exit(1);
 }
 
@@ -380,23 +380,23 @@ function loadGenres() {
                 });
             }
         }
-        post("EBYS Slicer: genres loaded — " + Object.keys(trackGenres).length + " tracks\n");
+        post("Gnumbat Slicer: genres loaded — " + Object.keys(trackGenres).length + " tracks\n");
     } catch (e) {
-        post("EBYS Slicer: no genres.json found at " + getGenresPath() + " — genre filtering unavailable\n");
+        post("Gnumbat Slicer: no genres.json found at " + getGenresPath() + " — genre filtering unavailable\n");
     }
 }
 
 function setWindow(type) {
     var norm = WINDOW_ALIASES[String(type).toLowerCase()];
     if (!norm) {
-        post("EBYS Slicer: setWindow — unknown window type '" + type
+        post("Gnumbat Slicer: setWindow — unknown window type '" + type
              + "' (use hann, hamming, blackman, triangle, or rect)\n");
         outlet(1, "sysMsg", "✗ setWindow — unknown type '" + type + "'");
         return;
     }
     outlet(1, "setWindow", norm);
     outlet(1, "sysMsg", "✓ pitch-shift window → " + norm);
-    post("EBYS Slicer: setWindow = " + norm + "\n");
+    post("Gnumbat Slicer: setWindow = " + norm + "\n");
 }
 
 function chunkMode(trackOrOnOff, onOff) {
@@ -404,7 +404,7 @@ function chunkMode(trackOrOnOff, onOff) {
         var chunkOn = (String(trackOrOnOff) === '1');
         var v = !chunkOn;   // PLAY_FULL_FILE — inverted from chunkMode's own sense
         for (var t = 0; t < TRACKS.length; t++) PLAY_FULL_FILE[TRACKS[t]] = v;
-        post("EBYS Slicer: chunkMode (all) = " + (chunkOn ? 1 : 0) + "\n");
+        post("Gnumbat Slicer: chunkMode (all) = " + (chunkOn ? 1 : 0) + "\n");
         outlet(1, "playFullFile", "all", v ? 1 : 0);
         if (running) {
             for (var t2 = 0; t2 < TRACKS.length; t2++) {
@@ -414,13 +414,13 @@ function chunkMode(trackOrOnOff, onOff) {
     } else {
         var track = trackOrOnOff;
         if (!PLAY_FULL_FILE.hasOwnProperty(track)) {
-            post("EBYS Slicer: chunkMode — unknown stem '" + track + "'\n");
+            post("Gnumbat Slicer: chunkMode — unknown stem '" + track + "'\n");
             return;
         }
         var chunkOn2 = (String(onOff) === '1');
         var v2 = !chunkOn2;
         PLAY_FULL_FILE[track] = v2;
-        post("EBYS Slicer: chunkMode[" + track + "] = " + (chunkOn2 ? 1 : 0) + "\n");
+        post("Gnumbat Slicer: chunkMode[" + track + "] = " + (chunkOn2 ? 1 : 0) + "\n");
         outlet(1, "playFullFile", track, v2 ? 1 : 0);
         if (running && !sourceLock[track]) forceNextOne(track);
     }
@@ -461,17 +461,17 @@ function tickLiveDesc() {
 }
 
 function skip(track) {
-    if (!running) { post("EBYS Slicer: skip — not running\n"); return; }
-    if (TRACKS.indexOf(track) === -1) { post("EBYS Slicer: skip — unknown stem '" + track + "'\n"); return; }
+    if (!running) { post("Gnumbat Slicer: skip — not running\n"); return; }
+    if (TRACKS.indexOf(track) === -1) { post("Gnumbat Slicer: skip — unknown stem '" + track + "'\n"); return; }
     if (sourceLock[track]) {
-        post("EBYS Slicer: skip — [" + track + "] is source-locked to '" + sourceLock[track]
+        post("Gnumbat Slicer: skip — [" + track + "] is source-locked to '" + sourceLock[track]
              + "' — skip its leader instead, or unlockSource it first\n");
         return;
     }
     var prevTrack = lastSourceTrack[track];
     lastSourceTrack[track] = null;
     selectSegment(track);
-    post("EBYS Slicer: skip [" + track + "] " + (prevTrack || "(none)") + " -> "
+    post("Gnumbat Slicer: skip [" + track + "] " + (prevTrack || "(none)") + " -> "
          + (lastSourceTrack[track] || "(none)") + "\n");
 }
 
@@ -481,11 +481,11 @@ function returnToBase(stemOrAll) {
         var track  = targets[ti];
         var anchor = baseAnchor[track];
         if (TRACKS.indexOf(track) === -1) {
-            post("EBYS Slicer: returnToBase — unknown stem '" + track + "'\n");
+            post("Gnumbat Slicer: returnToBase — unknown stem '" + track + "'\n");
             continue;
         }
         if (!anchor) {
-            post("EBYS Slicer: returnToBase [" + track + "] — no base set yet "
+            post("Gnumbat Slicer: returnToBase [" + track + "] — no base set yet "
                  + "(play at least one full-file segment first)\n");
             outlet(1, "sysMsg", "✗ returnToBase [" + track + "] — no base set yet");
             continue;
@@ -502,7 +502,7 @@ function returnToBase(stemOrAll) {
             }
         }
         if (durMs <= 0) {
-            post("EBYS Slicer: returnToBase [" + track + "] — can't resolve stemDurMs for '"
+            post("Gnumbat Slicer: returnToBase [" + track + "] — can't resolve stemDurMs for '"
                  + anchor.sourceTrack + "' (index may have changed since the anchor was set)\n");
             outlet(1, "sysMsg", "✗ returnToBase [" + track + "] — lost stemDurMs for '" + anchor.sourceTrack + "'");
             continue;
@@ -525,7 +525,7 @@ function returnToBase(stemOrAll) {
         // wherever the last dispatched segment happened to end.
         lastSourceTrack[track] = anchor.sourceTrack;
         lastEndFrac[track]     = posFrac;
-        post("EBYS Slicer: returnToBase [" + track + "] — resuming '" + anchor.sourceTrack
+        post("Gnumbat Slicer: returnToBase [" + track + "] — resuming '" + anchor.sourceTrack
              + "' at " + posFrac.toFixed(4) + " (" + (posMs / 1000).toFixed(1)
              + "s, " + (elapsedMs / 1000).toFixed(1) + "s after the detour started)\n");
         outlet(1, "sysMsg", "↩ returnToBase [" + track + "]: '" + anchor.sourceTrack
@@ -539,7 +539,7 @@ function setStemDurMs(track, ms) {
         var newMs = parseFloat(ms);
         if (newMs <= 0) return;  // ignore empty-buffer reports (0ms on patch open)
         stemDurMs[track] = newMs;
-        post("EBYS Slicer: stemDurMs[" + track + "] = "
+        post("Gnumbat Slicer: stemDurMs[" + track + "] = "
              + (stemDurMs[track] / 1000).toFixed(2) + "s\n");
         outlet(1, "stemDurMs", track, stemDurMs[track]);
     }
@@ -575,32 +575,32 @@ function loadLearnedBias() {
         try {
             data = JSON.parse(fs.readFileSync(getLearnedBiasPath(), "utf8"));
         } catch (e) {
-            post("EBYS Slicer: loadLearnedBias — could not open " + getLearnedBiasPath()
+            post("Gnumbat Slicer: loadLearnedBias — could not open " + getLearnedBiasPath()
                  + " — run train_bias.py after accumulating :scoreLyr/:scoreTrs data\n");
             return;
         }
         if (data.horizontal) {
             HORIZONTAL_BIAS = data.horizontal;
-            post("EBYS Slicer: learned HORIZONTAL bias loaded (n=" + data.horizontal.n_samples
+            post("Gnumbat Slicer: learned HORIZONTAL bias loaded (n=" + data.horizontal.n_samples
                  + ", R2=" + data.horizontal.r2.toFixed(3) + ")\n");
         }
         if (data.vertical) {
             VERTICAL_BIAS = data.vertical;
-            post("EBYS Slicer: learned VERTICAL bias loaded (n=" + data.vertical.n_samples
+            post("Gnumbat Slicer: learned VERTICAL bias loaded (n=" + data.vertical.n_samples
                  + ", R2=" + data.vertical.r2.toFixed(3) + ")\n");
         }
         if (!data.horizontal && !data.vertical) {
-            post("EBYS Slicer: learned_bias.json present but both models are still "
+            post("Gnumbat Slicer: learned_bias.json present but both models are still "
                  + "null (not enough :scoreLyr/:scoreTrs data yet)\n");
         }
         FIT_SHAPES = data.dim_shapes || {};
         var shapedLabels = [];
         for (var lbl in FIT_SHAPES) shapedLabels.push(lbl + ':' + FIT_SHAPES[lbl]);
         if (shapedLabels.length > 0) {
-            post("EBYS Slicer: fit shapes loaded: " + shapedLabels.join(', ') + "\n");
+            post("Gnumbat Slicer: fit shapes loaded: " + shapedLabels.join(', ') + "\n");
         }
     } catch (e) {
-        post("EBYS Slicer: loadLearnedBias — error reading learned_bias.json: " + e.message + "\n");
+        post("Gnumbat Slicer: loadLearnedBias — error reading learned_bias.json: " + e.message + "\n");
     }
 }
 
@@ -610,7 +610,7 @@ function loadLearnedBias() {
 // re-reads the file itself.
 function reloadBias() {
     loadLearnedBias();
-    post("EBYS Slicer: reloadBias — reloaded learned_bias.json from disk\n");
+    post("Gnumbat Slicer: reloadBias — reloaded learned_bias.json from disk\n");
 }
 
 function setLearnedWeight(stem, kind, val) {
@@ -619,14 +619,14 @@ function setLearnedWeight(stem, kind, val) {
     var table = (String(kind) === 'vertical') ? LEARNED_VERT_WEIGHT
               : (String(kind) === 'horizontal') ? LEARNED_HORIZ_WEIGHT : null;
     if (!table) {
-        post("EBYS Slicer: setLearnedWeight — kind must be 'horizontal' or 'vertical', got '" + kind + "'\n");
+        post("Gnumbat Slicer: setLearnedWeight — kind must be 'horizontal' or 'vertical', got '" + kind + "'\n");
         return;
     }
     for (var i = 0; i < targets.length; i++) {
         var t = targets[i];
         if (!table.hasOwnProperty(t)) continue;
         table[t] = v;
-        post("EBYS Slicer: learnedWeight[" + kind + "][" + t + "] = " + v + "\n");
+        post("Gnumbat Slicer: learnedWeight[" + kind + "][" + t + "] = " + v + "\n");
         outlet(1, "param", "learnedWeight_" + kind + "_" + t, v);
     }
 }
@@ -635,14 +635,14 @@ function setAgentMode(stem, mode) {
     var targets = (String(stem) === 'all') ? TRACKS : [String(stem)];
     var m = String(mode);
     if (m !== 'remix' && m !== 'generate' && m !== 'blend') {
-        post("EBYS Slicer: setAgentMode — mode must be 'remix', 'generate', or 'blend', got '" + m + "'\n");
+        post("Gnumbat Slicer: setAgentMode — mode must be 'remix', 'generate', or 'blend', got '" + m + "'\n");
         return;
     }
     for (var i = 0; i < targets.length; i++) {
         var t = targets[i];
         if (!AGENT_MODE.hasOwnProperty(t)) continue;
         AGENT_MODE[t] = m;
-        post("EBYS Slicer: agentMode[" + t + "] = " + m + "\n");
+        post("Gnumbat Slicer: agentMode[" + t + "] = " + m + "\n");
         outlet(1, "param", "agentMode_" + t, m);
     }
 }
@@ -676,12 +676,12 @@ function filterPoolByAgentMode(pool, arr, track) {
         if ((wsrc.indexOf(GENERATED_PREFIX) === 0) === wantGenerated) wide.push(wi);
     }
     if (wide.length > 0) {
-        post("EBYS Slicer: [" + track + "] agentMode='" + mode + "' — no matching candidate in the "
+        post("Gnumbat Slicer: [" + track + "] agentMode='" + mode + "' — no matching candidate in the "
              + "current genre/key pool, widened to the full index (" + wide.length + " found)\n");
         return wide;
     }
 
-    post("EBYS Slicer: [" + track + "] agentMode='" + mode + "' has NO " + (wantGenerated ? "generated" : "real")
+    post("Gnumbat Slicer: [" + track + "] agentMode='" + mode + "' has NO " + (wantGenerated ? "generated" : "real")
          + " slices anywhere in the index for this stem — falling back to the unfiltered pool this once "
          + "(mode integrity NOT guaranteed here — generate clips with :gen, or switch agentMode, to fix this)\n");
     return pool;
@@ -843,7 +843,7 @@ function readLibraryJSON() {
         var raw = fs.readFileSync(getLibraryPath(), "utf8");
         return JSON.parse(raw);
     } catch (e) {
-        post("EBYS Slicer: no analysis library found at " + getLibraryPath() + " — run analysis first\n");
+        post("Gnumbat Slicer: no analysis library found at " + getLibraryPath() + " — run analysis first\n");
         return null;
     }
 }
@@ -877,14 +877,14 @@ function buildIndex() {
 
     var lib = readLibraryJSON();
     if (!lib) {
-        post("EBYS Slicer: analysis library is empty — run analysis first\n");
+        post("Gnumbat Slicer: analysis library is empty — run analysis first\n");
         return;
     }
     var d = wrapObj(lib);
 
     var topKeys = d.getkeys();
     if (!topKeys || !topKeys.length) {
-        post("EBYS Slicer: analysis library is empty — run analysis first\n");
+        post("Gnumbat Slicer: analysis library is empty — run analysis first\n");
         return;
     }
 
@@ -935,10 +935,10 @@ function buildIndex() {
     // Auto-scale slice cap: 200 slices per source track (overrides manual setMaxSlices)
     if (sourceNames.length > 0) {
         MAX_SLICES_PER_STEM = sourceNames.length * 200;
-        post("EBYS Slicer: maxSlices auto-set to " + MAX_SLICES_PER_STEM
+        post("Gnumbat Slicer: maxSlices auto-set to " + MAX_SLICES_PER_STEM
              + " (" + sourceNames.length + " tracks × 200)\n");
     }
-    post("EBYS Slicer: " + sourceNames.length + " source track(s): "
+    post("Gnumbat Slicer: " + sourceNames.length + " source track(s): "
          + sourceNames.map(function(n, i){ return i + "=" + n; }).join(", ") + "\n");
 
     // Initialise per-stem arrays
@@ -1221,7 +1221,7 @@ function buildIndex() {
                 idx.push(sub[i]);
             }
 
-            post("EBYS Slicer [" + track + "/" + sourceName + " slot=" + slot + "]: "
+            post("Gnumbat Slicer [" + track + "/" + sourceName + " slot=" + slot + "]: "
                  + sub.length + " slices  BPM=" + effectiveBPMForSource(sourceName).toFixed(1)
                  + "  stemDurMs=" + (durMs/1000).toFixed(2) + "s\n");
         }
@@ -1318,18 +1318,18 @@ function buildIndex() {
         if (rD.max > rD.min) norm.D = Math.max(norm.D, rD.max - rD.min);
     }
 
-    post("EBYS Slicer: index ready — " + idx.length + " total slices\n");
+    post("Gnumbat Slicer: index ready — " + idx.length + " total slices\n");
     outlet(1, "ready", idx.length);
     var nV = byTrack.vocals ? byTrack.vocals.length : 0;
     var nM = byTrack.melody ? byTrack.melody.length : 0;
     var nB = byTrack.bass   ? byTrack.bass.length   : 0;
     var nD = byTrack.drums  ? byTrack.drums.length  : 0;
     outlet(1, "slices", nV, nM, nB, nD);
-    post("EBYS Slicer: slices — vocals=" + nV + " melody=" + nM + " bass=" + nB + " drums=" + nD + "\n");
+    post("Gnumbat Slicer: slices — vocals=" + nV + " melody=" + nM + " bass=" + nB + " drums=" + nD + "\n");
     // Emit source track names and their slots
     for (var si = 0; si < sourceNames.length; si++) {
         outlet(1, "sourceTrack", si, sourceNames[si]);
-        post("EBYS Slicer: sourceTrack " + si + " = " + sourceNames[si] + "\n");
+        post("Gnumbat Slicer: sourceTrack " + si + " = " + sourceNames[si] + "\n");
     }
     // Ask Max to resend stem durations — stemDurMs resets on every autowatch reload
     outlet(1, "need_stemDurs");
@@ -1352,15 +1352,15 @@ function saveIndex() {
     try {
         fs.mkdirSync(path.dirname(getIndexPath()), { recursive: true });
         fs.writeFileSync(getIndexPath(), jsonStr, "utf8");
-        post("EBYS Slicer: index saved to " + getIndexPath() + " (" + jsonStr.length + " chars)\n");
+        post("Gnumbat Slicer: index saved to " + getIndexPath() + " (" + jsonStr.length + " chars)\n");
     } catch (e) {
-        post("EBYS Slicer: saveIndex failed — " + e + "\n");
+        post("Gnumbat Slicer: saveIndex failed — " + e + "\n");
     }
 }
 
 // loadIndexFromDisk — SIMPLIFIED replacement for the original's idxchunk()
 // (which reassembled a chunked stream ws_server sent at startup, read from
-// ebys_index.json on ITS side). This bridge is the one now directly
+// gnumbat_index.json on ITS side). This bridge is the one now directly
 // responsible for slicer_index.json, so it just reads its own file.
 // Called once at startup (see the bottom of this file) so the index is
 // ready immediately without requiring a fresh :buildIndex every time the
@@ -1389,7 +1389,7 @@ function loadIndexFromDisk() {
             if (r.T && r.T.max > r.T.min) norm.T = Math.max(norm.T, r.T.max - r.T.min);
             if (r.D && r.D.max > r.D.min) norm.D = Math.max(norm.D, r.D.max - r.D.min);
         }
-        post("EBYS Slicer: loaded " + idx.length + " slices from cached index (" + getIndexPath() + ")\n");
+        post("Gnumbat Slicer: loaded " + idx.length + " slices from cached index (" + getIndexPath() + ")\n");
         loadDownbeats();
         loadLearnedBias();
         outlet(1, "ready", idx.length);
@@ -1398,7 +1398,7 @@ function loadIndexFromDisk() {
         if (trackName) outlet(1, "track_name", trackName);
         outlet(1, "need_stemDurs");
     } catch(e) {
-        post("EBYS Slicer: no cached index found at " + getIndexPath() + " — send buildIndex to create one\n");
+        post("Gnumbat Slicer: no cached index found at " + getIndexPath() + " — send buildIndex to create one\n");
     }
 }
 
@@ -1478,7 +1478,7 @@ function loadDownbeats() {
         try {
             db = JSON.parse(fs.readFileSync(getDownbeatsPath(), "utf8"));
         } catch (e) {
-            post("EBYS Slicer: loadDownbeats — could not open " + getDownbeatsPath()
+            post("Gnumbat Slicer: loadDownbeats — could not open " + getDownbeatsPath()
                  + " — no downbeat data available\n");
             return;
         }
@@ -1495,7 +1495,7 @@ function loadDownbeats() {
         }
 
         if (sourceTrackNames.length === 0) {
-            post("EBYS Slicer: loadDownbeats — no source tracks in index yet\n");
+            post("Gnumbat Slicer: loadDownbeats — no source tracks in index yet\n");
             outlet(1, "sysMsg", "✗ downbeats: no source tracks in index yet — run :buildIndex first");
             return;
         }
@@ -1513,13 +1513,13 @@ function loadDownbeats() {
                 }
             }
             if (!entry) {
-                post("EBYS Slicer: loadDownbeats — no entry for '" + name + "'\n");
+                post("Gnumbat Slicer: loadDownbeats — no entry for '" + name + "'\n");
                 continue;
             }
             trackDownbeats[name] = entry;
             loaded++;
             var beatCount = entry.downbeats_ms ? entry.downbeats_ms.length : 0;
-            post("EBYS Slicer: downbeats loaded — track='" + name
+            post("Gnumbat Slicer: downbeats loaded — track='" + name
                  + "'  meter=" + entry.meter
                  + "  bpm=" + entry.bpm
                  + "  downbeats=" + beatCount
@@ -1529,14 +1529,14 @@ function loadDownbeats() {
         }
 
         if (loaded === 0) {
-            post("EBYS Slicer: loadDownbeats — no matching entries in downbeats.json\n");
+            post("Gnumbat Slicer: loadDownbeats — no matching entries in downbeats.json\n");
             outlet(1, "sysMsg", "✗ downbeats: no matching entries found — check downbeats.json / re-run madmom_tagger.py");
         } else {
             outlet(1, "sysMsg", "downbeats reloaded: " + loaded + "/" + sourceTrackNames.length + " track(s)");
         }
 
     } catch(e) {
-        post("EBYS Slicer: loadDownbeats error — " + e + "\n");
+        post("Gnumbat Slicer: loadDownbeats error — " + e + "\n");
         outlet(1, "sysMsg", "✗ downbeats reload failed — " + e);
     }
 }
@@ -1544,7 +1544,7 @@ function loadDownbeats() {
 function getDbForSource(sourceTrack) {
     if (sourceTrack) {
         if (trackDownbeats[sourceTrack]) return trackDownbeats[sourceTrack];
-        post("EBYS Slicer: WARNING — no downbeat data for '" + sourceTrack
+        post("Gnumbat Slicer: WARNING — no downbeat data for '" + sourceTrack
              + "' — BPM grid fallback (run madmom_tagger.py)\n");
         return null;
     }
@@ -1707,7 +1707,7 @@ function selectSegment(track) {
         for (var ri = 0; aligned.length < 1 && ri < RELAX_STEPS.length; ri++) {
             aligned = buildAlignedPool(BAR_SNAP_MS * RELAX_STEPS[ri], true);
             if (aligned.length >= 1) {
-                post("EBYS Slicer [" + track + "]: downbeat tolerance widened to "
+                post("Gnumbat Slicer [" + track + "]: downbeat tolerance widened to "
                      + (BAR_SNAP_MS * RELAX_STEPS[ri]) + "ms — " + aligned.length + " candidate(s)\n");
             }
         }
@@ -1718,7 +1718,7 @@ function selectSegment(track) {
         if (aligned.length < 1) {
             aligned = buildAlignedPool(BAR_SNAP_MS * RELAX_STEPS[RELAX_STEPS.length - 1], false);
             if (aligned.length >= 1) {
-                post("EBYS Slicer [" + track + "]: no slice has enough remaining audio for "
+                post("Gnumbat Slicer [" + track + "]: no slice has enough remaining audio for "
                      + SEGMENT_BARS[track] + " bars — segment will run shorter than requested\n");
             }
         }
@@ -1734,17 +1734,17 @@ function selectSegment(track) {
                 if (sliceMatchesGenre(arr[i]) && sliceMatchesKey(arr[i])) pool.push(i);
             }
             if (pool.length > 0) {
-                post("EBYS Slicer [" + track + "]: no slice has enough remaining audio for "
+                post("Gnumbat Slicer [" + track + "]: no slice has enough remaining audio for "
                      + SEGMENT_BARS[track] + " bars — segment will run shorter than requested\n");
             }
         }
         // If combined filter returns nothing, fall back to all slices
         if (pool.length === 0) {
             for (var i = 0; i < arr.length; i++) pool.push(i);
-            post("EBYS Slicer [" + track + "]: genre/key filter matched 0 slices — ignoring filter\n");
+            post("Gnumbat Slicer [" + track + "]: genre/key filter matched 0 slices — ignoring filter\n");
         }
         if (QUANTIZE_BARS && hasDur) {
-            post("EBYS Slicer [" + track + "]: no downbeat-aligned slice found even at widest tolerance — starting off-grid\n");
+            post("Gnumbat Slicer [" + track + "]: no downbeat-aligned slice found even at widest tolerance — starting off-grid\n");
         }
     }
 
@@ -1765,7 +1765,7 @@ function selectSegment(track) {
         if (pinned.length >= 1) {
             pool = pinned;
         } else {
-            post("EBYS Slicer [" + track + "]: stemSource filter '" + stemSourceFilter[track]
+            post("Gnumbat Slicer [" + track + "]: stemSource filter '" + stemSourceFilter[track]
                  + "' matched 0 slices — ignoring pin\n");
         }
     } else if (sourceLock[track]) {
@@ -1780,7 +1780,7 @@ function selectSegment(track) {
             if (locked.length >= 1) {
                 pool = locked;
             } else {
-                post("EBYS Slicer [" + track + "]: sourceLock → '" + lockSrc + "' matched 0 slices — ignoring\n");
+                post("Gnumbat Slicer [" + track + "]: sourceLock → '" + lockSrc + "' matched 0 slices — ignoring\n");
             }
         }
     } else {
@@ -1931,7 +1931,7 @@ function selectSegment(track) {
                 }
             }
             if (best >= 0) {
-                post("EBYS Slicer [" + track + "]: STAY reached end of '" + stayTrack
+                post("Gnumbat Slicer [" + track + "]: STAY reached end of '" + stayTrack
                      + "' — wrapping to its own start (" + arr[best].time.toFixed(3) + ")\n");
             }
         }
@@ -1945,7 +1945,7 @@ function selectSegment(track) {
         // STAY_PROB=1 it's the only way this stem's own STAY logic can jump
         // to unrelated content instead of just repeating stayTrack.
         if (best < 0) {
-            post("EBYS Slicer [" + track + "]: STAY — '" + stayTrack
+            post("Gnumbat Slicer [" + track + "]: STAY — '" + stayTrack
                  + "' has no slices left in the index at all, falling back to a fresh pick from the pool\n");
         }
         startIdx = best >= 0 ? best : pool[Math.floor(Math.random() * pool.length)];
@@ -2209,7 +2209,7 @@ function selectSegment(track) {
         // here means a mismatch fails safe into the old approximate anchor
         // instead of silently pointing STAY at a boundary that doesn't exist.
         if (realStopFrac !== null && !hasSliceBoundaryAt(arr, startSlice.sourceTrack, realStopFrac, durMs)) {
-            post("EBYS Slicer [" + track + "]: nextDownbeatFrac returned " + realStopFrac.toFixed(4)
+            post("Gnumbat Slicer [" + track + "]: nextDownbeatFrac returned " + realStopFrac.toFixed(4)
                  + " for '" + startSlice.sourceTrack + "' but no slice exists there — falling back to bar-math anchor\n");
             realStopFrac = null;
         }
@@ -2342,11 +2342,11 @@ function findNearestSlice(followerTrack, sourceTrack, timeFrac) {
 function pushSyncedSegment(leader, follower, cycleId, groupSize) {
     var seg = lastSegment[leader];
     if (!seg || !running) {
-        post("EBYS Slicer: pushSyncedSegment(" + leader + "→" + follower + ") skipped — "
+        post("Gnumbat Slicer: pushSyncedSegment(" + leader + "→" + follower + ") skipped — "
              + (!running ? "engine not running" : "leader has no segment yet") + "\n");
         return;
     }
-    post("EBYS Slicer: pushSyncedSegment [" + follower + "] ← [" + leader + "]  "
+    post("Gnumbat Slicer: pushSyncedSegment [" + follower + "] ← [" + leader + "]  "
          + seg.sourceTrack + " @ " + seg.time.toFixed(3) + "→" + seg.endFrac.toFixed(3)
          + "  slot=" + seg.slot + "  " + Math.round(seg.segDurMsForOutlet) + "ms\n");
 
@@ -2383,7 +2383,7 @@ function pushSyncedSegment(leader, follower, cycleId, groupSize) {
         var endMs   = seg.endFrac * leaderDurMs;
         syncStartFrac = startMs / followerDurMs;
         syncEndFrac   = endMs   / followerDurMs;
-        post("EBYS Slicer: pushSyncedSegment [" + follower + "] durMs mismatch vs leader ["
+        post("Gnumbat Slicer: pushSyncedSegment [" + follower + "] durMs mismatch vs leader ["
              + leader + "] (" + Math.round(followerDurMs) + "ms vs " + Math.round(leaderDurMs)
              + "ms) — corrected frac " + seg.time.toFixed(4) + "→" + syncStartFrac.toFixed(4) + "\n");
     }
@@ -2490,10 +2490,10 @@ function start() {
             stopQuantizeTask.cancel();
             stopQuantizeTask = null;
             outlet(1, "sysMsg", "→ pending quantized stop cancelled — still playing");
-            post("EBYS Slicer: :start received while a quantized :stop was pending — cancelled, still running\n");
+            post("Gnumbat Slicer: :start received while a quantized :stop was pending — cancelled, still running\n");
             return;
         }
-        post("EBYS Slicer: already running — ignoring duplicate start\n");
+        post("Gnumbat Slicer: already running — ignoring duplicate start\n");
         return;
     }
 
@@ -2566,7 +2566,7 @@ function start() {
             if (rseg) rseg.dispatchedAtMs = resumeNow;
         }
         outlet(1, "resumed");
-        post("EBYS Slicer: resumed — continuing from stopped position\n");
+        post("Gnumbat Slicer: resumed — continuing from stopped position\n");
         scheduleDownbeatPulse();
         return;
     }
@@ -2609,7 +2609,7 @@ function start() {
     for (var t = 0; t < TRACKS.length; t++) {
         if (!sourceLock[TRACKS[t]]) selectSegment(TRACKS[t]);
     }
-    post("EBYS Slicer: started — bars=" + JSON.stringify(SEGMENT_BARS)
+    post("Gnumbat Slicer: started — bars=" + JSON.stringify(SEGMENT_BARS)
          + "  quantize=" + QUANTIZE_BARS
          + "  stay=" + JSON.stringify(STAY_PROB) + "\n");
     outlet(1, "started");
@@ -2654,7 +2654,7 @@ function stop() {
     stopQuantizeTask = new Task(performStopNow, this);
     stopQuantizeTask.schedule(delayMs);
     outlet(1, "sysMsg", "○ stop queued — freezing at next downbeat (" + Math.round(delayMs) + "ms)");
-    post("EBYS Slicer: :stop received — quantized, freezing in " + Math.round(delayMs) + "ms at next downbeat\n");
+    post("Gnumbat Slicer: :stop received — quantized, freezing in " + Math.round(delayMs) + "ms at next downbeat\n");
 }
 
 function msUntilNextDownbeat() {
@@ -2727,7 +2727,7 @@ function performStopNow() {
             var progressFrac = totalWallMs > 0 ? Math.max(0, Math.min(1, elapsedWallMs / totalWallMs)) : 0;
             pausedPosFrac[track] = Math.max(0, Math.min(1, segStartFrac + (segEndFrac - segStartFrac) * progressFrac));
         } else {
-            post("EBYS Slicer: [" + track + "] stop — wall-clock position estimate untrustworthy, skipping explicit reseek this cycle\n");
+            post("Gnumbat Slicer: [" + track + "] stop — wall-clock position estimate untrustworthy, skipping explicit reseek this cycle\n");
         }
     }
 
@@ -2757,7 +2757,7 @@ function next(track) {
         if (TRIGGER_MODE[track] && !loopState[track] && !transitionState[track]) {
             triggerReady[track] = true;
             outlet(1, "triggerReady", track, 1);
-            post("EBYS Slicer: [" + track + "] trigger mode — waiting for pad fire\n");
+            post("Gnumbat Slicer: [" + track + "] trigger mode — waiting for pad fire\n");
             return;
         }
         if (transitionState[track]) {
@@ -2830,7 +2830,7 @@ function next(track) {
             if (SEAM_DEBUG) {
                 var _prevDisp = (lastSegment[track] && lastSegment[track].dispatchedAtMs) || 0;
                 var _measured = _prevDisp ? (Date.now() - _prevDisp) : 0;
-                post("EBYS Seam[" + track + "]: win " + lp.startTime.toFixed(4) + "→"
+                post("Gnumbat Seam[" + track + "]: win " + lp.startTime.toFixed(4) + "→"
                      + lp.endTime.toFixed(4) + " content=" + loopSegMs + "ms stretch="
                      + loopStretchR.toFixed(3) + " intended=" + actualLoopMs + "ms measured="
                      + _measured + "ms drift=" + (_measured - actualLoopMs) + "ms\n");
@@ -2891,7 +2891,7 @@ function next(track) {
             var leaderSeg = lastSegment[sourceLock[track]];
             var mySeg     = lastSegment[track];
             if (mySeg && mySeg.cycleId === leaderSeg.cycleId) {
-                post("EBYS Slicer: [" + track + "] own timer fired but already synced to leader's cycle "
+                post("Gnumbat Slicer: [" + track + "] own timer fired but already synced to leader's cycle "
                      + leaderSeg.cycleId + " — skipping redundant self-pull\n");
             } else {
                 // Solo barrier (group of one) — by the time this fires the
@@ -2915,7 +2915,7 @@ function next(track) {
 
 function forceNext(stemOrAll) {
     if (!running) {
-        post("EBYS Slicer: forceNext — not running\n");
+        post("Gnumbat Slicer: forceNext — not running\n");
         return;
     }
     var arg = stemOrAll ? String(stemOrAll) : 'all';
@@ -2923,16 +2923,16 @@ function forceNext(stemOrAll) {
         for (var t = 0; t < TRACKS.length; t++) {
             if (!sourceLock[TRACKS[t]]) forceNextOne(TRACKS[t]);
         }
-        post("EBYS Slicer: forceNext all\n");
+        post("Gnumbat Slicer: forceNext all\n");
         return;
     }
     if (!TRACKS.includes(arg)) {
-        post("EBYS Slicer: forceNext — unknown stem '" + arg + "'\n");
+        post("Gnumbat Slicer: forceNext — unknown stem '" + arg + "'\n");
         return;
     }
     var target = sourceLock[arg] || arg; // locked follower -> advance its leader instead
     forceNextOne(target);
-    post("EBYS Slicer: forceNext [" + arg + "]"
+    post("Gnumbat Slicer: forceNext [" + arg + "]"
          + (target !== arg ? " — locked to '" + target + "', advancing leader instead\n" : "\n"));
 }
 
@@ -2964,7 +2964,7 @@ function forceNextOne(track) {
 function pickLoopWindow(track, bars) {
     var arr = byTrack[track];
     if (!arr || arr.length === 0) {
-        post("EBYS Slicer: loop — no slices for " + track + "\n");
+        post("Gnumbat Slicer: loop — no slices for " + track + "\n");
         return null;
     }
     // Bug fix: was `|| SEGMENT_BARS` (the whole per-track object, not a
@@ -3032,7 +3032,7 @@ function loop(track, bars) {
         // stem would stop following its leader at all. Refuse instead of
         // quietly breaking the lock — unlock first if looping is really
         // what's wanted.
-        post("EBYS Slicer: loop — [" + track + "] is source-locked to '"
+        post("Gnumbat Slicer: loop — [" + track + "] is source-locked to '"
              + sourceLock[track] + "' — unlockSource it first if you want to loop it independently\n");
         return;
     }
@@ -3042,7 +3042,7 @@ function loop(track, bars) {
     transitionState[track] = null; // layer mode and transition mode are mutually exclusive
     loopState[track] = win;
 
-    post("EBYS Slicer: loop " + track + " @" + win.bars + " bars"
+    post("Gnumbat Slicer: loop " + track + " @" + win.bars + " bars"
          + "  [" + win.startTime.toFixed(3) + " → " + win.endTime.toFixed(3) + "]\n");
     outlet(1, "loop", track, win.bars, "locked");
 }
@@ -3060,11 +3060,11 @@ function skipLayer(stemOrAll) {
         for (var t = 0; t < TRACKS.length; t++) {
             if (!sourceLock[TRACKS[t]]) loop(TRACKS[t]);
         }
-        post("EBYS Slicer: skipLayer all\n");
+        post("Gnumbat Slicer: skipLayer all\n");
         return;
     }
     if (TRACKS.indexOf(arg) === -1) {
-        post("EBYS Slicer: skipLayer — unknown stem '" + arg + "'\n");
+        post("Gnumbat Slicer: skipLayer — unknown stem '" + arg + "'\n");
         return;
     }
     loop(arg);
@@ -3076,11 +3076,11 @@ function skipLayer(stemOrAll) {
 // branch added to next() below). Mutually exclusive with plain loopState.
 function startTransition(track, bars) {
     if (TRACKS.indexOf(track) === -1) {
-        post("EBYS Slicer: startTransition — unknown stem '" + track + "'\n");
+        post("Gnumbat Slicer: startTransition — unknown stem '" + track + "'\n");
         return;
     }
     if (sourceLock[track]) {
-        post("EBYS Slicer: startTransition — [" + track + "] is source-locked to '"
+        post("Gnumbat Slicer: startTransition — [" + track + "] is source-locked to '"
              + sourceLock[track] + "' — unlockSource it first\n");
         return;
     }
@@ -3092,7 +3092,7 @@ function startTransition(track, bars) {
     loopState[track] = null; // transition mode and layer mode are mutually exclusive
     transitionState[track] = { segA: a, segB: b, phase: 'A', bars: a.bars };
 
-    post("EBYS Slicer: transition " + track + " started  A=[" + a.startTime.toFixed(3) + " → " + a.endTime.toFixed(3)
+    post("Gnumbat Slicer: transition " + track + " started  A=[" + a.startTime.toFixed(3) + " → " + a.endTime.toFixed(3)
          + "]  B=[" + b.startTime.toFixed(3) + " → " + b.endTime.toFixed(3) + "]\n");
     outlet(1, "transitionMode", track, 1);
 }
@@ -3104,7 +3104,7 @@ function startTransition(track, bars) {
 // button once. Deliberately per-stem only, no 'all' variant.
 function setPlaybackMode(track, mode) {
     if (TRACKS.indexOf(track) === -1) {
-        post("EBYS Slicer: setPlaybackMode — unknown stem '" + track + "'\n");
+        post("Gnumbat Slicer: setPlaybackMode — unknown stem '" + track + "'\n");
         return;
     }
     mode = String(mode);
@@ -3113,7 +3113,7 @@ function setPlaybackMode(track, mode) {
     } else if (mode === 'transition') {
         startTransition(track);
     } else {
-        post("EBYS Slicer: setPlaybackMode — unknown mode '" + mode + "' (want 'layer' or 'transition')\n");
+        post("Gnumbat Slicer: setPlaybackMode — unknown mode '" + mode + "' (want 'layer' or 'transition')\n");
     }
 }
 
@@ -3135,7 +3135,7 @@ function skipTransitionSide(stemOrAll, side) {
         }
     } else {
         if (TRACKS.indexOf(arg) === -1) {
-            post("EBYS Slicer: skipTransition" + (side === 'A' ? 'Start' : 'End') + " — unknown stem '" + arg + "'\n");
+            post("Gnumbat Slicer: skipTransition" + (side === 'A' ? 'Start' : 'End') + " — unknown stem '" + arg + "'\n");
             return;
         }
         targets = [arg];
@@ -3144,18 +3144,18 @@ function skipTransitionSide(stemOrAll, side) {
         var track = targets[ti];
         var ts = transitionState[track];
         if (!ts) {
-            post("EBYS Slicer: skipTransition" + (side === 'A' ? 'Start' : 'End') + " [" + track
+            post("Gnumbat Slicer: skipTransition" + (side === 'A' ? 'Start' : 'End') + " [" + track
                  + "] — not in transition mode, ignoring\n");
             continue;
         }
         var win = pickLoopWindow(track, ts.bars);
         if (!win) continue;
         if (side === 'A') { ts.segA = win; } else { ts.segB = win; }
-        post("EBYS Slicer: skipTransition" + (side === 'A' ? 'Start' : 'End') + " [" + track + "]  "
+        post("Gnumbat Slicer: skipTransition" + (side === 'A' ? 'Start' : 'End') + " [" + track + "]  "
              + side + "=[" + win.startTime.toFixed(3) + " → " + win.endTime.toFixed(3) + "]\n");
     }
     if (arg === 'all') {
-        post("EBYS Slicer: skipTransition" + (side === 'A' ? 'Start' : 'End') + " all\n");
+        post("Gnumbat Slicer: skipTransition" + (side === 'A' ? 'Start' : 'End') + " all\n");
     }
 }
 
@@ -3164,7 +3164,7 @@ function unloop(track) {
     if (loopState.hasOwnProperty(track) && loopState[track]) { loopState[track] = null; had = true; }
     if (transitionState.hasOwnProperty(track) && transitionState[track]) { transitionState[track] = null; had = true; }
     if (had) {
-        post("EBYS Slicer: unloop " + track + "\n");
+        post("Gnumbat Slicer: unloop " + track + "\n");
         outlet(1, "unloop", track);
     }
 }
@@ -3183,7 +3183,7 @@ function lockSource() {
     var leader = args[0];
     var followers = args.slice(1);
     if (followers.length === 0) {
-        post("EBYS Slicer: lockSource — need at least one follower\n");
+        post("Gnumbat Slicer: lockSource — need at least one follower\n");
         return;
     }
     for (var fi = 0; fi < followers.length; fi++) {
@@ -3193,11 +3193,11 @@ function lockSource() {
 
 function lockSourcePair(leader, follower) {
     if (!TRACKS.includes(leader) || !TRACKS.includes(follower)) {
-        post("EBYS Slicer: lockSource — unknown stem '" + leader + "' or '" + follower + "'\n");
+        post("Gnumbat Slicer: lockSource — unknown stem '" + leader + "' or '" + follower + "'\n");
         return;
     }
     if (leader === follower) {
-        post("EBYS Slicer: lockSource — leader and follower can't both be '" + leader + "'\n");
+        post("Gnumbat Slicer: lockSource — leader and follower can't both be '" + leader + "'\n");
         return;
     }
     // Cycle guard: walk the leader chain — if `follower` is already an ancestor
@@ -3210,7 +3210,7 @@ function lockSourcePair(leader, follower) {
         seen[chainNode] = true;
         chainNode = sourceLock[chainNode];
         if (chainNode === follower) {
-            post("EBYS Slicer: lockSource — would create a cycle (" + follower + " → … → " + leader + " → " + follower + ") — ignored\n");
+            post("Gnumbat Slicer: lockSource — would create a cycle (" + follower + " → … → " + leader + " → " + follower + ") — ignored\n");
             return;
         }
     }
@@ -3225,17 +3225,17 @@ function lockSourcePair(leader, follower) {
     // clear, not a retrigger — the follower's current audio isn't touched.
     if (loopState[follower]) {
         loopState[follower] = null;
-        post("EBYS Slicer: lockSource — cleared [" + follower + "]'s independent loop to honor the new lock\n");
+        post("Gnumbat Slicer: lockSource — cleared [" + follower + "]'s independent loop to honor the new lock\n");
         outlet(1, "unloop", follower);
     }
     if (TRIGGER_MODE[follower]) {
         TRIGGER_MODE[follower] = false;
         triggerReady[follower] = false;
-        post("EBYS Slicer: lockSource — cleared [" + follower + "]'s trigger mode to honor the new lock\n");
+        post("Gnumbat Slicer: lockSource — cleared [" + follower + "]'s trigger mode to honor the new lock\n");
         outlet(1, "triggerMode", follower, 0);
         outlet(1, "triggerReady", follower, 0);
     }
-    post("EBYS Slicer: sourceLock[" + follower + "] → " + leader + "  (takes effect at [" + follower + "]'s next slice)\n");
+    post("Gnumbat Slicer: sourceLock[" + follower + "] → " + leader + "  (takes effect at [" + follower + "]'s next slice)\n");
     outlet(1, "lockSource", follower, leader);
     // Deliberately NOT snapping the follower onto the leader's current
     // segment here — per explicit request, entering a command shouldn't cut
@@ -3252,12 +3252,12 @@ function unlockSource(stem) {
         for (var i = 0; i < tks.length; i++) sourceLock[tks[i]] = null;
         var lks = Object.keys(syncFollowers);
         for (var i = 0; i < lks.length; i++) syncFollowers[lks[i]] = [];
-        post("EBYS Slicer: all source locks released\n");
+        post("Gnumbat Slicer: all source locks released\n");
         outlet(1, "unlockSource", "all");
     } else if (sourceLock.hasOwnProperty(stem)) {
         sourceLock[stem] = null;
         removeFromSyncFollowers(stem);
-        post("EBYS Slicer: sourceLock[" + stem + "] cleared\n");
+        post("Gnumbat Slicer: sourceLock[" + stem + "] cleared\n");
         outlet(1, "unlockSource", stem);
     }
 }
@@ -3265,7 +3265,7 @@ function unlockSource(stem) {
 function unloopAll() {
     var tracks = Object.keys(loopState);
     for (var i = 0; i < tracks.length; i++) loopState[tracks[i]] = null;
-    post("EBYS Slicer: all loops released\n");
+    post("Gnumbat Slicer: all loops released\n");
     outlet(1, "unloop", "all");
 }
 
@@ -3273,7 +3273,7 @@ function trigger(track) {
     if (!running) return;
     if (track && TRACKS.indexOf(track) !== -1) {
         if (!triggerReady[track]) {
-            post("EBYS Slicer: trigger [" + track + "] — stem not paused (triggerReady=false)\n");
+            post("Gnumbat Slicer: trigger [" + track + "] — stem not paused (triggerReady=false)\n");
             return;
         }
         triggerReady[track] = false;
@@ -3302,7 +3302,7 @@ function setTriggerMode(track, onOff) {
         for (var t = 0; t < TRACKS.length; t++) {
             var tr = TRACKS[t];
             if (on && sourceLock[tr]) {
-                post("EBYS Slicer: setTriggerMode — skipping [" + tr + "] (source-locked to '"
+                post("Gnumbat Slicer: setTriggerMode — skipping [" + tr + "] (source-locked to '"
                      + sourceLock[tr] + "') — unlockSource it first if you want to trigger-pad it independently\n");
                 continue;
             }
@@ -3316,7 +3316,7 @@ function setTriggerMode(track, onOff) {
         outlet(1, "triggerMode", "all", on ? 1 : 0);
     } else if (TRIGGER_MODE.hasOwnProperty(track)) {
         if (on && sourceLock[track]) {
-            post("EBYS Slicer: setTriggerMode — [" + track + "] is source-locked to '"
+            post("Gnumbat Slicer: setTriggerMode — [" + track + "] is source-locked to '"
                  + sourceLock[track] + "' — unlockSource it first if you want to trigger-pad it independently\n");
             return;
         }
@@ -3328,10 +3328,10 @@ function setTriggerMode(track, onOff) {
         }
         outlet(1, "triggerMode", track, on ? 1 : 0);
     } else {
-        post("EBYS Slicer: setTriggerMode — unknown stem '" + track + "'\n");
+        post("Gnumbat Slicer: setTriggerMode — unknown stem '" + track + "'\n");
         return;
     }
-    post("EBYS Slicer: triggerMode[" + track + "] = " + on + "\n");
+    post("Gnumbat Slicer: triggerMode[" + track + "] = " + on + "\n");
 }
 
 function defaultWeights() { return { C: 1.0, S: 0.8, E: 2.0, F: 0.5, P: 1.5, H: 1.0, T: 1.5 }; }
@@ -3342,7 +3342,7 @@ function setWeight(stem, dim, val) {
         var t = targets[i];
         if (!WEIGHTS[t] || !WEIGHTS[t].hasOwnProperty(dim)) continue;
         WEIGHTS[t][dim] = parseFloat(val);
-        post("EBYS Slicer: weight[" + t + "][" + dim + "] = " + WEIGHTS[t][dim] + "\n");
+        post("Gnumbat Slicer: weight[" + t + "][" + dim + "] = " + WEIGHTS[t][dim] + "\n");
         outlet(1, "param", "weight" + dim + "_" + t, WEIGHTS[t][dim]);
     }
 }
@@ -3480,7 +3480,7 @@ function setSegmentBars(trackOrN, n) {
                 SEGMENT_BARS[TRACKS[t]] = val;
                 PLAY_FULL_FILE[TRACKS[t]] = false;
             }
-            post("EBYS Slicer: segmentBars (all) = " + val + "  (playFullFile disabled, takes effect next slice)\n");
+            post("Gnumbat Slicer: segmentBars (all) = " + val + "  (playFullFile disabled, takes effect next slice)\n");
             outlet(1, "segmentBars", "all", val);
             outlet(1, "playFullFile", "all", 0);
         }
@@ -3490,7 +3490,7 @@ function setSegmentBars(trackOrN, n) {
         if (SEGMENT_BARS.hasOwnProperty(track) && val > 0 && val <= 64) {
             SEGMENT_BARS[track] = val;
             PLAY_FULL_FILE[track] = false;
-            post("EBYS Slicer: segmentBars[" + track + "] = " + val + "  (playFullFile disabled, takes effect next slice)\n");
+            post("Gnumbat Slicer: segmentBars[" + track + "] = " + val + "  (playFullFile disabled, takes effect next slice)\n");
             outlet(1, "segmentBars", track, val);
             outlet(1, "playFullFile", track, 0);
         }
@@ -3499,12 +3499,12 @@ function setSegmentBars(trackOrN, n) {
 
 function seamDebug(v) {
     SEAM_DEBUG = (parseInt(v) !== 0);
-    post("EBYS Slicer: seamDebug = " + SEAM_DEBUG + "\n");
+    post("Gnumbat Slicer: seamDebug = " + SEAM_DEBUG + "\n");
 }
 
 function setQuantize(v) {
     QUANTIZE_BARS = (parseInt(v) !== 0);
-    post("EBYS Slicer: quantize = " + QUANTIZE_BARS + " (takes effect next slice)\n");
+    post("Gnumbat Slicer: quantize = " + QUANTIZE_BARS + " (takes effect next slice)\n");
     outlet(1, "quantize", QUANTIZE_BARS ? 1 : 0);
     // No applyNow() — state-only change, per explicit request commands don't
     // cut off currently-playing audio. Applies the next time each stem
@@ -3513,7 +3513,7 @@ function setQuantize(v) {
 
 function setQuantizeStop(v) {
     QUANTIZE_STOP = (parseInt(v) !== 0);
-    post("EBYS Slicer: quantizeStop = " + QUANTIZE_STOP + " (takes effect next :stop)\n");
+    post("Gnumbat Slicer: quantizeStop = " + QUANTIZE_STOP + " (takes effect next :stop)\n");
     outlet(1, "quantizeStop", QUANTIZE_STOP ? 1 : 0);
 }
 
@@ -3521,7 +3521,7 @@ function setQuantizeStop(v) {
 // instead of asking a ws_server that no longer exists to resend a chunk stream.
 function reloadDownbeats() {
     loadDownbeats();
-    post("EBYS Slicer: reloadDownbeats — reloaded downbeats.json from disk\n");
+    post("Gnumbat Slicer: reloadDownbeats — reloaded downbeats.json from disk\n");
 }
 
 // loadbang — Max calls this automatically on every autowatch reload; this
@@ -3541,14 +3541,14 @@ function setStayProb(trackOrV, v) {
     if (v === undefined) {
         var val = clamp(parseFloat(trackOrV), 0.0, 1.0);
         for (var t = 0; t < TRACKS.length; t++) STAY_PROB[TRACKS[t]] = val;
-        post("EBYS Slicer: stayProb (all) = " + val + "\n");
+        post("Gnumbat Slicer: stayProb (all) = " + val + "\n");
         outlet(1, "stayProb", "all", val);
     } else {
         var track = trackOrV;
         var val   = clamp(parseFloat(v), 0.0, 1.0);
         if (STAY_PROB.hasOwnProperty(track)) {
             STAY_PROB[track] = val;
-            post("EBYS Slicer: stayProb[" + track + "] = " + val + "\n");
+            post("Gnumbat Slicer: stayProb[" + track + "] = " + val + "\n");
             outlet(1, "stayProb", track, val);
         }
     }
@@ -3565,14 +3565,14 @@ function setStemSource() {
         var t = targets[i];
         if (stemSourceFilter.hasOwnProperty(t)) {
             stemSourceFilter[t] = name;
-            post("EBYS Slicer: stemSource[" + t + "] = " + (name || "any") + "\n");
+            post("Gnumbat Slicer: stemSource[" + t + "] = " + (name || "any") + "\n");
             outlet(1, "stemSource", t, name || "any");
             // selectSegment()'s pool-building checks stemSourceFilter before
             // sourceLock — so a pin set here on a locked follower is stored
             // but has no effect until it's unlocked. Say so, rather than
             // leaving it a silent no-op.
             if (sourceLock[t]) {
-                post("EBYS Slicer: stemSource[" + t + "] — [" + t + "] is source-locked to '"
+                post("Gnumbat Slicer: stemSource[" + t + "] — [" + t + "] is source-locked to '"
                      + sourceLock[t] + "', this pin has no effect until it's unlocked\n");
             }
         }
@@ -3587,13 +3587,13 @@ function setSrcWeights(bw, cw, kw) {
     cw = parseFloat(cw);
     kw = (kw === undefined) ? 0 : parseFloat(kw);
     if (isNaN(bw) || isNaN(cw) || isNaN(kw) || (bw + cw + kw) <= 0) {
-        post("EBYS Slicer: setSrcWeights — invalid values\n"); return;
+        post("Gnumbat Slicer: setSrcWeights — invalid values\n"); return;
     }
     var sum = bw + cw + kw;
     SRC_BPM_WEIGHT      = bw / sum;
     SRC_COHESION_WEIGHT = cw / sum;
     SRC_KEY_WEIGHT       = kw / sum;
-    post("EBYS Slicer: srcWeights bpm=" + SRC_BPM_WEIGHT.toFixed(2)
+    post("Gnumbat Slicer: srcWeights bpm=" + SRC_BPM_WEIGHT.toFixed(2)
          + " cohesion=" + SRC_COHESION_WEIGHT.toFixed(2)
          + " key=" + SRC_KEY_WEIGHT.toFixed(2) + "\n");
     outlet(1, "srcWeights", SRC_BPM_WEIGHT, SRC_COHESION_WEIGHT, SRC_KEY_WEIGHT);
@@ -3602,14 +3602,14 @@ function setSrcWeights(bw, cw, kw) {
 function setMaxSlices(n) {
     n = parseInt(n);
     MAX_SLICES_PER_STEM = (n > 0) ? n : 0;
-    post("EBYS Slicer: maxSlices = " + (MAX_SLICES_PER_STEM || "unlimited") + "\n");
+    post("Gnumbat Slicer: maxSlices = " + (MAX_SLICES_PER_STEM || "unlimited") + "\n");
 }
 
 function setFallbackBPM(n) {
     n = parseFloat(n);
     if (n > 40 && n < 280) {
         FALLBACK_BPM = n;
-        post("EBYS Slicer: fallbackBPM = " + FALLBACK_BPM + "\n");
+        post("Gnumbat Slicer: fallbackBPM = " + FALLBACK_BPM + "\n");
         applyGlobalBPMLive();
     }
 }
@@ -3618,7 +3618,7 @@ function setGlobalBPM(n) {
     n = parseFloat(n);
     if (n === 0) {
         GLOBAL_BPM = 0;
-        post("EBYS Slicer: globalBPM cleared — using analyzed BPM\n");
+        post("Gnumbat Slicer: globalBPM cleared — using analyzed BPM\n");
         // This outlet call was missing on the clear path — only the "set an
         // override" branch below sent it. ws_server.js's Max.addHandler
         // ('globalBPM', ...) is the ONLY thing that updates its own
@@ -3638,22 +3638,22 @@ function setGlobalBPM(n) {
         // Was "+ SEGMENT_BARS" — string-concatenating a plain object prints
         // "[object Object]" instead of its contents (cosmetic only, but
         // useless for exactly the kind of debugging this session needed).
-        post("EBYS Slicer: globalBPM = " + GLOBAL_BPM + " — applying live, segBars=" + JSON.stringify(SEGMENT_BARS) + "\n");
+        post("Gnumbat Slicer: globalBPM = " + GLOBAL_BPM + " — applying live, segBars=" + JSON.stringify(SEGMENT_BARS) + "\n");
         outlet(1, "globalBPM", GLOBAL_BPM);
         applyGlobalBPMLive();
     } else {
-        post("EBYS Slicer: setGlobalBPM rejected value: " + n + "\n");
+        post("Gnumbat Slicer: setGlobalBPM rejected value: " + n + "\n");
     }
 }
 
 function applyGlobalBPMLive() {
     if (!running) {
-        post("EBYS Slicer: applyGlobalBPMLive — skipped, not running\n");
+        post("Gnumbat Slicer: applyGlobalBPMLive — skipped, not running\n");
         return;
     }
     var target = GLOBAL_BPM > 0 ? GLOBAL_BPM : FALLBACK_BPM;
     if (target <= 0) {
-        post("EBYS Slicer: applyGlobalBPMLive — skipped, no valid target BPM\n");
+        post("Gnumbat Slicer: applyGlobalBPMLive — skipped, no valid target BPM\n");
         return;
     }
     var now = Date.now();
@@ -3664,7 +3664,7 @@ function applyGlobalBPMLive() {
         // leave it alone (same "no stretch" fallback stretchRatioForSlice
         // uses when srcBpm can't be resolved).
         if (!seg || !seg.srcBpm || !seg.dispatchedAtMs) {
-            post("EBYS Slicer: [" + track + "] applyGlobalBPMLive — skipped, "
+            post("Gnumbat Slicer: [" + track + "] applyGlobalBPMLive — skipped, "
                  + (!seg ? "no lastSegment yet" : (!seg.srcBpm ? "srcBpm missing" : "dispatchedAtMs missing"))
                  + "\n");
             continue;
@@ -3673,7 +3673,7 @@ function applyGlobalBPMLive() {
         var oldStretchR = seg.stretchR || 1.0;
         var newStretchR = seg.srcBpm / target;
         if (Math.abs(newStretchR - oldStretchR) < 1e-6) {
-            post("EBYS Slicer: [" + track + "] applyGlobalBPMLive — skipped, already at target"
+            post("Gnumbat Slicer: [" + track + "] applyGlobalBPMLive — skipped, already at target"
                  + "  srcBpm=" + seg.srcBpm + "  target=" + target
                  + "  stretchR=" + oldStretchR.toFixed(3) + "\n");
             continue;
@@ -3686,7 +3686,7 @@ function applyGlobalBPMLive() {
         // This segment's basically over already — let the natural next()
         // fire on its own rather than scheduling a ~0ms or negative delay.
         if (remainingContentMs <= 0) {
-            post("EBYS Slicer: [" + track + "] applyGlobalBPMLive — skipped, segment nearly over"
+            post("Gnumbat Slicer: [" + track + "] applyGlobalBPMLive — skipped, segment nearly over"
                  + "  elapsed=" + Math.round(elapsedWallMs) + "ms  total=" + Math.round(contentTotalMs) + "ms\n");
             continue;
         }
@@ -3714,7 +3714,7 @@ function applyGlobalBPMLive() {
         seg.segDurMsForOutlet = remainingContentMs;
         seg.dispatchedAtMs    = now;
 
-        post("EBYS Slicer: [" + track + "] LIVE retime — stretch " + oldStretchR.toFixed(3)
+        post("Gnumbat Slicer: [" + track + "] LIVE retime — stretch " + oldStretchR.toFixed(3)
              + "→" + newStretchR.toFixed(3) + "  remaining=" + Math.round(remainingWallMsNew) + "ms\n");
     }
     // A live tempo change shifts where the downbeat grid actually falls —
@@ -3798,7 +3798,7 @@ function stretchRatioForSlice(slice) {
     var srcBpm = resolveSrcBpm(slice.sourceTrack);
 
     if (!srcBpm) {
-        post("EBYS Slicer: WARNING — no BPM for '" + slice.sourceTrack
+        post("Gnumbat Slicer: WARNING — no BPM for '" + slice.sourceTrack
              + "' — no stretch. Re-run madmom_tagger.py.\n");
         return 1.0;
     }
@@ -3806,8 +3806,8 @@ function stretchRatioForSlice(slice) {
 }
 
 function applyNow() {
-    if (!running) { post("EBYS: not running — send :buildIndex then :start\n"); return; }
-    if (idx.length === 0) { post("EBYS: index empty — send :buildIndex then :start\n"); return; }
+    if (!running) { post("Gnumbat: not running — send :buildIndex then :start\n"); return; }
+    if (idx.length === 0) { post("Gnumbat: index empty — send :buildIndex then :start\n"); return; }
     // Skip locked followers (vocals/bass locked to melody by default) here.
     // selectSegment() on a locked stem still picks the correct FILE — the
     // sourceLock branch filters its candidate pool to the leader's current
@@ -3832,17 +3832,17 @@ function setGenreFilter() {
     for (var i = 0; i < arguments.length; i++) parts.push(String(arguments[i]));
     genreFilter = parts.join(" ").trim() || null;
     if (genreFilter) {
-        post("EBYS Slicer: genre filter = '" + genreFilter + "'\n");
+        post("Gnumbat Slicer: genre filter = '" + genreFilter + "'\n");
         outlet(1, "genreFilter", genreFilter);
     } else {
-        post("EBYS Slicer: genre filter cleared\n");
+        post("Gnumbat Slicer: genre filter cleared\n");
         outlet(1, "genreFilter", "none");
     }
 }
 
 function clearGenreFilter() {
     genreFilter = null;
-    post("EBYS Slicer: genre filter cleared\n");
+    post("Gnumbat Slicer: genre filter cleared\n");
     outlet(1, "genreFilter", "none");
 }
 
@@ -3859,7 +3859,7 @@ function listGenres() {
         }
     }
     var allGenres = Object.keys(seen).sort();
-    post("EBYS Slicer: unique genres — " + allGenres.join(", ") + "\n");
+    post("Gnumbat Slicer: unique genres — " + allGenres.join(", ") + "\n");
     outlet(1, "genres", allGenres.join(","));
 }
 
@@ -3897,10 +3897,10 @@ function setKeyFilter() {
     for (var i = 0; i < arguments.length; i++) args.push(String(arguments[i]));
     keyFilter = args.join(" ").trim() || null;
     if (keyFilter) {
-        post("EBYS Slicer: key filter = '" + keyFilter + "'\n");
+        post("Gnumbat Slicer: key filter = '" + keyFilter + "'\n");
         outlet(1, "keyFilter", keyFilter);
     } else {
-        post("EBYS Slicer: key filter cleared\n");
+        post("Gnumbat Slicer: key filter cleared\n");
         outlet(1, "keyFilter", "none");
     }
 }
@@ -3953,7 +3953,7 @@ function setMatchProb(stem, val) {
         var t = targets[i];
         if (!MATCH_PROB.hasOwnProperty(t)) continue;
         MATCH_PROB[t] = v;
-        post("EBYS Slicer: matchProb[" + t + "] = " + v + "\n");
+        post("Gnumbat Slicer: matchProb[" + t + "] = " + v + "\n");
         outlet(1, "matchProb", t, v);
     }
 }
@@ -3965,7 +3965,7 @@ function setDirPref(stem, dim, val) {
         var t = targets[i];
         if (!DIR_PREF[t] || !DIR_PREF[t].hasOwnProperty(dim)) continue;
         DIR_PREF[t][dim] = v;
-        post("EBYS Slicer: dirPref[" + t + "][" + dim + "] = " + v + "\n");
+        post("Gnumbat Slicer: dirPref[" + t + "][" + dim + "] = " + v + "\n");
         outlet(1, "param", "dir" + dim + "_" + t, v);
     }
 }
@@ -3977,7 +3977,7 @@ function setDirWeight(stem, val) {
         var t = targets[i];
         if (!DIR_WEIGHT.hasOwnProperty(t)) continue;
         DIR_WEIGHT[t] = v;
-        post("EBYS Slicer: dirWeight[" + t + "] = " + v + "\n");
+        post("Gnumbat Slicer: dirWeight[" + t + "] = " + v + "\n");
         outlet(1, "param", "dirWeight_" + t, v);
     }
 }
@@ -3998,7 +3998,7 @@ function setEntropy(val) {
         DIR_WEIGHT[TRACKS[i]] = dw;
     }
 
-    post("EBYS Slicer: entropy=" + e.toFixed(2)
+    post("Gnumbat Slicer: entropy=" + e.toFixed(2)
          + " → matchProb=" + mp.toFixed(3)
          + " stayProb=" + sp.toFixed(3)
          + " dirWeight=" + dw.toFixed(3) + "\n");
@@ -4009,17 +4009,17 @@ function setEntropy(val) {
 function setTrackWeight(track, w) {
     if (trackWeights.hasOwnProperty(track)) {
         trackWeights[track] = clamp(parseFloat(w), 0.0, 1.0);
-        post("EBYS Slicer: weight[" + track + "] = " + trackWeights[track] + "\n");
+        post("Gnumbat Slicer: weight[" + track + "] = " + trackWeights[track] + "\n");
     }
 }
 
 function followStem(track) {
     if (!FOLLOW_STEM.hasOwnProperty(track)) {
-        post("EBYS Slicer: followStem — unknown stem '" + track + "'\n");
+        post("Gnumbat Slicer: followStem — unknown stem '" + track + "'\n");
         return;
     }
     if (arguments.length < 2) {
-        post("EBYS Slicer: followStem — missing arguments\n");
+        post("Gnumbat Slicer: followStem — missing arguments\n");
         return;
     }
     var second = String(arguments[1]);
@@ -4027,7 +4027,7 @@ function followStem(track) {
     // followStem <stem> self  → reset every dimension
     if (second === "self" && arguments.length === 2) {
         FOLLOW_STEM[track] = emptyFollowMap();
-        post("EBYS Slicer: followStem[" + track + "] = self (all dimensions)\n");
+        post("Gnumbat Slicer: followStem[" + track + "] = self (all dimensions)\n");
         return;
     }
 
@@ -4037,7 +4037,7 @@ function followStem(track) {
     } else if (FOLLOW_DIMS.indexOf(second) !== -1) {
         targetDims = [second];
     } else {
-        post("EBYS Slicer: followStem — unknown dimension '" + second
+        post("Gnumbat Slicer: followStem — unknown dimension '" + second
              + "' (expected one of " + FOLLOW_DIMS.join(",") + ", or 'all'/'self')\n");
         return;
     }
@@ -4045,7 +4045,7 @@ function followStem(track) {
     // followStem <stem> <dim|all> self  → reset just those dimension(s)
     if (arguments.length === 3 && String(arguments[2]) === "self") {
         for (var di = 0; di < targetDims.length; di++) FOLLOW_STEM[track][targetDims[di]] = null;
-        post("EBYS Slicer: followStem[" + track + "][" + targetDims.join(",") + "] = self\n");
+        post("Gnumbat Slicer: followStem[" + track + "][" + targetDims.join(",") + "] = self\n");
         return;
     }
 
@@ -4055,17 +4055,17 @@ function followStem(track) {
         var s = String(arguments[i]);
         var w = parseFloat(arguments[i + 1]);
         if (!FOLLOW_STEM.hasOwnProperty(s)) {
-            post("EBYS Slicer: followStem — unknown target stem '" + s + "'\n");
+            post("Gnumbat Slicer: followStem — unknown target stem '" + s + "'\n");
             return;
         }
         if (isNaN(w) || w < 0) {
-            post("EBYS Slicer: followStem — invalid weight '" + arguments[i + 1] + "'\n");
+            post("Gnumbat Slicer: followStem — invalid weight '" + arguments[i + 1] + "'\n");
             return;
         }
         pairs.push({ stem: s, weight: w });
         totalWeight += w;
     }
-    if (pairs.length === 0) { post("EBYS Slicer: followStem — no valid target/weight pairs\n"); return; }
+    if (pairs.length === 0) { post("Gnumbat Slicer: followStem — no valid target/weight pairs\n"); return; }
     // Normalise weights to sum to 1.0
     if (totalWeight > 0) {
         for (var j = 0; j < pairs.length; j++) pairs[j].weight /= totalWeight;
@@ -4075,13 +4075,13 @@ function followStem(track) {
         // shared array reference out from under the other dimensions.
         FOLLOW_STEM[track][targetDims[dj]] = pairs.map(function(p) { return { stem: p.stem, weight: p.weight }; });
     }
-    var msg = "EBYS Slicer: followStem[" + track + "][" + targetDims.join(",") + "] =";
+    var msg = "Gnumbat Slicer: followStem[" + track + "][" + targetDims.join(",") + "] =";
     for (var j2 = 0; j2 < pairs.length; j2++) msg += " " + pairs[j2].stem + "×" + pairs[j2].weight.toFixed(2);
     post(msg + "\n");
 }
 
 function info() {
-    post("── EBYS Slicer v2 ──\n");
+    post("── Gnumbat Slicer v2 ──\n");
     post("  segmentBars : vocals=" + SEGMENT_BARS.vocals + " melody=" + SEGMENT_BARS.melody + " bass=" + SEGMENT_BARS.bass + " drums=" + SEGMENT_BARS.drums + "\n");
     post("  quantize    : " + QUANTIZE_BARS + "\n");
     post("  stayProb    : vocals=" + STAY_PROB.vocals + " melody=" + STAY_PROB.melody + " bass=" + STAY_PROB.bass + " drums=" + STAY_PROB.drums + "\n");
@@ -4170,14 +4170,14 @@ function reset() {
     pausedPosFrac     = { vocals: null, melody: null, bass: null, drums: null };
     // (karma~ position-feed state removed — no karma~ in this Pd conversion)
     outlet(1, "reset");
-    post("EBYS Slicer: reset\n");
+    post("Gnumbat Slicer: reset\n");
 }
 
 
 // ── DISPATCH TABLE ────────────────────────────────────────────────────────
 // Reimplements Max's js auto-dispatch-by-message-name explicitly. Cross-
 // checked against the actual .maxpat's own [route ...] object feeding
-// slicer.js's inlet 0 (obj-4041 in ebys-analyze.maxpat) — every tag that
+// slicer.js's inlet 0 (obj-4041 in gnumbat-analyze.maxpat) — every tag that
 // object routes onward is covered here, plus the message-box shortcuts
 // ("next vocals" etc). Internal helpers that were never real inlet
 // commands (scoreCandidate, getBarMs, pushSyncedSegment, ...) are

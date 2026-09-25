@@ -15,11 +15,11 @@ After: masterJoyX is split into a tilt pair via two expr objects, one per bus:
   x = -1 → both -1: whole field tilts left.  x = +1 → both +1: tilts right.
 
 ms_router.js / spat_fx_router.js already send masterJoyX raw, so no JS change.
-Idempotent. Reversible via `git checkout ebys-analyze.maxpat`. Reload the patch.
+Idempotent. Reversible via `git checkout gnumbat-analyze.maxpat`. Reload the patch.
 """
 import json, os, sys
 
-PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ebys-analyze.maxpat')
+PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gnumbat-analyze.maxpat')
 RCV   = 'obj-rcv_masterJoyX'
 LEGS  = [  # (master pan2, tilt-expr id, expr text)
     ('obj-mj_LR_L', 'obj-mtiltL', 'expr min(max($f1,0.),1.)*2.-1.'),

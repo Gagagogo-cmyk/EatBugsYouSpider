@@ -1,4 +1,4 @@
-// EBYS — Bake Manager
+// Gnumbat — Bake Manager
 //
 // Handles ring buffer snapshot and restore for the bake training system.
 //

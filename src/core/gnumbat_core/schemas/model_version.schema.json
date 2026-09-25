@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/model_version.schema.json",
+  "title": "ModelVersion (immutable trained artifact metadata)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.model_version/0\\.[0-9]+$"
+    },
+    "model_version_id": {
+      "type": "string",
+      "pattern": "^mv_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "model_id": {
+      "type": "string",
+      "pattern": "^md_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "parent_model_version_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "creator": {
+      "type": "string"
+    },
+    "dataset_version_id": {
+      "type": "string",
+      "pattern": "^dv_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "analysis_profile": {
+      "type": "object",
+      "properties": {
+        "extractor": {
+          "type": "string"
+        },
+        "config_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "extractor",
+        "config_hash"
+      ]
+    },
+    "analysis_version": {
+      "type": "string"
+    },
+    "architecture": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "recipe_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "n_bakes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "training": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "QUEUED",
+            "TRAINING",
+            "TRAINED",
+            "FAILED"
+          ]
+        },
+        "iterations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metrics": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "state",
+        "iterations"
+      ]
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "sha256"
+        ]
+      }
+    },
+    "export": {
+      "type": "object",
+      "properties": {
+        "onnx": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string"
+            },
+            "opset": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "engine_min_version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "model_version_id",
+    "model_id",
+    "created_at",
+    "dataset_version_id",
+    "analysis_profile",
+    "architecture",
+    "recipe_hash",
+    "seed",
+    "n_bakes",
+    "training"
+  ],
+  "additionalProperties": true
+}

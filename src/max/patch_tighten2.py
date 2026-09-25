@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS Max Patch — Tighten-Up #2
+Gnumbat Max Patch — Tighten-Up #2
 ================================
 Removes 9 confirmed-dead objects + 4 dead patchlines.
 Fixes 1 missing wire: meter data now reaches ws_server.js.
@@ -28,7 +28,7 @@ Run from the MAX/ folder:
 
 import json, shutil, os
 
-PATCH_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ebys-analyze.maxpat")
+PATCH_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gnumbat-analyze.maxpat")
 BACKUP_PATH = PATCH_PATH + ".pre_tighten2.bak"
 
 with open(PATCH_PATH) as f:
@@ -89,4 +89,4 @@ print(f"\n{len(changes)} change(s):")
 for c in changes:
     print(f"  {c}")
 print(f"\nPatch: {len(boxes)} objects, {len(lines)} lines remaining.")
-print("\nDone. Reload ebys-analyze.maxpat in Max.")
+print("\nDone. Reload gnumbat-analyze.maxpat in Max.")

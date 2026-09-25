@@ -1,4 +1,4 @@
-// EBYS — Slice Writer  v6
+// Gnumbat — Slice Writer  v6
 // Four parallel tracks: vocals, melody, bass, drums.
 // Each has global track metadata (BPM, confidence, track_name) and
 // local per-onset slice descriptors (C, P, E, F — drums has no P).
@@ -70,7 +70,7 @@ var skipIfExists       = false; // true when set_track_name finds track already 
 
 function set_bpm_gate(v) {
     BPM_MIN_CONFIDENCE = parseFloat(v);
-    post("EBYS: BPM gate → " + BPM_MIN_CONFIDENCE +
+    post("Gnumbat: BPM gate → " + BPM_MIN_CONFIDENCE +
          (BPM_MIN_CONFIDENCE === 0.0 ? " (disabled)" : "") + "\n");
 }
 
@@ -92,7 +92,7 @@ function getPatcherDir() {
     return fp;
 }
 
-// getDataRoot — resolves EBYS/data/ from patch location (src/max/ → strip 2 levels → data/)
+// getDataRoot — resolves Gnumbat/data/ from patch location (src/max/ → strip 2 levels → data/)
 function getDataRoot() {
     var p = getPatcherDir();
     p = p.replace(/[^\/]+\/$/, '');  // strip max/  → .../src/
@@ -124,7 +124,7 @@ function getDataDir() {
 
 function getLibraryPath() {
     var path = getDataDir() + "analysis_library.json";
-    post("EBYS SliceWriter: library path = " + path + "\n");
+    post("Gnumbat SliceWriter: library path = " + path + "\n");
     return path;
 }
 
@@ -178,7 +178,7 @@ function resetMemory() {
         var f = new File(getLibraryPath(), "write", "TEXT");
         f.open(); f.writestring("{}"); f.eof = f.position; f.close();
     } catch(e) {}
-    post("EBYS SliceWriter: memory cleared — library wiped\n");
+    post("Gnumbat SliceWriter: memory cleared — library wiped\n");
 }
 
 // saveLibrary — writes `library` to analysis_library.json.
@@ -222,7 +222,7 @@ function saveLibrary() {
                 }
             }
         } catch (mergeErr) {
-            post("EBYS SliceWriter: save merge-read skipped — " + mergeErr + "\n");
+            post("Gnumbat SliceWriter: save merge-read skipped — " + mergeErr + "\n");
         }
         var f = new File(getLibraryPath(), "write", "TEXT");
         f.open();
@@ -230,16 +230,16 @@ function saveLibrary() {
         for (var i = 0; i < str.length; i += CHUNK) f.writestring(str.slice(i, i + CHUNK));
         f.eof = f.position;  // truncate any stale bytes left over from a longer prior write
         f.close();
-        post("EBYS SliceWriter: saved " + str.length + " chars to library\n");
+        post("Gnumbat SliceWriter: saved " + str.length + " chars to library\n");
     } catch(e) {
-        post("EBYS SliceWriter: save failed — " + e + "\n");
+        post("Gnumbat SliceWriter: save failed — " + e + "\n");
     }
 }
 
 function loadLibrary() {
     try {
         var f = new File(getLibraryPath(), "read", "TEXT");
-        if (!f.isopen) { post("EBYS SliceWriter: no library file found — starting fresh\n"); return; }
+        if (!f.isopen) { post("Gnumbat SliceWriter: no library file found — starting fresh\n"); return; }
         var raw = "";
         while (!f.eof) raw += f.readstring(CHUNK);
         f.close();
@@ -258,11 +258,11 @@ function loadLibrary() {
             }
             trackCount++;
         }
-        post("EBYS SliceWriter: restored " + trackCount + " tracks, "
+        post("Gnumbat SliceWriter: restored " + trackCount + " tracks, "
              + sliceCount + " slices from library\n");
         outlet(1, sliceCount);
     } catch(e) {
-        post("EBYS SliceWriter: library load failed — " + e + "\n");
+        post("Gnumbat SliceWriter: library load failed — " + e + "\n");
     }
 }
 
@@ -285,7 +285,7 @@ function trackExists() {
     var name   = parts.join("_");
     var exists = library.hasOwnProperty(name)
                  && Object.keys(library[name]).length > 0;
-    post("EBYS SliceWriter: trackExists('" + name + "') = " + (exists ? 1 : 0) + "\n");
+    post("Gnumbat SliceWriter: trackExists('" + name + "') = " + (exists ? 1 : 0) + "\n");
     outlet(3, exists ? 1 : 0);
 }
 
@@ -300,9 +300,9 @@ function forgetTrack() {
                                          // this an intentional forget would just get
                                          // silently restored from whatever's still on disk
         saveLibrary();
-        post("EBYS SliceWriter: removed '" + name + "' from library\n");
+        post("Gnumbat SliceWriter: removed '" + name + "' from library\n");
     } else {
-        post("EBYS SliceWriter: forgetTrack — '" + name + "' not found\n");
+        post("Gnumbat SliceWriter: forgetTrack — '" + name + "' not found\n");
     }
 }
 
@@ -315,7 +315,7 @@ function set_track_name() {
                    && library.hasOwnProperty(track_name)
                    && Object.keys(library[track_name]).length > 0;
     if (!skipIfExists && track_name !== "") library[track_name] = {};
-    post("EBYS: track='" + track_name + "' " + (skipIfExists ? "EXISTS — skipping writes" : "NEW — analyzing") + "\n");
+    post("Gnumbat: track='" + track_name + "' " + (skipIfExists ? "EXISTS — skipping writes" : "NEW — analyzing") + "\n");
     outlet(3, skipIfExists ? 1 : 0);  // → sel 0 1 in patch: 0=reset+analyze, 1=skip
 }
 
@@ -509,18 +509,18 @@ function write_meta_vocals() {
     wr("vocals::metadata::BPM_confidence", meta_vocals_conf);
     if (meta_vocals_conf >= BPM_MIN_CONFIDENCE) {
         wr("vocals::metadata::BPM", meta_vocals_bpm);
-        post("EBYS voc  BPM=" + meta_vocals_bpm.toFixed(1) +
+        post("Gnumbat voc  BPM=" + meta_vocals_bpm.toFixed(1) +
              "  conf=" + meta_vocals_conf.toFixed(3) + "\n");
     } else {
         // Gate active and confidence too low — write 0 so the key still exists
         wr("vocals::metadata::BPM", 0.0);
-        post("EBYS voc  BPM=0 (gated — conf=" + meta_vocals_conf.toFixed(3) +
+        post("Gnumbat voc  BPM=0 (gated — conf=" + meta_vocals_conf.toFixed(3) +
              " < " + BPM_MIN_CONFIDENCE + ")\n");
     }
     var key = detectKey(vocals_pitches);
     wr("vocals::metadata::key", key);
     var topVoc = topPcs(vocals_pitches);
-    post("EBYS voc  key=" + key + "  top:" + topVoc + "  n=" + vocals_pitches.length + "\n");
+    post("Gnumbat voc  key=" + key + "  top:" + topVoc + "  n=" + vocals_pitches.length + "\n");
     saveLibrary();
 }
 
@@ -582,17 +582,17 @@ function write_meta_melo() {
     wr("melody::metadata::BPM_confidence", meta_melo_conf);
     if (meta_melo_conf >= BPM_MIN_CONFIDENCE) {
         wr("melody::metadata::BPM", meta_melo_bpm);
-        post("EBYS melo BPM=" + meta_melo_bpm.toFixed(1) +
+        post("Gnumbat melo BPM=" + meta_melo_bpm.toFixed(1) +
              "  conf=" + meta_melo_conf.toFixed(3) + "\n");
     } else {
         wr("melody::metadata::BPM", 0.0);
-        post("EBYS melo BPM=0 (gated — conf=" + meta_melo_conf.toFixed(3) +
+        post("Gnumbat melo BPM=0 (gated — conf=" + meta_melo_conf.toFixed(3) +
              " < " + BPM_MIN_CONFIDENCE + ")\n");
     }
     var key = detectKey(melo_pitches);
     wr("melody::metadata::key", key);
     var topMelo = topPcs(melo_pitches);
-    post("EBYS melo key=" + key + "  top:" + topMelo + "  n=" + melo_pitches.length + "\n");
+    post("Gnumbat melo key=" + key + "  top:" + topMelo + "  n=" + melo_pitches.length + "\n");
     saveLibrary();
 }
 
@@ -654,17 +654,17 @@ function write_meta_bass() {
     wr("bass::metadata::BPM_confidence", meta_bass_conf);
     if (meta_bass_conf >= BPM_MIN_CONFIDENCE) {
         wr("bass::metadata::BPM", meta_bass_bpm);
-        post("EBYS bass BPM=" + meta_bass_bpm.toFixed(1) +
+        post("Gnumbat bass BPM=" + meta_bass_bpm.toFixed(1) +
              "  conf=" + meta_bass_conf.toFixed(3) + "\n");
     } else {
         wr("bass::metadata::BPM", 0.0);
-        post("EBYS bass BPM=0 (gated — conf=" + meta_bass_conf.toFixed(3) +
+        post("Gnumbat bass BPM=0 (gated — conf=" + meta_bass_conf.toFixed(3) +
              " < " + BPM_MIN_CONFIDENCE + ")\n");
     }
     var key = detectKey(bass_pitches);
     wr("bass::metadata::key", key);
     var topBass = topPcs(bass_pitches);
-    post("EBYS bass key=" + key + "  top:" + topBass + "  n=" + bass_pitches.length + "\n");
+    post("Gnumbat bass key=" + key + "  top:" + topBass + "  n=" + bass_pitches.length + "\n");
     saveLibrary();
 }
 
@@ -723,11 +723,11 @@ function write_meta_drum() {
     wr("drums::metadata::BPM_confidence", meta_drum_conf);
     if (meta_drum_conf >= BPM_MIN_CONFIDENCE) {
         wr("drums::metadata::BPM", meta_drum_bpm);
-        post("EBYS drum BPM=" + meta_drum_bpm.toFixed(1) +
+        post("Gnumbat drum BPM=" + meta_drum_bpm.toFixed(1) +
              "  conf=" + meta_drum_conf.toFixed(3) + "\n");
     } else {
         wr("drums::metadata::BPM", 0.0);
-        post("EBYS drum BPM=0 (gated — conf=" + meta_drum_conf.toFixed(3) +
+        post("Gnumbat drum BPM=0 (gated — conf=" + meta_drum_conf.toFixed(3) +
              " < " + BPM_MIN_CONFIDENCE + ")\n");
     }
     saveLibrary();
@@ -744,14 +744,14 @@ function reset() {
     vocals_pitches  = [];
     melo_pitches = [];
     bass_pitches = [];
-    post("EBYS: counters + pitch buffers reset\n");
+    post("Gnumbat: counters + pitch buffers reset\n");
     outlet(1, 0);
 }
 
-function reset_vocals()  { vocals_counter  = 0; vocals_pitches  = []; post("EBYS: vocals counter reset\n"); }
-function reset_melo() { melo_counter = 0; melo_pitches = []; post("EBYS: melody counter reset\n"); }
-function reset_bass() { bass_counter = 0; bass_pitches = []; post("EBYS: bass counter reset\n"); }
-function reset_drum() { drum_counter = 0;                    post("EBYS: drums counter reset\n"); }
+function reset_vocals()  { vocals_counter  = 0; vocals_pitches  = []; post("Gnumbat: vocals counter reset\n"); }
+function reset_melo() { melo_counter = 0; melo_pitches = []; post("Gnumbat: melody counter reset\n"); }
+function reset_bass() { bass_counter = 0; bass_pitches = []; post("Gnumbat: bass counter reset\n"); }
+function reset_drum() { drum_counter = 0;                    post("Gnumbat: drums counter reset\n"); }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
 // dict analysisLib is reloaded on patch open via a native Max wire:

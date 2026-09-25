@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gnumbat — arrangement view (prototype)</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   ARRANGEMENT VIEW — standalone prototype, runs with mock data, no server.
+
+   What this is: a multi-track timeline/arrangement view for the plugin
+   panel (VST_PLUGIN_ROADMAP.md Step 1 calls for "section markers" and a
+   real layout before any C++ gets written — this is that mockup, just
+   interactive instead of static).
+
+   Where the interaction MECHANICS come from: openDAW (github.com/andremichelle/openDAW,
+   AGPL-3.0-or-later). Four algorithms are ported here, translated from
+   musical time (ppqn) to wall-clock time (ms) since Gnumbat has no bar/beat
+   grid of its own beyond madmom's downbeats.json:
+     - zoom-to-cursor wheel scaling, incl. the cross-device delta
+       calibration    → see packages/app/studio/src/ui/timeline/WheelScaling.ts
+     - grid snapping (floor/round + the local-vs-global rounding-distance
+       pick used while dragging)
+                       → .../timeline/Snapping.ts
+     - canvas time-ruler + draggable/follow-scrolling playhead
+                       → .../timeline/TimeAxis.tsx
+     - the two-handle range slider used as a zoom/pan minimap
+                       → .../timeline/TimelineRangeSlider.tsx
+   Full source for all four (plus the region-drag files they lead into) is
+   copied for reference at docs/instrument/reference/opendaw-timeline/ —
+   see that folder's README for what's safe to lean on given the license.
+
+   Everything else — the waveform renderer, the monochrome palette, the
+   per-stem lane layout — is Gnumbat's own, lifted from src/gui/panel.html
+   (drawWave() below is that file's function, reused verbatim; the CSS
+   custom properties match its dark-region palette at panel.html:1289 so
+   this can be dropped under the existing #bands zone without a new
+   design pass).
+
+   UPDATE — --bg/--itembg were #0e130e (a near-black-with-a-green-tint,
+   copied from what panel.html's own #posterize3 filter used to render
+   its black band as -- see that file's own UPDATE comment on
+   #posterize3). User: "make backgrounds black... I do not wish to have
+   the dark green background anymore. everything must be black." Plain
+   #000 now, matching panel.html's own reverted filter output so the two
+   stay visually consistent, same reasoning the paragraph above already
+   gives for copying panel.html's palette here in the first place.
+   ───────────────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#000; --w:#ffffff; --g1:#e2e4e3; --g2:#8e9392; --g3:#7d8281;
+  --g4:#5e6362; --fill:#303030; --itembg:#000;
+  --fs:12px; --row:22px; --labelw:112px;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--g1);font:var(--fs)/1.4 "SF Mono",Menlo,Monaco,monospace;
+  margin:0;padding:24px}
+.arr-root{max-width:1100px;margin:0 auto;border:1px solid var(--g4);user-select:none}
+
+/* ── toolbar ─────────────────────────────────────────────────────────── */
+.arr-toolbar{display:flex;align-items:center;gap:14px;padding:6px 10px;
+  border-bottom:1px solid var(--g4);color:var(--g2)}
+.arr-toolbar .title{color:var(--w);letter-spacing:.04em}
+.arr-toolbar .sep{width:1px;height:14px;background:var(--g4)}
+.arr-toolbar button,.arr-toolbar select{
+  background:transparent;color:var(--g1);border:1px solid var(--g4);
+  font:inherit;padding:2px 7px;cursor:pointer}
+.arr-toolbar button:hover{border-color:var(--g2);color:var(--w)}
+.arr-toolbar button.on{background:var(--g1);color:var(--bg)}
+.arr-toolbar .spacer{flex:1}
+.arr-toolbar .clock{font-variant-numeric:tabular-nums;color:var(--w)}
+
+/* ── shared row grid: fixed label column + flexible timeline column ───── */
+.arr-row{display:grid;grid-template-columns:var(--labelw) 1fr}
+.arr-row .lbl{display:flex;align-items:center;padding:0 8px;color:var(--g2);
+  border-right:1px solid var(--g4);white-space:nowrap;overflow:hidden}
+
+/* ── section markers row ────────────────────────────────────────────── */
+.arr-markers{height:18px;position:relative;border-bottom:1px solid var(--g4)}
+.arr-markers .lbl{height:100%;font-size:10px}
+.arr-markers .track{position:relative;height:100%;cursor:copy}
+.marker{position:absolute;top:0;height:100%;display:flex;align-items:center;
+  transform:translateX(-1px);cursor:grab;user-select:none}
+.marker::before{content:'';width:1px;height:200vh;position:absolute;top:0;left:0;
+  background:var(--g4);pointer-events:none}
+.marker .flag{background:var(--g1);color:var(--bg);font-size:9px;line-height:1;
+  padding:2px 4px;white-space:nowrap;position:relative;left:1px}
+.marker:hover .flag{background:var(--w)}
+
+/* ── time axis ──────────────────────────────────────────────────────── */
+.arr-axis{height:20px;border-bottom:1px solid var(--g4)}
+.arr-axis .track{position:relative;height:100%;cursor:pointer}
+.arr-axis svg{display:block;width:100%;height:100%}
+.arr-axis .tick-bar{stroke:var(--g3);stroke-width:1}
+.arr-axis .tick-beat{stroke:var(--g4);stroke-width:1}
+.arr-axis text{fill:var(--g3);font:9px "SF Mono",Menlo,Monaco,monospace}
+
+/* ── lanes ──────────────────────────────────────────────────────────── */
+.arr-lanes{position:relative}
+.lane{height:56px;border-bottom:1px solid var(--fill)}
+.lane:last-child{border-bottom:0}
+.lane .lbl{flex-direction:column;align-items:flex-start;justify-content:center;gap:1px}
+.lane .lbl b{color:var(--w);font-weight:400;font-size:11px}
+.lane .lbl span{color:var(--g3);font-size:10px}
+.lane .track{position:relative;height:100%;overflow:hidden;cursor:default}
+.lane .track svg.wave{position:absolute;inset:0;width:100%;height:100%}
+.lane .wv .w-axis,.lane .wv .w-un{fill:var(--g4)}
+.lane .wv .w-un2{fill:var(--g3)}
+.lane .wv .w-rms{fill:var(--g3);opacity:.55}
+
+.region{position:absolute;top:6px;bottom:6px;border:1px solid var(--g3);
+  background:rgba(255,255,255,.03);cursor:grab}
+.region:hover{border-color:var(--g1)}
+.region.sel{border-color:var(--w);background:rgba(255,255,255,.09)}
+.region.dragging{cursor:grabbing;opacity:.85}
+
+/* ── playhead ───────────────────────────────────────────────────────── */
+.arr-playhead{position:absolute;top:0;width:1px;background:rgba(255,255,255,.5);
+  pointer-events:none;z-index:5}
+.arr-playhead .head{position:absolute;top:-1px;left:-4px;width:9px;height:9px;
+  background:var(--w);clip-path:polygon(0 0,100% 0,50% 100%)}
+
+/* ── minimap / zoom-range slider ────────────────────────────────────── */
+.arr-minimap{height:16px;padding:0 var(--labelw) 0 0;border-top:1px solid var(--g4);
+  display:grid;grid-template-columns:var(--labelw) 1fr}
+.arr-minimap .lbl{font-size:9px;color:var(--g4)}
+.arr-minimap .track{position:relative;height:100%;background:var(--fill)}
+.mm-window{position:absolute;top:0;bottom:0;background:rgba(255,255,255,.14);
+  border-left:6px solid var(--g2);border-right:6px solid var(--g2);cursor:grab}
+.mm-window .handle{position:absolute;top:0;bottom:0;width:6px;cursor:ew-resize}
+.mm-window .handle.l{left:-6px}
+.mm-window .handle.r{right:-6px}
+
+.arr-scroller{position:relative}
+</style>
+</head>
+<body>
+
+<div class="arr-root">
+  <div class="arr-toolbar">
+    <span class="title">ARRANGEMENT</span>
+    <span class="sep"></span>
+    <button id="btnPlay">▶ play</button>
+    <span class="clock" id="clock">0:00.000</span>
+    <span class="sep"></span>
+    <label style="color:var(--g3)">snap
+      <select id="snapSelect"></select>
+    </label>
+    <span class="sep"></span>
+    <button id="btnZoomOut">–</button>
+    <button id="btnZoomIn">+</button>
+    <button id="btnFit">fit</button>
+    <span class="spacer"></span>
+    <span style="color:var(--g4)" id="rangeReadout"></span>
+  </div>
+
+  <div class="arr-scroller" id="scroller">
+    <div class="arr-markers arr-row" id="markersRow">
+      <div class="lbl">markers</div>
+      <div class="track" id="markersTrack"></div>
+    </div>
+    <div class="arr-axis arr-row" id="axisRow">
+      <div class="lbl" style="color:var(--g4)">bpm / meter</div>
+      <div class="track" id="axisTrack"><svg></svg></div>
+    </div>
+    <div class="arr-lanes" id="lanesCol"></div>
+    <div class="arr-playhead" id="playhead"><div class="head"></div></div>
+  </div>
+
+  <div class="arr-minimap">
+    <div class="lbl"></div>
+    <div class="track" id="minimapTrack">
+      <div class="mm-window" id="mmWindow">
+        <div class="handle l" id="mmLeft"></div>
+        <div class="handle r" id="mmRight"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════════════
+   MOCK DATA — same shapes as data/downbeats.json and the per-stem
+   entries buildNowPlaying() returns, so swapping in real data later is
+   a fetch() and a reshape, not a rewrite of this file.
+   ════════════════════════════════════════════════════════════════════ */
+function mulberry32(seed){
+  return function(){
+    seed|=0; seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+
+const TRACK = (() => {
+  const bpm = 120, meter = 4, barMs = 60000/bpm*meter, bars = 16;
+  const downbeats_ms = Array.from({length:bars}, (_, index) => Math.round(index*barMs + 990));
+  return {bpm, meter, downbeats_ms, duration_ms: bars*barMs + 4000};
+})();
+
+const STEM_DEFS = [
+  {key:'vocals', n:'VOCALS', seed:97,   live:false, sliceCount:0},
+  {key:'melody', n:'MELODY', seed:710,  live:true,  sliceCount:22},
+  {key:'bass',   n:'BASS',   seed:1323, live:false, sliceCount:0},
+  {key:'drums',  n:'DRUMS',  seed:1936, live:true,  sliceCount:48},
+];
+
+function buildSlices(seed, count, durationMs){
+  if (!count) return [];
+  const rand = mulberry32(seed);
+  const cuts = [0];
+  for (let index = 1; index < count; index++) cuts.push(rand());
+  cuts.sort((a, b) => a - b);
+  cuts.push(1);
+  const slices = [];
+  for (let index = 0; index < cuts.length - 1; index++){
+    const start = cuts[index]*durationMs, end = cuts[index+1]*durationMs;
+    if (end-start < 120) continue;
+    slices.push({id:`s${index}`, start_ms:start, end_ms:end});
+  }
+  return slices;
+}
+
+const STEMS = STEM_DEFS.map(def => ({...def, slices: buildSlices(def.seed, def.sliceCount, TRACK.duration_ms)}));
+
+let MARKERS = [
+  {id:'m0', time_ms: TRACK.downbeats_ms[0],  label:'INTRO'},
+  {id:'m1', time_ms: TRACK.downbeats_ms[4],  label:'BUILD'},
+  {id:'m2', time_ms: TRACK.downbeats_ms[8],  label:'DROP'},
+  {id:'m3', time_ms: TRACK.downbeats_ms[12], label:'BREAK'},
+];
+
+/* ════════════════════════════════════════════════════════════════════
+   TimelineRange — ms-based port of openDAW's TimelineRange. Keeps the
+   visible window as normalised [min,max] over [0,1] * TRACK.duration_ms;
+   scaleBy() is the zoom-to-cursor math WheelScaling.apply() drives.
+   ════════════════════════════════════════════════════════════════════ */
+class TimelineRange {
+  constructor(totalMs){
+    this.total = totalMs;
+    this.min = 0; this.max = 1;
+    this.width = 0;
+    this._listeners = new Set();
+  }
+  get unitRange(){ return (this.max-this.min)*this.total; }
+  get unitsPerPixel(){ return this.width > 0 ? this.unitRange/this.width : 0; }
+  xToUnit(x){ return this.min*this.total + x*this.unitsPerPixel; }
+  unitToX(unitMs){ return this.unitsPerPixel > 0 ? (unitMs - this.min*this.total)/this.unitsPerPixel : 0; }
+  // amount > 0 zooms out, amount < 0 zooms in — same convention as WheelScaling.scaleOf's sign
+  scaleBy(amount, anchorMs){
+    if (amount === 0) return;
+    const MIN_NORM = 300/this.total; // never zoom in past a ~300ms window
+    const anchorNorm = clamp(anchorMs/this.total, 0, 1);
+    const factor = Math.exp(amount);
+    let newMin = anchorNorm - (anchorNorm-this.min)*factor;
+    let newMax = anchorNorm + (this.max-anchorNorm)*factor;
+    let range = newMax-newMin;
+    if (range < MIN_NORM){ const mid=(newMin+newMax)/2; newMin=mid-MIN_NORM/2; newMax=mid+MIN_NORM/2; range=MIN_NORM; }
+    if (range > 1) range = 1;
+    if (newMin < 0){ newMax -= newMin; newMin = 0; }
+    if (newMax > 1){ newMin -= (newMax-1); newMax = 1; }
+    this.min = clamp(newMin, 0, 1); this.max = clamp(this.min+range, this.min, 1);
+    this._notify();
+  }
+  moveToUnit(unitMs){
+    const range = this.max-this.min;
+    let newMin = clamp(unitMs/this.total, 0, 1-range);
+    this.min = newMin; this.max = newMin+range;
+    this._notify();
+  }
+  showAll(){ this.min=0; this.max=1; this._notify(); }
+  setWindow(min, max){
+    min = clamp(min, 0, 1); max = clamp(max, min+ (300/this.total), 1);
+    this.min = min; this.max = max; this._notify();
+  }
+  subscribe(fn){ this._listeners.add(fn); return () => this._listeners.delete(fn); }
+  _notify(){ for (const fn of this._listeners) fn(this); }
+}
+function clamp(value, lo, hi){ return Math.max(lo, Math.min(hi, value)); }
+
+/* ════════════════════════════════════════════════════════════════════
+   WheelScaling — direct port of WheelScaling.ts. Devices report wildly
+   different deltaY magnitudes per notch; this tracks the largest recent
+   one (decaying between gestures) and expresses each event as a
+   fraction of it, so trackpads and mouse wheels feel the same.
+   ════════════════════════════════════════════════════════════════════ */
+const WheelScaling = (() => {
+  const DELTA_MODE_TO_PIXELS = [1.0, 33.0, 400.0];
+  const QUANTUM_FLOOR = 2.0, QUANTUM_DECAY_MS = 300.0, STEP_PER_TICK = 0.1, SPEED = 1.0;
+  const calibration = {quantum:0, time:0};
+  function scaleOf(event){
+    const delta = event.deltaY*(DELTA_MODE_TO_PIXELS[event.deltaMode] ?? 1.0);
+    if (delta === 0) return 0;
+    const now = performance.now();
+    const decayed = calibration.quantum*Math.exp((calibration.time-now)/QUANTUM_DECAY_MS);
+    calibration.quantum = Math.max(Math.abs(delta), decayed, QUANTUM_FLOOR);
+    calibration.time = now;
+    return delta/calibration.quantum*STEP_PER_TICK*SPEED;
+  }
+  function install(element, range){
+    element.addEventListener('wheel', event => {
+      event.preventDefault();
+      const rect = element.getBoundingClientRect();
+      const anchor = clamp(range.xToUnit(event.clientX-rect.left), 0, range.total);
+      range.scaleBy(scaleOf(event), anchor);
+    }, {passive:false});
+  }
+  return {install};
+})();
+
+/* ════════════════════════════════════════════════════════════════════
+   Snapping — port of Snapping.ts, quantising to the downbeat grid
+   instead of a ppqn signature track. computeDelta() is the same
+   local-vs-global rounding-distance trick: round the drag as an offset
+   from the grabbed value (keeps an off-grid region's original offset
+   while it moves) and separately as an absolute position, then use
+   whichever lands closer to where the pointer actually is.
+   ════════════════════════════════════════════════════════════════════ */
+class Snapping {
+  constructor(track){
+    this.track = track;
+    this.enabled = true;
+    this.units = [
+      {name:'Bar',  ms: () => 60000/track.bpm*track.meter},
+      {name:'1/2',  ms: () => 60000/track.bpm*track.meter/2},
+      {name:'1/4',  ms: () => 60000/track.bpm},
+      {name:'1/8',  ms: () => 60000/track.bpm/2},
+      {name:'1/16', ms: () => 60000/track.bpm/4},
+      {name:'Off',  ms: () => 1},
+    ];
+    this.index = 0;
+  }
+  get unit(){ return this.units[this.index]; }
+  get origin(){ return this.track.downbeats_ms[0] ?? 0; }
+  gridMs(){ return this.enabled ? this.unit.ms() : 1; }
+  floor(t){ const grid=this.gridMs(); return this.origin + Math.floor((t-this.origin)/grid)*grid; }
+  round(t){ const grid=this.gridMs(); return this.origin + Math.round((t-this.origin)/grid)*grid; }
+  computeDelta(grabPointerMs, newPointerMs, grabValueMs){
+    const pointerMs = newPointerMs-(grabPointerMs-grabValueMs);
+    const localDelta = this.round(pointerMs-grabValueMs);
+    const globalDelta = this.round(pointerMs)-grabValueMs;
+    const localDistance = Math.abs((grabValueMs+localDelta)-pointerMs);
+    const globalDistance = Math.abs((grabValueMs+globalDelta)-pointerMs);
+    return localDistance < globalDistance ? localDelta : globalDelta;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   drawWave — from src/gui/panel.html verbatim (Gnumbat's own code, not
+   openDAW's): true min/max peak reduction with RMS drawn inside it.
+   Trimmed to the parts this prototype needs (no selection/play overlay —
+   the region rectangles drawn on top take that job here instead).
+   ════════════════════════════════════════════════════════════════════ */
+function drawWave(seed, cols, h, live){
+  const half = h/2;
+  if (!live) return `<svg class="wv" viewBox="0 0 ${cols} ${h}" preserveAspectRatio="none">
+    <rect class="w-axis" x="0" y="${(half-.5).toFixed(1)}" width="${cols}" height="1"/></svg>`;
+  const rand = mulberry32(seed), N = cols*48, per = N/cols;
+  const buf = new Float32Array(N);
+  let env = 0;
+  for (let index = 0; index < N; index++){
+    if (rand() < 0.004) env = 0.5+rand()*0.5;
+    env *= 0.999;
+    buf[index] = (rand()*2-1)*env;
+  }
+  let peak = '', rms = '';
+  for (let column = 0; column < cols; column++){
+    let mn=1, mx=-1, sq=0;
+    for (let index=column*per; index<(column+1)*per; index++){ const v=buf[index|0]; if(v<mn)mn=v; if(v>mx)mx=v; sq+=v*v; }
+    const y0=half-mx*(half-.5), y1=half-mn*(half-.5), value=Math.sqrt(sq/per);
+    peak += `<rect x="${column}" y="${y0.toFixed(2)}" width="1" height="${Math.max(.6,y1-y0).toFixed(2)}"/>`;
+    rms  += `<rect x="${column}" y="${(half-value*(half-.5)).toFixed(2)}" width="1" height="${Math.max(.5,value*2*(half-.5)).toFixed(2)}"/>`;
+  }
+  return `<svg class="wv" viewBox="0 0 ${cols} ${h}" preserveAspectRatio="none">
+    <rect class="w-axis" x="0" y="${(half-.5).toFixed(1)}" width="${cols}" height="1"/>
+    <g class="w-un">${peak}</g><g class="w-rms">${rms}</g></svg>`;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Wiring it together
+   ════════════════════════════════════════════════════════════════════ */
+const range = new TimelineRange(TRACK.duration_ms);
+const snapping = new Snapping(TRACK);
+let transportMs = 0, playing = false, rafId = null;
+
+const lanesCol = document.getElementById('lanesCol');
+const axisTrack = document.getElementById('axisTrack');
+const axisSvg = axisTrack.querySelector('svg');
+const markersTrack = document.getElementById('markersTrack');
+const playhead = document.getElementById('playhead');
+const scroller = document.getElementById('scroller');
+const minimapTrack = document.getElementById('minimapTrack');
+const mmWindow = document.getElementById('mmWindow');
+const clockEl = document.getElementById('clock');
+const rangeReadout = document.getElementById('rangeReadout');
+
+function fmtClock(ms){
+  const minutes = Math.floor(ms/60000), seconds = Math.floor((ms%60000)/1000), millis = Math.floor(ms%1000);
+  return `${minutes}:${String(seconds).padStart(2,'0')}.${String(millis).padStart(3,'0')}`;
+}
+
+// snap selector
+const snapSelect = document.getElementById('snapSelect');
+snapping.units.forEach((unit, index) => snapSelect.appendChild(new Option(unit.name, index)));
+snapSelect.addEventListener('change', () => { snapping.index = Number(snapSelect.value); snapping.enabled = snapping.unit.name !== 'Off'; renderAll(); });
+
+// lanes
+const laneEls = STEMS.map(stem => {
+  const lane = document.createElement('div');
+  lane.className = 'lane arr-row';
+  lane.innerHTML = `<div class="lbl"><b>${stem.n}</b><span>${stem.slices.length} slices${stem.live ? '' : ' · silent'}</span></div>
+    <div class="track" data-stem="${stem.key}"></div>`;
+  lanesCol.appendChild(lane);
+  return lane.querySelector('.track');
+});
+
+function widthPx(){ return axisTrack.clientWidth; }
+
+function renderAxis(){
+  range.width = widthPx();
+  const width = range.width, height = 20;
+  let ticks = '';
+  TRACK.downbeats_ms.forEach((barMs, barIndex) => {
+    const x = range.unitToX(barMs);
+    if (x < -20 || x > width+20) return;
+    ticks += `<line class="tick-bar" x1="${x}" x2="${x}" y1="0" y2="${height}"/><text x="${x+3}" y="${height-4}">${barIndex+1}</text>`;
+    if (range.unitsPerPixel < 40){
+      const beatMs = 60000/TRACK.bpm, nextBarMs = TRACK.downbeats_ms[barIndex+1] ?? (barMs+beatMs*TRACK.meter);
+      for (let beat=1; beat<TRACK.meter; beat++){
+        const bt = barMs+beat*beatMs; if (bt >= nextBarMs) break;
+        const bx = range.unitToX(bt);
+        ticks += `<line class="tick-beat" x1="${bx}" x2="${bx}" y1="${height*0.5}" y2="${height}"/>`;
+      }
+    }
+  });
+  axisSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  axisSvg.innerHTML = ticks;
+  rangeReadout.textContent = `${fmtClock(range.min*range.total)} – ${fmtClock(range.max*range.total)}  (${(range.unitsPerPixel).toFixed(1)} ms/px)`;
+}
+
+function barGuides(width, height){
+  let lines = '';
+  TRACK.downbeats_ms.forEach(barMs => {
+    const x = range.unitToX(barMs);
+    if (x < 0 || x > width) return;
+    lines += `<line x1="${x}" x2="${x}" y1="0" y2="${height}" stroke="var(--fill)" stroke-width="1"/>`;
+  });
+  return lines;
+}
+
+function renderLanes(){
+  range.width = widthPx();
+  STEMS.forEach((stem, stemIndex) => {
+    const track = laneEls[stemIndex];
+    const height = track.clientHeight || 56;
+    const cols = Math.max(40, Math.round(track.clientWidth/2));
+    let html = drawWave(stem.seed, cols, height, stem.live);
+    html += `<svg class="wv" viewBox="0 0 ${track.clientWidth} ${height}" preserveAspectRatio="none" style="position:absolute;inset:0">${barGuides(track.clientWidth, height)}</svg>`;
+    stem.slices.forEach(slice => {
+      const x0 = range.unitToX(slice.start_ms), x1 = range.unitToX(slice.end_ms);
+      if (x1 < 0 || x0 > track.clientWidth) return;
+      html += `<div class="region" data-id="${slice.id}" data-stem="${stem.key}" style="left:${x0}px;width:${Math.max(2,x1-x0)}px"></div>`;
+    });
+    track.innerHTML = html;
+    track.querySelectorAll('.region').forEach(installRegionDrag);
+  });
+}
+
+function renderMarkers(){
+  range.width = widthPx();
+  markersTrack.innerHTML = '';
+  MARKERS.forEach(marker => {
+    const x = range.unitToX(marker.time_ms);
+    if (x < -40 || x > markersTrack.clientWidth+40) return;
+    const el = document.createElement('div');
+    el.className = 'marker'; el.dataset.id = marker.id; el.style.left = `${x}px`;
+    el.innerHTML = `<span class="flag">${marker.label}</span>`;
+    markersTrack.appendChild(el);
+    installMarkerDrag(el, marker);
+  });
+}
+
+function renderPlayhead(){
+  range.width = widthPx();
+  const x = range.unitToX(transportMs);
+  const visible = x >= 0 && x <= range.width;
+  playhead.style.display = visible ? 'block' : 'none';
+  playhead.style.left = `calc(${'var(--labelw)'} + ${x}px)`;
+  playhead.style.top = '0px';
+  playhead.style.height = scroller.clientHeight + 'px';
+  clockEl.textContent = fmtClock(transportMs);
+}
+
+function renderMinimap(){
+  const width = minimapTrack.clientWidth;
+  mmWindow.style.left = `${range.min*width}px`;
+  mmWindow.style.width = `${Math.max(4,(range.max-range.min)*width)}px`;
+}
+
+function renderAll(){ renderAxis(); renderLanes(); renderMarkers(); renderPlayhead(); renderMinimap(); }
+
+range.subscribe(renderAll);
+window.addEventListener('resize', renderAll);
+
+/* zoom: wheel over axis or lanes */
+WheelScaling.install(axisTrack, range);
+WheelScaling.install(lanesCol, range);
+document.getElementById('btnZoomIn').onclick = () => range.scaleBy(-0.35, (range.min+range.max)/2*range.total);
+document.getElementById('btnZoomOut').onclick = () => range.scaleBy(0.35, (range.min+range.max)/2*range.total);
+document.getElementById('btnFit').onclick = () => range.showAll();
+
+/* scrub: drag on the axis track sets the playhead and follow-scrolls the
+   range when the pointer drags past the visible edge, same as
+   TimeAxis's Dragging.attach() callback. */
+(function installScrub(){
+  let dragging = false;
+  const move = event => {
+    const rect = axisTrack.getBoundingClientRect();
+    const t = Math.max(0, range.xToUnit(event.clientX-rect.left));
+    transportMs = snapping.round(t);
+    if (t < range.min*range.total) range.moveToUnit(t);
+    else if (t > range.max*range.total) range.moveToUnit(t-range.unitRange);
+    else renderPlayhead();
+  };
+  axisTrack.addEventListener('pointerdown', event => { dragging=true; axisTrack.setPointerCapture(event.pointerId); move(event); });
+  axisTrack.addEventListener('pointermove', event => { if (dragging) move(event); });
+  axisTrack.addEventListener('pointerup', () => dragging=false);
+})();
+
+/* region drag: move within its own lane, snapped via computeDelta */
+function installRegionDrag(el){
+  el.addEventListener('pointerdown', event => {
+    event.stopPropagation();
+    document.querySelectorAll('.region.sel').forEach(node => node.classList.remove('sel'));
+    el.classList.add('sel','dragging');
+    el.setPointerCapture(event.pointerId);
+    const stemKey = el.dataset.stem, id = el.dataset.id;
+    const stem = STEMS.find(candidate => candidate.key === stemKey);
+    const slice = stem.slices.find(candidate => candidate.id === id);
+    const grabPointerMs = range.xToUnit(event.clientX-el.parentElement.getBoundingClientRect().left);
+    const grabStartMs = slice.start_ms, duration = slice.end_ms-slice.start_ms;
+    const onMove = moveEvent => {
+      const rect = el.parentElement.getBoundingClientRect();
+      const pointerMs = range.xToUnit(moveEvent.clientX-rect.left);
+      const delta = snapping.computeDelta(grabPointerMs, pointerMs, grabStartMs);
+      slice.start_ms = Math.max(0, grabStartMs+delta);
+      slice.end_ms = slice.start_ms+duration;
+      renderLanes();
+      document.querySelector(`.region[data-id="${id}"]`)?.classList.add('sel');
+    };
+    const onUp = () => { el.removeEventListener('pointermove', onMove); el.classList.remove('dragging'); };
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp, {once:true});
+  });
+}
+
+/* marker drag + create-on-doubleclick + delete-on-rightclick */
+function installMarkerDrag(el, marker){
+  el.addEventListener('pointerdown', event => {
+    event.stopPropagation();
+    el.setPointerCapture(event.pointerId);
+    const grabPointerMs = range.xToUnit(event.clientX-markersTrack.getBoundingClientRect().left);
+    const grabValueMs = marker.time_ms;
+    const onMove = moveEvent => {
+      const pointerMs = range.xToUnit(moveEvent.clientX-markersTrack.getBoundingClientRect().left);
+      const delta = snapping.computeDelta(grabPointerMs, pointerMs, grabValueMs);
+      marker.time_ms = Math.max(0, grabValueMs+delta);
+      renderMarkers();
+    };
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', () => el.removeEventListener('pointermove', onMove), {once:true});
+  });
+  el.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    MARKERS = MARKERS.filter(candidate => candidate.id !== marker.id);
+    renderMarkers();
+  });
+}
+markersTrack.addEventListener('dblclick', event => {
+  const rect = markersTrack.getBoundingClientRect();
+  const t = snapping.round(range.xToUnit(event.clientX-rect.left));
+  const label = prompt('Section label:', 'SECTION');
+  if (!label) return;
+  MARKERS.push({id:'m'+Date.now(), time_ms:Math.max(0,t), label:label.toUpperCase()});
+  renderMarkers();
+});
+
+/* minimap: drag the window to pan, drag its edges to resize (zoom) —
+   port of TimelineRangeSlider's three-part hit-test (left handle / right
+   handle / body), just as absolute-positioned divs instead of an SVG path. */
+(function installMinimap(){
+  function dragHandle(el, kind){
+    el.addEventListener('pointerdown', event => {
+      event.stopPropagation();
+      el.setPointerCapture(event.pointerId);
+      const width = minimapTrack.clientWidth;
+      const startMin = range.min, startMax = range.max, startX = event.clientX;
+      const onMove = moveEvent => {
+        const deltaNorm = (moveEvent.clientX-startX)/width;
+        if (kind === 'l') range.setWindow(startMin+deltaNorm, startMax);
+        else if (kind === 'r') range.setWindow(startMin, startMax+deltaNorm);
+        else range.setWindow(startMin+deltaNorm, startMax+deltaNorm);
+      };
+      el.addEventListener('pointermove', onMove);
+      el.addEventListener('pointerup', () => el.removeEventListener('pointermove', onMove), {once:true});
+    });
+  }
+  dragHandle(document.getElementById('mmLeft'), 'l');
+  dragHandle(document.getElementById('mmRight'), 'r');
+  dragHandle(mmWindow, 'm');
+  minimapTrack.addEventListener('dblclick', () => range.showAll());
+})();
+
+/* transport simulate — no real audio here, just a clock so the playhead
+   and follow-scroll behaviour are visible without wiring the engine */
+document.getElementById('btnPlay').addEventListener('click', event => {
+  playing = !playing;
+  event.target.textContent = playing ? '⏸ pause' : '▶ play';
+  event.target.classList.toggle('on', playing);
+  if (playing){
+    let last = performance.now();
+    const tick = now => {
+      const dt = now-last; last = now;
+      transportMs += dt;
+      if (transportMs > TRACK.duration_ms) transportMs = 0;
+      if (range.unitToX(transportMs) > range.width) range.moveToUnit(transportMs);
+      else renderPlayhead();
+      if (playing) rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+  } else if (rafId) {
+    cancelAnimationFrame(rafId);
+  }
+});
+
+renderAll();
+</script>
+</body>
+</html>

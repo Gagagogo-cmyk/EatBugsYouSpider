@@ -41,7 +41,7 @@
                     "numoutlets": 1,
                     "outlettype": [ "" ],
                     "patching_rect": [ 900.0, 44.0, 151.0, 22.0 ],
-                    "text": "receive ebys_pitchWindow"
+                    "text": "receive gnumbat_pitchWindow"
                 }
             },
             {
@@ -117,7 +117,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "float", "bang" ],
                     "patching_rect": [ 250.0, 160.0, 175.0, 22.0 ],
-                    "text": "buffer~ ebys_formant_lifter 512"
+                    "text": "buffer~ gnumbat_formant_lifter 512"
                 }
             },
             {
@@ -128,7 +128,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "signal", "signal" ],
                     "patching_rect": [ 250.0, 300.0, 150.0, 22.0 ],
-                    "text": "index~ ebys_formant_lifter"
+                    "text": "index~ gnumbat_formant_lifter"
                 }
             },
             {
@@ -297,7 +297,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "float", "bang" ],
                     "patching_rect": [ 550.0, 160.0, 185.0, 22.0 ],
-                    "text": "buffer~ ebys_pitch_mask_#1 512"
+                    "text": "buffer~ gnumbat_pitch_mask_#1 512"
                 }
             },
             {
@@ -308,7 +308,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "float", "bang" ],
                     "patching_rect": [ 750.0, 160.0, 201.0, 22.0 ],
-                    "text": "buffer~ ebys_formant_mask_#1 512"
+                    "text": "buffer~ gnumbat_formant_mask_#1 512"
                 }
             },
             {
@@ -319,7 +319,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "signal", "signal" ],
                     "patching_rect": [ 550.0, 230.0, 160.0, 22.0 ],
-                    "text": "index~ ebys_pitch_mask_#1"
+                    "text": "index~ gnumbat_pitch_mask_#1"
                 }
             },
             {
@@ -330,7 +330,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "signal", "signal" ],
                     "patching_rect": [ 750.0, 230.0, 176.0, 22.0 ],
-                    "text": "index~ ebys_formant_mask_#1"
+                    "text": "index~ gnumbat_formant_mask_#1"
                 }
             },
             {

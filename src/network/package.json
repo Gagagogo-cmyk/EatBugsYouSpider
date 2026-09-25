@@ -1,0 +1,17 @@
+{
+  "name": "ebys-carnet",
+  "version": "0.2.0",
+  "description": "The regional carnet (docs/platform/NETWORK.md) -- stage 1 (local Hypercore) + stage 2 (Hyperswarm replication). Also hosts artifacts/ (docs/platform/ARTIFACT_NETWORK.md): the generalized Model/Tool/Branch registry and P2P replication layer, same Corestore/Hyperswarm stack, unrelated to event-crawler content.",
+  "main": "carnet-daemon.js",
+  "scripts": {
+    "start": "node carnet-daemon.js",
+    "dump": "node carnet-daemon.js --dump 10",
+    "mirror": "node mirror.js",
+    "artifacts": "node artifacts/cli.js"
+  },
+  "dependencies": {
+    "corestore": "^7.12.2",
+    "hyperswarm": "^4.17.0",
+    "hypercore-crypto": "^3.7.0"
+  }
+}

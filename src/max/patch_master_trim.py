@@ -18,7 +18,7 @@ Reload the Max patch after running. Tweak TRIM below to taste (0.0316 = -30 dB,
 """
 import json, os, sys
 
-PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ebys-analyze.maxpat')
+PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gnumbat-analyze.maxpat')
 TRIM  = 0.0126            # -30 dB
 # (master *~ , downstream feed) for L and R
 LEGS  = [('obj-21070', 'obj-159', 'obj-wave_trimL'),

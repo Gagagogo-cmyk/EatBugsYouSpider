@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/decomposition.schema.json",
+  "title": "Stem decomposition of a Bake",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.decomposition/0\\.[0-9]+$"
+    },
+    "decomposition_id": {
+      "type": "string",
+      "pattern": "^dc_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "bake_id": {
+      "type": "string",
+      "pattern": "^bk_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "method": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        },
+        "is_test": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "backend",
+        "is_test"
+      ]
+    },
+    "stem_map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "op": {
+            "enum": [
+              "sum",
+              "copy"
+            ]
+          }
+        },
+        "required": [
+          "from"
+        ]
+      }
+    },
+    "stems": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]{1,32}$"
+          },
+          "file": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "sample_rate": {
+            "type": "integer"
+          },
+          "channels": {
+            "type": "integer"
+          },
+          "frames": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "file",
+          "sha256",
+          "sample_rate",
+          "channels",
+          "frames"
+        ]
+      }
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timing": {
+      "type": "object",
+      "properties": {
+        "seconds": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "decomposition_id",
+    "bake_id",
+    "created_at",
+    "method",
+    "stem_map",
+    "stems",
+    "source_sha256"
+  ],
+  "additionalProperties": true
+}

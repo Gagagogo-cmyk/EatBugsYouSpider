@@ -7077,7 +7077,7 @@
                     "numinlets": 1,
                     "numoutlets": 0,
                     "patching_rect": [ 851.8518376350403, 51.85185098648071, 258.0, 20.0 ],
-                    "text": "EBYS — OFFLINE ANALYZER + PLAYBACK",
+                    "text": "Gnumbat — OFFLINE ANALYZER + PLAYBACK",
                     "textcolor": [ 1.0, 1.0, 1.0, 1.0 ]
                 }
             },
@@ -9435,12 +9435,12 @@
             },
             {
                 "box": {
-                    "id": "obj-ebyswin1",
+                    "id": "obj-gnumbatwin1",
                     "maxclass": "newobj",
                     "numinlets": 1,
                     "numoutlets": 0,
                     "patching_rect": [ 1040.0, 1096.296277999878, 150.0, 22.0 ],
-                    "text": "send ebys_pitchWindow"
+                    "text": "send gnumbat_pitchWindow"
                 }
             },
             {
@@ -9814,7 +9814,7 @@
                     "numoutlets": 1,
                     "outlettype": [ "signal" ],
                     "patching_rect": [ 1044.4444270133972, 1407.4073839187622, 221.0, 22.0 ],
-                    "text": "pfft~ ebys-pitch.maxpat 1024 4 args voc"
+                    "text": "pfft~ gnumbat-pitch.maxpat 1024 4 args voc"
                 }
             },
             {
@@ -9825,7 +9825,7 @@
                     "numoutlets": 1,
                     "outlettype": [ "signal" ],
                     "patching_rect": [ 1644.444416999817, 1407.4073839187622, 223.0, 22.0 ],
-                    "text": "pfft~ ebys-pitch.maxpat 1024 4 args drm"
+                    "text": "pfft~ gnumbat-pitch.maxpat 1024 4 args drm"
                 }
             },
             {
@@ -9836,7 +9836,7 @@
                     "numoutlets": 1,
                     "outlettype": [ "signal" ],
                     "patching_rect": [ 2214.8147778511047, 1407.4073839187622, 221.0, 22.0 ],
-                    "text": "pfft~ ebys-pitch.maxpat 1024 4 args bss"
+                    "text": "pfft~ gnumbat-pitch.maxpat 1024 4 args bss"
                 }
             },
             {
@@ -9847,7 +9847,7 @@
                     "numoutlets": 1,
                     "outlettype": [ "signal" ],
                     "patching_rect": [ 2833.333286046982, 1407.4073839187622, 222.0, 22.0 ],
-                    "text": "pfft~ ebys-pitch.maxpat 1024 4 args mel"
+                    "text": "pfft~ gnumbat-pitch.maxpat 1024 4 args mel"
                 }
             },
             {
@@ -36306,7 +36306,7 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-ebyswin1", 0 ],
+                    "destination": [ "obj-gnumbatwin1", 0 ],
                     "source": [ "obj-9982", 24 ]
                 }
             },

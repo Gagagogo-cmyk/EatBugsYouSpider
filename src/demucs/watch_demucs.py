@@ -45,6 +45,13 @@ threading.Thread(target=_worker, daemon=True).start()
 WS_SERVER_PROGRESS_URL = "http://localhost:8080/progress"
 
 def post_progress(data):
+    # Also mirrored into data/sessions/<session>/pipeline/<track>.json (see write_pipeline_stage),
+    # so the plugin -- or anything else -- can show progress without Max/ws_server running.
+    try:
+        if data.get('type') == 'pipelineStage' and data.get('track'):
+            _mirror_stage_event(data)
+    except Exception as e:
+        print(f"pipeline file: could not record {data.get('stage')}: {e}")
     try:
         body = json.dumps(data).encode('utf-8')
         req = urllib.request.Request(
@@ -56,10 +63,130 @@ def post_progress(data):
         pass  # TUI not connected — silent
 
 # =========================
+# PIPELINE PROGRESS FILE
+# One small JSON per track, next to the session's other outputs:
+#   data/sessions/<session>/pipeline/<track>.json
+#   {"track": ..., "session": ..., "updated_at": ...,
+#    "stages": {"demucs":   {"status": "waiting|running|done|error", "percent": 0-100, "msg": ...},
+#               "essentia": {...}, "madmom": {...}, "flucoma": {...}}}
+# Written atomically (tmp + rename). Read by the Gnumbat plugin's Library view (bake status).
+# =========================
+PIPELINE_STAGES = ("demucs", "essentia", "madmom", "flucoma")
+_STAGE_ALIASES = {"genre": "essentia"}          # ws_server/TUI call the Essentia step "genre"
+_pipeline_lock = threading.Lock()
+
+def pipeline_file(track: str) -> Path:
+    d = session_data_dir() / "pipeline"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / f"{track}.json"
+
+def write_pipeline_stage(track: str, stage: str, status: str, percent=None, msg=None):
+    stage = _STAGE_ALIASES.get(stage, stage)
+    with _pipeline_lock:
+        f = pipeline_file(track)
+        try:
+            doc = json.loads(f.read_text()) if f.exists() else {}
+        except Exception:
+            doc = {}
+        doc.setdefault("track", track)
+        doc["session"] = current_session_id()
+        stages = doc.setdefault("stages", {})
+        for st in PIPELINE_STAGES:
+            stages.setdefault(st, {"status": "waiting", "percent": 0})
+        entry = stages.setdefault(stage, {})
+        entry["status"] = status
+        if percent is not None:
+            entry["percent"] = max(0, min(100, int(percent)))
+        elif status == "done":
+            entry["percent"] = 100
+        if msg:
+            entry["msg"] = str(msg)
+        else:
+            entry.pop("msg", None)
+        doc["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        tmp = f.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(doc, indent=2))
+        os.replace(tmp, f)
+
+def _mirror_stage_event(data):
+    status = {"start": "running", "progress": "running", "done": "done", "error": "error"}.get(data.get("status"), data.get("status", "running"))
+    pct = data.get("percent")
+    if status == "running" and pct is None and data.get("status") == "start":
+        pct = 0
+    write_pipeline_stage(data["track"], data.get("stage", "?"), status, pct, data.get("msg"))
+
+def watch_flucoma(track: str, library_json: Path, timeout_s: int = 2 * 3600):
+    """FluCoMa runs in the headless Pd patch (src/pd, driven by pd/bridge/analyze_reader_bridge.js),
+    which writes its own per-stem progress into this same pipeline file. This is the fallback for when
+    that bridge isn't reporting: its results land in analysis_library.json under the track's name, one
+    entry per stem -- so count them: 0 = waiting for Pd, 1-3 = running, 4 = done. Background thread;
+    gives up after timeout."""
+    def count_stems():
+        try:
+            lib = json.loads(library_json.read_text())
+        except Exception:
+            return 0
+        if not isinstance(lib, dict):
+            return 0
+        entry = lib.get(track)
+        if isinstance(entry, dict):
+            return len([k for k in ("vocals", "drums", "bass", "melody") if k in entry])
+        return len([k for k in lib.keys() if str(k).startswith(track + "_")])   # older flat layout
+
+    def run():
+        write_pipeline_stage(track, "flucoma", "waiting", 0, "waiting for Pd")
+        start, last, last_mtime = time.time(), -1, None
+        while time.time() - start < timeout_s:
+            try:
+                mtime = library_json.stat().st_mtime if library_json.exists() else None
+            except Exception:
+                mtime = None
+            if mtime != last_mtime:
+                last_mtime = mtime
+                n = count_stems()
+                if n != last:
+                    last = n
+                    if n >= 4:
+                        write_pipeline_stage(track, "flucoma", "done", 100)
+                        return
+                    if n > 0:
+                        write_pipeline_stage(track, "flucoma", "running", n * 25, f"{n}/4 stems")
+            time.sleep(2)
+        write_pipeline_stage(track, "flucoma", "error", max(0, last) * 25, "timed out waiting for Pd")
+    threading.Thread(target=run, name=f"flucoma-watch-{track}", daemon=True).start()
+
+def run_with_progress(cmd, stage: str, track: str, env):
+    """subprocess.run() replacement for the analysis taggers: reads their stderr live and turns
+    "PROGRESS i/n" lines into pipelineStage progress events (percent). Returns an object with
+    .returncode / .stdout / .stderr like subprocess.run(capture_output=True, text=True)."""
+    proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+    out_chunks = []
+    reader = threading.Thread(target=lambda: out_chunks.append(proc.stdout.read()), daemon=True)
+    reader.start()
+    err_lines, last_pct = [], -1
+    for line in proc.stderr:
+        m = re.match(r'\s*PROGRESS (\d+)/(\d+)', line)
+        if m:
+            done, total = int(m.group(1)), max(1, int(m.group(2)))
+            pct = int(round(100.0 * done / total))
+            if pct != last_pct:
+                last_pct = pct
+                post_progress({'type': 'pipelineStage', 'stage': stage, 'status': 'progress',
+                               'track': track, 'percent': pct})
+            continue
+        err_lines.append(line)
+    proc.wait()
+    reader.join(timeout=5)
+    class _R: pass
+    r = _R()
+    r.returncode, r.stdout, r.stderr = proc.returncode, ''.join(out_chunks), ''.join(err_lines)
+    return r
+
+# =========================
 # PATHS  (all relative — works on any machine)
 # =========================
-SRC_DIR  = Path(__file__).parent          # EBYS/src/demucs/
-ROOT_DIR = SRC_DIR.parent.parent          # EBYS/ (repo root)
+SRC_DIR  = Path(__file__).parent          # Gnumbat/src/demucs/
+ROOT_DIR = SRC_DIR.parent.parent          # Gnumbat/ (repo root)
 DATA_ROOT = ROOT_DIR / "data"
 
 # raw_uploads/ is PER-SESSION (data/sessions/<id>/raw_uploads/) — each session
@@ -227,7 +354,7 @@ analyze_missing_tracks()
 # SQLITE IMPORT HELPER
 # =========================
 def _run_import_library():
-    """Import genres + downbeats (and any existing slices) into ebys.db."""
+    """Import genres + downbeats (and any existing slices) into gnumbat.db."""
     import_script = SRC_DIR / "import_library.py"
     if not import_script.exists():
         return
@@ -298,6 +425,11 @@ class AudioHandler(FileSystemEventHandler):
         original_name = target_audio.stem
         ht_root = STEMS_DIR / "htdemucs"
         song_folder = None
+        # Progress file: every stage starts as "waiting" (see write_pipeline_stage).
+        try:
+            write_pipeline_stage(original_name, "demucs", "waiting", 0)
+        except Exception as e:
+            print(f"pipeline file: {e}")
 
         # -------------------------
         # SKIP IF STEMS ALREADY EXIST
@@ -306,6 +438,7 @@ class AudioHandler(FileSystemEventHandler):
             for folder in ht_root.iterdir():
                 if folder.is_dir() and any(folder.glob(f"{original_name}_*.wav")):
                     print(f"Stems already exist for '{original_name}' — skipping Demucs")
+                    write_pipeline_stage(original_name, "demucs", "done", 100, "stems already existed")
                     song_folder = folder
                     break
 
@@ -348,14 +481,18 @@ class AudioHandler(FileSystemEventHandler):
 
             print("Demucs finished")
 
+            if proc.returncode != 0:
+                write_pipeline_stage(original_name, "demucs", "error", None, f"demucs exited with code {proc.returncode}")
             if not ht_root.exists():
                 print("No htdemucs folder found")
+                write_pipeline_stage(original_name, "demucs", "error", None, "no htdemucs folder")
                 return
 
             # Demucs always names the output folder after the input stem
             song_folder = ht_root / original_name
             if not song_folder.exists() or not list(song_folder.glob("*.wav")):
                 print(f"Expected folder not found: {song_folder}")
+                write_pipeline_stage(original_name, "demucs", "error", None, "no stems were written")
                 return
 
             print("Using folder:", song_folder.name)
@@ -384,11 +521,11 @@ class AudioHandler(FileSystemEventHandler):
         print("→ genre_tagger.py ...")
         post_progress({'type': 'pipelineStage', 'stage': 'genre',
                        'status': 'start', 'track': original_name})
-        r_genre = subprocess.run(
+        r_genre = run_with_progress(
             [ANALYSIS_PYTHON, str(SRC_DIR / "genre_tagger.py"),
              "--htdemucs-root", HT_ROOT,
              "--out", str(DATA_DIR / "genres.json")],
-            env=SUBPROCESS_ENV, capture_output=True, text=True
+            'genre', original_name, SUBPROCESS_ENV
         )
         if r_genre.stderr.strip():
             print(f"genre_tagger output:\n{r_genre.stderr.strip()}")
@@ -404,11 +541,11 @@ class AudioHandler(FileSystemEventHandler):
         print("→ madmom_tagger.py ...")
         post_progress({'type': 'pipelineStage', 'stage': 'madmom',
                        'status': 'start', 'track': original_name})
-        r_madmom = subprocess.run([
+        r_madmom = run_with_progress([
             ANALYSIS_PYTHON, str(SRC_DIR / "madmom_tagger.py"),
             "--htdemucs-root", HT_ROOT,
             "--out", str(DATA_DIR / "downbeats.json"),
-        ], env=SUBPROCESS_ENV, capture_output=True, text=True)
+        ], 'madmom', original_name, SUBPROCESS_ENV)
         # Always print madmom output — it exits 0 even on analysis failure
         if r_madmom.stderr.strip():
             print(f"madmom_tagger output:\n{r_madmom.stderr.strip()}")
@@ -461,6 +598,8 @@ class AudioHandler(FileSystemEventHandler):
         # Notify TUI + Max that stems are ready.
         # ws_server broadcasts to TUI and outlets 'stemsReady' so Max bangs the read object.
         post_progress({'type': 'stemsReady', 'track': original_name})
+        # FluCoMa now happens in the headless Pd patch: follow it (see watch_flucoma).
+        watch_flucoma(original_name, DATA_DIR / "analysis_library.json")
 
         # Import updated genres + downbeats into SQLite.
         # Slice rows are imported after FluCoMa analysis completes (ws_server analysisDone).

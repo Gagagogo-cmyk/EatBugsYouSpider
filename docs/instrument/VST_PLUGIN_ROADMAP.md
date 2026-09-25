@@ -1,4 +1,4 @@
-# EBYS — VST Plugin Roadmap
+# Gnumbat — VST Plugin Roadmap
 
 Status: **plan, nothing built yet**. This supersedes `REAPER_INTEGRATION.md` — that doc was scoped around a REAPER-only ReaScript extension; the decision since then is a real VST3/AU plugin (JUCE/C++), for portability across DAWs. The Max/PD instrument keeps being the live rig throughout — nothing here touches it, and it doesn't block or get blocked by this.
 
@@ -8,22 +8,22 @@ One page, meant to be read start to finish. If any of this feels like it contrad
 
 ## 1. The decision, in one paragraph
 
-EBYS becomes a VST3/AU **studio tool**, not a live-performance engine — that job stays with the Max/PD instrument (and eventually hardware). The flow: the plugin renders a snapshot of the user's mix, hands it to a background service to analyze, decompose into stems, and remix or regenerate, then the results come back and the user uploads them into the DAW as new audio. The plugin's C++ core (JUCE) only does the two ends of that — capture and delivery — both non-real-time.
+Gnumbat becomes a VST3/AU **studio tool**, not a live-performance engine — that job stays with the Max/PD instrument (and eventually hardware). The flow: the plugin renders a snapshot of the user's mix, hands it to a background service to analyze, decompose into stems, and remix or regenerate, then the results come back and the user uploads them into the DAW as new audio. The plugin's C++ core (JUCE) only does the two ends of that — capture and delivery — both non-real-time.
 
 The background service is three things, not one: the Python pipeline (Demucs/madmom/Essentia/taste model/generation), PD running headlessly for FluCoMa analysis (the actual descriptor computation — onset slicing, spectral/pitch/timbre — genuinely has to run inside PD, not as a standalone script; only the *live playback* half of PD, `karma~`/`pfft~`, is what the DAW replaces), and Ollama for Cricket. None of it needs to be visible to the user — the plugin checks whether it's running on load and launches/supervises it itself if not, so from the outside it's just "install the VST, use it in your DAW."
 
-Cricket becomes the recommendation and search interface into the growing archive this produces — same assistant, same `ebys.db`, surfacing candidates for "what comes next" from the scored catalog rather than translating live engine commands.
+Cricket becomes the recommendation and search interface into the growing archive this produces — same assistant, same `gnumbat.db`, surfacing candidates for "what comes next" from the scored catalog rather than translating live engine commands.
 
 ---
 
 ## 2. What you already have — this is most of the hard part
 
-Worth sitting with this, because the vision can feel bigger than it is: the ML and decision-making core of EBYS already exists and already works.
+Worth sitting with this, because the vision can feel bigger than it is: the ML and decision-making core of Gnumbat already exists and already works.
 
 - **Stem separation, analysis, indexing** — Demucs, madmom, Essentia, FluCoMa — all built, all running today.
 - **Slice selection / "alternative versions" of a stem** — `slicer.js`'s `selectSegment()`, descriptor-distance scoring. Built.
 - **A taste model that scores a candidate** — `train_bias.py`. Built, working.
-- **A score → train loop** — `:bake`, `bake_snapshots` in `ebys.db`, decay over time. Built, working, already database-backed.
+- **A score → train loop** — `:bake`, `bake_snapshots` in `gnumbat.db`, decay over time. Built, working, already database-backed.
 - **True generative audio (not just remixing existing material)** — designed in detail (`GENERATIVE_LAYER.md`, `USER_LORA.md`), code written, just not yet run on a GPU.
 - **Remix / generate / blend switching** — `AGENT_MODE`. Built.
 - **Cricket** — Ollama-backed assistant, already reads descriptor/vocabulary context. Built for command translation; repurposing it as an archive-search interface (Step 6) is a new prompt mode, not new infrastructure.
@@ -50,7 +50,7 @@ The plugin sits on a track, passes audio through unchanged, and on request write
 ```cpp
 // sketch, not final code
 std::unique_ptr<juce::AudioFormatWriter::ThreadedWriter> writer;
-juce::TimeSliceThread backgroundThread { "EBYS capture writer" };
+juce::TimeSliceThread backgroundThread { "Gnumbat capture writer" };
 
 void startCapture (const juce::File& outFile) {
     backgroundThread.startThread();
@@ -67,7 +67,7 @@ void processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override
 ```
 
 **Step 4 — The socket bridge.**
-Wire the plugin's background thread to talk to the background service: hand it the captured WAV, trigger separation → FluCoMa analysis → scoring (and later generation), get results back, confirm `ebys.db` updates land where the plugin can read them. This proves the architecture actually works, using real backend code.
+Wire the plugin's background thread to talk to the background service: hand it the captured WAV, trigger separation → FluCoMa analysis → scoring (and later generation), get results back, confirm `gnumbat.db` updates land where the plugin can read them. This proves the architecture actually works, using real backend code.
 
 The background service is Python (Demucs/madmom/Essentia/taste model/generation) + PD running headlessly for FluCoMa analysis, via `libpd` and a minimal analysis-only patch (just the FluCoMa chain — no `karma~`, no audio out, no GUI) + Ollama for Cricket. **Validate the riskiest part of this first, before building the rest of the bridge on top of it:** confirm FluCoMa's PD externals actually run correctly headless under `libpd`. Everything downstream assumes this works.
 
@@ -89,12 +89,12 @@ void ResultCard::mouseDrag (const juce::MouseEvent& e) {
 ```
 
 **Step 6 — Wire the GUI to real data.**
-Connect Step 1's mockup to the live system: real descriptors, a progress display while separation/analysis runs, real bake/score controls writing to `ebys.db`. This is where the "training tab" from the original vision becomes real — as a studio tool, not a live-performance surface. Include Cricket here as a recommender, not just a search box: it surfaces candidates from the scored catalog for "what should come next," and the user picks from what it suggests for each section of the track.
+Connect Step 1's mockup to the live system: real descriptors, a progress display while separation/analysis runs, real bake/score controls writing to `gnumbat.db`. This is where the "training tab" from the original vision becomes real — as a studio tool, not a live-performance surface. Include Cricket here as a recommender, not just a search box: it surfaces candidates from the scored catalog for "what should come next," and the user picks from what it suggests for each section of the track.
 
 **Step 7 — Packaging for other people.**
 Only after Steps 1–6 work for you: decide whether to bundle a Python runtime so strangers don't need their own install, or move the neural inference paths to a Python-free C++ runtime (ONNX/libtorch). Deliberately last — it's a distribution problem, not a capability problem.
 
-**Not in this plugin:** live playback, pitch-shifted real-time sequencing, and mid-set "dimension switching" stay with the Max/PD instrument (and eventually hardware) — that's a different tool for a different moment, sharing the same `ebys.db`/Python backend rather than duplicating it in C++.
+**Not in this plugin:** live playback, pitch-shifted real-time sequencing, and mid-set "dimension switching" stay with the Max/PD instrument (and eventually hardware) — that's a different tool for a different moment, sharing the same `gnumbat.db`/Python backend rather than duplicating it in C++.
 
 ---
 

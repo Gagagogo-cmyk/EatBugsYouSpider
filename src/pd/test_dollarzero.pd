@@ -1,0 +1,47 @@
+#N canvas 80 80 900 560 12;
+#X msg 60 120 111;
+#X msg 60 170 bang;
+#X obj 60 240 test_dollarzero_slot;
+#X obj 60 300 print SLOT_A;
+#X msg 320 120 222;
+#X msg 320 170 bang;
+#X obj 320 240 test_dollarzero_slot;
+#X obj 320 300 print SLOT_B;
+#X text 60 20 THE 30-SECOND TEST. Open the Pd console (Window > Pd
+Window) so you can see the print output \, then click these four boxes
+in order \, top to bottom \, left column then right: 111 \, bang \, 222 \,
+bang., f 76;
+#X text 60 360 PASS -- the console shows "SLOT_A: 111" then "SLOT_B:
+222". The two copies kept separate values \, which means \$0 in an
+ESCAPED object box does scope per instance \, and the escaped form is
+correct. cycle_slot.pd and buffer_manager_stem.pd should have their
+backslashes put back., f 76;
+#X text 60 450 FAIL -- the console shows "SLOT_A: 111" then "SLOT_B:
+222" on the first pass \, but click bang under SLOT_A again and it now
+says 222. Both copies are sharing one store. That would mean the
+escaped form is inert and the 2026-08-03 note was right after all --
+in which case tell me and I will revert the revert., f 76;
+#X text 560 120 Click the LEFT bang a second time after clicking 222.
+That second click is the whole test: a shared store will have been
+overwritten by 222 \, a per-instance store still holds 111. Doing it in
+this order matters -- on the first pass through \, a broken build and a
+working one print exactly the same thing., f 40;
+#X text 560 300 Nothing else in the patch depends on this file. It
+touches no audio \, loads no data \, and can be deleted once the question
+is settled., f 40;
+#X msg 620 120 21;
+#X obj 620 240 expr if($f1 >= 2\, $f1\, 0);
+#X obj 620 300 print EXPR;
+#X text 620 360 EXPR -- both questions answered by your console. \$f1 is
+correct BARE (binbuf only substitutes \$ + a DIGIT). And this Pd's expr
+has no ternary at all -- parenthesising the condition did not help \, so
+all 24 boxes were rewritten to the vanilla if(cond\, then\, else) form.
+Click 21: "EXPR: 21" confirms it., f 40;
+#X connect 0 0 2 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 4 0 6 0;
+#X connect 5 0 6 0;
+#X connect 6 0 7 0;
+#X connect 13 0 14 0;
+#X connect 14 0 15 0;

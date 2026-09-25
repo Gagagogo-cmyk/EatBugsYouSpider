@@ -1,0 +1,256 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.bufchroma Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.bufchroma</h1>
+  <div class="digest">A histogram of pitch classes on a Buffer</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>This class computes a histogram of the energy contained for each pitch class across the analysis frequency range.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>Also known as a chromagram, this typically allows you to get a contour of how much each semitone is represented in the spectrum over time. The number of chroma bins (and, thus, pitch classes) and the central reference frequency can be adjusted.</p>
+<p>The process will return a single multichannel buffer of STRONG::numChroma:: per input channel. Each frame represents a value, which is every hopSize.</p>
+
+
+    <p>Read more about fluid.bufchroma on the <a href='https://learn.flucoma.org/reference/chroma'>learn platform</a>.</p>
+    
+    <p>fluid.bufchroma is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Number of Chroma Bins per Octave<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: 12)</span><div class="description"><p>Shorthand argument for <code>numchroma</code></p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">features
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The destination buffer for the STRONG::numChroma:: to be written to.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">fftsettings
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: [[&#39;winSize&#39;, 1024], [&#39;hopSize&#39;, -1], [&#39;fftSize&#39;, -1]])</span>
+      </h3>
+      <div class="description"><p>FFT settings consist of three numbers representing the window size, hop size and FFT size in samples:</p>
+<p>The hop size and fft size can both be set to -1 (and are by default), with slightly different meanings:</p>
+<ul class="simple">
+<li>For the hop size, -1 = <code>windowsize/2</code></li>
+<li>For the FFT size, -1 = <code>windowsize</code> snapped to the nearest equal / greater power of 2 (e.g. <code>windowsize 1024</code> =&gt; <code>fftsize 1024</code>, but <code>windowssize 1000</code> also =&gt; <code>fftsize 1024</code>)</li>
+</ul>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>FFTSize, if != -1, will snap to the next greatest power of two &amp;gt; 4</li>
+<li>The maximum FFT size is limited to the value of the <code>maxfftsize</code> argument</li>
+<li>if FFT size != -1, then window size is clipped at FFT size</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfreq
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1.0)</span>
+      </h3>
+      <div class="description"><p>The highest frequency included in the analysis, in Hz.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfftsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Set an explicit upper bound on the FFT size at object instantiation. The default of -1 sets this to whatever the initial FFT size is</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxnumchroma
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Manually sets a maximum value for <code>numchroma</code>. Can only be set at object instantiation. The default of -1 sets this equal to the initial value of <code>numchroma</code></p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">minfreq
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.0)</span>
+      </h3>
+      <div class="description"><p>The lower frequency included in the analysis, in Hz.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">normalize
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>This flag enables the scaling of the output. It is off (0) by default. (1) will normalise each frame to sum to 1. (2) normalises each frame relative to the loudest chroma bin being 1.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numchans
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>For multichannel srcBuf, how many channels should be processed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numchroma
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 12)</span>
+      </h3>
+      <div class="description"><p>The number of chroma bins per octave. It will determine how many channels are output per input channel.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>2</code></li>
+<li>Maximum: <code>maxnumchroma</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numframes
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>How many frames should be processed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">padding
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>Controls the zero-padding added to either end of the source buffer or segment. Padding ensures all values are analysed. Possible values are:</p>
+</div><div class="enumvals">      
+      <ol start='0'><li>
+          <p>No padding - The first analysis window starts at time 0, and the samples at either end will be tapered by the STFT windowing function.</p>
+
+        </li><li>
+          <p>Half the window size - The first sample is centred in the analysis window ensuring that the start and end of the segment are accounted for in the analysis.</p>
+
+        </li><li>
+          <p>Window size minus the hop size - Mode 2 can be useful when the overlap factor (window size / hop size) is greater than 2, to ensure that the input samples at either end of the segment are covered by the same number of analysis frames as the rest of the analysed material.</p>
+
+        </li></ol>
+      </div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">ref
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 440.0)</span>
+      </h3>
+      <div class="description"><p>The frequency of reference in Hz for the tuning of the middle A (default: 440 Hz)</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+<li>Maximum: <code>22000</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">source
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer to use as the source material to be analysed. The different channels of multichannel buffers will be processed sequentially.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startchan
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>For multichannel srcBuf, which channel should be processed first.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startframe
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Where in the srcBuf should the process start, in samples.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="bang">bang</h3>
+      <div class="description"> A bang will commence processing on object given its current settings, unless it is already busy. In that case, the behaviour depends on the value of the <span class="messagename" data-message="queue"> queue </span>
+        attribute. </div>
+    </div>
+    <div class="method_group">
+      <h3 class="method_name" name="cancel">cancel</h3>
+      <div class="description"> When processing in non-blocking mode, this will cancel the job underway, without updating destination buffers. </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.chroma~.html">Chroma</a></h3><h3 class="seealso_name"><a href="fluid.bufpitch.html">BufPitch</a></h3><h3 class="seealso_name"><a href="fluid.bufloudness.html">BufLoudness</a></h3><h3 class="seealso_name"><a href="fluid.bufmfcc.html">BufMFCC</a></h3><h3 class="seealso_name"><a href="fluid.bufspectralshape.html">BufSpectralShape</a></h3><h3 class="seealso_name"><a href="fluid.bufstats.html">BufStats</a></h3></section> 
+</body>
+</html>

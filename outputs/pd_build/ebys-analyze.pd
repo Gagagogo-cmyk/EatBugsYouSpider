@@ -53,7 +53,7 @@
 #X obj 2120 -1580 + 1;
 #X msg 2120 -1560 5;
 #X msg 2040 -1480 line 0;
-#X text 1380 -1700 EBYS — OFFLINE ANALYZER + PLAYBACK, f 40;
+#X text 1380 -1700 Gnumbat — OFFLINE ANALYZER + PLAYBACK, f 40;
 #X text 1920 -1700 == LOADING ==, f 18;
 #X obj 2100 -1700 bridge_streamWatcher;
 #X msg 2160 -1620 read /Users/alexandregagne/Documents/EBYS/data/current/stream.txt, f 66;

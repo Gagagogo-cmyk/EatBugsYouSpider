@@ -1,4 +1,4 @@
-# EBYS — Time Stretch Wiring Guide
+# Gnumbat — Time Stretch Wiring Guide
 
 ## What changed in the JS files
 

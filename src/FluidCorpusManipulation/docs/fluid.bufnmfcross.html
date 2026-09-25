@@ -1,0 +1,195 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.bufnmfcross Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.bufnmfcross</h1>
+  <div class="digest">Resynthesise a target sound based on a source sound</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Uses NMF decomposition to reconstruct a target sound using components learned from a source sound</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>The process works by attempting to reconstruct components of the <code>target</code> sound using the timbre (i.e., spectra) of the <code>source</code> sound, learned through a Non-negative Matrix Factorisation. The result is a hybrid whose character depends on how well the target can be represented by the source's spectral frames.</p>
+<p>In contrast to <a href="fluid.bufnmf.html">fluid.bufnmf</a>, each spectral frame of <code>source</code> is a spectral template. Be aware that NMF is O(N^2) in the number of templates, so longer <code>source</code> buffers will take dramatically longer to process.</p>
+<p>See Driedger, J., Prätzlich, T., &amp; Müller, M. (2015). Let it Bee-Towards NMF-Inspired Audio Mosaicing. ISMIR, 350–356. <a class="reference external" href="http://ismir2015.uma.es/articles/13_Paper.pdf">http://ismir2015.uma.es/articles/13_Paper.pdf</a></p>
+
+
+    <p>Read more about fluid.bufnmfcross on the <a href='https://learn.flucoma.org/reference/bufnmfcross'>learn platform</a>.</p>
+    
+    <p>fluid.bufnmfcross is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">continuity
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 7)</span>
+      </h3>
+      <div class="description"><p>Promote the use of N successive source frames, giving greater continuity in the result. This can not be bigger than the size of the <code>source</code> buffer, but useful values tend to be much lower (in the tens). The default is 7.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+<li>Snaps to odd numbers</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">fftsettings
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: [[&#39;winSize&#39;, 1024], [&#39;hopSize&#39;, -1], [&#39;fftSize&#39;, -1]])</span>
+      </h3>
+      <div class="description"><p>FFT settings consist of three numbers representing the window size, hop size and FFT size in samples:</p>
+<p>The hop size and fft size can both be set to -1 (and are by default), with slightly different meanings:</p>
+<ul class="simple">
+<li>For the hop size, -1 = <code>windowsize/2</code></li>
+<li>For the FFT size, -1 = <code>windowsize</code> snapped to the nearest equal / greater power of 2 (e.g. <code>windowsize 1024</code> =&gt; <code>fftsize 1024</code>, but <code>windowssize 1000</code> also =&gt; <code>fftsize 1024</code>)</li>
+</ul>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>FFTSize, if != -1, will snap to the next greatest power of two &amp;gt; 4</li>
+<li>The maximum FFT size is limited to the value of the <code>maxfftsize</code> argument</li>
+<li>if FFT size != -1, then window size is clipped at FFT size</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">iterations
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 50)</span>
+      </h3>
+      <div class="description"><p>How many iterations of NMF to run. The default is 50.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfftsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Set an explicit upper bound on the FFT size at object instantiation. The default of -1 sets this to whatever the initial FFT size is</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">output
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>A buffer to write the new sound to.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">polyphony
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 11)</span>
+      </h3>
+      <div class="description"><p>Control the spectral density of the output sound by specifying the maximum number of simultaneous spectral templates from <code>source</code> that can be used. The default is 10.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+<li>Maximum: <code>(fft size / 2) + 1 (see fft settings)</code></li>
+<li>Snaps to odd numbers</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">source
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>A buffer whose content will supply the spectral bases used in the hybrid. The result will use the spectral frames from this buffer.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">target
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>A buffer whose content will supply the temporal activations used in the hybrid. The process aims to &quot;sound like&quot; this buffer using spectra from <code>source</code>.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">timesparsity
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 7)</span>
+      </h3>
+      <div class="description"><p>Control the repetition of source templates in the reconstruction by specifying a number of frames within which a template should not be re-used. Units are spectral frames. The default is 7.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+<li>Snaps to odd numbers</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="bang">bang</h3>
+      <div class="description"> A bang will commence processing on object given its current settings, unless it is already busy. In that case, the behaviour depends on the value of the <span class="messagename" data-message="queue"> queue </span>
+        attribute. </div>
+    </div>
+    <div class="method_group">
+      <h3 class="method_name" name="cancel">cancel</h3>
+      <div class="description"> When processing in non-blocking mode, this will cancel the job underway, without updating destination buffers. </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.bufnmf.html">BufNMF</a></h3><h3 class="seealso_name"><a href="fluid.nmfmatch~.html">NMFMatch</a></h3><h3 class="seealso_name"><a href="fluid.nmffilter~.html">NMFFilter</a></h3></section> 
+</body>
+</html>

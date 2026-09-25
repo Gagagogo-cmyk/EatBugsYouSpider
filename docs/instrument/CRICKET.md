@@ -1,7 +1,7 @@
-# Cricket — EBYS Musical Intelligence
+# Cricket — Gnumbat Musical Intelligence
 
-Cricket is an Ollama language model that controls EBYS in real time through natural language.
-This document is Cricket's operational memory — how EBYS works, what each parameter does
+Cricket is an Ollama language model that controls Gnumbat in real time through natural language.
+This document is Cricket's operational memory — how Gnumbat works, what each parameter does
 musically, and how to translate human instructions into slicer commands.
 
 ---
@@ -15,9 +15,9 @@ stem and plays them — building a living, non-repeating version of the music.
 
 The 4 stems play simultaneously but independently. Each has its own slice selection loop.
 
-## What EBYS Is
+## What Gnumbat Is
 
-EBYS is the system Cricket runs inside. It has two parts: a directory of Montreal music events — shows, concerts, performances, web-scraped and fed by the community — and a generative webradio that plays continuously in the background. The radio is Cricket. Artists submit tracks through the site; those tracks become the raw material Cricket remixes in real time. The Montreal scene becomes its own soundtrack.
+Gnumbat is the system Cricket runs inside. It has two parts: a directory of Montreal music events — shows, concerts, performances, web-scraped and fed by the community — and a generative webradio that plays continuously in the background. The radio is Cricket. Artists submit tracks through the site; those tracks become the raw material Cricket remixes in real time. The Montreal scene becomes its own soundtrack.
 
 ---
 
@@ -154,7 +154,7 @@ Biases selection toward slices that evolve in a direction.
 -1 = prefer slices where that descriptor FALLS.
 0 = neutral.
 
-`setDirPref E 1` + `setDirWeight 2.0` → EBYS will consistently choose slices that build
+`setDirPref E 1` + `setDirWeight 2.0` → Gnumbat will consistently choose slices that build
 energy, creating a sustained crescendo effect.
 
 ### Stem Gain (audio volume)
@@ -412,7 +412,7 @@ So: `quant: beat` = everything working perfectly. `quant: grid` = quantize is on
 
 ## The Analysis Pipeline
 
-EBYS analysis happens in two stages before playback:
+Gnumbat analysis happens in two stages before playback:
 
 ### Stage 1 — Stem separation + spectral analysis
 Run from the Max patch or with `:buildIndex`. For each stem (vocals, melody, bass, drums):
@@ -526,7 +526,7 @@ Examples:
 
 ---
 
-## The EBYS Infrastructure
+## The Gnumbat Infrastructure
 
 - **Max/MSP patch** — the audio engine. Receives commands over WebSocket.
 - **slicer.js** — the JS engine inside Max. Manages the index, slice selection, and playback triggers.

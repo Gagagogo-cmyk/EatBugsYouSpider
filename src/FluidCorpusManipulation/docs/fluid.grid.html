@@ -1,0 +1,134 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.grid Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.grid</h1>
+  <div class="digest">Constrain a 2D DataSet into a Grid.</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Maps a set of 2D points in a <a href="fluid.dataset.html">fluid.dataset</a> to a rectangular grid.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p><a href="fluid.grid.html">fluid.grid</a> transforms a two-dimensional dataset into a grid using a variant of the Jonker-Volgenant algorithm (<a class="reference external" href="https://www.gwern.net/docs/statistics/decision/1987-jonker.pdf">https://www.gwern.net/docs/statistics/decision/1987-jonker.pdf</a>). This can be useful to generate compact grid layouts from the output of dimensionality reduction algorithms such as <a href="fluid.umap.html">fluid.umap</a>, <a href="fluid.pca.html">fluid.pca</a> or <a href="fluid.mds.html">fluid.mds</a> and for making uniformly distributed spaces out of any two-dimensional dataset.</p>
+<p>This approach is similar to projects like CloudToGrid ( <a class="reference external" href="https://github.com/kylemcdonald/CloudToGrid/">https://github.com/kylemcdonald/CloudToGrid/</a> ), RasterFairy ( <a class="reference external" href="https://github.com/Quasimondo/RasterFairy">https://github.com/Quasimondo/RasterFairy</a> ) or IsoMatch ( <a class="reference external" href="https://github.com/ohadf/isomatch">https://github.com/ohadf/isomatch</a> ).</p>
+
+
+    <p>Read more about fluid.grid on the <a href='https://learn.flucoma.org/reference/grid'>learn platform</a>.</p>
+    
+    <p>fluid.grid is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">axis
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The axis to which the extent constraint is applied. The default 0 is horizontal, and 1 is vertical.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">extent
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The size to which the selected axis will be constrained. The default is 0, which turns the constraints off.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">oversample
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>A factor to oversample the destination grid. The default is 1, so the grid has the same number of points as the input. Factors of 2 or more will allow a larger destination grid, which will respect the original shape a little more, but will also be sparser.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='fittransform'>fittransform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Fit the model to a <a href="fluid.dataset.html">fluid.dataset</a> and write the new projected data to a destination FluidDataSet.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>Source data, or the DataSet name</p>
+</li><li>destDataSet: <p>Destination data, or the DataSet name</p>
+</li></ul>
+     </div>
+   </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.grid object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.grid objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.umap.html">UMAP</a></h3><h3 class="seealso_name"><a href="fluid.mds.html">MDS</a></h3><h3 class="seealso_name"><a href="fluid.pca.html">PCA</a></h3><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3></section> 
+</body>
+</html>

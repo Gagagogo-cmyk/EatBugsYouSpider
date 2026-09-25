@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// EBYS — Slicer Test Harness
+// Gnumbat — Slicer Test Harness
 // Tests slicer.js logic without Max by mocking the Max JS environment.
 //
 // Run:  node slicer_test.js
@@ -38,7 +38,7 @@ global.inlets       = 3;
 global.outlets_     = 6;
 global.inlet        = 0;
 global.inletinfo    = function() {};
-global.patcher      = { filepath: path.join(DIR, 'ebys-analyze.maxpat') };
+global.patcher      = { filepath: path.join(DIR, 'gnumbat-analyze.maxpat') };
 global.Max          = {};
 global.jsarguments  = [];
 

@@ -1,4 +1,4 @@
-# Gnumbat
+# Gnumbat! - Chirp! 
 
 AI-assisted Dj deck / Indie Webradios
 Montréal, 2023 — en cours
@@ -8,14 +8,15 @@ Licence : AGPL-3.0
 
 ## platform/
 
-The EBYS platform — what it is, how all the pieces fit, what's been built and what's next.
+The Gnumbat platform — what it is, how all the pieces fit, what's been built and what's next.
 
 | File | What it covers |
 |------|----------------|
 | `OVERVIEW.md` | Everything in one page — instrument, radio, protocol, file map |
 | `PLATFORM.md` | Platform description, radio modes, what's built, what's next |
-| `EBYS_SYSTEM.md` | Website + radio architecture (French), temperature trigger, UI skin system |
+| `GNUMBAT_SYSTEM.md` | Website + radio architecture (French), temperature trigger, UI skin system |
 | `WEBSITE.md` | Website: event calendar, radio, artist directory, mixer console, spider |
+| `NETWORK.md` | Generitype: the core-vs-instance split, the provenance registry, node visualization — how other communities fork and connect back |
 | `STATEMENT.md` | Chirp! |
 
 ---
@@ -26,14 +27,14 @@ The tipping protocol and split equation.
 
 | File | What it covers |
 |------|----------------|
-| `TIPPING_PROTOCOL.md` | Three precision levels (web, venue+EBYS, venue-only) |
+| `TIPPING_PROTOCOL.md` | Three precision levels (web, venue+Gnumbat, venue-only) |
 | `SPLIT_EQUATION.md` | L0–L4 split levels |
 
 ---
 
 ## instrument/
 
-The EBYS instrument — architecture, engine, AI, training, hardware.
+The Gnumbat instrument — architecture, engine, AI, training, hardware.
 
 | File | What it covers |
 |------|----------------|
@@ -42,11 +43,11 @@ The EBYS instrument — architecture, engine, AI, training, hardware.
 | `CRICKET.md` | Cricket AI: descriptors, all commands, vocabulary translations, :bake |
 | `DEFAULTS.md` | Factory defaults — all parameters, commands, notes |
 | `PLAYBACK.md` | Playback engine — buffers, slot/track architecture, M/S, FX, VU |
-| `LINK.md` | EBYS LINK protocol — multi-unit sync |
+| `LINK.md` | Gnumbat LINK protocol — multi-unit sync |
 | `BAKE.md` | Training loop — :bake start/end, trajectory learning, snapshot lock |
 | `MOMENTUM.md` | add_tension.py — tension field computation, bar-level slopes |
 | `STRETCH_WIRING.md` | Time-stretch wiring guide for Max patch |
-| `ILM.md` | EBYS as an Intonation Language Model |
+| `ILM.md` | Gnumbat as an Intonation Language Model |
 | `GENERATIVE_LAYER.md` | Generative layer roadmap: taste model + generator, Stable Audio Open build order |
 | `USER_LORA.md` | User LoRA — sonic identity layer, Stable Audio 3 fine-tuning plan |
 | `VST_PLUGIN_ROADMAP.md` | **Current plan.** VST3/AU plugin roadmap: JUCE core + Python backend, ordered build steps, start here |
@@ -58,7 +59,7 @@ The EBYS instrument — architecture, engine, AI, training, hardware.
 
 ## Licence
 
-Copyleft © 2026 Eat Bugs You Spider!
+Copyleft © 2026 Gnumbat!
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published

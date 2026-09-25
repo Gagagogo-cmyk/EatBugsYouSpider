@@ -1,4 +1,4 @@
-# EBYS Website
+# Gnumbat Website
 
 The public face of the platform — radio, events, community.
 
@@ -22,7 +22,7 @@ Past events link to archived session replays.
 
 ### /artists
 
-A directory of artists in the EBYS ecosystem. Search by genre, city, tag. Artist pages show their submitted tracks and their presence in past sessions (how often their music played).
+A directory of artists in the Gnumbat ecosystem. Search by genre, city, tag. Artist pages show their submitted tracks and their presence in past sessions (how often their music played).
 
 ### /dj
 
@@ -56,7 +56,7 @@ Cloudflare will also allow connecting the Railway backend to the domain with cus
 
 - **Dark background** — the deck is a dark interface. The website inherits this.
 - **Monospace type** — the TUI is the soul of the instrument. The website font echoes it.
-- **Spider** — the EatBugsYouSpider character appears on every page. Small, present, watching.
+- **Spider** — the Gnumbat character appears on every page. Small, present, watching.
 - **Transformation indicators** — ▲⬢▼ used everywhere transformation level is shown. Not explained, just present.
 - **No hero copy** — no tagline, no elevator pitch at the top. The stream starts. The music explains it.
 
@@ -64,7 +64,7 @@ Cloudflare will also allow connecting the Railway backend to the domain with cus
 
 ## Mixer Console (Visual)
 
-The radio page includes a live visualization of the EBYS deck state:
+The radio page includes a live visualization of the Gnumbat deck state:
 
 ```
 ┌── VOCALS ────────────────────────────────┐

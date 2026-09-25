@@ -1,0 +1,57 @@
+[ 11%] Built target gnumbat_core_tests
+[ 14%] Built target gnumbat_capture_tests
+[ 48%] Built target gnumbat_plugin_tests
+[ 48%] Building CXX object CMakeFiles/GnumbatPlugin.dir/_deps/juce-src/modules/juce_audio_utils/juce_audio_utils.mm.o
+[ 49%] Building CXX object CMakeFiles/GnumbatPlugin.dir/_deps/juce-src/modules/juce_audio_devices/juce_audio_devices.mm.o
+[ 49%] Linking CXX static library GnumbatPlugin_artefacts/Release/libGnumbat_SharedCode.a
+[ 80%] Built target GnumbatPlugin
+[ 81%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX_utils.cpp.o
+[ 82%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_ARA.cpp.o
+[ 82%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_Standalone.cpp.o
+[ 83%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_Unity.cpp.o
+[ 84%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX.mm.o
+[ 85%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AU_1.mm.o
+[ 85%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AU_2.mm.o
+[ 86%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AUv3.mm.o
+[ 87%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_LV2.mm.o
+[ 88%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST2.mm.o
+[ 88%] Building CXX object CMakeFiles/GnumbatPlugin_Standalone.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST3.mm.o
+[ 89%] Linking CXX executable GnumbatPlugin_artefacts/Release/Standalone/Gnumbat.app/Contents/MacOS/Gnumbat
+[ 90%] Built target GnumbatPlugin_Standalone
+[ 90%] Building VST3 manifest helper for GnumbatPlugin
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/alexandregagne/Documents/EBYS/src/plugin/build/vst3_helpers/GnumbatPlugin
+[ 50%] Building CXX object CMakeFiles/vst3_helper.dir/Users/alexandregagne/Documents/EBYS/src/plugin/build/_deps/juce-src/modules/juce_audio_plugin_client/VST3/juce_VST3ManifestHelper.cpp.o
+[100%] Linking CXX executable vst3_helper
+[100%] Built target vst3_helper
+[ 90%] Built target GnumbatPlugin_vst3_helper
+[ 91%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX_utils.cpp.o
+[ 91%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_ARA.cpp.o
+[ 92%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_Standalone.cpp.o
+[ 93%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_Unity.cpp.o
+[ 94%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX.mm.o
+[ 94%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AU_1.mm.o
+[ 95%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AU_2.mm.o
+[ 96%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_AUv3.mm.o
+[ 97%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_LV2.mm.o
+[ 97%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST2.mm.o
+[ 98%] Building CXX object CMakeFiles/GnumbatPlugin_VST3.dir/_deps/juce-src/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST3.mm.o
+[ 99%] Linking CXX CFBundle shared module GnumbatPlugin_artefacts/Release/VST3/Gnumbat.vst3/Contents/MacOS/Gnumbat
+/Users/alexandregagne/Documents/EBYS/src/plugin/build/GnumbatPlugin_artefacts/Release/VST3/Gnumbat.vst3: code has no resources but signature indicates they must be present
+-- Replacing invalid signature with ad-hoc signature
+/Users/alexandregagne/Documents/EBYS/src/plugin/build/GnumbatPlugin_artefacts/Release/VST3/Gnumbat.vst3: replacing existing signature
+removing moduleinfo.json
+creating /Users/alexandregagne/Documents/EBYS/src/plugin/build/GnumbatPlugin_artefacts/Release/VST3/Gnumbat.vst3/Contents/Resources/moduleinfo.json
+-- Destination /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3 exists, overwriting
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents/_CodeSignature
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents/_CodeSignature/CodeResources
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents/MacOS
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents/MacOS/Gnumbat
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents/Resources
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents/Resources/moduleinfo.json
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents/Info.plist
+-- Installing: /Users/alexandregagne/Library/Audio/Plug-Ins/VST3/Gnumbat.vst3/Contents/PkgInfo
+[100%] Built target GnumbatPlugin_VST3

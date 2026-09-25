@@ -58,3 +58,10 @@ src/demucs/genenv/
 # event-crawler build output / non-source assets
 src/backend/event-crawler/event-scraper
 src/backend/event-crawler/frontend/*.mov
+.aider*
+
+# Timestamped backups and scratch folders
+*.bak-*
+_to_delete/
+Claude outputs/
+src/plugin/build/

@@ -1,7 +1,7 @@
-// EBYS — Slot Router  v4
+// Gnumbat — Slot Router  v4
 //
 // ── Role ──────────────────────────────────────────────────────────────────────
-// Slot Router is the audio engine parameter hub of EBYS.  It owns all DSP
+// Slot Router is the audio engine parameter hub of Gnumbat.  It owns all DSP
 // settings: it is the only JS object that sends messages to karma~ or pfft~.
 //
 // Responsibilities:
@@ -114,15 +114,15 @@ var STEM_BASE  = { vocals: 0,     melody: 3,     bass: 6,     drums: 9     };
 var SPEED_OUT  = { vocals: 12,    melody: 13,    bass: 14,    drums: 15    };
 var PITCH_OUT  = { vocals: 16,    melody: 17,    bass: 18,    drums: 19    };
 var BANG_OUT   = { vocals: 20,    melody: 21,    bass: 22,    drums: 23    };
-// 24 → send ebys_pitchWindow — reaches all four pfft~ instances at once (see
+// 24 → send gnumbat_pitchWindow — reaches all four pfft~ instances at once (see
 // setWindow() below; each stem loads its own independent copy of
-// ebys-pitch.maxpat, so a single patch cord can't hit all four — send/receive
+// gnumbat-pitch.maxpat, so a single patch cord can't hit all four — send/receive
 // broadcasts by name into every copy simultaneously instead).
 var PITCH_WINDOW_OUT = 24;
 var pitchWindowType  = 'hanning';
-// 25-28 → pfft~ ebys-pitch.maxpat's THIRD inlet per stem ("in 3" inside that
+// 25-28 → pfft~ gnumbat-pitch.maxpat's THIRD inlet per stem ("in 3" inside that
 // subpatch) — the independent formant ratio for the cepstral-envelope warp
-// (see ebys-pitch.maxpat's cartopol~/log~/fft~/.../poltocar~ chain). Kept as
+// (see gnumbat-pitch.maxpat's cartopol~/log~/fft~/.../poltocar~ chain). Kept as
 // its own outlet block, fully separate from PITCH_OUT, so pitch and formant
 // can move independently — same relationship ReaPitch's Pitch/Formant
 // sliders have to each other.
@@ -132,7 +132,7 @@ var FORMANT_OUT = { vocals: 25, melody: 26, bass: 27, drums: 28 };
 // 1.0 = no shift. 2^(n/12) for n semitones.
 var stemPitch = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };
 
-// Per-stem formant ratio for the SECOND gizmo~ inside ebys-pitch.maxpat (the
+// Per-stem formant ratio for the SECOND gizmo~ inside gnumbat-pitch.maxpat (the
 // one that resamples the smoothed spectral envelope rather than the
 // flattened excitation). 1.0 = envelope passes through unshifted — combined
 // with a nonzero stemPitch this is exactly the "formant-preserved" pitch
@@ -144,16 +144,16 @@ var stemFormant = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };
 // Restricts setPitch/setFormant above to a specific Hz range instead of the
 // whole spectrum — e.g. pitch-shift only 200-2000Hz, leave the rest of the
 // stem untouched. Unlike PITCH_OUT/FORMANT_OUT (numbered outlets), the masks
-// this drives are NOT patch cords: each stem's copy of ebys-pitch.maxpat
-// declares its OWN pair of named buffer~s ("ebys_pitch_mask_<stemshort>",
-// "ebys_formant_mask_<stemshort>" — distinct per stem via pfft~'s "args
-// <stemshort>", see ebys-analyze.maxpat's 4 pfft~ boxes and that subpatch's
+// this drives are NOT patch cords: each stem's copy of gnumbat-pitch.maxpat
+// declares its OWN pair of named buffer~s ("gnumbat_pitch_mask_<stemshort>",
+// "gnumbat_formant_mask_<stemshort>" — distinct per stem via pfft~'s "args
+// <stemshort>", see gnumbat-analyze.maxpat's 4 pfft~ boxes and that subpatch's
 // own header comments on obj-28/obj-29/obj-30/obj-31), and this js object
 // pokes directly into them via Max's js Buffer API — same mechanism
 // formant_lifter_init.js/band_mask_init.js use at load time, just triggered
 // on demand here instead of once at boot.
 //
-// Inside ebys-pitch.maxpat, the mask value (0..1) per bin crossfades the
+// Inside gnumbat-pitch.maxpat, the mask value (0..1) per bin crossfades the
 // stem's shifted spectrum against its untouched original: 1 = shift applies
 // (in-band), 0 = pass through unshifted (out-of-band). Pitch and formant
 // each read their OWN mask, so band-limiting one doesn't band-limit the
@@ -161,10 +161,10 @@ var stemFormant = { vocals: 1.0, melody: 1.0, bass: 1.0, drums: 1.0 };
 //
 // sample rate / FFT size match the codebase-wide convention (see
 // analyze_reader.js, bpm_from_tempogram.js, eq_router.js's own "var SR =
-// 44100") and ebys-pitch.maxpat's "pfft~ ... 1024 4" / "fft~ 512 512" sizing.
+// 44100") and gnumbat-pitch.maxpat's "pfft~ ... 1024 4" / "fft~ 512 512" sizing.
 var MASK_SAMPLE_RATE = 44100;
 var MASK_FFT_SIZE     = 1024;
-var MASK_BINS         = MASK_FFT_SIZE / 2;   // fftin~ half-spectrum — see ebys-pitch.maxpat
+var MASK_BINS         = MASK_FFT_SIZE / 2;   // fftin~ half-spectrum — see gnumbat-pitch.maxpat
 var MASK_TAPER_BINS   = 3;   // ~130Hz linear taper at each edge — avoids hard-edge ringing
 // full range = "no band restriction", the default and what a plain
 // :pitchShift/:formantShift (no band commands ever issued) should still do.
@@ -203,7 +203,7 @@ function writeBandMask(bufferName, loHz, hiHz) {
 
     var b = new Buffer(bufferName);
     if (!b) {
-        post("slot_router: writeBandMask — buffer '" + bufferName + "' not found (is this stem's ebys-pitch.maxpat instance loaded yet?)\n");
+        post("slot_router: writeBandMask — buffer '" + bufferName + "' not found (is this stem's gnumbat-pitch.maxpat instance loaded yet?)\n");
         return;
     }
     for (var i = 0; i < MASK_BINS; i++) {
@@ -227,11 +227,11 @@ function effectiveFormantBand(stem) { return formantBandOverride[stem] || shared
 
 function pushPitchMask(stem) {
     var b = effectivePitchBand(stem);
-    writeBandMask("ebys_pitch_mask_" + STEM_SHORT[stem], b.lo, b.hi);
+    writeBandMask("gnumbat_pitch_mask_" + STEM_SHORT[stem], b.lo, b.hi);
 }
 function pushFormantMask(stem) {
     var b = effectiveFormantBand(stem);
-    writeBandMask("ebys_formant_mask_" + STEM_SHORT[stem], b.lo, b.hi);
+    writeBandMask("gnumbat_formant_mask_" + STEM_SHORT[stem], b.lo, b.hi);
 }
 
 function bandTargets(stem) {
@@ -509,7 +509,7 @@ function pitchShift(stem, semitones) {
 }
 
 // ── Per-stem formant control ─────────────────────────────────────────────────
-// Sends a SEPARATE ratio to the second gizmo~ inside ebys-pitch.maxpat — the
+// Sends a SEPARATE ratio to the second gizmo~ inside gnumbat-pitch.maxpat — the
 // one that resamples the smoothed spectral envelope (formants), not the
 // flattened excitation (pitch). Fully independent of setPitch/pitchShift
 // above, same as ReaPitch's Pitch and Formant sliders don't move together.
@@ -556,7 +556,7 @@ function formantShift(stem, semitones) {
 }
 
 // setWindow <type> — changes the FFT analysis/synthesis window used by the
-// pitch shifter (fftin~/fftout~ inside ebys-pitch.maxpat, feeding gizmo~).
+// pitch shifter (fftin~/fftout~ inside gnumbat-pitch.maxpat, feeding gizmo~).
 // type must already be one of fftin~/fftout~'s own @window values — slicer.js
 // normalizes aliases (hann→hanning, rect→square) before this ever runs, so no
 // validation here.
@@ -567,9 +567,9 @@ function formantShift(stem, semitones) {
 // pfft~/gizmo~ shifter's own STFT window — the one place in the whole signal
 // chain where a window-type choice is actually meaningful and controllable.
 //
-// Broadcast via Max send/receive ("ebys_pitchWindow"), not a direct patch
+// Broadcast via Max send/receive ("gnumbat_pitchWindow"), not a direct patch
 // cord: there are four separate pfft~ instances (one per stem), each loading
-// its own independent copy of ebys-pitch.maxpat — send/receive is the
+// its own independent copy of gnumbat-pitch.maxpat — send/receive is the
 // standard way to reach into every copy at once instead of wiring four
 // separate cords.
 function setWindow(type) {

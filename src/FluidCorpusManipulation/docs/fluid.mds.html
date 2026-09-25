@@ -1,0 +1,152 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.mds Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.mds</h1>
+  <div class="digest">Multidimensional Scaling</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Dimensionality Reduction of a <a href="fluid.dataset.html">fluid.dataset</a> Using Multidimensional Scaling</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>Multidimensional Scaling transforms a dataset to a lower number of dimensions while trying to preserve the distance relationships between the data points, so that even with fewer dimensions, the differences and similarities between points can still be observed and used effectively.</p>
+<p>First, MDS computes a distance matrix by calculating the distance between every pair of points in the dataset. It then positions all the points in the lower number of dimensions (specified by <code>numdimensions</code>) and iteratively shifts them around until the distances between all the points in the lower number of dimensions is as close as possible to the distances in the original dimensional space.</p>
+<p>What makes this MDS implementation more flexible than some of the other dimensionality reduction algorithms in FluCoMa is that MDS allows for different measures of distance to be used (see list below).</p>
+<p>Note that unlike the other dimensionality reduction algorithms, MDS does not have a <code>fit</code> or <code>transform</code> method, nor does it have the ability to transform data points in buffers. This is essentially because the algorithm needs to do the fit &amp; transform as one with just the data provided in the source DataSet and therefore incorporating new data points would require a re-fitting of the model.</p>
+<p><strong>Manhattan Distance:</strong> The sum of the absolute value difference between points in each dimension. This is also called the Taxicab Metric. <a class="reference external" href="https://en.wikipedia.org/wiki/Taxicab_geometry">https://en.wikipedia.org/wiki/Taxicab_geometry</a></p>
+<p><strong>Euclidean Distance:</strong> Square root of the sum of the squared differences between points in each dimension (Pythagorean Theorem) <a class="reference external" href="https://en.wikipedia.org/wiki/Euclidean_distance">https://en.wikipedia.org/wiki/Euclidean_distance</a> This metric is the default, as it is the most commonly used.</p>
+<p><strong>Squared Euclidean Distance:</strong> Square the Euclidean Distance between points. This distance measure more strongly penalises larger distances, making them seem more distant, which may reveal more clustered points. <a class="reference external" href="https://en.wikipedia.org/wiki/Euclidean_distance#Squared_Euclidean_distance">https://en.wikipedia.org/wiki/Euclidean_distance#Squared_Euclidean_distance</a></p>
+<p><strong>Minkowski Max Distance:</strong> The distance between two points is reported as the largest difference between those two points in any one dimension. Also called the Chgnumbathev Distance or the Chessboard Distance. <a class="reference external" href="https://en.wikipedia.org/wiki/Chgnumbathev_distance">https://en.wikipedia.org/wiki/Chgnumbathev_distance</a></p>
+<p><strong>Minkowski Min Distance:</strong> The distance between two points is reported as the smallest difference between those two points in any one dimension.</p>
+<p><strong>Symmetric Kullback Leibler Divergence:</strong> Because the first part of this computation uses the logarithm of the values, using the Symmetric Kullback Leibler Divergence only makes sense with non-negative data. <a class="reference external" href="https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence#Symmetrised_divergence">https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence#Symmetrised_divergence</a></p>
+<!-- **Cosine Distance:** Cosine Distance considers each data point a vector in Cartesian space and computes the angle between the two points. It first normalises these vectors so they both sit on the unit circle and then finds the dot product of the two vectors which returns a calculation of the angle. Therefore this measure does not consider the magnitudes of the vectors when computing distance. https://en.wikipedia.org/wiki/Cosine_similarity (This article describes the cosine _similarity_, as opposed to distance, however since the cosine similarity is always between -1 and 1, the distance is computed as 1 - cosine similarity, which will always range from a minimum distance of 0 to a maximum distance of 2.) -->
+
+
+    <p>Read more about fluid.mds on the <a href='https://learn.flucoma.org/reference/mds'>learn platform</a>.</p>
+    
+    <p>fluid.mds is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">distancemetric
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>The distance metric to use (integer 0-5)</p>
+</div><div class="enumvals">      
+      <ol start='0'><li>
+          <p>Manhattan Distance</p>
+
+        </li><li>
+          <p>Euclidean Distance (default)</p>
+
+        </li><li>
+          <p>Squared Euclidean Distance</p>
+
+        </li><li>
+          <p>Minkowski Max Distance</p>
+
+        </li><li>
+          <p>Minkowski Min Distance</p>
+
+        </li><li>
+          <p>Symmetric Kullback Leibler Divergence</p>
+
+        </li></ol>
+      </div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numdimensions
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 2)</span>
+      </h3>
+      <div class="description"><p>The number of dimensions to reduce to</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='fittransform'>fittransform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Fit the model to a <a href="fluid.dataset.html">fluid.dataset</a> and write the new projected data to a destination DataSet.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>Source DataSet</p>
+</li><li>destDataSet: <p>Destination DataSet</p>
+</li></ul>
+     </div>
+   </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.mds object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.mds objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.umap.html">UMAP</a></h3><h3 class="seealso_name"><a href="fluid.pca.html">PCA</a></h3><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3></section> 
+</body>
+</html>

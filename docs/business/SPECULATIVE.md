@@ -1,12 +1,12 @@
 # Speculative Layer — Cricket Protein & CRKT Token Economy
 
-> This document captures an exploratory business concept attached to the EBYS project. It is not part of the active protocol or instrument documentation. Nothing here is implemented or committed. It is preserved as a possible future direction.
+> This document captures an exploratory business concept attached to the Gnumbat project. It is not part of the active protocol or instrument documentation. Nothing here is implemented or committed. It is preserved as a possible future direction.
 
 ---
 
 ## The Concept in One Paragraph
 
-EBYS artists and DJs earn tips through the tipping protocol. As an optional second layer, those earnings could be converted into a stake in a cricket protein powder company — a cooperative where the people who create value (the music community) are the same people who receive the margin. The token is called CRKT. It is earned, not bought. The powder company exists to give artists a tangible economic stake that grows with the community, independent of streaming revenue or label deals.
+Gnumbat artists and DJs earn tips through the tipping protocol. As an optional second layer, those earnings could be converted into a stake in a cricket protein powder company — a cooperative where the people who create value (the music community) are the same people who receive the margin. The token is called CRKT. It is earned, not bought. The powder company exists to give artists a tangible economic stake that grows with the community, independent of streaming revenue or label deals.
 
 ---
 
@@ -14,18 +14,18 @@ EBYS artists and DJs earn tips through the tipping protocol. As an optional seco
 
 A company that sells cricket protein powder and distributes its margin to CRKT holders — artists and DJs who earned tokens through the tipping protocol.
 
-The powder company is community infrastructure. It exists to support artists, not to extract from them. EBYS covers its operating costs and nothing more. Everything left flows out to CRKT holders.
+The powder company is community infrastructure. It exists to support artists, not to extract from them. Gnumbat covers its operating costs and nothing more. Everything left flows out to CRKT holders.
 
 No membership. No obligations. No contract. You hold CRKT, you receive a share of powder margin monthly. You are free.
 
-### Where EBYS Makes Money
+### Where Gnumbat Makes Money
 
-From the powder company, EBYS deducts actual operating costs only — supplier management, infrastructure, payment processing. No percentage cut on top. The remainder goes entirely to CRKT holders, including EBYS's own founder stake earned through curation.
+From the powder company, Gnumbat deducts actual operating costs only — supplier management, infrastructure, payment processing. No percentage cut on top. The remainder goes entirely to CRKT holders, including Gnumbat's own founder stake earned through curation.
 
 ### The Loop
 
 ```
-EBYS builds the instrument and the protocol
+Gnumbat builds the instrument and the protocol
     ↓
 DJs perform, artists submit music
     ↓
@@ -47,7 +47,7 @@ Community has a reason to keep participating
 ```
 Powder sells
     ↓
-EBYS deducts actual operating costs
+Gnumbat deducts actual operating costs
 Remainder → 100% to distribution pool
     ↓
 Each holder receives: (their CRKT / total CRKT) × distribution pool
@@ -81,17 +81,17 @@ Converting is opt-in. An artist who just wants to get paid gets paid in dollars.
 
 ### Two Tip Contexts
 
-**EBYS Context — Full Split:** EBYS has full visibility into the mix. When a listener tips an EBYS set, the split is calculated automatically across the DJ and every contributing artist. Each recipient independently chooses: dollars or CRKT.
+**Gnumbat Context — Full Split:** Gnumbat has full visibility into the mix. When a listener tips an Gnumbat set, the split is calculated automatically across the DJ and every contributing artist. Each recipient independently chooses: dollars or CRKT.
 
-**External Context — DJ Only:** A DJ performing on other gear. The protocol has no visibility. The tip goes to the DJ. Full stop. This is honest about what the system can and can't see — and makes EBYS genuinely valuable to artists who want their music to earn from tips even when they're not performing.
+**External Context — DJ Only:** A DJ performing on other gear. The protocol has no visibility. The tip goes to the DJ. Full stop. This is honest about what the system can and can't see — and makes Gnumbat genuinely valuable to artists who want their music to earn from tips even when they're not performing.
 
 ### Escrow
 
 Artists who haven't set up a payment method yet still accumulate earnings on the platform. When they're ready, they connect a bank account (for dollars) or a Solana wallet (for CRKT). Everything that accrued releases at that point. No expiry. No fees.
 
-### EBYS's Position
+### Gnumbat's Position
 
-EBYS built the protocol and runs one instance of it. It does not hold a CRKT founding stake. It earns CRKT the same way a curator does — by running sets, by the community tipping those sets, by choosing to convert earnings to CRKT rather than cash out.
+Gnumbat built the protocol and runs one instance of it. It does not hold a CRKT founding stake. It earns CRKT the same way a curator does — by running sets, by the community tipping those sets, by choosing to convert earnings to CRKT rather than cash out.
 
 ---
 
@@ -116,13 +116,13 @@ Cricket protein sidesteps this entirely.
 
 **Traditional food company:** investor capital → build supply chain → market → extract margin → return to investors.
 
-**EBYS model:** artist and DJ community → organic brand exposure → powder sales → margin distributes back to the community (via CRKT) → community grows.
+**Gnumbat model:** artist and DJ community → organic brand exposure → powder sales → margin distributes back to the community (via CRKT) → community grows.
 
-There are no external investors in the margin distribution. EBYS covers costs. Everything else flows out to CRKT holders. The supplier relationship is white-label at first — Entomo Farms or equivalent — to remove production risk entirely. EBYS handles brand, distribution, and community.
+There are no external investors in the margin distribution. Gnumbat covers costs. Everything else flows out to CRKT holders. The supplier relationship is white-label at first — Entomo Farms or equivalent — to remove production risk entirely. Gnumbat handles brand, distribution, and community.
 
 ### The Climate Loop
 
-The EBYS remixing engine temperature trigger:
+The Gnumbat remixing engine temperature trigger:
 
 ```
 entropy = clamp(0.5 + (δT / 5.0), 0.0, 1.0)
@@ -132,7 +132,7 @@ Where δT = today's temperature − 10-year rolling average for this date.
 
 Hot planet: more entropy, more composite mixes, more curator activity, higher tip probability, more CRKT conversions.
 
-Cool planet (climate win): more powder sales from a credible climate narrative. Either state benefits CRKT holders — EBYS doesn't profit from climate failure.
+Cool planet (climate win): more powder sales from a credible climate narrative. Either state benefits CRKT holders — Gnumbat doesn't profit from climate failure.
 
 ### The Community as Sales Force
 
@@ -153,9 +153,9 @@ The social experiment: people who push boundaries in taste (artists, DJs, experi
 
 Hi,
 
-My name is Alex G. I'm building EBYS (Eat Bugs You Spider!), a neural DJ deck and web radio for the Montreal music scene. It's a research-creation project at the intersection of AI, music technology, and open-source software.
+My name is Alex G. I'm building Gnumbat (Gnumbat!), a neural DJ deck and web radio for the Montreal music scene. It's a research-creation project at the intersection of AI, music technology, and open-source software.
 
-Cricket protein powder is the commercial backbone. The radio, the deck, and the community of DJs and artists that form around it — the pollinators — are the marketing channel. The project includes an open tipping protocol that lets listeners tip DJ sets directly, with the tip automatically split between the DJ and the contributing artists. Artists and DJs who earn tips can convert those earnings into a revenue share from EBYS cricket powder sales.
+Cricket protein powder is the commercial backbone. The radio, the deck, and the community of DJs and artists that form around it — the pollinators — are the marketing channel. The project includes an open tipping protocol that lets listeners tip DJ sets directly, with the tip automatically split between the DJ and the contributing artists. Artists and DJs who earn tips can convert those earnings into a revenue share from Gnumbat cricket powder sales.
 
 Artists who push the boundaries of taste seem like the right people to push cricket protein into the mainstream. That is the social experiment at the center of the project.
 
@@ -178,7 +178,7 @@ eatbugsyouspider@proton.me
 
 ## Revenue Model (if implemented)
 
-If this layer is ever activated, it slots into the EBYS revenue stack as:
+If this layer is ever activated, it slots into the Gnumbat revenue stack as:
 
 ```
 Scales with community:
@@ -188,4 +188,4 @@ Foundation:
 → Tipping protocol (same as active protocol, CRKT conversion is opt-in layer on top)
 ```
 
-On-chain implementation not started. Escrow model is in the database (tip earnings accumulate in `ebys.db`, artist claims and chooses cash vs. CRKT when they onboard). Solana wallet field exists in the `users` table.
+On-chain implementation not started. Escrow model is in the database (tip earnings accumulate in `gnumbat.db`, artist claims and chooses cash vs. CRKT when they onboard). Solana wallet field exists in the `users` table.

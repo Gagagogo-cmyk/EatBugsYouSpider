@@ -4,7 +4,7 @@ const router = express.Router()
 
 // Onboard a new DJ or artist to Stripe Connect
 // They get a link to fill out their bank details directly with Stripe
-// EBYS never sees their banking info
+// Gnumbat never sees their banking info
 //
 // POST /accounts/onboard
 // Body: { userId: 'user_xxx', email: 'artist@example.com' }

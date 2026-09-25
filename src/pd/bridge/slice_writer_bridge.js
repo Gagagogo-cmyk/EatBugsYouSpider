@@ -7,7 +7,7 @@
 // below) -- only the platform glue changed:
 //
 //   - `File` (Max's built-in file I/O)         -> Node's `fs` module.
-//   - `patcher.filepath`                       -> --data-dir / EBYS_DATA_DIR,
+//   - `patcher.filepath`                       -> --data-dir / GNUMBAT_DATA_DIR,
 //     same convention as streamWatcher_bridge.js.
 //   - `Task`/`.schedule(ms)`                   -> `setTimeout`.
 //   - `post(...)`                              -> `console.log(...)`.
@@ -54,12 +54,12 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const dataDir = args["data-dir"] || process.env.EBYS_DATA_DIR;
+const dataDir = args["data-dir"] || process.env.GNUMBAT_DATA_DIR;
 const recvPort = parseInt(args["recv-port"] || "9002", 10); // Pd -> here
 const sendPort = parseInt(args["send-port"] || "9003", 10); // here -> Pd
 
 if (!dataDir) {
-  console.error("slice_writer_bridge: need --data-dir (or EBYS_DATA_DIR env var)");
+  console.error("slice_writer_bridge: need --data-dir (or GNUMBAT_DATA_DIR env var)");
   process.exit(1);
 }
 
@@ -83,7 +83,7 @@ function getDataDir() {
 }
 function getLibraryPath() {
   const p = path.join(getDataDir(), "analysis_library.json");
-  post("EBYS SliceWriter: library path = " + p + "\n");
+  post("Gnumbat SliceWriter: library path = " + p + "\n");
   return p;
 }
 
@@ -116,11 +116,21 @@ function sendTrackExistsResult(v) {
 var BPM_MIN_CONFIDENCE = 0.0;
 var track_name = "";
 var skipIfExists = false;
+// trackSkipDecided — 2026-08-10 fix. skipIfExists used to be recomputed from
+// the LIVE `library` object on every set_track_name() call. analyze_reader.pd
+// sends set_track_name once per stem (4x per batch, not once per track), so
+// as soon as stem 1 (e.g. vocals) wrote ANY field, library[track_name] had a
+// key -- which made stems 2-4's set_track_name calls wrongly see the track as
+// "already exists", flip skipIfExists to true, and silently drop the rest of
+// the batch's writes. Decide skip/analyze once per track_name per process
+// lifetime (based on what was actually on disk / already-written before this
+// track was first seen) and reuse that decision for the track's other stems.
+var trackSkipDecided = {};
 
 function set_bpm_gate(v) {
   BPM_MIN_CONFIDENCE = parseFloat(v);
   post(
-    "EBYS: BPM gate -> " +
+    "Gnumbat: BPM gate -> " +
       BPM_MIN_CONFIDENCE +
       (BPM_MIN_CONFIDENCE === 0.0 ? " (disabled)" : "") +
       "\n"
@@ -168,10 +178,11 @@ function nestedToFlat(obj, prefix, out) {
 function resetMemory() {
   library = {};
   forgottenTracks = {};
+  trackSkipDecided = {};
   try {
     fs.writeFileSync(getLibraryPath(), "{}", "utf8");
   } catch (e) {}
-  post("EBYS SliceWriter: memory cleared -- library wiped\n");
+  post("Gnumbat SliceWriter: memory cleared -- library wiped\n");
 }
 
 // saveLibrary — writes `library` to analysis_library.json.
@@ -198,14 +209,14 @@ function saveLibrary() {
         }
       }
     } catch (mergeErr) {
-      post("EBYS SliceWriter: save merge-read skipped -- " + mergeErr + "\n");
+      post("Gnumbat SliceWriter: save merge-read skipped -- " + mergeErr + "\n");
     }
     var str = JSON.stringify(nested);
     fs.mkdirSync(path.dirname(getLibraryPath()), { recursive: true });
     fs.writeFileSync(getLibraryPath(), str, "utf8");
-    post("EBYS SliceWriter: saved " + str.length + " chars to library\n");
+    post("Gnumbat SliceWriter: saved " + str.length + " chars to library\n");
   } catch (e) {
-    post("EBYS SliceWriter: save failed -- " + e + "\n");
+    post("Gnumbat SliceWriter: save failed -- " + e + "\n");
   }
 }
 
@@ -215,7 +226,7 @@ function loadLibrary() {
     try {
       raw = fs.readFileSync(getLibraryPath(), "utf8");
     } catch (e) {
-      post("EBYS SliceWriter: no library file found -- starting fresh\n");
+      post("Gnumbat SliceWriter: no library file found -- starting fresh\n");
       return;
     }
     var parsed = JSON.parse(raw);
@@ -230,17 +241,17 @@ function loadLibrary() {
       }
       trackCount++;
     }
-    post("EBYS SliceWriter: restored " + trackCount + " tracks, " + sliceCount + " slices from library\n");
+    post("Gnumbat SliceWriter: restored " + trackCount + " tracks, " + sliceCount + " slices from library\n");
     sendTotalSlices(sliceCount);
   } catch (e) {
-    post("EBYS SliceWriter: library load failed -- " + e + "\n");
+    post("Gnumbat SliceWriter: library load failed -- " + e + "\n");
   }
 }
 
 function trackExists() {
   var name = Array.prototype.slice.call(arguments).map(String).join("_");
   var exists = library.hasOwnProperty(name) && Object.keys(library[name]).length > 0;
-  post("EBYS SliceWriter: trackExists('" + name + "') = " + (exists ? 1 : 0) + "\n");
+  post("Gnumbat SliceWriter: trackExists('" + name + "') = " + (exists ? 1 : 0) + "\n");
   sendTrackExistsResult(exists ? 1 : 0);
 }
 
@@ -249,20 +260,29 @@ function forgetTrack() {
   if (library.hasOwnProperty(name)) {
     delete library[name];
     forgottenTracks[name] = true;
+    delete trackSkipDecided[name];
     saveLibrary();
-    post("EBYS SliceWriter: removed '" + name + "' from library\n");
+    post("Gnumbat SliceWriter: removed '" + name + "' from library\n");
   } else {
-    post("EBYS SliceWriter: forgetTrack -- '" + name + "' not found\n");
+    post("Gnumbat SliceWriter: forgetTrack -- '" + name + "' not found\n");
   }
 }
 
 function set_track_name() {
   track_name = Array.prototype.slice.call(arguments).map(String).join("_");
-  skipIfExists =
-    track_name !== "" && library.hasOwnProperty(track_name) && Object.keys(library[track_name]).length > 0;
-  if (!skipIfExists && track_name !== "") library[track_name] = {};
+  if (track_name !== "" && trackSkipDecided.hasOwnProperty(track_name)) {
+    skipIfExists = trackSkipDecided[track_name];
+  } else {
+    skipIfExists =
+      track_name !== "" && library.hasOwnProperty(track_name) && Object.keys(library[track_name]).length > 0;
+    if (track_name !== "") trackSkipDecided[track_name] = skipIfExists;
+  }
+  // library[track_name] = library[track_name] || {} -- NOT `= {}`: stems 2-4
+  // must not stomp stem 1's already-written data when their own
+  // set_track_name call comes through later in the same batch.
+  if (!skipIfExists && track_name !== "") library[track_name] = library[track_name] || {};
   post(
-    "EBYS: track='" +
+    "Gnumbat: track='" +
       track_name +
       "' " +
       (skipIfExists ? "EXISTS -- skipping writes" : "NEW -- analyzing") +
@@ -443,7 +463,22 @@ function writeStem(stemName) {
 }
 
 function writeMetaStem(stemName) {
-  if (skipIfExists) return;
+  if (skipIfExists) {
+    // FIXED 2026-08-20: saveLibrary() below used to be unreachable for a
+    // skipped track -- this early return skipped straight past it every
+    // time. That's fine as long as analysis_library.json on disk still
+    // agrees with what's in memory, but nothing guarantees that: a Reset
+    // All (gui_hub_bridge.js) or reset_analysis.sh wipes the file directly
+    // without telling this process, and without a restart this process
+    // keeps believing the track "EXISTS" forever (see trackSkipDecided)
+    // and never writes it back. Net effect: the analysis genuinely
+    // succeeded and is sitting right here in `library`, but
+    // analysis_library.json stays "{}" indefinitely. Reconciling here
+    // costs nothing when disk and memory already agree (saveLibrary()'s
+    // merge is a no-op then) and repairs it silently when they don't.
+    saveLibrary();
+    return;
+  }
   var dn = DICT_STEM_NAME[stemName];
   var m = meta[stemName];
   wr(dn + "::metadata::track_name", track_name);
@@ -451,11 +486,11 @@ function writeMetaStem(stemName) {
   wr(dn + "::metadata::BPM_confidence", m.conf);
   if (m.conf >= BPM_MIN_CONFIDENCE) {
     wr(dn + "::metadata::BPM", m.bpm);
-    post("EBYS " + cfg3(stemName) + " BPM=" + m.bpm.toFixed(1) + "  conf=" + m.conf.toFixed(3) + "\n");
+    post("Gnumbat " + cfg3(stemName) + " BPM=" + m.bpm.toFixed(1) + "  conf=" + m.conf.toFixed(3) + "\n");
   } else {
     wr(dn + "::metadata::BPM", 0.0);
     post(
-      "EBYS " +
+      "Gnumbat " +
         cfg3(stemName) +
         " BPM=0 (gated -- conf=" +
         m.conf.toFixed(3) +
@@ -468,7 +503,7 @@ function writeMetaStem(stemName) {
     var key = detectKey(pitches[stemName]);
     wr(dn + "::metadata::key", key);
     var top = topPcs(pitches[stemName]);
-    post("EBYS " + cfg3(stemName) + " key=" + key + "  top:" + top + "  n=" + pitches[stemName].length + "\n");
+    post("Gnumbat " + cfg3(stemName) + " key=" + key + "  top:" + top + "  n=" + pitches[stemName].length + "\n");
   }
   saveLibrary();
 }
@@ -485,13 +520,13 @@ function reset() {
   pitches.vocals = [];
   pitches.melo = [];
   pitches.bass = [];
-  post("EBYS: counters + pitch buffers reset\n");
+  post("Gnumbat: counters + pitch buffers reset\n");
   sendTotalSlices(0);
 }
 function resetStem(stemName) {
   counters[stemName] = 0;
   if (pitches[stemName]) pitches[stemName] = [];
-  post("EBYS: " + stemName + " counter reset\n");
+  post("Gnumbat: " + stemName + " counter reset\n");
 }
 
 // ── DISPATCH TABLE ────────────────────────────────────────────────────
@@ -532,7 +567,23 @@ for (var sn in STEM_CFG) {
   (function (stemName, msgPrefix, cfg) {
     for (var fi = 0; fi < FIELDS.length; fi++) {
       var field = FIELDS[fi];
-      if (field === "P" && !cfg.hasP) continue; // drums: no set_drum_P
+      if (field === "P" && !cfg.hasP) {
+        // FIXED 2026-08-19: drums genuinely have no pitch descriptor, so
+        // this used to just `continue` and leave "set_drum_P" out of
+        // DISPATCH entirely -- correct in spirit, but analyze_reader_stem.pd
+        // declares a hasP creation arg (see `analyze_reader_stem drums drum
+        // 0` in analyze_reader.pd) that its own patch body never actually
+        // reads: the "list prepend set_$2_P" message box is unconditional,
+        // so it sends "set_drum_P <value>" for every stem including drums
+        // regardless of that 0. With no handler, every single one hit
+        // DISPATCH's "no handler for ..." branch and got logged -- one line
+        // per onset, per drum stem, per track, which is what was flooding
+        // sliceWriter.log. The value is still correctly meaningless for
+        // drums either way, so the fix is just to give it an explicit
+        // no-op instead of falling through to the unknown-message log line.
+        DISPATCH["set_" + msgPrefix + "_" + field] = function () {};
+        continue;
+      }
       DISPATCH["set_" + msgPrefix + "_" + field] = (function (f) {
         return function (v) {
           state[stemName][f] = parseFloat(v);

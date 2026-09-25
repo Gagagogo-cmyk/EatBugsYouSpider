@@ -1,0 +1,329 @@
+{
+ "comment": "Shared by the Python and C++ notation parsers. raw_notation is always stored verbatim; these cases only cover the *derived* tags/fields.",
+ "profiles": {
+  "np_freeform": {
+   "schema": "gnumbat.notation_profile/0.1",
+   "profile_id": "np_freeform",
+   "name": "freeform",
+   "version": 1,
+   "split": null,
+   "rules": [],
+   "fallback": {
+    "kind": "tag"
+   }
+  },
+  "np_musical_dash": {
+   "schema": "gnumbat.notation_profile/0.1",
+   "profile_id": "np_musical_dash",
+   "name": "musical-dash",
+   "version": 1,
+   "split": {
+    "delimiter": "-",
+    "trim": true,
+    "drop_empty": true
+   },
+   "rules": [
+    {
+     "id": "tempo",
+     "match": "^\\s*(\\d+(?:\\.\\d+)?)\\s*bpm\\s*$",
+     "flags": "i",
+     "emit": [
+      {
+       "kind": "field",
+       "name": "tempo",
+       "type": "number",
+       "group": 1
+      }
+     ]
+    },
+    {
+     "id": "bars",
+     "match": "^\\s*(\\d+)\\s*bars?\\s*$",
+     "flags": "i",
+     "emit": [
+      {
+       "kind": "field",
+       "name": "duration_bars",
+       "type": "integer",
+       "group": 1
+      }
+     ]
+    },
+    {
+     "id": "key",
+     "match": "^\\s*([A-Ga-g][#b]?)\\s+(major|minor|maj|min)\\s*$",
+     "flags": "i",
+     "emit": [
+      {
+       "kind": "field",
+       "name": "key",
+       "type": "string",
+       "template": "{1} {2}"
+      },
+      {
+       "kind": "tag",
+       "template": "{1} {2}"
+      }
+     ]
+    }
+   ],
+   "fallback": {
+    "kind": "tag"
+   }
+  },
+  "np_test_repeat": {
+   "schema": "gnumbat.notation_profile/0.1",
+   "profile_id": "np_test_repeat",
+   "name": "test-repeat",
+   "version": 1,
+   "split": {
+    "delimiter": "/",
+    "trim": true,
+    "drop_empty": true
+   },
+   "rules": [
+    {
+     "id": "rep",
+     "match": "^x(\\d+)$",
+     "flags": "",
+     "emit": [
+      {
+       "kind": "field",
+       "name": "repeats",
+       "type": "integer",
+       "group": 1
+      }
+     ]
+    },
+    {
+     "id": "wrap",
+     "match": "^(\\w+)@(\\w+)$",
+     "flags": "",
+     "emit": [
+      {
+       "kind": "tag",
+       "template": "{2}:{1}"
+      }
+     ]
+    }
+   ],
+   "fallback": {
+    "kind": "ignore"
+   }
+  },
+  "np_test_numbers": {
+   "schema": "gnumbat.notation_profile/0.1",
+   "profile_id": "np_test_numbers",
+   "name": "test-numbers",
+   "version": 1,
+   "split": {
+    "delimiter": "/",
+    "trim": true,
+    "drop_empty": true
+   },
+   "rules": [
+    {
+     "id": "v",
+     "match": "^v=(\\S+)$",
+     "flags": "",
+     "emit": [
+      {
+       "kind": "field",
+       "name": "val",
+       "type": "number",
+       "group": 1
+      }
+     ]
+    },
+    {
+     "id": "i",
+     "match": "^i=(\\S+)$",
+     "flags": "",
+     "emit": [
+      {
+       "kind": "field",
+       "name": "n",
+       "type": "integer",
+       "group": 1
+      }
+     ]
+    }
+   ],
+   "fallback": {
+    "kind": "tag"
+   }
+  }
+ },
+ "cases": [
+  {
+   "profile": "np_freeform",
+   "raw": "rise",
+   "tags": [
+    "rise"
+   ],
+   "fields": {}
+  },
+  {
+   "profile": "np_freeform",
+   "raw": "aggressive melodic rise",
+   "tags": [
+    "aggressive melodic rise"
+   ],
+   "fields": {}
+  },
+  {
+   "profile": "np_freeform",
+   "raw": "",
+   "tags": [],
+   "fields": {}
+  },
+  {
+   "profile": "np_freeform",
+   "raw": "   padded   ",
+   "tags": [
+    "padded"
+   ],
+   "fields": {}
+  },
+  {
+   "profile": "np_freeform",
+   "raw": "rise-E minor-120 BPM-4 bars-energetic",
+   "tags": [
+    "rise-E minor-120 BPM-4 bars-energetic"
+   ],
+   "fields": {}
+  },
+  {
+   "profile": "np_musical_dash",
+   "raw": "rise-E minor-120 BPM-4 bars-energetic",
+   "tags": [
+    "rise",
+    "E minor",
+    "energetic"
+   ],
+   "fields": {
+    "tempo": 120,
+    "duration_bars": 4,
+    "key": "E minor"
+   }
+  },
+  {
+   "profile": "np_musical_dash",
+   "raw": "Rise - 128.5 bpm - 8 Bars",
+   "tags": [
+    "Rise"
+   ],
+   "fields": {
+    "tempo": 128.5,
+    "duration_bars": 8
+   }
+  },
+  {
+   "profile": "np_musical_dash",
+   "raw": "A# Minor-90BPM",
+   "tags": [
+    "A# Minor"
+   ],
+   "fields": {
+    "key": "A# Minor",
+    "tempo": 90
+   }
+  },
+  {
+   "profile": "np_musical_dash",
+   "raw": "--rise--",
+   "tags": [
+    "rise"
+   ],
+   "fields": {}
+  },
+  {
+   "profile": "np_musical_dash",
+   "raw": "rise-rise-RISE",
+   "tags": [
+    "rise"
+   ],
+   "fields": {}
+  },
+  {
+   "profile": "np_musical_dash",
+   "raw": "metallic-density-increase",
+   "tags": [
+    "metallic",
+    "density",
+    "increase"
+   ],
+   "fields": {}
+  },
+  {
+   "profile": "np_test_repeat",
+   "raw": "a/b/x3",
+   "tags": [],
+   "fields": {
+    "repeats": 3
+   }
+  },
+  {
+   "profile": "np_test_repeat",
+   "raw": "foo@bar / x12",
+   "tags": [
+    "bar:foo"
+   ],
+   "fields": {
+    "repeats": 12
+   }
+  },
+  {
+   "profile": "np_test_numbers",
+   "raw": "v=nan",
+   "tags": [],
+   "fields": {}
+  },
+  {
+   "profile": "np_test_numbers",
+   "raw": "v=1e3",
+   "tags": [],
+   "fields": {
+    "val": 1000
+   }
+  },
+  {
+   "profile": "np_test_numbers",
+   "raw": "v=2.5",
+   "tags": [],
+   "fields": {
+    "val": 2.5
+   }
+  },
+  {
+   "profile": "np_test_numbers",
+   "raw": "i=4.9",
+   "tags": [],
+   "fields": {
+    "n": 4
+   }
+  },
+  {
+   "profile": "np_test_numbers",
+   "raw": "i=-4.9",
+   "tags": [],
+   "fields": {
+    "n": -4
+   }
+  },
+  {
+   "profile": "np_test_numbers",
+   "raw": "i=inf",
+   "tags": [],
+   "fields": {}
+  },
+  {
+   "profile": "np_test_numbers",
+   "raw": "v=abc/plain",
+   "tags": [
+    "plain"
+   ],
+   "fields": {}
+  }
+ ]
+}

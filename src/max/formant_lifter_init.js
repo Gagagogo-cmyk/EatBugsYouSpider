@@ -1,10 +1,10 @@
-// formant_lifter_init.js — fills the "ebys_formant_lifter" buffer~ with a
+// formant_lifter_init.js — fills the "gnumbat_formant_lifter" buffer~ with a
 // real-cepstrum lifter window, used by the formant-preserving pitch shifter
-// in ebys-pitch.maxpat (see that file's cartopol~/log~/fft~/.../poltocar~
+// in gnumbat-pitch.maxpat (see that file's cartopol~/log~/fft~/.../poltocar~
 // chain for the full picture).
 //
 // ── What a "lifter" is here ───────────────────────────────────────────────
-// ebys-pitch.maxpat computes the real cepstrum of each frame's log-magnitude
+// gnumbat-pitch.maxpat computes the real cepstrum of each frame's log-magnitude
 // spectrum (an FFT taken across the BIN axis itself, not time). Low
 // quefrency bins of that cepstrum carry the slowly-varying spectral
 // envelope (formants); high quefrency bins carry the fast-varying harmonic
@@ -28,7 +28,7 @@
 // measured from whichever edge of the buffer is closer (min(i, N-i)).
 //
 // ── When this runs ────────────────────────────────────────────────────────
-// Triggered by loadbang inside ebys-pitch.maxpat, once per stem's pfft~
+// Triggered by loadbang inside gnumbat-pitch.maxpat, once per stem's pfft~
 // instance (4 instances load a copy of this same subpatch — same pattern
 // slot_router.js's setWindow() comment describes for send/receive). All 4
 // copies write into the SAME buffer~ name, so this runs up to 4x at boot;
@@ -55,7 +55,7 @@ outlets   = 0;
 // fftin~'s own docs: "output frame is only half the size of the parent
 // pfft~ object's FFT size"), so the log-magnitude vector this lifter
 // multiplies against — and therefore the buffer~/fft~/ifft~ sizes in
-// ebys-pitch.maxpat — is 1024/2 = 512, matching "buffer~ ebys_formant_lifter
+// gnumbat-pitch.maxpat — is 1024/2 = 512, matching "buffer~ gnumbat_formant_lifter
 // 512" and "fft~ 512 512" / "ifft~ 512 512" in that file. Update all three
 // together if the outer pfft~'s FFT size ever changes.
 var FFT_SIZE = 512;
@@ -63,9 +63,9 @@ var CUTOFF   = 40;
 var TAPER    = 8;
 
 function fillLifter() {
-    var b = new Buffer("ebys_formant_lifter");
+    var b = new Buffer("gnumbat_formant_lifter");
     if (!b) {
-        post("formant_lifter_init: buffer 'ebys_formant_lifter' not found — is buffer~ ebys_formant_lifter " + FFT_SIZE + " declared in ebys-pitch.maxpat?\n");
+        post("formant_lifter_init: buffer 'gnumbat_formant_lifter' not found — is buffer~ gnumbat_formant_lifter " + FFT_SIZE + " declared in gnumbat-pitch.maxpat?\n");
         return;
     }
     for (var i = 0; i < FFT_SIZE; i++) {
@@ -81,7 +81,7 @@ function fillLifter() {
         b.poke(1, i + 1, w);   // channel 1, 1-indexed sample position (buffer~ convention)
     }
     b.send("dirty");
-    post("formant_lifter_init: filled ebys_formant_lifter (" + FFT_SIZE + " samples, cutoff=" + CUTOFF + ", taper=" + TAPER + ")\n");
+    post("formant_lifter_init: filled gnumbat_formant_lifter (" + FFT_SIZE + " samples, cutoff=" + CUTOFF + ", taper=" + TAPER + ")\n");
 }
 
 function loadbang() {

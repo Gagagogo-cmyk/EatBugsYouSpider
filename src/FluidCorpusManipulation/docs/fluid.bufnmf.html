@@ -1,0 +1,280 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.bufnmf Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.bufnmf</h1>
+  <div class="digest">Buffer-Based Non-Negative Matrix Factorisation on Spectral Frames</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Decomposes the spectrum of a sound into a number of components using Non-Negative Matrix Factorisation (NMF)</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>NMF has been a popular technique in signal processing research for things like source separation and transcription (see Smaragdis and Brown, Non-Negative Matrix Factorization for Polyphonic Music Transcription.), although its creative potential is so far relatively  unexplored.</p>
+<p>The algorithm takes a buffer in and divides it into a number of components, determined by the components argument. It works iteratively, by trying to find a combination of spectral templates ('bases') and envelopes ('activations') that yield the original magnitude spectrogram when added together. By and large, there is no unique answer to this question (i.e. there are different ways of accounting for an evolving spectrum in terms of some set of templates and envelopes). In its basic form, NMF is a form of unsupervised learning: it starts with some random data and then converges towards something that minimises the distance between its generated data and the original:it tends to converge very quickly at first and then level out. Fewer iterations mean less processing, but also less predictable results.</p>
+<dl class="docutils">
+<dt>The object can return either or all of the following:</dt>
+<dd><ul class="first last simple">
+<li>a spectral contour of each component in the form of a magnitude spectrogram (called a basis in NMF lingo);</li>
+<li>an amplitude envelope of each component in the form of gains for each consecutive frame of the underlying spectrogram (called an activation in NMF lingo);</li>
+<li>an audio reconstruction of each component in the time domain.</li>
+</ul>
+</dd>
+</dl>
+<p>The bases and activations can be used to make a kind of vocoder based on what NMF has 'learned' from the original data. Alternatively, taking the matrix product of a basis and an activation will yield a synthetic magnitude spectrogram of a component (which could be reconstructed, given some phase information from somewhere).</p>
+<p>Some additional options and flexibility can be found through combinations of the basesMode and actMode arguments. If these flags are set to 1, the object expects to be supplied with pre-formed spectra (or envelopes) that will be used as seeds for the decomposition, providing more guided results. When set to 2, the supplied buffers won't be updated, so become templates to match against instead. Note that having both bases and activations set to 2 doesn't make sense, so the object will complain.</p>
+<dl class="docutils">
+<dt>If supplying pre-formed data, it's up to the user to make sure that the supplied buffers are the right size:</dt>
+<dd><ul class="first last simple">
+<li>bases must be <code>(fft size / 2) + 1</code> frames and <code>(components * input channels)</code> channels</li>
+<li>activations  must be <code>(input frames / hopsize) + 1</code> frames and <code>(components * input channels)</code> channels</li>
+</ul>
+</dd>
+</dl>
+<p>In this implementation, the components are reconstructed by masking the original spectrum, such that they will sum to yield the original sound.</p>
+<p>The whole process can be related to a channel vocoder where, instead of fixed bandpass filters, we get more complex filter shapes that are learned from the data, and the activations correspond to channel envelopes.</p>
+
+
+    <p>Read more about fluid.bufnmf on the <a href='https://learn.flucoma.org/reference/bufnmf'>learn platform</a>.</p>
+    
+    <p>fluid.bufnmf is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">actmode
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>This flag decides how the activation buffer passed as the previous argument is treated.</p>
+</div><div class="enumvals">      
+      <ol start='0'><li>
+          <p>The activations are seeded randomly, and the resulting ones will be written after the process in the passed buffer. The buffer is resized to <code>components * numchannelsprocessed</code> channels and <code>(sourceduration / hopsize + 1)</code> length.</p>
+
+        </li><li>
+          <p>The passed buffer is considered as seed for the activations. Its dimensions should match the values above. The resulting activations will replace the seed ones.</p>
+
+        </li><li>
+          <p>The passed buffer is considered as a template for the activations, and will therefore not change. Its dimensions should match the values above.</p>
+
+        </li></ol>
+      </div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">activations
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer where the different activations will be written to and/or read from: the behaviour is set in the following argument. If <code>nil</code> is provided, no activation will be returned.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">bases
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer where the different bases will be written to and/or read from: the behaviour is set in the following argument. If <code>nil</code> is provided, no bases will be returned.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">basesmode
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>This flag decides how the basis buffer passed as the previous argument is treated.</p>
+</div><div class="enumvals">      
+      <ol start='0'><li>
+          <p>The bases are seeded randomly, and the resulting ones will be written after the process in the passed buffer. The buffer is resized to <code>components * numchannelsprocessed</code> channels and <code>(fftsize / 2 + 1)</code> length.</p>
+
+        </li><li>
+          <p>The passed buffer is considered as seed for the bases. Its dimensions should match the values above. The resulting bases will replace the seed ones.</p>
+
+        </li><li>
+          <p>The passed buffer is considered as a template for the bases, and will therefore not change. Its bases should match the values above.</p>
+
+        </li></ol>
+      </div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">components
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>The number of elements the NMF algorithm will try to divide the spectrogram of the source in.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">fftsettings
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: [[&#39;winSize&#39;, 1024], [&#39;hopSize&#39;, -1], [&#39;fftSize&#39;, -1]])</span>
+      </h3>
+      <div class="description"><p>FFT settings consist of three numbers representing the window size, hop size and FFT size in samples:</p>
+<p>The hop size and fft size can both be set to -1 (and are by default), with slightly different meanings:</p>
+<ul class="simple">
+<li>For the hop size, -1 = <code>windowsize/2</code></li>
+<li>For the FFT size, -1 = <code>windowsize</code> snapped to the nearest equal / greater power of 2 (e.g. <code>windowsize 1024</code> =&gt; <code>fftsize 1024</code>, but <code>windowssize 1000</code> also =&gt; <code>fftsize 1024</code>)</li>
+</ul>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>FFTSize, if != -1, will snap to the next greatest power of two &amp;gt; 4</li>
+<li>The maximum FFT size is limited to the value of the <code>maxfftsize</code> argument</li>
+<li>if FFT size != -1, then window size is clipped at FFT size</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">iterations
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 100)</span>
+      </h3>
+      <div class="description"><p>The NMF process is iterative, trying to converge to the smallest error in its factorisation. The number of iterations will decide how many times it tries to adjust its estimates. Higher numbers here will be more CPU expensive, lower numbers will be more unpredictable in quality.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfftsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Set an explicit upper bound on the FFT size at object instantiation. The default of -1 sets this to whatever the initial FFT size is</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numchans
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>For multichannel srcBuf, how many channels should be processed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numframes
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>How many frames should be processed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">resynth
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer where the different reconstructed components will be reconstructed. The buffer will be resized to <code>components * numchannelsprocessed</code> channels and <code>sourceduration</code> length. If <code>nil</code> is provided, the reconstruction will not happen.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">resynthmode
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>This flag determines if resynthesis from basis and activation is executed.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+<li>Maximum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">source
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer to use as the source material to be decomposed through the NMF process. The different channels of multichannel buffers will be processed sequentially.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startchan
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>For multichannel srcBuf, which channel should be processed first.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startframe
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Where in the srcBuf should the NMF process start, in samples.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="bang">bang</h3>
+      <div class="description"> A bang will commence processing on object given its current settings, unless it is already busy. In that case, the behaviour depends on the value of the <span class="messagename" data-message="queue"> queue </span>
+        attribute. </div>
+    </div>
+    <div class="method_group">
+      <h3 class="method_name" name="cancel">cancel</h3>
+      <div class="description"> When processing in non-blocking mode, this will cancel the job underway, without updating destination buffers. </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.nmfmatch~.html">NMFMatch</a></h3><h3 class="seealso_name"><a href="fluid.nmffilter~.html">NMFFilter</a></h3></section> 
+</body>
+</html>

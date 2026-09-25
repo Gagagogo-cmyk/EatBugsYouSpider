@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Gnumbat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ RADIO (home) ============ -->
+  <section id="view-radio" class="radio-view">
+    <div class="radio-header">
+      <div class="date" id="clock-date">—</div>
+      <div class="time" id="clock-time">--:--</div>
+    </div>
+
+    <div class="radio-visual"></div>
+
+    <div class="nowplaying-wrap">
+      <div class="nowplaying">
+        <div class="seedline offline" id="np-seedline">-- no model loaded</div>
+
+        <div class="timerow">
+          <span id="np-elapsed">--:--</span>
+          <span id="np-live">LIVE</span>
+        </div>
+        <div class="scrubber"><div class="fill" id="np-fill"></div></div>
+
+        <div class="controls">
+          <div class="cluster">
+            <button class="ctl-btn like" id="btn-like" title="Like" aria-label="Like">
+              <svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-10-9.2C.4 7.8 2 4.5 5.3 4c2.2-.3 4 .8 6.7 3.6C14.7 4.8 16.5 3.7 18.7 4c3.3.5 4.9 3.8 3.3 7.3C19.5 15.9 12 20.5 12 20.5z"/></svg>
+            </button>
+            <button class="ctl-btn dislike" id="btn-dislike" title="Dislike" aria-label="Dislike">
+              <svg viewBox="0 0 24 24"><path d="M12 3.5s7.5 4.6 10 9.2c1.6 3.5 0 6.8-3.3 7.3-2.2.3-4-.8-6.7-3.6-2.7 2.8-4.5 3.9-6.7 3.6-3.3-.5-4.9-3.8-3.3-7.3C4.5 8.1 12 3.5 12 3.5z"/></svg>
+            </button>
+          </div>
+
+          <div class="cluster transport">
+            <button class="ctl-btn" id="btn-prev" title="Previous" aria-label="Previous">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 5h2v14H6zM19 5v14L9 12z"/></svg>
+            </button>
+            <button class="ctl-btn primary" id="btn-playpause" title="Play/Pause" aria-label="Play or pause">
+              <svg id="icon-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg>
+              <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+            </button>
+            <button class="ctl-btn" id="btn-next" title="Next" aria-label="Next">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M16 5h2v14h-2zM5 5v14l10-7z"/></svg>
+            </button>
+          </div>
+
+          <div class="cluster">
+            <button class="ctl-btn" id="btn-reload" title="Reload / fresh decision" aria-label="Fresh decision">
+              <svg viewBox="0 0 24 24"><path d="M20 11A8 8 0 1 0 18.6 16M20 5v6h-6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <audio id="stream-audio" preload="none"></audio>
+  </section>
+
+  <!-- ============ CRKT (seed/branch) ============ -->
+  <section id="view-crkt" class="hidden">
+    <div class="topbar">
+      <span class="copyright">(c) 2026 Gnumbat AGPL 3.0</span>
+      <div class="avatar"></div>
+    </div>
+    <div class="tabnav">
+      <span class="tab" data-nav="crkt">CRKT</span>
+      <span class="tab" data-nav="shows">SHOWS</span>
+    </div>
+    <div class="crkt-view" id="crkt-content">
+      <div class="empty-line">-- no model loaded</div>
+      <div class="empty-line">-- no tracks loaded</div>
+    </div>
+  </section>
+
+  <!-- ============ SHOWS ============ -->
+  <section id="view-shows" class="hidden">
+    <div class="topbar">
+      <span class="copyright">(c) 2026 Gnumbat AGPL 3.0</span>
+      <div class="avatar"></div>
+    </div>
+    <div class="tabnav">
+      <span class="tab" data-nav="crkt">CRKT</span>
+      <span class="tab" data-nav="shows">SHOWS</span>
+    </div>
+    <div class="shows-view">
+      <div class="filters">
+        <div class="field">
+          <label for="f-search">Search</label>
+          <input id="f-search" type="text" placeholder="artist, show…">
+        </div>
+        <div class="field">
+          <label for="f-when">When</label>
+          <select id="f-when">
+            <option value="">All weekend</option>
+            <option value="right-now">Right now</option>
+            <option value="tonight">Tonight</option>
+            <option value="tomorrow">Tomorrow</option>
+            <option value="this-week">This week</option>
+            <option value="this-weekend">This weekend</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-genre">Genres</label>
+          <select id="f-genre"><option value="">All genres</option></select>
+        </div>
+        <div class="field">
+          <label for="f-venue">Where</label>
+          <select id="f-venue"><option value="">All venues</option></select>
+        </div>
+      </div>
+      <div class="events-meta" id="events-meta"></div>
+      <div id="events-list"></div>
+    </div>
+  </section>
+
+  <!-- floating nav shown on CRKT / SHOWS only -->
+  <div class="floatnav hidden" id="floatnav">
+    <button class="float-btn" id="btn-close" title="Back to radio" aria-label="Back to radio">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <button class="float-btn like" id="btn-quicklike" title="Like current track" aria-label="Like current track">
+      <svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-10-9.2C.4 7.8 2 4.5 5.3 4c2.2-.3 4 .8 6.7 3.6C14.7 4.8 16.5 3.7 18.7 4c3.3.5 4.9 3.8 3.3 7.3C19.5 15.9 12 20.5 12 20.5z"/></svg>
+    </button>
+  </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

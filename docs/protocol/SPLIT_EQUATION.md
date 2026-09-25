@@ -6,9 +6,9 @@ How a tip is divided between the DJ and every contributing artist.
 
 ## Participants
 
-A **DJ** curates a set. They choose tracks, configure EBYS, perform.
+A **DJ** curates a set. They choose tracks, configure Gnumbat, perform.
 
-**Artists** are everyone whose work contributed to what played. They may not be present, may not know the set happened, may not even know what EBYS is.
+**Artists** are everyone whose work contributed to what played. They may not be present, may not know the set happened, may not even know what Gnumbat is.
 
 When a listener tips, money flows to both — automatically.
 
@@ -16,7 +16,7 @@ When a listener tips, money flows to both — automatically.
 
 ## The L0–L4 Transformation Ladder
 
-Every slice EBYS plays occupies a transformation level based on how far it is from the original source material.
+Every slice Gnumbat plays occupies a transformation level based on how far it is from the original source material.
 
 | Level | Description | Artist share direction |
 |-------|-------------|----------------------|
@@ -32,11 +32,11 @@ The transformation level is computed per-slice by the session log. Each bar of m
 
 ## The Follow Graph
 
-EBYS has a follow graph: a directional graph where **following** means "I acknowledge influence and accept split participation."
+Gnumbat has a follow graph: a directional graph where **following** means "I acknowledge influence and accept split participation."
 
 An artist who doesn't follow doesn't participate in the split, even if their track plays. Following is not automatic — it's an explicit opt-in.
 
-**If an artist is not in the follow graph:** their slice contribution is zero for the split. Their music may still play (EBYS doesn't filter it), but the portion of the tip that would have gone to them goes to the DJ instead (or accumulates in escrow, if the protocol is in claim mode).
+**If an artist is not in the follow graph:** their slice contribution is zero for the split. Their music may still play (Gnumbat doesn't filter it), but the portion of the tip that would have gone to them goes to the DJ instead (or accumulates in escrow, if the protocol is in claim mode).
 
 **Claim mode:** unclaimed splits are held in escrow tied to the track's audio fingerprint. When the artist eventually joins, everything waiting for them is available. No expiry.
 
@@ -122,6 +122,6 @@ Total: $4.00 + $5.04 + $0.79 + $0.17 = **$10.00** ✓
 
 ## Implementation
 
-The split equation runs in `tip.js` on the backend at `/api/tip`. It reads from the session log in `ebys.db` (table: `session_bars`, columns: `track_id`, `transformation_level`, `bar_start`, `bar_duration`). Follow graph is in the `follows` table.
+The split equation runs in `tip.js` on the backend at `/api/tip`. It reads from the session log in `gnumbat.db` (table: `session_bars`, columns: `track_id`, `transformation_level`, `bar_start`, `bar_duration`). Follow graph is in the `follows` table.
 
 Current status: split calculated but artist transfers blocked pending Stripe Connect onboarding. DJ share flows through immediately.

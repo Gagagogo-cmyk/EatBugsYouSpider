@@ -1,6 +1,6 @@
 # Playback Engine
 
-The EBYS playback engine runs in Max/MSP. It receives slice commands from `slicer.js` via Node.js, manages four independent audio streams (one per stem), and outputs a stereo mix with M/S processing and FX.
+The Gnumbat playback engine runs in Max/MSP. It receives slice commands from `slicer.js` via Node.js, manages four independent audio streams (one per stem), and outputs a stereo mix with M/S processing and FX.
 
 ---
 
@@ -118,22 +118,22 @@ Pitch shift is applied before M/S processing.
 
 ## Karma~ (Buffer Player)
 
-`karma~` is a high-quality buffer player in Max/MSP that handles polyphonic playback with variable rate and pitch. In EBYS, `karma~` is used as an alternative to `play~` for tracks that need more sophisticated looping or blending behavior.
+`karma~` is a high-quality buffer player in Max/MSP that handles polyphonic playback with variable rate and pitch. In Gnumbat, `karma~` is used as an alternative to `play~` for tracks that need more sophisticated looping or blending behavior.
 
 Each stem can optionally use `karma~` instead of `play~` for its slice playback. The `stretchRatio` in this case maps to `karma~`'s rate parameter rather than running through `fluid.bufstretch~`.
 
-Current implementation: `play~` is the primary playback object. `karma~` integration is partially implemented and planned for the EBYS-A1 hardware instrument where polyphonic blending is a key feature.
+Current implementation: `play~` is the primary playback object. `karma~` integration is partially implemented and planned for the Gnumbat-A1 hardware instrument where polyphonic blending is a key feature.
 
 ---
 
 ## Max Patch Files
 
 ```
-EBYS_INFRA/max/
-├── ebys_main.maxpat          ← master patch (routing, bar clock, output)
-├── ebys_stem.maxpat          ← stem subpatch (instantiated ×4)
-├── ebys_ms.maxpat            ← M/S matrix subpatch
-├── ebys_fx.maxpat            ← FX send/return subpatch
-├── ebys_vu.maxpat            ← VU meter display
-└── ebys_link.maxpat          ← LINK protocol (in progress)
+GNUMBAT_INFRA/max/
+├── gnumbat_main.maxpat          ← master patch (routing, bar clock, output)
+├── gnumbat_stem.maxpat          ← stem subpatch (instantiated ×4)
+├── gnumbat_ms.maxpat            ← M/S matrix subpatch
+├── gnumbat_fx.maxpat            ← FX send/return subpatch
+├── gnumbat_vu.maxpat            ← VU meter display
+└── gnumbat_link.maxpat          ← LINK protocol (in progress)
 ```

@@ -217,7 +217,7 @@ func handleImageProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Some venue/CDN hosts refuse a request with no User-Agent at all.
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; EBYS-image-proxy/1.0)")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Gnumbat-image-proxy/1.0)")
 	resp, err := imageProxyClient.Do(req)
 	if err != nil {
 		http.Error(w, "fetch failed", http.StatusBadGateway)
@@ -284,6 +284,53 @@ func buildMarkers(events EventList) template.JS {
 	return template.JS(b)
 }
 
+// handleEventsJSON -- EventService's JSON surface for the Gnumbat consumer
+// app's SHOWS screen (spec §13). Deliberately lives here, not proxied
+// through the Node backend (src/backend) -- the event scraper already owns
+// this data end-to-end, and "reuse existing infrastructure" (spec §27)
+// means giving it one more small route rather than a second HTTP hop that
+// just re-serves the same cache. Same filter stacking/precedence as
+// handlePage just below (?venue=, ?genre=, ?q=), plus a ?when= that maps
+// onto the same RightNow/Tonight/Tomorrow/ThisWeek/ThisWeekend methods the
+// HTML routes already use -- so /api/events.json?when=this-weekend returns
+// exactly what GET /this-weekend renders, just as JSON.
+func handleEventsJSON(w http.ResponseWriter, r *http.Request) {
+	mu.RLock()
+	events := cachedEvents
+	mu.RUnlock()
+
+	switch r.URL.Query().Get("when") {
+	case "right-now":
+		events = events.RightNow()
+	case "tonight":
+		events = events.Tonight()
+	case "tomorrow":
+		events = events.Tomorrow()
+	case "this-week":
+		events = events.ThisWeek()
+	case "this-weekend", "all-weekend":
+		events = events.ThisWeekend()
+	// "" / "all" -- no date filter, every cached (not-yet-passed) event
+	}
+
+	if venueFilter := r.URL.Query().Get("venue"); venueFilter != "" {
+		events = events.ByVenue(venueFilter)
+	}
+	if genreFilter := r.URL.Query().Get("genre"); genreFilter != "" {
+		events = events.ByGenre(genreFilter)
+	}
+	if searchQuery := r.URL.Query().Get("q"); searchQuery != "" {
+		events = events.ByName(searchQuery)
+	}
+
+	events.SortByDate()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(events); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func handlePage(title string, filter func(list EventList) EventList) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mu.RLock()
@@ -348,8 +395,14 @@ func handlePage(title string, filter func(list EventList) EventList) http.Handle
 			return data.PendingSubmissions[i].SubmittedAt.After(data.PendingSubmissions[j].SubmittedAt)
 		})
 
+		// NOTE: log.Fatal here used to kill the *entire server process* on
+		// any template-execution error (a bad field reference, etc.) --
+		// meaning one bad request could take the whole site down instead
+		// of just failing that one page load. Logging and returning
+		// instead keeps the server (and the scrape scheduler goroutine)
+		// running even if a single render fails.
 		if err := baseTmpl.ExecuteTemplate(w, "base", data); err != nil {
-			log.Fatal(err)
+			log.Println("template execution error:", err)
 		}
 	}
 }

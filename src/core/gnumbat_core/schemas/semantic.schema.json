@@ -1,0 +1,135 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://gnumbat.local/schemas/semantic.schema.json",
+    "title": "Bake human semantics (client-owned, revisioned)",
+    "type": "object",
+    "properties": {
+        "schema": {
+            "type": "string",
+            "pattern": "^gnumbat\\.semantic/0\\.[0-9]+$"
+        },
+        "bake_id": {
+            "type": "string",
+            "pattern": "^bk_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "rev": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "raw_notation": {
+            "type": "string",
+            "description": "Exactly as entered. Never normalised."
+        },
+        "notation_profile": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            },
+            "required": [
+                "id",
+                "version"
+            ]
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            }
+        },
+        "spectral_tags": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            },
+            "description": "Spectromorphology (Denis Smalley): the spectrum's own shape at a moment -- e.g. 'note', 'inharmonic', 'noise', 'dense'. Free text, not an enum -- a suggested vocabulary, never enforced."
+        },
+        "morphology_tags": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            },
+            "description": "Spectromorphology (Denis Smalley): how the spectrum moves/evolves over the Bake's duration -- e.g. 'attack', 'ascending', 'dilating', 'iterative'. Free text, not an enum -- a suggested vocabulary, never enforced."
+        },
+        "fields": {
+            "type": "object",
+            "propertyNames": {
+                "pattern": "^[^/]{1,64}$"
+            },
+            "additionalProperties": {
+                "type": [
+                    "number",
+                    "string",
+                    "boolean",
+                    "array"
+                ],
+                "items": {
+                    "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                    ]
+                }
+            }
+        },
+        "field_origin": {
+            "type": "object",
+            "additionalProperties": {
+                "enum": [
+                    "parsed",
+                    "user",
+                    "suggested"
+                ]
+            }
+        },
+        "groups": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "prompt": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "ratings": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "number"
+            }
+        },
+        "notes": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "updated_by": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "schema",
+        "bake_id",
+        "rev",
+        "raw_notation",
+        "tags",
+        "fields",
+        "updated_at"
+    ],
+    "additionalProperties": true
+}

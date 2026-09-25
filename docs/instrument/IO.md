@@ -1,6 +1,6 @@
-# EBYS Patch I/O Reference
+# Gnumbat Patch I/O Reference
 
-Complete input/output map for `ebys-analyze.maxpat` and its JS objects.
+Complete input/output map for `gnumbat-analyze.maxpat` and its JS objects.
 
 ---
 
@@ -45,7 +45,7 @@ Live 1 and Live 2 inputs are summed before entering the signal chain (`live1_mer
 
 ```
 karma~ ring_0_{stem}  ← slot_router
-    └── pfft~ ebys-pitch.maxpat 1024 4   ← slot_router (pitch semitones)
+    └── pfft~ gnumbat-pitch.maxpat 1024 4   ← slot_router (pitch semitones)
         └── *~  (gain_gate)              ← receive gain_{stem}
             └── biquad~ (low EQ)         ← receive eq_low_coef_{stem}
                 └── biquad~ (mid EQ)     ← receive eq_mid_coef_{stem}

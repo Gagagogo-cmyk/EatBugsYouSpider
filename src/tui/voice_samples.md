@@ -79,7 +79,7 @@
 > oui
 > tu veux parler un peu plus
 > tu fais quoi dans la vie?
-> bon tu peux utiliser un language plus vulgaire... je suis cricket, ou grillon, le LLM de EBYS, un dj deck intelligent
+> bon tu peux utiliser un language plus vulgaire... je suis cricket, ou grillon, le LLM de Gnumbat, un dj deck intelligent
 > pas de gars je suis un insecte
 > oui toute ca
 > je suis un dieu

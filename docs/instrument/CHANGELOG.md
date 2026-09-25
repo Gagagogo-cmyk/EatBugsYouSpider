@@ -1,6 +1,6 @@
-# EBYS Changelog
+# Gnumbat Changelog
 
-EBYS — Eat Bugs You Spider
+Gnumbat — Gnumbat
 Generative audio collage engine. Separates songs into stems, analyzes every transient slice, and plays them back in real time using spectral descriptors.
 
 ---
@@ -23,7 +23,7 @@ Generative audio collage engine. Separates songs into stems, analyzes every tran
 
 - **New: session picker / login screen.** `node sdj-tui.js` now launches a blessed-based login screen first — list existing sessions, create new ones (name + optional password), unlock password-protected ones, delete a session from the list (data is kept on disk, only the registry entry is removed). Once a session is chosen it hands off to the real TUI (moved to `src/tui/app.js`) via `require('./app.js')`, which re-derives every data path from the chosen session. Sessions can be open (no password) or password-protected (Node's built-in `crypto.scryptSync` with a random per-session salt — no plaintext storage, no extra dependencies).
 - **New: `:switchSession` / `:logout` TUI command.** Destroys the running TUI's blessed screen (restoring the terminal) and respawns `sdj-tui.js` fresh in the same terminal, landing back on the login screen — avoids trying to hot-swap the dozens of paths/DBs/caches derived from the active session in-process, which would have been a much larger source of subtle bugs than a clean respawn.
-- **New: `src/tui/session_manager.js`.** Owns the session registry (`data/sessions.json`), the active-session pointer (`data/current_session.txt`, a single line read by every layer below), and one-time migration of a pre-session install's existing data into `data/sessions/default/` (including three files `ws_server.js` had always written to `src/max/` instead of `data/` — `ebys_index.json`, `stem_ranges.json`, `umap_coords.json` — folding a long-standing path leak into the same migration).
+- **New: `src/tui/session_manager.js`.** Owns the session registry (`data/sessions.json`), the active-session pointer (`data/current_session.txt`, a single line read by every layer below), and one-time migration of a pre-session install's existing data into `data/sessions/default/` (including three files `ws_server.js` had always written to `src/max/` instead of `data/` — `gnumbat_index.json`, `stem_ranges.json`, `umap_coords.json` — folding a long-standing path leak into the same migration).
 - **Every layer now resolves its data directory from the active session:**
   - `src/tui/app.js` (the TUI) — analysis library, genre/beats DBs, stems dir, stream.txt, umap/ranges caches, and `:resetAll`'s wipe target all scope to `data/sessions/<id>/`, resolved once at process start (a fresh process per login/switch, so this is safe to cache).
   - `src/max/ws_server.js` — same set of paths, but resolved **fresh on every read/write** (`sessionDataDir()`), not cached, since this is a long-running process spawned once by Max's `node.script` that outlives any single TUI session.
@@ -111,20 +111,20 @@ Generative audio collage engine. Separates songs into stems, analyzes every tran
 ### Repository restructure — portable, cloneable package
 
 #### Folder layout
-- `EBYS_INFRA/` split into `src/` with explicit subfolders: `max/` (Max JS + .maxpat), `demucs/` (Python pipeline), `tui/` (Cricket TUI)
+- `GNUMBAT_INFRA/` split into `src/` with explicit subfolders: `max/` (Max JS + .maxpat), `demucs/` (Python pipeline), `tui/` (Cricket TUI)
 - `Tipping_protocol/backend/` → `src/backend/`; `Tipping_protocol/frontend/` → `src/frontend/`
 - All runtime data (stems, raw_uploads, temp, logs, recordings) moved to `data/` at repo root — fully gitignored
 - `.bak` files moved to `src/max/archive/`
 
 #### Path portability
-- **Python** — all hardcoded `/Users/alexandregagne/Documents/EBYS/EBYS_INFRA/` paths replaced with `Path(__file__).parent`-based relative paths across `watch_demucs.py`, `scan_stems.py`, `send_to_max.py`, `import_library.py`
+- **Python** — all hardcoded `/Users/alexandregagne/Documents/EBYS/GNUMBAT_INFRA/` paths replaced with `Path(__file__).parent`-based relative paths across `watch_demucs.py`, `scan_stems.py`, `send_to_max.py`, `import_library.py`
 - **Max JS** — `getDataDir()` helper added to `streamWatcher.js`, `analyze_reader.js`, `track_loader.js`, `buffer_manager.js`, `clear_stems.js`; computes data path from `patcher.filepath` (strips `src/max/` → `src/` → repo root → `data/`). Works on any machine regardless of username or clone location
 - **`slicer.js`** — `getInfraDir()` renamed `getDataDir()`, updated to navigate two levels up from `src/max/` to repo root then into `data/`; `downbeats.json` read path updated
-- **`import_library.py`** — `analysis_library.json` path updated to `src/max/analysis_library.json`; `ebys.db`, `genres.json`, `downbeats.json` updated to `data/`
+- **`import_library.py`** — `analysis_library.json` path updated to `src/max/analysis_library.json`; `gnumbat.db`, `genres.json`, `downbeats.json` updated to `data/`
 - **`cricket-voice.js`** — hardcoded Modelfile path in user-facing hint replaced with `path.join(__dirname, 'Modelfile')`
 
 #### `setup.sh` (new)
-- First-time install script: creates `data/` subdirs, creates `src/demucs/demucs_env/` Python venv, installs Demucs + watchdog, downloads Essentia genre models, runs `npm install` in `src/max/`, `src/tui/`, `src/backend/`, generates `com.ebys.watchdemucs.plist` with the current user's actual paths, installs it to `~/Library/LaunchAgents/` and loads the daemon
+- First-time install script: creates `data/` subdirs, creates `src/demucs/demucs_env/` Python venv, installs Demucs + watchdog, downloads Essentia genre models, runs `npm install` in `src/max/`, `src/tui/`, `src/backend/`, generates `com.gnumbat.watchdemucs.plist` with the current user's actual paths, installs it to `~/Library/LaunchAgents/` and loads the daemon
 - Any contributor clones the repo, runs `bash setup.sh`, opens the patch — no manual path editing required
 
 #### `.gitignore`
@@ -142,7 +142,7 @@ Generative audio collage engine. Separates songs into stems, analyzes every tran
 
 ### M/S Stereo + FX Send/Return Architecture
 
-#### Max patch — master bus restructure (`ebys-analyze.maxpat`)
+#### Max patch — master bus restructure (`gnumbat-analyze.maxpat`)
 - **Single master bus** — removed per-stem `dac~ 1 2` (obj-712, 742, 772, 802). All four stems now sum into one stereo master via `+~` trees (obj-21000–21005). One `dac~ 1 2` (obj-21032) is the only speaker output.
 - **FX send (pre-M/S, mono)** — mono sum of four `*~ 0.7` pre-M/S outputs (obj-21050–21052) feeds `*~ 0` send gain (obj-21053), controlled by `receive fxsend1` (obj-21054). Output on `dac~ 3 4` (obj-21055) → physical pedal input.
 - **FX return** — `adc~ 3` (obj-21060) is the mono hardware return. `*~ 0` return gain (obj-21061) controlled by `receive fxreturn1` (obj-21062).
@@ -207,7 +207,7 @@ karma~ → pfft~ → *~0.7 ──┬── mono sum → *~ fxSend → selector~ 
 
 ### Meter flood fix (gate pattern)
 - **Root cause confirmed** — "Node script not ready can't handle message meter" is fired by Max's C++ runtime before any JavaScript executes. `peakamp~ 4096` auto-fires at ~10.8 Hz per stem (~54 msg/s total) immediately on patch load; Node.js takes 1–3 s to init. No JS-side handler can prevent this.
-- **Fix: patch-side gate** — added `gate 1` (obj-7013) in `ebys-analyze.maxpat` between the 5 prepend objects (obj-7008–7012) and node.script (obj-4030). Gate defaults closed (0). On patch load all meter messages are silently blocked.
+- **Fix: patch-side gate** — added `gate 1` (obj-7013) in `gnumbat-analyze.maxpat` between the 5 prepend objects (obj-7008–7012) and node.script (obj-4030). Gate defaults closed (0). On patch load all meter messages are silently blocked.
 - **Gate-open signal** — node.script outlet 0 → `sel ws_ready` (obj-7014) → bang on match → message `1` (obj-7015) → gate inlet 0. The `ws_ready` outlet call already existed in `ws_server.js` `server.listen` callback; no JS changes needed.
 - **Dead handlers removed** — `ws_server.js`: removed no-op early `meter` handler (couldn't prevent C++ errors) and a duplicate `meter` handler silently overwritten by the active one.
 - **3 missed direct wires caught** — initial gate edit only re-routed the 5 new prepend objects (obj-7008–7012). A pre-existing `prepend meter` (obj-5008), `prepend analysisDone` (obj-6002), and `prepend streamUpdated` (obj-9922) were still wired directly to node.script and causing the continued flood. All three now route through the same gate. Total: 8 message sources gated, 5 control-only sources (script start/stop/state, slicer.js outlet 1) left direct.
@@ -225,8 +225,8 @@ karma~ → pfft~ → *~0.7 ──┬── mono sum → *~ fxSend → selector~ 
 ### VU meters
 - **`meter` flood fix** — Max was sending `meter` messages from a beat-detection metro before ws_server's Node script was ready; no handler existed so Max logged "can't handle message meter" thousands of times. Added a `meter` handler that silently discards 0-arg beat ticks and broadcasts 2-arg VU data (`meter <name> <level>`) as `{type:'vu'}` WebSocket messages
 - **Per-stem VU bars** — new 12-char bar appended to the right of each stem's progress bar line. Green (below -12 dB), yellow (-12 to -3 dB), red (above -3 dB). Driven by `peakamp~` in Max via `meter <stem> <0–1>`. `barW` reduced by `VU_W + 1` (13 chars) to keep total width constant
-- **Master VU bar** — `out: ████████████` shown in the EBYS header line, driven by `meter master <0–1>`
-- **Max wiring done** — `ebys-analyze.maxpat`: 10 new objects (obj-7001–7005 peakamp~, obj-7008–7012 prepend). Taps: `*~0.7` outlet per stem (post-volume) and `+~` final sum outlet (master). 10 patchlines: audio→peakamp~, peakamp~→prepend, prepend→node.script.
+- **Master VU bar** — `out: ████████████` shown in the Gnumbat header line, driven by `meter master <0–1>`
+- **Max wiring done** — `gnumbat-analyze.maxpat`: 10 new objects (obj-7001–7005 peakamp~, obj-7008–7012 prepend). Taps: `*~0.7` outlet per stem (post-volume) and `+~` final sum outlet (master). 10 patchlines: audio→peakamp~, peakamp~→prepend, prepend→node.script.
 - **`metro` + `loadbang` removed** — first wiring attempt incorrectly used `loadbang → metro 50 → peakamp~ inlet 1`. `peakamp~` has only one inlet (audio signal); inlet 1 does not accept message-rate bangs. Also, the metro started at patch open before `node.script` booted, causing the "Node script not ready can't handle message meter" flood. Both wiring error and flood fixed by removing metro/loadbang: `peakamp~ 4096` auto-outputs peak amplitude every 4096 samples (~93 ms) with no external trigger needed.
 - **VU dot style** — `vuBar()` changed from `█/░` blocks to `●/○` dots (filled/empty circles). Color zones unchanged: green (0–-12 dB), yellow (-12–-3 dB), red (above -3 dB).
 
@@ -254,11 +254,11 @@ karma~ → pfft~ → *~0.7 ──┬── mono sum → *~ fxSend → selector~ 
 - **`playing` gate** — new module-level flag (default `false`). Set to `true` at the top of `handlePlay()`. Checked in `ring_done` before `outlet(12, ...)` — in-flight `fluid.bufcompose~` copies that complete after `:stop` are now discarded instead of restarting karma~
 - **`stop()` handler** — sets `playing = false` and forwards `outlet(12, "stop")` to slot_router so karma~ objects are halted immediately
 
-### Max / ebys-pitch.maxpat
+### Max / gnumbat-pitch.maxpat
 - **FFT imaginary path fix (silence through pitch shifter)** — the two imaginary signal wires were entirely missing from the pfft~ subpatch. Added: `fftin~ outlet 1 → gizmo~ inlet 1` and `gizmo~ outlet 1 → fftout~ inlet 1`. Without the imaginary component, FFT reconstruction is impossible and gizmo~ outputs silence regardless of pitch ratio
 
 ### TUI / sdj-tui.js
-- **Version bump** — title and header updated to `EBYS 0.1.5`
+- **Version bump** — title and header updated to `Gnumbat 0.1.5`
 - **Progress bar coordinate-system fix** — bars were filling only in the last seconds of each slice because `s.pos` (karma~ ring buffer 0→1) was being compared against `sliceStart/sliceEnd` (fractions of the *full stem buffer*) — different coordinate systems. Rewrote `sliceBar()` to use wall-clock elapsed time (`Date.now() - stemSliceStartTime[name]`) instead. Progress is now accurate for the full 8 000 ms window
 - **`stemSliceStartTime` tracking** — records `Date.now()` whenever a new slice id arrives on a stem; `sliceBar()` reads this to compute elapsed time
 - **Progress bar bracket width fix** — bracket width was based on the actual audio length in the ring buffer (e.g. 15 s for bass) not the timer duration (8 s). Fixed by using `segDurMs / stemDurMs` so all four brackets are the same width
@@ -280,8 +280,8 @@ karma~ → pfft~ → *~0.7 ──┬── mono sum → *~ fxSend → selector~ 
 - Delay timer corrected: `delayMs = segDurMs × stretchRatio` so the next segment fires at the right moment regardless of stretch amount
 
 ### Per-stem pitch shifting (pfft~/gizmo~)
-- **`ebys-pitch.maxpat`** — new pfft~ subpatch: `fftin~ 1 square` → `gizmo~` → `fftout~ 1 hamming`; `in 2` receives pitch ratio from outside, routes to gizmo~'s frequency-shift inlet; duration unchanged
-- **`ebys-analyze.maxpat`** — 4× pfft~ objects (one per stem) inserted between karma~ and the mixer; slot_router outlets 16–19 wired to each pfft~ inlet 1
+- **`gnumbat-pitch.maxpat`** — new pfft~ subpatch: `fftin~ 1 square` → `gizmo~` → `fftout~ 1 hamming`; `in 2` receives pitch ratio from outside, routes to gizmo~'s frequency-shift inlet; duration unchanged
+- **`gnumbat-analyze.maxpat`** — 4× pfft~ objects (one per stem) inserted between karma~ and the mixer; slot_router outlets 16–19 wired to each pfft~ inlet 1
 - **`slot_router.js` v4** — added pitch outlets (16–19) and `pitchShift / setPitchSemitones / setPitch` functions; per-stem `stemPitch` state; `setPitch all` resets all stems
 - **`ws_server.js`** — intercepts `:pitchShift <stem> <semitones>` before buildIndex check; calls `Max.outlet('pitchShift', stem, semitones)`; route object outlet 22 → `prepend pitchShift` (obj-4068) → slot_router inlet 0
 - TUI command: `:pitchShift melody 3` raises melody 3 semitones; `:pitchShift all 0` resets
@@ -299,7 +299,7 @@ karma~ → pfft~ → *~0.7 ──┬── mono sum → *~ fxSend → selector~ 
 - **`:bake` training system** — captures intent + Cricket's commands + user corrections + live descriptor state to `training_log.jsonl`
 - **`convert_bakes.py`** — converts bake log to MLX fine-tuning JSONL format
 - **`finetune.sh`** — one-command LoRA fine-tune on Apple Silicon via `mlx-lm`
-- `mlx-lm` installed in `~/ebys-mlx-env`
+- `mlx-lm` installed in `~/gnumbat-mlx-env`
 
 ### Documentation
 - **`ARCHITECTURE.md`** — full pipeline documented: Analysis (Demucs → Essentia → madmom → FluCoMa → JSON) and Playback (ws_server.js → chunks → slicer.js → buffer_manager.js → karma~ → pfft~/gizmo~)
@@ -408,7 +408,7 @@ karma~ → pfft~ → *~0.7 ──┬── mono sum → *~ fxSend → selector~ 
 ### Analysis pipeline
 - `genre_tagger.py` — Essentia-based genre classification, writes `genres.json`
 - `madmom_tagger.py` — downbeat detection via madmom DBNDownBeatTracker, writes `downbeats.json`
-- `fluid.bufmfcc~` added to `ebys-analyze.maxpat` — computes M0–M5 per slice
+- `fluid.bufmfcc~` added to `gnumbat-analyze.maxpat` — computes M0–M5 per slice
 - `fluid.buftempogram~` added for BPM estimation
 - Improved BPM estimation in `analyze_reader.js`
 

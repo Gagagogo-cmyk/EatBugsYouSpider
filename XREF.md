@@ -8,9 +8,9 @@ Cross-reference between the doc-path conventions used in `docs/` and this repo's
 
 | Doc path prefix | Real path |
 |---|---|
-| `EBYS_INFRA/` (root-level scripts, daemons, JSON/db files) | `src/demucs/` (scripts) + `data/` (JSON, db, logs, stream.txt) |
-| `EBYS_INFRA/MAX/` or `MAX/` | `src/max/` |
-| `EBYS_INFRA/TUI/` or `TUI/` | `src/tui/` |
+| `GNUMBAT_INFRA/` (root-level scripts, daemons, JSON/db files) | `src/demucs/` (scripts) + `data/` (JSON, db, logs, stream.txt) |
+| `GNUMBAT_INFRA/MAX/` or `MAX/` | `src/max/` |
+| `GNUMBAT_INFRA/TUI/` or `TUI/` | `src/tui/` |
 | `Tipping_protocol/backend/` (in `docs/ARCHITECTURE.md`) | `src/backend/` (an older copy also sits at `archive/tipping_protocol/backend/` — not live) |
 
 ## Directory index
@@ -18,13 +18,14 @@ Cross-reference between the doc-path conventions used in `docs/` and this repo's
 | Path | What's there |
 |---|---|
 | `src/demucs/` | Python analysis pipeline: `watch_demucs.py` (ingestion daemon), `genre_tagger.py`, `madmom_tagger.py`, `import_library.py`, `add_tension.py`, `add_stereo_features.py`, LoRA/generative scripts (`generate_agent.py`, `cricket_bridge.py`, `watch_lora.py`, `watch_generated.py`, `train_bias.py`, `train_and_score_lora.py`), plus `demucs_env/` and `genenv/` (Python venvs — gitignored). |
-| `src/max/` | Live Max/MSP instrument: `ebys-analyze.maxpat` (main patch), `ebys-pitch.maxpat` (formant-preserving pitch shifter subpatch), all Node-for-Max control-logic `.js` files (`ws_server.js`, `slicer.js`, `buffer_manager.js`, `slot_router.js`, `ms_router.js`, `eq_router.js`, `spat_fx_router.js`, `bake_manager.js`, `cricket.js`), `patch_*.py` (scripted patch editors), and ~25 `.bak*` files (candidates for archiving per `docs/instrument/PD_MIGRATION.md`). |
-| `src/pd/` | In-progress Pure Data port: `ebys-analyze.pd` + supporting `.pd` files, `src/pd/bridge/*.js` (OSC bridge to the Node control-logic layer, `osc.js` is the dependency-free UDP OSC codec), `CONVERSION_NOTES.md` (what was deliberately dropped in the port), `GUI_PARAMETER_MAPPING.md`. |
+| `src/max/` | Live Max/MSP instrument: `gnumbat-analyze.maxpat` (main patch), `gnumbat-pitch.maxpat` (formant-preserving pitch shifter subpatch), all Node-for-Max control-logic `.js` files (`ws_server.js`, `slicer.js`, `buffer_manager.js`, `slot_router.js`, `ms_router.js`, `eq_router.js`, `spat_fx_router.js`, `bake_manager.js`, `cricket.js`), `patch_*.py` (scripted patch editors), and ~25 `.bak*` files (candidates for archiving per `docs/instrument/PD_MIGRATION.md`). |
+| `src/pd/` | In-progress Pure Data port: `gnumbat-analyze.pd` + supporting `.pd` files, `src/pd/bridge/*.js` (OSC bridge to the Node control-logic layer, `osc.js` is the dependency-free UDP OSC codec), `CONVERSION_NOTES.md` (what was deliberately dropped in the port), `GUI_PARAMETER_MAPPING.md`. |
 | `src/tui/` | Terminal control surface: `sdj-tui.js` (main app, `blessed` + `ws`), `app.js`, `link_server.js` (multi-deck LINK protocol), `session_manager.js`, `cricket-voice.js` (offline Cricket voice-training tool), diagnostics (`test-ollama.js`, `keytest.js`, `keytest2.js`, `tagtest.js`). |
-| `src/backend/` | Tipping protocol Express API: `server.js` entry, `routes/{auth,slices,tips,accounts}.js`, `db/{queries.js,schema.sql}`, `split.js` (split equation), `split_viz.js`, `public/tip.html`. Also `event-scraper/` — a separate Go module, unrelated to the Node API. |
+| `src/backend/` | Tipping protocol Express API: `server.js` entry, `routes/{auth,slices,tips,accounts}.js`, `db/{queries.js,schema.sql}`, `split.js` (split equation), `split_viz.js`, `public/tip.html`. Also `event-crawler/` (was mislabeled `event-scraper/` here — real dir name fixed) — a separate Go module, unrelated to the Node API, its own `README.md`. |
 | `src/frontend/` | Present but currently empty. |
-| `data/` | Runtime state (gitignored): `raw_uploads/`, `stems/`, `recordings/`, `sessions/`, `logs/`, `lora_corpus/`, `generated/`, plus root JSON/db files (`genres.json`, `downbeats.json`, `stream.txt`, `sessions.json`, `current_session.txt`, `instrument_status.json`) and the SQLite `ebys.db`. |
+| `data/` | Runtime state (gitignored): `raw_uploads/`, `stems/`, `recordings/`, `sessions/`, `logs/`, `lora_corpus/`, `generated/`, plus root JSON/db files (`genres.json`, `downbeats.json`, `stream.txt`, `sessions.json`, `current_session.txt`, `instrument_status.json`) and the SQLite `gnumbat.db`. |
 | `docs/` | `README.md` (doc index), `ARCHITECTURE.md` (system-wide: backend/Stripe/DB/radio/infra), `instrument/` (engine internals, roadmaps), `protocol/` (tipping + split equation specs), `business/` (revenue models), `platform/` (product-level overview). |
+| `src/network/` | P2P/federation layer, Corestore + Hyperswarm. `carnet-daemon.js`/`mirror.js` (event-crawler content replication, see `src/network/README.md` and `docs/platform/NETWORK.md`) and `artifacts/` (Model/Tool/Branch identity, signing, quarantine, and replication — see `docs/platform/ARTIFACT_NETWORK.md`). Two independent applications sharing one dependency set, not one system. |
 | `archive/` | Superseded code kept for history, including an older `tipping_protocol/backend/` copy — not the live backend. |
 
 ## Entry points
@@ -34,9 +35,9 @@ Cross-reference between the doc-path conventions used in `docs/` and this repo's
 | Instrument control surface | `node src/tui/sdj-tui.js` |
 | Backend API (dev) | `cd src/backend && npm run dev` |
 | Backend API (prod) | `cd src/backend && npm start` |
-| Ingestion daemon | Runs via LaunchAgent (`com.ebys.watchdemucs.plist`) after `setup.sh`; manually: `python3 src/demucs/watch_demucs.py` |
-| Max patch | Open `src/max/ebys-analyze.maxpat` in Max 8 |
-| Pd patch | Open `src/pd/ebys-analyze.pd` in Pure Data ≥ 0.52 |
+| Ingestion daemon | Runs via LaunchAgent (`com.gnumbat.watchdemucs.plist`) after `setup.sh`; manually: `python3 src/demucs/watch_demucs.py` |
+| Max patch | Open `src/max/gnumbat-analyze.maxpat` in Max 8 |
+| Pd patch | Open `src/pd/gnumbat-analyze.pd` in Pure Data ≥ 0.52 |
 | Full first-time setup | `bash setup.sh` (repo root) |
 
 ## Ports & network protocols
@@ -69,8 +70,8 @@ Cross-reference between the doc-path conventions used in `docs/` and this repo's
 | `data/genres.json` | `genre_tagger.py` | `ws_server.js`, `sdj-tui.js` |
 | `data/downbeats.json` | `madmom_tagger.py` | `ws_server.js` → `slicer.js` |
 | `src/max/analysis_library.json` | `slice_writer.js`; amended by `add_tension.py`, `add_stereo_features.py` | `ws_server.js` |
-| `src/max/ebys_index.json` | `ws_server.js` (reassembled from `slicer.js`) | `slicer.js` at boot (cached) |
-| `data/ebys.db` (SQLite) | `import_library.py`, `add_tension.py` (tension columns only) | Canonical store; primary source once Pd migration completes |
+| `src/max/gnumbat_index.json` | `ws_server.js` (reassembled from `slicer.js`) | `slicer.js` at boot (cached) |
+| `data/gnumbat.db` (SQLite) | `import_library.py`, `add_tension.py` (tension columns only) | Canonical store; primary source once Pd migration completes |
 | `src/max/umap_coords.json`, `stem_ranges.json` | `ws_server.js` (t-SNE via `tsne_worker.js`) | `sdj-tui.js` (spatial navigator, bar scaling) |
 | `training_log.jsonl` | `ws_server.js` on `:bake` | `convert_bakes.py` → `finetune.sh` (Cricket LoRA) |
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-EBYS — Prep a raw clip corpus for LoRA training
+Gnumbat — Prep a raw clip corpus for LoRA training
 
 Takes a folder of original audio clips (any format ffmpeg can read — wav,
 mp3, aiff, flac, m4a, etc.), not necessarily anything that's been through
-EBYS's own ingestion pipeline (Demucs/genre_tagger/madmom), and turns it
+Gnumbat's own ingestion pipeline (Demucs/genre_tagger/madmom), and turns it
 into a clean, uniform set of WAV files ready for build_lora_dataset.py:
 
   - decodes every clip to 44.1kHz stereo WAV via ffmpeg (format-agnostic —
@@ -19,10 +19,10 @@ into a clean, uniform set of WAV files ready for build_lora_dataset.py:
   - logs anything ffmpeg/ffprobe can't decode to failed.txt instead of
     crashing partway through a run over thousands of files
 
-Written for a corpus that has NOT been through EBYS's own pipeline —
-no ebys.db lookups, no genre/BPM assumptions, works on any folder on disk.
+Written for a corpus that has NOT been through Gnumbat's own pipeline —
+no gnumbat.db lookups, no genre/BPM assumptions, works on any folder on disk.
 If your clips already went through watch_demucs.py and have entries in
-ebys.db, you don't need this script — point build_lora_dataset.py at the
+gnumbat.db, you don't need this script — point build_lora_dataset.py at the
 existing stem WAVs directly.
 
 Requires: ffmpeg + ffprobe on PATH (no Python audio libraries needed).

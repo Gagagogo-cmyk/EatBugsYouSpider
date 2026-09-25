@@ -1,0 +1,186 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.spectralshape~ Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.spectralshape~</h1>
+  <div class="digest">Seven Spectral Shape Descriptors in Realtime</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Seven of the  spectral shape descriptors, computed on a linear scale for both amplitude and frequency.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>The descriptors are:</p>
+<ul class="simple">
+<li>the four first statistical moments (<a class="reference external" href="https://en.wikipedia.org/wiki/Moment_(mathematics)">https://en.wikipedia.org/wiki/Moment_(mathematics)</a>), more commonly known as:<ul>
+<li>the spectral centroid (1) in Hertz. This is the point that splits the spectrum in 2 halves of equal energy. It is the weighted average of the magnitude spectrum.</li>
+<li>the spectral spread (2) in Hertz. This is the standard deviation of the spectrum envelope, or the average of the distance to the centroid.</li>
+<li>the normalised skewness (3) as ratio. This indicates how tilted is the spectral curve in relation to the middle of the spectral frame, i.e. half of the Nyquist frequency. If it is below the frequency of the magnitude spectrum, it is positive.</li>
+<li>the normalised kurtosis (4) as ratio. This indicates how focused the spectral curve is. If it is peaky, the value is high.</li>
+</ul>
+</li>
+<li>the rolloff (5) in Hertz. This indicates the frequency under which 95% of the energy is included.</li>
+<li>the flatness (6) in dB. This is the ratio of geometric mean to the magnitude, over the arithmetic mean of the magnitudes. It yields a very approximate measure on how noisy a signal is.</li>
+<li>the crest (7) in dB. This is the ratio of the loudest magnitude over the RMS of the whole frame. A high number is an indication of a loud peak poking out from the overall spectral curve.</li>
+</ul>
+<p>The drawings in Peeters 2003 ( <a class="reference external" href="http://recherche.ircam.fr/anasyn/peeters/ARTICLES/Peeters_2003_cuidadoaudiofeatures.pdf">http://recherche.ircam.fr/anasyn/peeters/ARTICLES/Peeters_2003_cuidadoaudiofeatures.pdf</a> ) are useful, as are the commented examples below. For the mathematically-inclined reader, the tutorials and code offered here
+( <a class="reference external" href="https://www.audiocontentanalysis.org/">https://www.audiocontentanalysis.org/</a> ) are interesting to further the understanding. For examples of the impact of computing the moments in power magnitudes, and/or in exponential frequency scale, please refer to the helpfile.</p>
+<p>The process will return a multichannel control stream with the seven values, which will be repeated if no change happens within the algorithm, i.e. when the hopSize is larger than the signal vector size.</p>
+
+
+    <p>Read more about fluid.spectralshape~ on the <a href='https://learn.flucoma.org/reference/spectralshape'>learn platform</a>.</p>
+    
+    <p>fluid.spectralshape~ is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">fftsettings
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: [[&#39;winSize&#39;, 1024], [&#39;hopSize&#39;, -1], [&#39;fftSize&#39;, -1]])</span>
+      </h3>
+      <div class="description"><p>FFT settings consist of three numbers representing the window size, hop size and FFT size in samples:</p>
+<p>The hop size and fft size can both be set to -1 (and are by default), with slightly different meanings:</p>
+<ul class="simple">
+<li>For the hop size, -1 = <code>windowsize/2</code></li>
+<li>For the FFT size, -1 = <code>windowsize</code> snapped to the nearest equal / greater power of 2 (e.g. <code>windowsize 1024</code> =&gt; <code>fftsize 1024</code>, but <code>windowssize 1000</code> also =&gt; <code>fftsize 1024</code>)</li>
+</ul>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>FFTSize, if != -1, will snap to the next greatest power of two &amp;gt; 4</li>
+<li>The maximum FFT size is limited to the value of the <code>maxfftsize</code> argument</li>
+<li>if FFT size != -1, then window size is clipped at FFT size</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfreq
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1.0)</span>
+      </h3>
+      <div class="description"><p>The maximum frequency that the algorithm will consider for computing the spectral shape. Frequencies above will be ignored. The default of -1 goes up to Nyquist.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfftsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Set an explicit upper bound on the FFT size at object instantiation. The default of -1 sets this to whatever the initial FFT size is</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">minfreq
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.0)</span>
+      </h3>
+      <div class="description"><p>The minimum frequency that the algorithm will consider for computing the spectral shape. Frequencies below will be ignored. The default of 0 goes down to DC when possible.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">power
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>This flag sets the scaling of the magnitudes in the moment calculation. It uses either its amplitude (0, by default) or its power (1).</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">rolloffpercent
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 95.0)</span>
+      </h3>
+      <div class="description"><p>This sets the percentage of the frame's energy that will be reported as the rolloff frequency. The default is 95%.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+<li>Maximum: <code>100</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">select
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: [&#39;centroid&#39;, &#39;spread&#39;, &#39;skew&#39;, &#39;kurtosis&#39;, &#39;rolloff&#39;, &#39;flatness&#39;, &#39;crest&#39;])</span>
+      </h3>
+      <div class="description"><p>An array of <code>symbols</code> indicating which analyses to return. The options are <code>centroid</code>, <code>spread</code>, <code>skewness</code>, <code>kurtosis</code>, <code>rolloff</code>, <code>flatness</code>, and <code>crest</code>. If nothing is specified, the object will return all the analyses. The analyses will always appear in their normal order, this argument just allows for a selection of them to be returned. Reordering the options in this argument will not reorder how the analyses are returned.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">unit
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The frequency unit for the spectral shapes to be computed upon, and outputted at. The default (0) is in Hertz and computes the moments on a linear spectrum. The alternative is in MIDI note numbers(1), which compute the moments on an exponential spectrum.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.bufspectralshape.html">BufSpectralShape</a></h3><h3 class="seealso_name"><a href="fluid.pitch~.html">Pitch</a></h3><h3 class="seealso_name"><a href="fluid.melbands~.html">MelBands</a></h3><h3 class="seealso_name"><a href="fluid.loudness~.html">Loudness</a></h3><h3 class="seealso_name"><a href="fluid.mfcc~.html">MFCC</a></h3></section> 
+</body>
+</html>

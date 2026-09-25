@@ -1,4 +1,4 @@
-// EBYS — Stretch Player  v1
+// Gnumbat — Stretch Player  v1
 //
 // Central sequencer for the bufselect → bufstretch → play chain.
 // Handles all 4 stems, keeps per-stem state during async processing.

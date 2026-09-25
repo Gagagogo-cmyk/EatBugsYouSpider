@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-EBYS — Compare LoRA-generated audio against the real training corpus
+Gnumbat — Compare LoRA-generated audio against the real training corpus
 
 Phase 4 of USER_LORA.md calls for comparing generated output against the
 real corpus in descriptor space, plus checking for memorized/near-duplicate
-output. For catalog material that's gone through EBYS's own ingestion
+output. For catalog material that's gone through Gnumbat's own ingestion
 pipeline, that comparison would use the real FluCoMa C/S/E/F/P/H/T values
-already in ebys.db. This corpus was NOT ingested that way (see
-prep_lora_corpus.py's docstring — it lives outside EBYS's Demucs/FluCoMa
-pipeline entirely), so there's nothing in ebys.db to compare against.
+already in gnumbat.db. This corpus was NOT ingested that way (see
+prep_lora_corpus.py's docstring — it lives outside Gnumbat's Demucs/FluCoMa
+pipeline entirely), so there's nothing in gnumbat.db to compare against.
 
 This script computes a SEPARATE, lightweight set of descriptors directly
 from WAV files with numpy — spectral centroid, spectral flatness, RMS

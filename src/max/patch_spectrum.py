@@ -10,7 +10,7 @@ up; cut the lows and the bottom drops out. Solo a stem to inspect that stem's EQ
 in isolation.
 
 Placed at the top-right of the patch canvas. Idempotent (skips if already
-present). Reversible: `git checkout ebys-analyze.maxpat`. Reload the patch after
+present). Reversible: `git checkout gnumbat-analyze.maxpat`. Reload the patch after
 running.
 
 Note: spectroscope~ defaults to a scrolling sonogram (frequency up the Y axis,
@@ -20,7 +20,7 @@ effect clearly.
 """
 import json, os, sys
 
-PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ebys-analyze.maxpat')
+PATCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gnumbat-analyze.maxpat')
 SRC   = 'obj-wave_mono'          # master mono sum (signal) — from patch_waveform_tap.py
 SCOPE = 'obj-eq_spectrum'        # our new spectroscope~
 LABEL = 'obj-eq_spectrum_lbl'

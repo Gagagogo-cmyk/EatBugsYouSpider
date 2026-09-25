@@ -1,0 +1,194 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.ampslice~ Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.ampslice~</h1>
+  <div class="digest">Amplitude-based Detrending Slicer</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Implements an amplitude-based slicer, with various customisable options and conditions to detect relative amplitude changes as onsets.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>FluidAmpSlice is based on two envelope followers on a high-passed version of the signal: one slow that gives the trend, and one fast. Each has features that will interact. The example code below is unfolding the various possibilities in order of complexity.</p>
+<p>The process will return an audio stream with single sample impulses at estimated starting points of the different slices.</p>
+
+
+    <p>Read more about fluid.ampslice~ on the <a href='https://learn.flucoma.org/reference/ampslice'>learn platform</a>.</p>
+    
+    <p>fluid.ampslice~ is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">fastrampdown
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>The number of samples the relative envelope follower will take to reach the next value when falling. Typically, this will be faster than slowRampDown.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">fastrampup
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>The number of samples the relative envelope follower will take to reach the next value when raising. Typically, this will be faster than slowRampUp.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">floor
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -144.0)</span>
+      </h3>
+      <div class="description"><p>The level in dB the slowRamp needs to be above to consider a detected difference valid, allowing to ignore the slices in the noise floor.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>144</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">highpassfreq
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 85.0)</span>
+      </h3>
+      <div class="description"><p>The frequency of the fourth-order Linkwitz–Riley high-pass filter (<a class="reference external" href="https://en.wikipedia.org/wiki/Linkwitz%E2%80%93Riley_filter">https://en.wikipedia.org/wiki/Linkwitz%E2%80%93Riley_filter</a>). This is done first on the signal to minimise low frequency intermodulation with very fast ramp lengths. A frequency of 0 bypasses the filter.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">minslicelength
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 2)</span>
+      </h3>
+      <div class="description"><p>The length in samples that the Slice will stay ON. Changes of states during that period will be ignored.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">offthreshold
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -144.0)</span>
+      </h3>
+      <div class="description"><p>The threshold in dB of the relative envelope follower to reset, aka to allow the differential envelope to trigger again.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>144</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">onthreshold
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 144.0)</span>
+      </h3>
+      <div class="description"><p>The threshold in dB of the relative envelope follower to trigger an onset, aka to go ON when in OFF state. It is computed on the difference between the two envelope followers.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>-144</code></li>
+<li>Maximum: <code>144</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">slowrampdown
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 100)</span>
+      </h3>
+      <div class="description"><p>The number of samples the absolute envelope follower will take to reach the next value when falling.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">slowrampup
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 100)</span>
+      </h3>
+      <div class="description"><p>The number of samples the absolute envelope follower will take to reach the next value when raising.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.bufampslice.html">BufAmpSlice</a></h3><h3 class="seealso_name"><a href="fluid.ampgate~.html">AmpGate</a></h3><h3 class="seealso_name"><a href="fluid.bufampgate.html">BufAmpGate</a></h3><h3 class="seealso_name"><a href="fluid.onsetslice~.html">OnsetSlice</a></h3><h3 class="seealso_name"><a href="fluid.noveltyslice~.html">NoveltySlice</a></h3><h3 class="seealso_name"><a href="fluid.transientslice~.html">TransientSlice</a></h3></section> 
+</body>
+</html>

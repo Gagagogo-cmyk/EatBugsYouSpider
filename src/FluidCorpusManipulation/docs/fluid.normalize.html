@@ -1,0 +1,208 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.normalize Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.normalize</h1>
+  <div class="digest">Normalize a FluidDataSet</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Normalize a <a href="fluid.dataset.html">fluid.dataset</a> or single point of data according to learnt minimum and maximum values.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    
+
+    <p>Read more about fluid.normalize on the <a href='https://learn.flucoma.org/reference/normalize'>learn platform</a>.</p>
+    
+    <p>fluid.normalize is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Name<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: )</span><div class="description"><p>Name for this instance, so that it can be reused or referred to by other data objects. If none is given, a name will be generated</p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">max
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1.0)</span>
+      </h3>
+      <div class="description"><p>Maximum output value, default 1</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">min
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.0)</span>
+      </h3>
+      <div class="description"><p>Minimum output value, default 0</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='fit'>fit</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)) </span><div class='description'>
+       <p>Compute the normalization factors from a <a href="fluid.dataset.html">fluid.dataset</a> and store them internally.</p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>The <a href="fluid.dataset.html">fluid.dataset</a> to normalize</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='fittransform'>fittransform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Normalize a <a href="fluid.dataset.html">fluid.dataset</a> and copy the results to <a href="fluid.dataset.html">fluid.dataset</a>.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>The <a href="fluid.dataset.html">fluid.dataset</a> to normalize</p>
+</li><li>destDataSet: <p>The <a href="fluid.dataset.html">fluid.dataset</a> to populate with normalized data</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='transform'>transform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Transform a <a href="fluid.dataset.html">fluid.dataset</a> using learned extrema from <code>fit</code> and copy the results to the destination <a href="fluid.dataset.html">fluid.dataset</a>.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>The <a href="fluid.dataset.html">fluid.dataset</a> to normalize</p>
+</li><li>destDataSet: <p>The <a href="fluid.dataset.html">fluid.dataset</a> to populate with normalized data</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='transformpoint'>transformpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceBuffer (symbol),  </span><span class='arg'>destBuffer (symbol) </span><div class='description'>
+       <p>Normalize a single data point, using the learned extrema from a previous call to <code>fit</code></p>
+
+<h5>Argument details:</h5>       <ul><li>sourceBuffer: <p>A array with the new data point</p>
+</li><li>destBuffer: <p>A array to contain the normalized value</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='inversetransform'>inversetransform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Un-normalize <a href="fluid.dataset.html">fluid.dataset</a>, using the learned statistics from a previous call to <code>fit</code>.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>The <a href="fluid.dataset.html">fluid.dataset</a> to of data to transform from the normalized scale to the original scale.</p>
+</li><li>destDataSet: <p>The <a href="fluid.dataset.html">fluid.dataset</a> to write the transformed data to.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='inversetransformpoint'>inversetransformpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceBuffer (symbol),  </span><span class='arg'>destBuffer (symbol) </span><div class='description'>
+       <p>Un-normalize a data point, using the learned statistics from a previous call to <code>fit</code></p>
+
+<h5>Argument details:</h5>       <ul><li>sourceBuffer: <p>A array with the data in the normalized range</p>
+</li><li>destBuffer: <p>A array to write the output of the transformation to</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='cols'>cols</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of columns (dimensions) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='clear'>clear</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Resets the internal state of the model</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='size'>size</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of data points (entries / observations) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+    <div class='method_group'><h3 class='method_name' name='read'>read</h3>
+      <span class='arglist'>Arguments</span>
+      <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Replace the internal state of the object from a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+     
+    </div>
+    <div class='method_group'><h3 class='method_name' name='write'>write</h3>
+      <span class='arglist'>Arguments</span>
+        <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Save the internal state of the object to a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+    </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.normalize object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.normalize objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.standardize.html">Standardize</a></h3><h3 class="seealso_name"><a href="fluid.robustscale.html">RobustScale</a></h3><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3></section> 
+</body>
+</html>

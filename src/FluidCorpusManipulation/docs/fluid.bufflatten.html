@@ -1,0 +1,235 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.bufflatten Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.bufflatten</h1>
+  <div class="digest">Flatten a multichannel buffer</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Flatten a multichannel array to a single channel. This can be useful to structure a buffer such that it can be added to a <a href="fluid.dataset.html">fluid.dataset</a></p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>The <code>axis</code> argument determines how the flattening is arranged. The default value, 1, flattens channel-wise (similar to how audio files are stored), such that (if we imagine channels are rows, time positions are columns):</p>
+<blockquote>
+<table border="1" class="docutils">
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<tbody valign="top">
+<tr><td>a 1</td>
+<td>a 2</td>
+<td>a 3</td>
+</tr>
+<tr><td>b 1</td>
+<td>b 2</td>
+<td>b 3</td>
+</tr>
+<tr><td>c 1</td>
+<td>c 2</td>
+<td>c 3</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>becomes</p>
+<blockquote>
+<table border="1" class="docutils">
+<colgroup>
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+</colgroup>
+<tbody valign="top">
+<tr><td>a 1</td>
+<td>b 1</td>
+<td>c 1</td>
+<td>a 2</td>
+<td>b 2</td>
+<td>c 2</td>
+<td>a 3</td>
+<td>b 3</td>
+<td>c 3</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>whereas with <code>axis</code> = 0, the buffer is flattened frame-wise, resulting in:</p>
+<blockquote>
+<table border="1" class="docutils">
+<colgroup>
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+<col width="11%" />
+</colgroup>
+<tbody valign="top">
+<tr><td>a 1</td>
+<td>a 2</td>
+<td>a 3</td>
+<td>b 1</td>
+<td>b 2</td>
+<td>b 3</td>
+<td>c 1</td>
+<td>c 2</td>
+<td>c 3</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+
+
+    <p>Read more about fluid.bufflatten on the <a href='https://learn.flucoma.org/reference/bufflatten'>learn platform</a>.</p>
+    
+    <p>fluid.bufflatten is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">axis
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>Whether to flatten the buffer channel-wise (1) or frame-wise (0). The default is 1 (channel-wise).</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">destination
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The array to write the flattened data to.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numchans
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>For multichannel <code>source</code> buffers, how many channels should be processed. The default of -1 indicates to process up through the last channel in  <code>source</code>.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numframes
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>How many frames should be processed. The default of -1 indicates to process through the end of the buffer.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">source
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The array to flatten.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startchan
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>For multichannel <code>source</code> buffers, which channel to begin the processing. The default is 0.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startframe
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Where in <code>source</code> should the flattening process start, in samples. The default is 0.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="bang">bang</h3>
+      <div class="description"> A bang will commence processing on object given its current settings, unless it is already busy. In that case, the behaviour depends on the value of the <span class="messagename" data-message="queue"> queue </span>
+        attribute. </div>
+    </div>
+    <div class="method_group">
+      <h3 class="method_name" name="cancel">cancel</h3>
+      <div class="description"> When processing in non-blocking mode, this will cancel the job underway, without updating destination buffers. </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.bufcompose.html">BufCompose</a></h3><h3 class="seealso_name"><a href="fluid.bufstats.html">BufStats</a></h3><h3 class="seealso_name"><a href="fluid.bufselect.html">BufSelect</a></h3><h3 class="seealso_name"><a href="fluid.bufselectevery.html">BufSelectEvery</a></h3></section> 
+</body>
+</html>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — Generative Agent (Stable Audio 3 + User LoRA)
+Gnumbat — Generative Agent (Stable Audio 3 + User LoRA)
 
 Offline batch generator. This does NOT run inside the real-time engine —
 Max's FluCoMa buf~ analysis is what actually computes C/S/E/F/P/H/T, and
@@ -68,22 +68,22 @@ small-music/small-music-base/small-sfx/small-sfx-base run on CPU, slower):
   small-music         — CPU-capable, post-trained, music-focused
   small-music-base    — CPU-capable base checkpoint, pair with a LoRA trained on it
   small-sfx / -base   — sound-effect focused, not music — included for completeness,
-                         not the right choice for EBYS's stems
+                         not the right choice for Gnumbat's stems
 
 Usage:
   # plain generation, no LoRA, seeded from the real catalog's genre/BPM
-  python3 generate_agent.py --stem bass --seed-from-db ../../data/current/ebys.db \
+  python3 generate_agent.py --stem bass --seed-from-db ../../data/current/gnumbat.db \
       --count 4 --duration 12
 
   # with a trained User LoRA — note --model switches to the -base tier automatically
   # unless you override it
   python3 generate_agent.py --stem drums --genre "deep house" --bpm 124 \
       --lora-ckpt-path ../../lora_out/lora_step1000.safetensors \
-      --invoke-phrase "ebys user style" --count 4 --duration 12
+      --invoke-phrase "gnumbat user style" --count 4 --duration 12
 
   # Cricket bridge calls this script with --style-fragment already built —
   # see cricket_bridge.py, you shouldn't normally need to type this by hand:
-  python3 generate_agent.py --stem melody --seed-from-db ../../data/current/ebys.db \
+  python3 generate_agent.py --stem melody --seed-from-db ../../data/current/gnumbat.db \
       --style-fragment "brighter, more energy, driving" \
       --lora-ckpt-path ../../lora_out/lora_step1000.safetensors --count 4 --dry-run
 """
@@ -138,7 +138,7 @@ MODEL_PROFILES = {
         "requires_gpu": False, "max_duration_s": 120.0,
         "steps": 8, "cfg_scale": 1.0,
         "prompt_prefix": "",
-        "note": "sound-effect focused — not the right choice for EBYS stems",
+        "note": "sound-effect focused — not the right choice for Gnumbat stems",
     },
     "small-sfx-base": {
         "requires_gpu": False, "max_duration_s": 120.0,
@@ -179,7 +179,7 @@ def build_caption(stem, genre, bpm, invoke_phrase=None, style_fragment=None, pro
 
 
 def genres_and_bpm_from_db(db_path, genre_filter=None):
-    """Pull (genre, bpm) pairs straight from EBYS's own already-computed
+    """Pull (genre, bpm) pairs straight from Gnumbat's own already-computed
     Essentia/madmom metadata (genres / tracks tables — see import_library.py)
     instead of asking the caller to hand-specify every combination."""
     conn = sqlite3.connect(db_path)
@@ -290,11 +290,11 @@ def write_wav(audio_tensor, sample_rate, out_path):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="EBYS generative agent — batch-produce candidate stem clips via Stable Audio 3 (+ optional User LoRA)")
+    ap = argparse.ArgumentParser(description="Gnumbat generative agent — batch-produce candidate stem clips via Stable Audio 3 (+ optional User LoRA)")
     ap.add_argument("--stem", required=True, choices=list(STEM_LABEL.keys()))
     ap.add_argument("--genre", default=None, help="e.g. 'deep house' — omit with --seed-from-db to sweep the catalog's own genres")
     ap.add_argument("--bpm", type=float, default=None)
-    ap.add_argument("--seed-from-db", default=None, help="path to ebys.db — pulls (genre, bpm) pairs from your own catalog metadata instead of one manual pair")
+    ap.add_argument("--seed-from-db", default=None, help="path to gnumbat.db — pulls (genre, bpm) pairs from your own catalog metadata instead of one manual pair")
     ap.add_argument("--count", type=int, default=4, help="clips per (genre, bpm) pair")
     ap.add_argument("--duration", type=float, default=12.0, help="seconds per clip")
     ap.add_argument("--out-dir", default=None)

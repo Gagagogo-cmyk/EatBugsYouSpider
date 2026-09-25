@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS — LoRA pipeline TUI
+Gnumbat — LoRA pipeline TUI
 
 Interactive front-end over the manual LoRA pipeline described in
 docs/instrument/USER_LORA.md (§3, §6). Nothing here changes what the
@@ -144,7 +144,7 @@ def print_status(root, cfg):
     ffmpeg_ok = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
 
     print("\n" + "=" * 60)
-    print(f"EBYS LoRA pipeline — {root}")
+    print(f"Gnumbat LoRA pipeline — {root}")
     print("=" * 60)
     print(f"  1. raw      {p['raw']}")
     print(f"       {raw_n} source file(s)" + ("" if ffmpeg_ok else "   [!] ffmpeg/ffprobe not on PATH"))
@@ -202,7 +202,7 @@ def action_build(root, cfg):
     out = prompt("Train data_dir (point train_lora.py here)", cfg.get("build_out", p["train"]))
     val_out = prompt("Val out dir (held out — never point train_lora.py here)", cfg.get("build_val_out", p["val"]))
     val_frac = prompt("Val fraction", cfg.get("val_fraction", "0.05"))
-    caption = prompt("Caption / invoke phrase (keep short + generic)", cfg.get("caption", "ebys user style"))
+    caption = prompt("Caption / invoke phrase (keep short + generic)", cfg.get("caption", "gnumbat user style"))
     bpm_tag = prompt_bool("Append detected BPM to caption? (needs librosa, slow)", default=False)
     copy = prompt_bool("Copy files instead of symlink?", default=False)
 
@@ -300,7 +300,7 @@ MENU = """
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Interactive menu over the EBYS LoRA pipeline scripts")
+    ap = argparse.ArgumentParser(description="Interactive menu over the Gnumbat LoRA pipeline scripts")
     ap.add_argument("--root", default=DEFAULT_ROOT, help="lora_corpus root (default: %(default)s)")
     args = ap.parse_args()
 

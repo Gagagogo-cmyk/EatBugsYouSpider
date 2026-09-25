@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# EBYS — First-Time Setup
+# Gnumbat — First-Time Setup
 # Run once after cloning: bash setup.sh
 # =============================================================================
 
@@ -12,7 +12,7 @@ DATA_DIR="$REPO_DIR/data"
 
 echo ""
 echo "╔══════════════════════════════════════╗"
-echo "║       EBYS — First-Time Setup        ║"
+echo "║       Gnumbat — First-Time Setup        ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 echo "Repo: $REPO_DIR"
@@ -58,7 +58,7 @@ fi
 
 # ── 4. Generative agent environment (Stable Audio 3) ─────────────────────────
 # Lives OUTSIDE this repo on purpose: it's Stability AI's own project (own
-# git history, own uv-managed venv, own release cycle) — not EBYS code, not
+# git history, own uv-managed venv, own release cycle) — not Gnumbat code, not
 # vendored, not gitignored-in-place. See docs/instrument/USER_LORA.md for the
 # full reasoning. generate_agent.py / cricket_bridge.py just need a path to
 # its venv's python3; src/tui/app.js reads the same STABLE_AUDIO_3_DIR
@@ -142,7 +142,7 @@ fi
 
 # ── 6. LaunchAgent (watch_demucs daemon) ────────────────────────────────────
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
-PLIST_DEST="$LAUNCH_AGENTS/com.ebys.watchdemucs.plist"
+PLIST_DEST="$LAUNCH_AGENTS/com.gnumbat.watchdemucs.plist"
 
 # Use system Python3 to RUN the watcher — it only needs `watchdog`, not the
 # full demucs stack. The watcher spawns demucs_env/python3 as a subprocess.
@@ -166,7 +166,7 @@ cat > "$PLIST_DEST" << PLIST
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.ebys.watchdemucs</string>
+    <string>com.gnumbat.watchdemucs</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -196,7 +196,7 @@ PLIST
 echo "  ✓ plist written to $PLIST_DEST"
 
 # Unload any running instance (works on both old and new macOS)
-launchctl bootout "gui/$(id -u)/com.ebys.watchdemucs" 2>/dev/null || \
+launchctl bootout "gui/$(id -u)/com.gnumbat.watchdemucs" 2>/dev/null || \
   launchctl unload "$PLIST_DEST" 2>/dev/null || true
 
 sleep 1  # let the old process die
@@ -213,7 +213,7 @@ echo "  ✓ LaunchAgent loaded (daemon will auto-start on login)"
 # manifest_*.json files and runs ingest_generated.py on each as it lands.
 # Reuses $WATCHER_PY from step 6 — watchdog is already installed for it there,
 # and this script has no other dependency beyond the stdlib.
-GEN_PLIST_DEST="$LAUNCH_AGENTS/com.ebys.watchgenerated.plist"
+GEN_PLIST_DEST="$LAUNCH_AGENTS/com.gnumbat.watchgenerated.plist"
 GEN_SCRIPT="$DEMUCS_SRC/watch_generated.py"
 GEN_LOG="$DATA_DIR/logs/watchgenerated.log"
 
@@ -224,7 +224,7 @@ cat > "$GEN_PLIST_DEST" << PLIST
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.ebys.watchgenerated</string>
+    <string>com.gnumbat.watchgenerated</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -253,7 +253,7 @@ PLIST
 
 echo "  ✓ plist written to $GEN_PLIST_DEST"
 
-launchctl bootout "gui/$(id -u)/com.ebys.watchgenerated" 2>/dev/null || \
+launchctl bootout "gui/$(id -u)/com.gnumbat.watchgenerated" 2>/dev/null || \
   launchctl unload "$GEN_PLIST_DEST" 2>/dev/null || true
 
 sleep 1
@@ -271,7 +271,7 @@ echo "  ✓ LaunchAgent loaded (daemon will auto-start on login)"
 # since it's an hours-long local-GPU job that shouldn't start without someone
 # choosing the moment. No watchdog dependency of its own — stdlib only,
 # reuses $WATCHER_PY from step 6 purely for consistency.
-LORA_PLIST_DEST="$LAUNCH_AGENTS/com.ebys.watchlora.plist"
+LORA_PLIST_DEST="$LAUNCH_AGENTS/com.gnumbat.watchlora.plist"
 LORA_SCRIPT="$DEMUCS_SRC/watch_lora.py"
 LORA_LOG="$DATA_DIR/logs/watchlora.log"
 
@@ -282,7 +282,7 @@ cat > "$LORA_PLIST_DEST" << PLIST
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.ebys.watchlora</string>
+    <string>com.gnumbat.watchlora</string>
 
     <key>ProgramArguments</key>
     <array>
@@ -311,7 +311,7 @@ PLIST
 
 echo "  ✓ plist written to $LORA_PLIST_DEST"
 
-launchctl bootout "gui/$(id -u)/com.ebys.watchlora" 2>/dev/null || \
+launchctl bootout "gui/$(id -u)/com.gnumbat.watchlora" 2>/dev/null || \
   launchctl unload "$LORA_PLIST_DEST" 2>/dev/null || true
 
 sleep 1
@@ -335,7 +335,7 @@ echo "║           Setup complete ✓           ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 echo "Next steps:"
-echo "  1. Open src/max/ebys-analyze.maxpat in Max 8"
+echo "  1. Open src/max/gnumbat-analyze.maxpat in Max 8"
 echo "  2. Drop an audio file into data/raw_uploads/"
 echo "  3. Watch the TUI:  node src/tui/sdj-tui.js"
 echo "  4. (optional) Drop tracks into data/lora_corpus/raw/ to grow a personal"

@@ -7,7 +7,7 @@ inlets   = 0;   // no inlet — auto-starts, nothing to bang externally
 outlets  = 1;
 
 // Compute data/ dir relative to this patch — works on any machine.
-// Patch lives at EBYS/src/max/  →  strip "max/"  →  strip "src/"  →  append "data/"
+// Patch lives at Gnumbat/src/max/  →  strip "max/"  →  strip "src/"  →  append "data/"
 function getDataDir() {
     var p = patcher.filepath;
     var slash = p.indexOf('/');

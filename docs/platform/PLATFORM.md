@@ -1,4 +1,4 @@
-# EBYS Platform
+# Gnumbat Platform
 
 A platform for live music performance, streaming, and artist compensation — built on an open tipping protocol.
 
@@ -6,13 +6,13 @@ A platform for live music performance, streaming, and artist compensation — bu
 
 ## Radio Modes
 
-The EBYS radio can operate in three modes depending on what the DJ is doing:
+The Gnumbat radio can operate in three modes depending on what the DJ is doing:
 
-**Live mode** — the DJ is performing in real time. EBYS is running, the stream is active, the session log is live. Listeners can tip the set while it's happening.
+**Live mode** — the DJ is performing in real time. Gnumbat is running, the stream is active, the session log is live. Listeners can tip the set while it's happening.
 
 **Replay mode** — an archived performance is streaming. Same interface, same tip button, same split equation — the session log is static. Useful for long-tail listening and for artists to continue earning from past performances.
 
-**Unattended mode** — EBYS runs autonomously. The system selects and sequences slices without a human DJ driving the TUI. Useful for continuous background streaming between live sets. Curator share goes to the system account (eventually distributed as community funds).
+**Unattended mode** — Gnumbat runs autonomously. The system selects and sequences slices without a human DJ driving the TUI. Useful for continuous background streaming between live sets. Curator share goes to the system account (eventually distributed as community funds).
 
 ---
 
@@ -50,7 +50,7 @@ No accounts required to listen or tip. The tip flow is Stripe Checkout — card,
 **Built:**
 - Web radio page (streaming)
 - Tip flow with Stripe payment
-- Session logging (ebys.db)
+- Session logging (gnumbat.db)
 - Split equation (calculated, not yet transferred to artists)
 - Basic auth (DJ login)
 - Node.js API on Railway
@@ -67,7 +67,7 @@ No accounts required to listen or tip. The tip flow is Stripe Checkout — card,
 
 ## The Temperature Connection
 
-When today's temperature exceeds the 10-year rolling average for this date, the EBYS engine increases entropy — the probability that a stem switches to a different source track on the next segment. The formula:
+When today's temperature exceeds the 10-year rolling average for this date, the Gnumbat engine increases entropy — the probability that a stem switches to a different source track on the next segment. The formula:
 
 ```
 entropy = clamp(0.5 + (δT / 5.0), 0.0, 1.0)

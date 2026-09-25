@@ -1,12 +1,12 @@
-# EBYS LINK Protocol
+# Gnumbat LINK Protocol
 
-EBYS LINK is the multi-deck synchronization layer. When two or more EBYS decks are running in the same performance context — same room, same session, same network — LINK coordinates their timing, transformation arcs, and (optionally) their slice selections.
+Gnumbat LINK is the multi-deck synchronization layer. When two or more Gnumbat decks are running in the same performance context — same room, same session, same network — LINK coordinates their timing, transformation arcs, and (optionally) their slice selections.
 
 ---
 
 ## What LINK Does
 
-Without LINK, each EBYS deck is autonomous. It runs its own bar clock, selects its own slices, maintains its own transformation state. Two decks performing together drift unless manually synchronized.
+Without LINK, each Gnumbat deck is autonomous. It runs its own bar clock, selects its own slices, maintains its own transformation state. Two decks performing together drift unless manually synchronized.
 
 With LINK active:
 - **All decks share a bar clock.** Bar boundaries are synchronized. When one deck fires a segment, all decks fire on the same bar grid.

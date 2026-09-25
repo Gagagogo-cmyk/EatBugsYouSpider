@@ -1,4 +1,4 @@
-# EBYS — Max → Pure Data Migration Plan
+# Gnumbat — Max → Pure Data Migration Plan
 
 Status: **not started — zero `.pd` files exist anywhere in the project as of this writing.** Deadline per `CHANGELOG.md` is Aug 8. Worth an honest read of scope before committing to that date, because the patch turned out bigger than `ARCHITECTURE.md` documents.
 
@@ -6,7 +6,7 @@ Status: **not started — zero `.pd` files exist anywhere in the project as of t
 
 ## 1. Reality check
 
-`ARCHITECTURE.md` describes the FluCoMa analysis chain, `karma~` playback, and `pfft~`/`gizmo~` pitch shift. The actual `src/max/` directory has grown well past that since the doc was last updated — there's a 3-band EQ router (`eq_router.js`, biquad chain per stem), a spatialization/FX router with quad joystick panning (`spat_fx_router.js`), per-stem frequency-band masking (`band_mask_init.js`), and — this is the important one — the pitch shifter isn't a single black-box object. `ebys-pitch.maxpat` is a custom formant-preserving phase vocoder, built from raw FFT primitives (`fft~`, `cartopol~`, `poltocar~`, `log~`) with real-cepstrum liftering to separate pitch from formant envelope, per `formant_lifter_init.js`'s own comments.
+`ARCHITECTURE.md` describes the FluCoMa analysis chain, `karma~` playback, and `pfft~`/`gizmo~` pitch shift. The actual `src/max/` directory has grown well past that since the doc was last updated — there's a 3-band EQ router (`eq_router.js`, biquad chain per stem), a spatialization/FX router with quad joystick panning (`spat_fx_router.js`), per-stem frequency-band masking (`band_mask_init.js`), and — this is the important one — the pitch shifter isn't a single black-box object. `gnumbat-pitch.maxpat` is a custom formant-preserving phase vocoder, built from raw FFT primitives (`fft~`, `cartopol~`, `poltocar~`, `log~`) with real-cepstrum liftering to separate pitch from formant envelope, per `formant_lifter_init.js`'s own comments.
 
 That last part is actually better news than it sounds: a custom chain built from FFT primitives is more portable than a proprietary object would be, because Pd has equivalent primitives — there's real work in re-wiring it, but not a "no equivalent exists" wall the way there would be for something like Max's `gizmo~` used directly. Confirmed by a quick search: there's no drop-in vanilla-Pd `gizmo~`, but that's not what you're actually using — you built your own from parts Pd also has.
 
@@ -20,7 +20,7 @@ Before anything gets converted, clean up what's there — porting dead weight wa
 
 - **Archive the backup pile.** `src/max/` has ~25 `.bak*`/`.pre-*` files sitting alongside the live patch, some over 800KB. Move them into the existing `archive/` folder. They're history, not working state, and they make it harder to see what's actually current.
 - **Drop the already-flagged dead objects.** `ARCHITECTURE.md`'s own "Deprecated / Legacy JS Objects" table lists `stretch_player.js`, `track_loader.js`, `asset_id.js`, `bpm_from_tempogram.js`, `stems.js` (a stub), `classifier.js` (legacy) as superseded or unused. Don't port them.
-- **Inventory what's left, honestly.** One pass through `ebys-analyze.maxpat` and `ebys-pitch.maxpat` to confirm the actual current object list matches what's below — the patch has been edited by `patch_*.py` scripts many times since `ARCHITECTURE.md` was written, so verify rather than trust the doc.
+- **Inventory what's left, honestly.** One pass through `gnumbat-analyze.maxpat` and `gnumbat-pitch.maxpat` to confirm the actual current object list matches what's below — the patch has been edited by `patch_*.py` scripts many times since `ARCHITECTURE.md` was written, so verify rather than trust the doc.
 
 ---
 

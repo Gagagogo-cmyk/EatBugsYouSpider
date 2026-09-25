@@ -1,7 +1,7 @@
-// EBYS — MS Router  v1
+// Gnumbat — MS Router  v1
 //
 // *** NOT LIVE — DO NOT EDIT EXPECTING IT TO AFFECT PLAYBACK ***
-// Discovered 2026-07-09: the js object in ebys-analyze.maxpat is typed
+// Discovered 2026-07-09: the js object in gnumbat-analyze.maxpat is typed
 // "js spat_fx_router.js" — that's the argument Max actually uses to load a
 // script, regardless of a stray saved_object_attributes.filename on the same
 // box that happened to say "ms_router.js". This file has never been the one
@@ -221,7 +221,7 @@ function masterJoystick(x, y) {
     // (pass-through, existing stereo image preserved); moving the joystick
     // bleeds one bus toward the other side instead of re-deriving an
     // absolute center. (mj_LR_L/mj_LR_R now read masterTiltL/masterTiltR —
-    // see the new route args + receive objects added in ebys-analyze.maxpat.)
+    // see the new route args + receive objects added in gnumbat-analyze.maxpat.)
     //
     // RANGE FIX: confirmed via Cycling'74 docs that pan2's position inlet is
     // -1..+1, not 0..1. Sending 0 for "stay home left" was actually landing

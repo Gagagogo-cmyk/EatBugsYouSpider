@@ -1,6 +1,6 @@
 # BAKE — Training Loop
 
-Baking is how EBYS learns from a performance. The DJ identifies a sequence they want to reinforce — a specific combination of slices, a transition, an arc that worked — and locks it in. The system captures that loop and uses it to weight future selections: it will prefer paths that resemble what was just baked.
+Baking is how Gnumbat learns from a performance. The DJ identifies a sequence they want to reinforce — a specific combination of slices, a transition, an arc that worked — and locks it in. The system captures that loop and uses it to weight future selections: it will prefer paths that resemble what was just baked.
 
 Baking is always DJ-initiated. The engine never bakes on its own.
 
@@ -11,7 +11,7 @@ Baking is always DJ-initiated. The engine never bakes on its own.
 | Command | Description |
 |---------|-------------|
 | `:bakeloop <bars>` | Set the loop window size for the next bake. Default: 4 bars. |
-| `:bake start` | Begin capturing the loop. EBYS records exactly what plays for the next `bakeloop` bars across all four stems. |
+| `:bake start` | Begin capturing the loop. Gnumbat records exactly what plays for the next `bakeloop` bars across all four stems. |
 | `:bake end` | End the capture. The captured sequence is locked in as a positive training example. Index weights update immediately. |
 | `:bake abort` | Abandon the capture without writing anything. The loop is discarded. |
 
@@ -21,13 +21,13 @@ Baking is always DJ-initiated. The engine never bakes on its own.
 
 ### `:bake start`
 
-EBYS switches to **bake mode**. The current playback continues without interruption. Under the hood, the system begins recording every slice selection: which track, which bar, which descriptor values were matched, what the stay/move decision was.
+Gnumbat switches to **bake mode**. The current playback continues without interruption. Under the hood, the system begins recording every slice selection: which track, which bar, which descriptor values were matched, what the stay/move decision was.
 
 Visual indicator in the TUI: `[BAKE ACTIVE]` replaces the normal status line.
 
 ### `:bake end`
 
-The captured sequence is written to a bake snapshot in `ebys.db`:
+The captured sequence is written to a bake snapshot in `gnumbat.db`:
 
 ```sql
 INSERT INTO bake_snapshots (session_id, stem, track_id, slice_id, bar_idx, descriptors)

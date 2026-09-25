@@ -1,4 +1,4 @@
-// ws_server.js — EBYS WebSocket bridge (no external dependencies)
+// ws_server.js — Gnumbat WebSocket bridge (no external dependencies)
 // Uses Node.js built-in http + manual WebSocket handshake (RFC 6455)
 
 const Max    = require('max-api');
@@ -86,7 +86,7 @@ const state = {
     sessionId:   null,
     djId:        null,    // DJ's user id, set by :tipOpen <djId> ... — see the 'session'
                            // broadcast's djId field
-    sessionDeck: 'ebys',  // 'ebys' | 'direct' — direct = no pings, no slice logging
+    sessionDeck: 'gnumbat',  // 'gnumbat' | 'direct' — direct = no pings, no slice logging
     sessionMode: null,    // 'web' | 'venue' — set by :tipOpen, paired with sessionDeck to
                            // pick the protocol's precision level (see TIPPING_PROTOCOL.md)
     tipBackendUp: null,   // null = unknown (not checked yet), true/false = last known
@@ -367,7 +367,7 @@ const server = http.createServer((req, res) => {
         });
         return;
     }
-    res.writeHead(200); res.end('EBYS ws_server');
+    res.writeHead(200); res.end('Gnumbat ws_server');
 });
 
 server.on('upgrade', (req, socket) => {
@@ -525,13 +525,13 @@ server.on('upgrade', (req, socket) => {
                     const atoms = parts.map(p => isNaN(p) ? p : parseFloat(p));
                     touch(atoms);   // record last touched performative param for LINK missile
                     if (atoms[0] === 'tipOpen' || atoms[0] === 'sessionOpen') {
-                        // :tipOpen <djId> <venue> <mode: web|venue> [deck: ebys|direct]
+                        // :tipOpen <djId> <venue> <mode: web|venue> [deck: gnumbat|direct]
                         // (alias: :sessionOpen — the TIPPING/payout session, NOT the
                         //  login/workspace session, which is :switchSession/:logout)
                         const djId  = String(atoms[1] || '1');
                         const venue = String(atoms[2] || 'unknown');
                         const mode  = String(atoms[3] || 'venue');
-                        const deck  = String(atoms[4] || 'ebys');
+                        const deck  = String(atoms[4] || 'gnumbat');
                         try {
                             const res  = await fetch(`${TIPPING_URL}/slices/session/open`, {
                                 method:  'POST',
@@ -545,9 +545,9 @@ server.on('upgrade', (req, socket) => {
                             state.djId        = djId;
                             state.tipBackendUp = true;
                             broadcast({ type: 'tipBackend', up: true });
-                            const deckLabel = deck === 'direct' ? ' [direct]' : ' [ebys]';
+                            const deckLabel = deck === 'direct' ? ' [direct]' : ' [gnumbat]';
                             broadcast({ type: 'sys', msg: '✓ session ' + state.sessionId + ' open (' + mode + ')' + deckLabel });
-                            // mode ('web'|'venue') + deck ('ebys'|'direct') together pick which of
+                            // mode ('web'|'venue') + deck ('gnumbat'|'direct') together pick which of
                             // the protocol's 3 precision levels this session is running at — see
                             // docs/protocol/TIPPING_PROTOCOL.md. Broadcast so the TUI can show the
                             // [LVL n/3] header chip without duplicating this logic client-side.
@@ -594,7 +594,7 @@ server.on('upgrade', (req, socket) => {
                         // Local teardown — always.
                         state.sessionId   = null;
                         state.djId        = null;
-                        state.sessionDeck = 'ebys';
+                        state.sessionDeck = 'gnumbat';
                         state.sessionMode = null;
                         state.tipBackendUp = null;  // unknown again — no session, no pings to judge it by
                         if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
@@ -616,7 +616,7 @@ server.on('upgrade', (req, socket) => {
                         // semitones = positive (up) or negative (down), e.g. 3 or -2
                         // Independent of :pitchShift — see slot_router.js's setFormant()/
                         // FORMANT_OUT for what this actually drives (the second gizmo~
-                        // inside ebys-pitch.maxpat, warping the spectral envelope rather
+                        // inside gnumbat-pitch.maxpat, warping the spectral envelope rather
                         // than the pitch-shifted excitation). 0 = formants untouched,
                         // matching ReaPitch's formant slider at rest.
                         const stem      = String(atoms[1] || 'all');
@@ -883,12 +883,12 @@ server.on('upgrade', (req, socket) => {
                             broadcast({ type: 'param', key: 'recording', value: false });
                             Max.post('ws_server: recording stopped\n');
                         } else {
-                            // Build filename: recordings/EBYS_YYYYMMDD_HHMMSS.wav
+                            // Build filename: recordings/GNUMBAT_YYYYMMDD_HHMMSS.wav
                             const customName = atoms[2] ? String(atoms[2]) : null;
                             const now  = new Date();
                             const pad  = n => String(n).padStart(2, '0');
                             const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-                            const fname = customName ? `${customName}.wav` : `EBYS_${stamp}.wav`;
+                            const fname = customName ? `${customName}.wav` : `GNUMBAT_${stamp}.wav`;
                             const recDir  = path.join(sessionDataDir(), 'recordings');
                             const recPath = path.join(recDir, fname);
                             try { fs.mkdirSync(recDir, { recursive: true }); } catch(e) {}
@@ -1418,15 +1418,15 @@ server.on('upgrade', (req, socket) => {
                         wipe(path.join(dataDir, 'analysis_library.json'), '{}');
                         wipe(path.join(dataDir, 'genres.json'),           '{}');
                         wipe(path.join(dataDir, 'stream.txt'),            '');
-                        del( path.join(dataDir, 'ebys.db'));
+                        del( path.join(dataDir, 'gnumbat.db'));
 
                         // ── src/max/ ──────────────────────────────────────
-                        // Delete ebys_index.json; if locked, wipe to {} as fallback.
+                        // Delete gnumbat_index.json; if locked, wipe to {} as fallback.
                         (() => {
-                            const p = path.join(maxDir, 'ebys_index.json');
-                            try { fs.unlinkSync(p); Max.post('ws_server: ebys_index.json deleted\n'); }
+                            const p = path.join(maxDir, 'gnumbat_index.json');
+                            try { fs.unlinkSync(p); Max.post('ws_server: gnumbat_index.json deleted\n'); }
                             catch(e) {
-                                Max.post('ws_server: ebys_index.json delete failed (' + e.code + ') — wiping to {}\n');
+                                Max.post('ws_server: gnumbat_index.json delete failed (' + e.code + ') — wiping to {}\n');
                                 try { fs.writeFileSync(p, '{}', 'utf8'); } catch(e2) {}
                             }
                         })();
@@ -1434,7 +1434,7 @@ server.on('upgrade', (req, socket) => {
                         del( path.join(maxDir,  'umap_coords.json'));
                         wipe(path.join(maxDir,  'dict_analysis.json'),    '{}');
                         wipe(path.join(maxDir,  'analysis_library.json'), '{}');
-                        delGlob(maxDir, 'ebys_feed_');
+                        delGlob(maxDir, 'gnumbat_feed_');
 
                         // ── src/ duplicates ───────────────────────────────
                         wipe(path.join(srcDir, 'downbeats.json'), '{}');
@@ -1442,7 +1442,7 @@ server.on('upgrade', (req, socket) => {
 
                         // ── notify ────────────────────────────────────────
                         // Write sentinel so resetAllPending survives a patch reload.
-                        try { fs.writeFileSync(path.join(maxDir, 'ebys_reset.flag'), '1', 'utf8'); } catch(e) {}
+                        try { fs.writeFileSync(path.join(maxDir, 'gnumbat_reset.flag'), '1', 'utf8'); } catch(e) {}
                         resetAllPending = true;   // block stale index saves until new analysis
                         Max.outlet('resetAll');
                         broadcast({ type: 'resetAll' });
@@ -1568,7 +1568,7 @@ server.on('listening', () => {
     Max.outlet('ws_ready');   // signals the patch to start the meter metro
 
     // Restore resetAllPending across patch reloads via sentinel file.
-    const flagPath = path.join(sessionDataDir(), 'ebys_reset.flag');
+    const flagPath = path.join(sessionDataDir(), 'gnumbat_reset.flag');
     if (fs.existsSync(flagPath)) {
         resetAllPending = true;
         try { fs.unlinkSync(flagPath); } catch(e) {}
@@ -1599,7 +1599,7 @@ server.on('listening', () => {
 
     // Send cached index to slicer immediately so it's ready before TUI connects.
     // idxchunk goes out outlet 0 → route else [24] → slicer.js inlet 0.
-    const idxPath = path.join(sessionDataDir(), 'ebys_index.json');
+    const idxPath = path.join(sessionDataDir(), 'gnumbat_index.json');
     try {
         const idxStr = fs.readFileSync(idxPath, 'utf8');
         JSON.parse(idxStr); // validate before sending — skip if file is corrupted/truncated
@@ -1678,7 +1678,7 @@ function findSection(structure, sourceTrack, frac) {
 //
 // NOTE on S: as of this session, S (spectral spread) is a known-broken exact
 // duplicate of C for every slice in the library — a buffer~ channel-count
-// bug in ebys-analyze.maxpat's spectral-shape feature extraction, not a bug
+// bug in gnumbat-analyze.maxpat's spectral-shape feature extraction, not a bug
 // in this formula (see the follow-up task tracking that fix). Included here
 // anyway per explicit instruction — this improves automatically once the
 // analysis pipeline is fixed and re-run; no formula change needed then.
@@ -2014,7 +2014,7 @@ function computeAndWriteUMAP() {
         }
         buildIndexInProgress = false;
         resetAllPending = false;   // new analysis complete — allow index saves again
-        try { fs.unlinkSync(path.join(sessionDataDir(), 'ebys_reset.flag')); } catch(e) {} // clean up sentinel
+        try { fs.unlinkSync(path.join(sessionDataDir(), 'gnumbat_reset.flag')); } catch(e) {} // clean up sentinel
     });
 
     child.stderr.on('data', d => {
@@ -2636,7 +2636,7 @@ let saveIdxBuf = null, saveIdxTotal = 0, saveIdxReceived = 0, saveIdxSid = -1;
 let resetAllPending = false;
 
 // Recovery for the post-:resetAll wedge: resetAll sets resetAllPending (and
-// drops ebys_reset.flag) to block stale index saves until a fresh analysis
+// drops gnumbat_reset.flag) to block stale index saves until a fresh analysis
 // finishes. Normally the TUI's completeAnalysis clears it — but if the analysis
 // completes while the TUI is disconnected, it never clears, and the index stays
 // permanently un-saveable ("analyzed on disk but 0 tracks"). Any successful
@@ -2649,7 +2649,7 @@ function clearResetPendingIfPopulated() {
             path.join(sessionDataDir(), 'analysis_library.json'), 'utf8'));
         if (lib && Object.keys(lib).length > 0) {
             resetAllPending = false;
-            try { fs.unlinkSync(path.join(sessionDataDir(), 'ebys_reset.flag')); } catch(e) {}
+            try { fs.unlinkSync(path.join(sessionDataDir(), 'gnumbat_reset.flag')); } catch(e) {}
             Max.post('ws_server: resetAll block cleared — library populated, index saves re-enabled\n');
         }
     } catch(e) {}
@@ -2674,12 +2674,12 @@ Max.addHandler('saveIdxChunk', (streamId, i, total, ...dataParts) => {
         const jsonStr = saveIdxBuf.join('');
         saveIdxBuf = null;
         if (resetAllPending) {
-            Max.post('ws_server: ebys_index.json save blocked — resetAll pending (run analysis to rebuild)\n');
+            Max.post('ws_server: gnumbat_index.json save blocked — resetAll pending (run analysis to rebuild)\n');
             return;
         }
         try {
-            fs.writeFileSync(path.join(sessionDataDir(), 'ebys_index.json'), jsonStr);
-            Max.post('ws_server: ebys_index.json saved (stream ' + sid + ', ' + jsonStr.length + ' chars)\n');
+            fs.writeFileSync(path.join(sessionDataDir(), 'gnumbat_index.json'), jsonStr);
+            Max.post('ws_server: gnumbat_index.json saved (stream ' + sid + ', ' + jsonStr.length + ' chars)\n');
         } catch(e) {
             Max.post('ws_server: index save failed — ' + e + '\n');
         }

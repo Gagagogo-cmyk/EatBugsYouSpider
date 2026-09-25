@@ -1,0 +1,56 @@
+#N canvas 40 40 1220 820 12;
+#X obj 40 60 bng 22 250 50 0 empty empty empty 17 7 0 12 #fcfcfc #000000 #000000;
+#X msg 90 60 read -resize /Users/alexandregagne/Documents/EBYS/data/sessions/default/stems/htdemucs/!#@VFSDC-011/!#@VFSDC-011_vocals.wav stem_vocals-0 stem_vocals-1;
+#X obj 40 130 soundfiler;
+#X obj 40 180 print SAMPLES-READ;
+#X obj 400 240 bng 22 250 50 0 empty empty empty 17 7 0 12 #fcfcfc #000000 #000000;
+#X obj 400 300 stem_analyze stem_vocals;
+#X obj 400 360 print CHAIN-DONE;
+#X obj 40 430 bng 22 250 50 0 empty empty empty 17 7 0 12 #fcfcfc #000000 #000000;
+#X obj 40 480 array get stem_vocals_loud.stats-0;
+#X obj 40 530 print LOUD-STATS;
+#X obj 400 480 array get stem_vocals.slices;
+#X obj 400 530 print SLICES;
+#X obj 700 480 array get stem_vocals_mfcc.features-0;
+#X obj 700 530 print MFCC-0;
+#X text 40 20 STEP 1 -- load the audio. Click the bang. SAMPLES-READ should
+print a large number \; 0 or silence means soundfiler could not read it., f 60;
+#X text 400 200 STEP 2 -- run the analysis. Click this bang. CHAIN-DONE
+prints when the last stage finishes. Any FluCoMa complaint appears in
+between and names the object that failed., f 44;
+#X text 40 390 STEP 3 -- read the results back. Each of these dumps one
+buffer. Numbers = it worked. Empty or zeros = that stage produced nothing., f 60;
+#X text 700 300 WHY THIS PATCH EXISTS. gnumbat-analyze.pd has ~490 objects
+and nine things wrong with it at once \, so every test costs a full reload
+and tells you one bit. This is the same analysis chain with nothing else
+in it: twenty objects \, one stem \, every result visible. Get this working
+and porting it back is mechanical., f 46;
+#X text 700 440 If SAMPLES-READ is fine but every stage is empty \, the
+problem is the FluCoMa calls. If SAMPLES-READ is 0 \, nothing downstream
+can possibly work and the file/array side is the real bug., f 46;
+#N canvas 0 0 340 240 (subpatch) 0;
+#X array stem_vocals-0 44100 float 0;
+#A color 0;
+#A width 1;
+#X coords 0 1 44100 -1 260 90 1 0 0;
+#X restore 40 620 graph;
+#N canvas 0 0 340 240 (subpatch) 0;
+#X array stem_vocals-1 44100 float 0;
+#A color 0;
+#A width 1;
+#X coords 0 1 44100 -1 260 90 1 0 0;
+#X restore 340 620 graph;
+#X text 640 620 The two raw-stem arrays \, by name. soundfiler writes here \,
+and everything in stem_analyze reads from here. If these stay flat after
+STEP 1 \, stop -- nothing else matters yet., f 46;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 4 0 5 0;
+#X connect 5 0 6 0;
+#X connect 7 0 8 0;
+#X connect 7 0 10 0;
+#X connect 7 0 12 0;
+#X connect 8 0 9 0;
+#X connect 10 0 11 0;
+#X connect 12 0 13 0;

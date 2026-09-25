@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/embedding.schema.json",
+  "title": "Embedding space over Bakes (derived; rebuildable)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.embedding/0\\.[0-9]+$"
+    },
+    "embedding_id": {
+      "type": "string",
+      "pattern": "^(em|mp)_[0-9a-f]{20}$"
+    },
+    "kind": {
+      "enum": [
+        "feature_summary",
+        "model"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "feature_set": {
+      "type": "object",
+      "properties": {
+        "feature_set_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "feature_set_id",
+        "version"
+      ]
+    },
+    "model_version_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "analysis_profile": {
+      "type": "object",
+      "properties": {
+        "extractor": {
+          "type": "string"
+        },
+        "config_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "bake_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^bk_[0-9A-HJKMNP-TV-Z]{26}$"
+      }
+    },
+    "dim": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "columns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "normalization": {
+      "type": "object",
+      "properties": {
+        "mean": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "std": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "mean",
+        "std"
+      ]
+    },
+    "files": {
+      "type": "object",
+      "properties": {
+        "vectors": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "vectors"
+      ]
+    },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bake_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bake_id",
+          "reason"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "embedding_id",
+    "kind",
+    "created_at",
+    "feature_set",
+    "bake_ids",
+    "dim",
+    "columns",
+    "normalization",
+    "files"
+  ],
+  "additionalProperties": true
+}

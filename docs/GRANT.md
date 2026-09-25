@@ -6,7 +6,7 @@
 # Sommaire
 
 **Titre**                                   
-Eat Bugs You Spiders!  
+Gnumbat!  
                                                                                                                                                                                                                             
 **Résumé**                                  
 Création d’une plateforme musicale open source combinant un outil d’exploration et de création musicale enrichi par le machine learning et une infrastructure communautaire pour relier, partager et documenter les différentes scènes numériques. 
@@ -46,15 +46,15 @@ Le projet :
 
 ## Décrivez votre projet
 
-Le projet consiste à développer **Eat Bugs You Spiders! (EBYS)**, un instrument de remixing audio open source combinant audio analysis, machine learning et contrôle par langage naturel, ainsi qu'une plateforme web destinée à documenter les communautés de musique électronique et de culture rave.
+Le projet consiste à développer **Gnumbat! (Gnumbat)**, un instrument de remixing audio open source combinant audio analysis, machine learning et contrôle par langage naturel, ainsi qu'une plateforme web destinée à documenter les communautés de musique électronique et de culture rave.
 
-Inspiré du lecteur musical Winamp, EBYS transforme la bibliothèque musicale en un espace d'exploration : le logiciel en analyse le contenu, en apprend les relations musicales et permet de générer de nouvelles combinaisons à partir des goûts de ses utilisateurs.
+Inspiré du lecteur musical Winamp, Gnumbat transforme la bibliothèque musicale en un espace d'exploration : le logiciel en analyse le contenu, en apprend les relations musicales et permet de générer de nouvelles combinaisons à partir des goûts de ses utilisateurs.
 
-Le projet est pensé comme une infrastructure communautaire. EBYS privilégie une architecture où les bibliothèques audio des utilisateurs restent sur leurs propres ordinateurs, tandis que les modèles, classifications et autres contributions peuvent être partagés entre les membres d'une communauté.
+Le projet est pensé comme une infrastructure communautaire. Gnumbat privilégie une architecture où les bibliothèques audio des utilisateurs restent sur leurs propres ordinateurs, tandis que les modèles, classifications et autres contributions peuvent être partagés entre les membres d'une communauté.
 
 En parallèle, une plateforme web et un web crawler intelligent permettent de documenter les événements et les relations entre communautés.
 
-## EBYS
+## Gnumbat
 
 L'instrument fonctionne à partir d'une bibliothèque de tracks.
 
@@ -122,11 +122,11 @@ Après plusieurs bakes, le modèle peut inférer de nouvelles combinaisons.
 
 Il devient une représentation du vocabulaire musical et des goûts de la personne ou du groupe qui l'a entraîné.
 
-L'utilisateur peut ensuite communiquer avec EBYS en langage naturel :
+L'utilisateur peut ensuite communiquer avec Gnumbat en langage naturel :
 
 > « rise moustique sur 4 bars, drop bourdon sur 8 bars »
 
-Le LLM agit comme une couche d'interprétation entre cette intention et le système musical. Il identifie les modèles et paramètres correspondants et permet à EBYS d'exécuter la séquence.
+Le LLM agit comme une couche d'interprétation entre cette intention et le système musical. Il identifie les modèles et paramètres correspondants et permet à Gnumbat d'exécuter la séquence.
 
 Le résultat dépend directement du training : le modèle généralise les relations apprises à de nouvelles combinaisons.
 
@@ -202,7 +202,7 @@ La radio devra donc constituer un corpus public sans reproduire une plateforme c
 
 ## Le web crawler intelligent
 
-Le web crawler d'EBYS est pensé comme une infrastructure sans frontière, mais développé et expérimenté localement à Montréal.
+Le web crawler d'Gnumbat est pensé comme une infrastructure sans frontière, mais développé et expérimenté localement à Montréal.
 
 Il permet de recenser les spectacles d'une communauté en ajoutant simplement l'URL générale d'une venue.
 
@@ -224,7 +224,7 @@ Le projet n'a toutefois pas pour objectif de rassembler toutes les scènes music
 
 Une carte des villes fonctionnerait plutôt comme un **réseau de communautés autonomes**.
 
-EBYS représenterait ici Montréal, ou peut-être le Québec. Une communauté à Tokyo pourrait créer sa propre instance, avec :
+Gnumbat représenterait ici Montréal, ou peut-être le Québec. Une communauté à Tokyo pourrait créer sa propre instance, avec :
 
 * ses propres données ;
 * ses propres skins ;
@@ -232,7 +232,7 @@ EBYS représenterait ici Montréal, ou peut-être le Québec. Une communauté à
 
 La carte pourrait simplement rediriger vers cette autre plateforme.
 
-Le code est open source : chaque communauté peut reprendre EBYS, modifier certaines parties, n'utiliser que certains outils ou simplement en « scavenge for parts ».
+Le code est open source : chaque communauté peut reprendre Gnumbat, modifier certaines parties, n'utiliser que certains outils ou simplement en « scavenge for parts ».
 
 **DIY.**
 
@@ -250,13 +250,13 @@ La diversité des scènes reste ainsi dans leur autonomie, leur esthétique et l
 
 Le projet sera distribué en open source.
 
-EBYS pourra être utilisé, modifié et adapté par différentes communautés.
+Gnumbat pourra être utilisé, modifié et adapté par différentes communautés.
 
 Son fonctionnement, ses outils d'analyse, son système de training et sa structure de données seront documentés afin que d'autres personnes puissent comprendre le système et participer à son évolution.
 
 La première implantation prendra comme terrain d'expérimentation la musique électronique et la culture rave montréalaise.
 
-Le web crawler permettra de documenter les événements de cette scène, tandis qu'EBYS pourra être utilisé localement par les artistes, DJs et communautés qui souhaitent expérimenter avec leurs bibliothèques et leurs modèles de goût.
+Le web crawler permettra de documenter les événements de cette scène, tandis qu'Gnumbat pourra être utilisé localement par les artistes, DJs et communautés qui souhaitent expérimenter avec leurs bibliothèques et leurs modèles de goût.
 
 Le projet n'impose donc ni modèle musical ni taxonomie prédéfinie.
 
@@ -291,7 +291,7 @@ Ce n'est pas par manque d'intérêt : j'aime rechercher et explorer.
 
 Ce qui m'intéresse aujourd'hui, c'est de trouver une manière de les allonger en les remixant avec autre chose, d'explorer les différentes alternatives que j'aurais pu choisir.
 
-EBYS est d'abord une réponse à ça — un outil d'exploration qui me permet de comprendre ma propre musique, de la transformer et d'en découvrir les possibilités.
+Gnumbat est d'abord une réponse à ça — un outil d'exploration qui me permet de comprendre ma propre musique, de la transformer et d'en découvrir les possibilités.
 
 Mais en développant l'outil, une évidence s'est imposée : tant qu'à le faire pour moi, pourquoi ne pas le faire pour tout le monde?
 
@@ -299,7 +299,7 @@ L'idée de recomposer et d'hybrider mes propres fragments, issus de différents 
 
 Le site devient ainsi à la fois un espace de rencontre et un outil permettant de conserver une trace de ces transformations.
 
-EBYS devient ainsi une façon de créer les conditions dans lesquelles ma pratique, et celle de mon groupe d'amis open source, peuvent exister.
+Gnumbat devient ainsi une façon de créer les conditions dans lesquelles ma pratique, et celle de mon groupe d'amis open source, peuvent exister.
 
 Ce projet me force à habiter l'intersection entre :
 
@@ -359,7 +359,7 @@ Ma rémunération est établie à **30 $/h**, selon une estimation du temps cons
 | **2026-09-29 au 2026-10-13** | **Migration Max/MSP → Pure Data**                      | Migration de l'environnement de développement d'un modèle propriétaire par abonnement (Max/MSP) vers Pure Data, solution open source. Restructuration du pipeline audio pour assurer la compatibilité avec le flux de webradio continu. Mise au point, débogage et stabilisation du modèle et de son architecture de base.                                                                                                                                  | Montréal, Québec |
 | **2026-09-29 au 2027-01-01** | **Raffinage des systèmes de training et de remixage**  | Développement et expérimentation des outils de training et de remixage. Observation et ajustement des comportements, calibration des données, descripteurs audio et slices. Développement des interfaces de training et de performance et implémentation des skins visuels. Exploration de la relation entre les deux modèles afin de déterminer s’ils peuvent fonctionner ensemble ou nécessitent des systèmes distincts. Documentation de l’architecture. | Montréal, Québec |
 | **2026-09-29 au 2027-01-01** | **Raffinage de l’infrastructure web et communautaire** | Raffinage du crawler pour assurer la collecte fiable des informations sur les spectacles et amélioration du filtrage de la base de données. Développement des fonctions communautaires : chat, amis et comptes, arbre phylogénétique des genres créés. Exploration d’une radio autonome intégrée au site. Développement d’un éditeur ou protocole d’importation de skins. Raffinage, tests, débogage et stabilisation de la plateforme.                     | Montréal, Québec |
-| **2027-01-01 au 2027-03-31** | **Lancement progressif et diffusion**                  | Déploiement par étapes et débogage en conditions réelles. La documentation technique étant intégrée directement dans EBYS via un modèle Ollama loadé dans le chat/console, le lancement est lui-même la diffusion du manuel. Documentation en continu du code sur GitHub.                                                                                                                                                                                   | Montréal, Québec |
+| **2027-01-01 au 2027-03-31** | **Lancement progressif et diffusion**                  | Déploiement par étapes et débogage en conditions réelles. La documentation technique étant intégrée directement dans Gnumbat via un modèle Ollama loadé dans le chat/console, le lancement est lui-même la diffusion du manuel. Documentation en continu du code sur GitHub.                                                                                                                                                                                   | Montréal, Québec |
 
 ---
 
@@ -391,7 +391,7 @@ Ma rémunération est établie à **30 $/h**, selon une estimation du temps cons
 
 | Dépense                                                                    |      Montant |
 | -------------------------------------------------------------------------- | -----------: |
-| Rémunération du candidat — Développement de EBYS — 672 h × 30 $/h (6 mois) | **20 160 $** |
+| Rémunération du candidat — Développement de Gnumbat — 672 h × 30 $/h (6 mois) | **20 160 $** |
 
 ### Frais de réalisation
 
@@ -419,11 +419,11 @@ Aucun.
 
 # Matériel d'appui
 
-## Eat Bugs You Spiders! — 2026
+## Gnumbat! — 2026
 
 **Concepteur**
 
-Site web de diffusion de Eat Bugs You Spiders! Utilisé en ce moment comme dossier de presse.
+Site web de diffusion de Gnumbat! Utilisé en ce moment comme dossier de presse.
 
 Markdown files conceptuels, schémas et présentation du prototype. Vue overall du système.
 
@@ -439,13 +439,13 @@ Markdown files conceptuels, schémas et présentation du prototype. Vue overall 
 
 **Site :** https://gagnealexandre.com
 
-## Répertoire de code source — EBYS — 2026
+## Répertoire de code source — Gnumbat — 2026
 
 **Concepteur**
 
 Code source du projet.
 
-**GitHub :** https://github.com/Gagagogo-cmyk/EatBugsYouSpider
+**GitHub :** https://github.com/Gagagogo-cmyk/Gnumbat
 
 ---
 

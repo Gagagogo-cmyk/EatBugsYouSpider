@@ -1,8 +1,8 @@
-// EBYS LINK Server  v1
+// Gnumbat LINK Server  v1
 //
 // ── What this is ─────────────────────────────────────────────────────────────
 // A standalone Node.js process that runs alongside sdj-tui.js on the same
-// machine. It bridges two EBYS units over a direct ethernet or WiFi connection
+// machine. It bridges two Gnumbat units over a direct ethernet or WiFi connection
 // using plain UDP packets.
 //
 // You never need to touch this file for normal use. Start it with:
@@ -438,4 +438,4 @@ ipcOut.bind(0, () => {
 process.on('SIGINT',  () => { console.log('\n[LINK] Shutting down'); process.exit(0); });
 process.on('SIGTERM', () => { console.log('\n[LINK] Shutting down'); process.exit(0); });
 
-console.log(`[LINK] EBYS LINK ready — Unit ${unit} — peer hostname "${peerHostname}" (IP resolves async, see above)`);
+console.log(`[LINK] Gnumbat LINK ready — Unit ${unit} — peer hostname "${peerHostname}" (IP resolves async, see above)`);

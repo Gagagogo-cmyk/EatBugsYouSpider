@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EBYS Max Patch — Audio Routing Upgrade
+Gnumbat Max Patch — Audio Routing Upgrade
 =======================================
 Wires up all new controls from the JS routing layer into the Max signal chain.
 
@@ -25,7 +25,7 @@ Run from the MAX/ folder:
 
 import json, shutil, os
 
-PATCH_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ebys-analyze.maxpat")
+PATCH_PATH  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gnumbat-analyze.maxpat")
 BACKUP_PATH = PATCH_PATH + ".pre_routing_upgrade.bak"
 
 with open(PATCH_PATH) as f:
@@ -336,7 +336,7 @@ for c in changes:
 print(f"\nPatch: {len(boxes)} objects, {len(lines)} lines.")
 print("""
 Done. In Max:
-  1. Close and reopen ebys-analyze.maxpat
+  1. Close and reopen gnumbat-analyze.maxpat
   2. Send 'resend' to eq_router.js and ms_router.js to push current state to new receives
   3. Spatial: set positions with 'setJoystick vocals center' etc.
   4. Test: setStemGain vocals 0.5  →  vocals fader drops to half

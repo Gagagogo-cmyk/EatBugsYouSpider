@@ -1,0 +1,222 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.bufloudness Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.bufloudness</h1>
+  <div class="digest">A Loudness and True-Peak Descriptor on a Buffer</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Two loudness descriptors, computing the true peak of the signal as well as applying the filters proposed by broadcasting standards to emulate the perception of amplitude.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>The process will return a multichannel buffer with two channels per input channel, one for loudness and one for the true peak value of the frame, both in dBfs.</p>
+<p>More information on broadcasting standardisation of loudness measurement is available at <a class="reference external" href="https://tech.ebu.ch/docs/tech/tech3341.pdf">https://tech.ebu.ch/docs/tech/tech3341.pdf</a>, and in more musician-friendly explantions at <a class="reference external" href="http://designingsound.org/2013/02/06/loudness-and-metering-part-1/">http://designingsound.org/2013/02/06/loudness-and-metering-part-1/</a>.</p>
+<p>Each sample represents a value, which is every hopSize. Its sampling rate is sourceSR / hopSize.</p>
+
+
+    <p>Read more about fluid.bufloudness on the <a href='https://learn.flucoma.org/reference/loudness'>learn platform</a>.</p>
+    
+    <p>fluid.bufloudness is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Max Window Size<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: 16384)</span><div class="description"><p>How large can the windowSize be, by allocating memory at instantiation time. This cannot be modulated.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>4</code></li>
+<li>Maximum: <code>32768</code></li>
+<li>Snaps to powers of two</li>
+</ul>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">features
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The destination buffer for the loudness descriptors.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">hopsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 512)</span>
+      </h3>
+      <div class="description"><p>How much the buffered window moves forward, in samples. By default, 512 to be similar with all other FluCoMa objects, the EBU specifies 100ms, which is 4410 samples at 44100.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">kweighting
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>A flag to switch the perceptual model of loudness. On by default, removing it makes the algorithm more CPU efficient by reverting to a simple RMS of the frame.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numchans
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>For multichannel srcBuf, how many channels should be processed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numframes
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>How many frames should be processed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">padding
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>Controls the zero-padding added to either end of the source buffer or segment. Padding ensures all values are analysed. Possible values are:</p>
+</div><div class="enumvals">      
+      <ol start='0'><li>
+          <p>No padding - The first analysis window starts at time 0, and the samples at either end will be tapered by the STFT windowing function.</p>
+
+        </li><li>
+          <p>Half the window size - The first sample is centred in the analysis window ensuring that the start and end of the segment are accounted for in the analysis.</p>
+
+        </li><li>
+          <p>Window size minus the hop size - Mode 2 can be useful when the overlap factor (window size / hop size) is greater than 2, to ensure that the input samples at either end of the segment are covered by the same number of analysis frames as the rest of the analysed material.</p>
+
+        </li></ol>
+      </div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">select
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: [&#39;loudness&#39;, &#39;peak&#39;])</span>
+      </h3>
+      <div class="description"><p>An array of <code>symbols</code> indicating which analyses to return. The options are <code>loudness</code> and <code>peak</code>. If nothing is specified, the object will return all the analyses. The analyses will always appear in their normal order, this argument just allows for a selection of them to be returned. Reordering the options in this argument will not reorder how the analyses are returned.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">source
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer to use as the source material to be described. The different channels of multichannel buffers will be processed sequentially.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startchan
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>For multichannel srcBuf, which channel should be processed first.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startframe
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Where in the srcBuf should the process start, in samples.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">truepeak
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 1)</span>
+      </h3>
+      <div class="description"><p>A flag to switch the computation of TruePeak. On by default, removing it makes the algorithm more CPU efficient by reverting to a simple absolute peak of the frame.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">windowsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 1024)</span>
+      </h3>
+      <div class="description"><p>The size of the window on which the computation is done. By default, 1024 to be similar with all other FluCoMa objects, the EBU specifies 400ms, which is 17640 samples at 44100.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+<li>Maximum: <code>maxwindowsize</code></li>
+</ul>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="bang">bang</h3>
+      <div class="description"> A bang will commence processing on object given its current settings, unless it is already busy. In that case, the behaviour depends on the value of the <span class="messagename" data-message="queue"> queue </span>
+        attribute. </div>
+    </div>
+    <div class="method_group">
+      <h3 class="method_name" name="cancel">cancel</h3>
+      <div class="description"> When processing in non-blocking mode, this will cancel the job underway, without updating destination buffers. </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.loudness~.html">Loudness</a></h3><h3 class="seealso_name"><a href="fluid.bufpitch.html">BufPitch</a></h3><h3 class="seealso_name"><a href="fluid.bufmelbands.html">BufMelBands</a></h3><h3 class="seealso_name"><a href="fluid.bufmfcc.html">BufMFCC</a></h3><h3 class="seealso_name"><a href="fluid.bufspectralshape.html">BufSpectralShape</a></h3><h3 class="seealso_name"><a href="fluid.bufstats.html">BufStats</a></h3></section> 
+</body>
+</html>

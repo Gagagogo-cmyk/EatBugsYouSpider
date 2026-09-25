@@ -290,7 +290,7 @@ def main():
     with open(ANALYSIS_PATH, 'w') as f:
         json.dump(lib, f)
 
-    # Persist into the per-session ebys.db. import_library.py is session-aware
+    # Persist into the per-session gnumbat.db. import_library.py is session-aware
     # (resolves data/sessions/<id>/ from current_session.txt exactly as this
     # script does) and open_db() creates the DB + schema on first run, so this
     # works whether or not the DB existed yet — no "run import_library.py first"
@@ -312,9 +312,9 @@ def main():
             il.import_downbeats(conn, il.load_max_json(il.DOWNBEATS_PATH))
         conn.close()
         session = os.path.basename(os.path.dirname(il.DB_PATH))
-        print(f'→ ebys.db synced ({session}/ebys.db — {n_slices} slice rows)')
+        print(f'→ gnumbat.db synced ({session}/gnumbat.db — {n_slices} slice rows)')
     except Exception as e:
-        print(f'⚠  ebys.db sync failed: {e}')
+        print(f'⚠  gnumbat.db sync failed: {e}')
 
 if __name__ == '__main__':
     main()

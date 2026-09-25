@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-EBYS (Eat Bugs You Spider!) is three things sharing one codebase:
+Gnumbat (Gnumbat!) is three things sharing one codebase:
 
 1. **The instrument** — a real-time generative audio collage engine. Separates uploaded tracks into stems (Demucs), analyzes every transient slice (FluCoMa), indexes slices by spectral descriptor, and rebuilds music live, steered by an AI personality ("Cricket") on a local Ollama LLM. Currently running on Max/MSP, mid-migration to Pure Data.
 2. **The tipping protocol / backend** — an Express + PostgreSQL service (Railway-hosted) that logs live sessions, runs a transformation-level split equation, and pays DJs/artists via Stripe Connect.
 3. **The web radio** — Max audio → BlackHole → Liquidsoap → Icecast, with a listener-facing now-playing + tip page.
 
-Read `XREF.md` first — it maps the doc-path conventions used throughout `docs/` (`EBYS_INFRA/`, `MAX/`, `TUI/`) onto this repo's real directories, which don't share those names.
+Read `XREF.md` first — it maps the doc-path conventions used throughout `docs/` (`GNUMBAT_INFRA/`, `MAX/`, `TUI/`) onto this repo's real directories, which don't share those names.
 
 ## Commands
 
@@ -21,7 +21,7 @@ bash setup.sh
 
 **Run the instrument (dev loop):**
 ```bash
-# 1. Open src/max/ebys-analyze.maxpat in Max 8 (or the Pd equivalent, see below)
+# 1. Open src/max/gnumbat-analyze.maxpat in Max 8 (or the Pd equivalent, see below)
 # 2. Drop an audio file into data/raw_uploads/  → watch_demucs.py picks it up automatically
 # 3. Terminal control surface:
 node src/tui/sdj-tui.js
@@ -39,7 +39,7 @@ Needs `src/backend/.env` (copy from `.env.example` if present) with `DATABASE_UR
 **Python analysis pipeline** (run manually when needed; `watch_demucs.py` runs these automatically on new uploads):
 ```bash
 cd src/demucs
-python3 import_library.py              # sync JSON → ebys.db
+python3 import_library.py              # sync JSON → gnumbat.db
 python3 import_library.py --status     # row counts
 python3 add_tension.py                 # tension_C/E/F/P/H/T fields (all tracks)
 python3 add_tension.py "Track Name"    # single track
@@ -55,7 +55,7 @@ python3 add_stereo_features.py         # pan/width fields
 
 ```
 raw_uploads/ → watch_demucs.py (Demucs + genre_tagger.py + madmom_tagger.py)
-            → stems on disk + genres.json + downbeats.json + ebys.db
+            → stems on disk + genres.json + downbeats.json + gnumbat.db
             → stream.txt → streamWatcher.js polls it → FluCoMa analysis in Max
             → analyze_reader.js → slice_writer.js → analysis_library.json
             → add_tension.py, add_stereo_features.py (offline post-processors)
@@ -69,7 +69,7 @@ Full blow-by-blow, every file, every message format: `docs/instrument/ARCHITECTU
 ### Why two parallel engines exist (`src/max/` and `src/pd/`)
 
 The instrument is mid-port from Max/MSP to Pure Data (target: DAW-plugin-friendly, no Max license required). Both are live:
-- `src/max/*.js` — the original Node-for-Max control logic (`ws_server.js`, `slicer.js`, `buffer_manager.js`, `slot_router.js`, `ms_router.js`, `eq_router.js`, `cricket.js`, etc.), wired inside `ebys-analyze.maxpat`.
+- `src/max/*.js` — the original Node-for-Max control logic (`ws_server.js`, `slicer.js`, `buffer_manager.js`, `slot_router.js`, `ms_router.js`, `eq_router.js`, `cricket.js`, etc.), wired inside `gnumbat-analyze.maxpat`.
 - `src/pd/*.pd` + `src/pd/bridge/*.js` — the Pd patches plus a dependency-free OSC bridge (`src/pd/bridge/osc.js`, stdlib `dgram` only) that lets the same control-logic pattern talk to Pd's `netreceive~`/`netsend~` over UDP instead of living inside the host process.
 - Pitch/formant shifting, karma~-style looping, EQ, and gain-staging were deliberately **not** ported to the Pd version — see `src/pd/CONVERSION_NOTES.md` for why (those move to a DAW plugin instead).
 - `docs/instrument/PD_MIGRATION.md` describes migration priority/tiers but is stale on current status (it claims zero `.pd` files exist; `src/pd/` has ~20). Trust the directory listing and `CONVERSION_NOTES.md` over that doc's "Reality check" section for current state.
@@ -79,15 +79,19 @@ The instrument is mid-port from Max/MSP to Pure Data (target: DAW-plugin-friendl
 
 Express app, entry `server.js`, four route modules (`/auth`, `/slices`, `/tips`, `/accounts`) plus `db/queries.js` (Postgres) and `split.js` (the transformation-level split equation — L0–L3 based on `simultaneous_n` and `seg_variance` signals pinged from the live instrument). Stripe webhook route needs `express.raw()` mounted *before* `express.json()` — order matters for signature verification. Full schema, API reference, and env var table: `docs/ARCHITECTURE.md`.
 
-Also present but unrelated to the tipping protocol: `src/backend/event-scraper/` is a standalone Go module (own `go.mod`) for venue/event scraping — not part of the Node backend's request path.
+Also present but unrelated to the tipping protocol: `src/backend/event-crawler/` (real dir name — `XREF.md`/this file used to say `event-scraper/`, fixed) is a standalone Go module (own `go.mod`) for venue/event scraping, described in its own `README.md`; also has a small web frontend (`frontend/base.html`) and its own decentralization doc, `docs/platform/NETWORK.md`.
 
 ### Data files that matter across the whole pipeline
 
-`analysis_library.json` (raw FluCoMa output), `ebys_index.json` (built slice database, cached), `ebys.db` (SQLite — canonical queryable store, becoming primary as Pd migration proceeds), `downbeats.json`, `genres.json`. All under `data/` in this repo (see `XREF.md` for the doc-path → real-path mapping). Full schema per file: `docs/instrument/ARCHITECTURE.md` §9.
+`analysis_library.json` (raw FluCoMa output), `gnumbat_index.json` (built slice database, cached), `gnumbat.db` (SQLite — canonical queryable store, becoming primary as Pd migration proceeds), `downbeats.json`, `genres.json`. All under `data/` in this repo (see `XREF.md` for the doc-path → real-path mapping). Full schema per file: `docs/instrument/ARCHITECTURE.md` §9.
 
 ### Generative / LoRA layer
 
 `generate_agent.py`, `cricket_bridge.py`, and the `watch_lora.py`/`watch_generated.py` daemons drive an in-progress generative layer (Stable Audio 3, cloned outside this repo per `docs/instrument/USER_LORA.md`). Training (`:lora train` in the TUI) is always a manual step, never automatic — an hours-long local-GPU job shouldn't start unattended.
+
+### Network layer (`src/network/artifacts/`)
+
+Model/Tool/Branch identity, signing, quarantine, and P2P replication — generalized from the same Corestore/Hyperswarm stack `carnet-daemon.js` already proves works (`src/network/`). Publish/fetch/list by hand via `node src/network/artifacts/cli.js <publish|fetch|activate|list|whoami>`. The EBYS server's side (`POST/GET /network/...`) is `src/backend/routes/network.js` + three tables appended to `src/backend/db/schema.sql` (`nodes`, `artifacts`, `artifact_replicas`) — metadata only, never artifact bytes. Every download, from any source including the official server, passes through quarantine (`src/network/artifacts/quarantine.js`) before it's trusted — hash check, signature check, extension allowlist, then an explicit `activate()` call; nothing auto-executes. Full design: `docs/platform/ARTIFACT_NETWORK.md`.
 
 ### Docs map
 

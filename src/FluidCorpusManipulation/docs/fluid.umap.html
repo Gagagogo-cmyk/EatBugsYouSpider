@@ -1,0 +1,232 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.umap Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.umap</h1>
+  <div class="digest">Dimensionality Reduction with Uniform Manifold Approximation and Projection</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Reduce the dimensions of a <a href="fluid.dataset.html">fluid.dataset</a> using the Uniform Manifold Approximation and Projection (UMAP) algorithm.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>Performs dimensionality reduction of a <a href="fluid.dataset.html">fluid.dataset</a> using Uniform Manifold Approximation and Projection (UMAP)</p>
+<p>Please refer to <a class="reference external" href="https://umap-learn.readthedocs.io/">https://umap-learn.readthedocs.io/</a> and <a class="reference external" href="https://learn.flucoma.org/reference/umap">https://learn.flucoma.org/reference/umap</a> for more information on the algorithm.</p>
+
+
+    <p>Read more about fluid.umap on the <a href='https://learn.flucoma.org/reference/umap'>learn platform</a>.</p>
+    
+    <p>fluid.umap is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Name<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: )</span><div class="description"><p>Name for this instance, so that it can be reused or referred to by other data objects. If none is given, a name will be generated</p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">iterations
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 200)</span>
+      </h3>
+      <div class="description"><p>The number of iterations that the algorithm will go through to optimise the new representation</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">learnrate
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.1)</span>
+      </h3>
+      <div class="description"><p>The learning rate of the algorithm, aka how much of the error it uses to estimate the next iteration.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0.0</code></li>
+<li>Maximum: <code>1.0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">mindist
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0.1)</span>
+      </h3>
+      <div class="description"><p>The minimum distance each point is allowed to be from the others in the low dimension space. Low values will make tighter clumps, and higher will spread the points more.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numdimensions
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 2)</span>
+      </h3>
+      <div class="description"><p>The number of dimensions to reduce to</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numneighbours
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 15)</span>
+      </h3>
+      <div class="description"><p>The number of neighbours considered by the algorithm to balance local vs global structures to conserve. Low values will prioritise preservation of the local structure while high values will prioritise preservation of the global structure.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='fittransform'>fittransform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Fit the model to a <a href="fluid.dataset.html">fluid.dataset</a> and write the new projected data to a destination FluidDataSet.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>Source data, or the DataSet name</p>
+</li><li>destDataSet: <p>Destination data, or the DataSet name</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='fit'>fit</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)) </span><div class='description'>
+       <p>Train this model on a <a href="fluid.dataset.html">fluid.dataset</a> but don't transform the data</p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> to analyse</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='transform'>transform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Given a trained model, apply the reduction to a source <a href="fluid.dataset.html">fluid.dataset</a> and write to a destination. Can be the same for both input and output (in-place).</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>Source data, or the DataSet name</p>
+</li><li>destDataSet: <p>Destination data, or the DataSet name</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='transformpoint'>transformpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceBuffer (symbol),  </span><span class='arg'>destBuffer (symbol) </span><div class='description'>
+       <p>Transform a new data point to the reduced number of dimensions using the projection learned from previous fit call to <a href="fluid.umap.html">fluid.umap</a>.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceBuffer: <p>A array with the new data point.</p>
+</li><li>destBuffer: <p>A array to contain the dimensionally reduced data point.</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='cols'>cols</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of columns (dimensions) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='clear'>clear</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Resets the internal state of the model</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='size'>size</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of data points (entries / observations) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+    <div class='method_group'><h3 class='method_name' name='write'>write</h3>
+      <span class='arglist'>Arguments</span>
+        <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Save the internal state of the object to a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+    </div>
+    <div class='method_group'><h3 class='method_name' name='read'>read</h3>
+      <span class='arglist'>Arguments</span>
+      <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Replace the internal state of the object from a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+     
+    </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.umap object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.umap objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.mds.html">MDS</a></h3><h3 class="seealso_name"><a href="fluid.pca.html">PCA</a></h3><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3></section> 
+</body>
+</html>

@@ -39,22 +39,125 @@ async function getSessionLog(sessionId) {
     dj: { stripeAccountId: session.dj_stripe_account },
     artists,
     mode: session.mode,
-    deck: session.deck || 'ebys'
+    deck: session.deck || 'gnumbat'
   }
 }
 
 // Open a session when the DJ starts playing
-// deck: 'ebys' (full split equation) | 'direct' (100% to DJ, no artist split)
-async function openSession(djId, venue, mode, deck = 'ebys') {
+// deck: 'gnumbat' (full split equation) | 'direct' (100% to DJ, no artist split)
+async function openSession(djId, venue, mode, deck = 'gnumbat', modelArtifactId = null, seedHash = null) {
+  // modelArtifactId/seedHash -- which released model/seed is actually driving
+  // this session, if the instrument reports one. Both nullable: today's
+  // instrument control layer (src/max/ws_server.js) has no notion of "current
+  // model artifact" yet (see docs/instrument/CONSUMER_FEEDBACK_PIPELINE.md),
+  // so a 'web' session opened without them is a legitimate, common case --
+  // RadioService (routes/radio.js) reports that honestly as "no model loaded"
+  // rather than guessing, matching the consumer mockup's own empty state.
   const result = await pool.query(
-    `INSERT INTO sessions (dj_id, venue, mode, deck) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [djId, venue, mode, deck]
+    `INSERT INTO sessions (dj_id, venue, mode, deck, model_artifact_id, seed_hash) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [djId, venue, mode, deck, modelArtifactId, seedHash]
   )
   return result.rows[0]
 }
 
+// setSessionModel -- lets a session's model/seed be attached or updated
+// after open (e.g. the instrument decides/changes its current seed mid-set).
+async function setSessionModel(sessionId, modelArtifactId, seedHash = null) {
+  const result = await pool.query(
+    `UPDATE sessions SET model_artifact_id = $2, seed_hash = $3 WHERE id = $1 RETURNING *`,
+    [sessionId, modelArtifactId, seedHash]
+  )
+  return result.rows[0]
+}
+
+// getCurrentRadioSession -- the active 'web' session, if any, joined to its
+// model's manifest (for name/version) -- what RadioService's GET
+// /radio/current reports as "what's actually playing right now."
+async function getCurrentRadioSession() {
+  const result = await pool.query(
+    `SELECT s.*, a.manifest as model_manifest, a.version as model_version,
+            a.release_state as model_release_state
+     FROM sessions s
+     LEFT JOIN artifacts a ON a.id = s.model_artifact_id
+     WHERE s.mode = 'web' AND s.status = 'active'
+     ORDER BY s.started_at DESC
+     LIMIT 1`
+  )
+  return result.rows[0] || null
+}
+
+// listReleasedModels -- ModelService: every artifact whose release_state
+// makes it consumer-eligible (spec: only 'released'/'evolving' -- never
+// development/training/testing/ready, and never anything else regardless
+// of local trainingState/votes).
+async function listReleasedModels() {
+  const result = await pool.query(
+    `SELECT id, hash, version, parent_id, release_state, released_at, manifest, created_at
+     FROM artifacts
+     WHERE type = 'model' AND release_state IN ('released', 'evolving')
+     ORDER BY released_at DESC NULLS LAST, created_at DESC`
+  )
+  return result.rows
+}
+
+// getModelCard -- single released model, or null if it doesn't exist / isn't
+// consumer-eligible. Deliberately the same eligibility filter as
+// listReleasedModels() -- a direct hash lookup never leaks an unreleased model.
+async function getModelCard(hash) {
+  const result = await pool.query(
+    `SELECT id, hash, version, parent_id, release_state, released_at, manifest, created_at
+     FROM artifacts
+     WHERE hash = $1 AND type = 'model' AND release_state IN ('released', 'evolving')`,
+    [hash]
+  )
+  return result.rows[0] || null
+}
+
+// getModelLineage -- seed/branch tree for the CRKT screen (read-only). Walks
+// via manifest.parent (JSONB) since that's the same signed provenance field
+// src/network/artifacts/lineage.js's seedIdFor() walks locally -- this is
+// just a server-side read of the same shape, not a second lineage system.
+async function getModelLineage(hash) {
+  const all = await pool.query(
+    `SELECT id, hash, version, parent_id, release_state, manifest FROM artifacts WHERE type = 'model'`
+  )
+  const byId = new Map(all.rows.map((r) => [r.id, r]))
+  const bareParent = (r) => {
+    const p = r.manifest && r.manifest.parent
+    if (!p) return null
+    return p.startsWith('sha256:') ? p.slice(7) : p
+  }
+  // walk to the root
+  let current = all.rows.find((r) => r.hash === hash)
+  if (!current) return null
+  const seen = new Set()
+  let root = current
+  while (root && bareParent(root) && !seen.has(root.id)) {
+    seen.add(root.id)
+    const parentHash = bareParent(root)
+    const next = all.rows.find((r) => r.hash === parentHash)
+    if (!next) break
+    root = next
+  }
+  // collect every descendant of root, depth-first
+  const childrenOf = (id) => all.rows.filter((r) => {
+    const p = bareParent(r)
+    return p && byId.get(r.id) && r.parent_id === id
+  })
+  function toNode(r) {
+    return {
+      hash: r.hash,
+      version: r.version,
+      releaseState: r.release_state,
+      name: (r.manifest && r.manifest.displayName) || null,
+      branches: childrenOf(r.id).map(toNode)
+    }
+  }
+  return toNode(root)
+}
+
 // Find or create a track record by source name.
-// EBYS identifies tracks by filename (e.g. "DREPTO CE3o") — we use that as the fingerprint.
+// Gnumbat identifies tracks by filename (e.g. "DREPTO CE3o") — we use that as the fingerprint.
 // artist_id is left NULL until the artist registers a Stripe account.
 async function upsertTrack(name) {
   const result = await pool.query(
@@ -67,8 +170,8 @@ async function upsertTrack(name) {
   return result.rows[0].id
 }
 
-// Log a slice as EBYS plays it.
-// trackName = EBYS source track name (e.g. "DREPTO CE3o") — looked up/created automatically.
+// Log a slice as Gnumbat plays it.
+// trackName = Gnumbat source track name (e.g. "DREPTO CE3o") — looked up/created automatically.
 // durationMs = segment duration in ms (from slicer.js snapSegDurMs).
 async function logSlice(sessionId, trackName, durationMs) {
   const trackId = await upsertTrack(trackName)
@@ -113,7 +216,7 @@ async function getWeightedContributions(sessionId, upToTime = null) {
   }))
 }
 
-// Log a periodic system state ping from EBYS
+// Log a periodic system state ping from Gnumbat
 // seg_avg is pre-computed in ws_server.js; individual stems stored for per-stem history
 async function logPing(sessionId, simultaneousN, segVoc, segMel, segBas, segDrm, segVariance) {
   await pool.query(
@@ -209,10 +312,186 @@ async function markTipSplit(tipId) {
   )
 }
 
+// ---- Network layer (Models/Tools/Branches) -- docs/platform/ARTIFACT_NETWORK.md ----
+// Metadata only, mirrors the pattern every other function in this file
+// already uses (raw pg queries via the shared pool). Artifact bytes never
+// pass through here -- see routes/network.js for where the blob itself is
+// written to disk.
+
+async function upsertNode(id, kind, displayName) {
+  await pool.query(
+    `INSERT INTO nodes (id, kind, display_name) VALUES ($1, $2, $3)
+     ON CONFLICT (id) DO UPDATE SET last_seen = NOW(), display_name = COALESCE($3, nodes.display_name)`,
+    [id, kind, displayName || null]
+  )
+}
+
+async function registerArtifact(manifest) {
+  await pool.query(
+    `INSERT INTO artifacts (id, type, hash, origin_node, version, parent_id, license, signature, manifest)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (id) DO NOTHING`,
+    [manifest.id, manifest.type, manifest.hash, manifest.origin, manifest.version,
+      manifest.parent, manifest.license, manifest.signature, manifest]
+  )
+}
+
+async function noteReplica(artifactId, nodeId, kind) {
+  await pool.query(
+    `INSERT INTO artifact_replicas (artifact_id, node_id, kind)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (artifact_id, node_id) DO UPDATE SET last_seen = NOW(), kind = $3`,
+    [artifactId, nodeId, kind]
+  )
+}
+
+async function getArtifactManifest(hash) {
+  const result = await pool.query(`SELECT manifest FROM artifacts WHERE hash = $1`, [hash])
+  return result.rows[0] ? result.rows[0].manifest : null
+}
+
+async function getArtifactIdByHash(hash) {
+  const result = await pool.query(`SELECT id FROM artifacts WHERE hash = $1`, [hash])
+  return result.rows[0] ? result.rows[0].id : null
+}
+
+async function listArtifacts(type) {
+  const params = []
+  let query = `SELECT id, type, hash, origin_node, version, parent_id, license, created_at FROM artifacts`
+  if (type) {
+    params.push(type)
+    query += ` WHERE type = $1`
+  }
+  query += ` ORDER BY created_at DESC LIMIT 200`
+  const result = await pool.query(query, params)
+  return result.rows
+}
+
+// insertFeedback -- FeedbackService's one write path. Deliberately just an
+// INSERT: no upsert-by-listener, no "latest wins" collapsing -- every
+// like/dislike is its own row with its own playback context, because the
+// point is training-signal density over time, not a per-listener preference
+// toggle (see docs/instrument/CONSUMER_FEEDBACK_PIPELINE.md).
+async function insertFeedback({
+  listenerId, sessionId, modelArtifactId, modelVersion, seedHash,
+  arrangementRef, positionMs, feedback,
+  playStartedAt, playDurationMs, skipped, completed, replayed
+}) {
+  const result = await pool.query(
+    `INSERT INTO feedback_events
+       (listener_id, session_id, model_artifact_id, model_version, seed_hash,
+        arrangement_ref, position_ms, feedback,
+        play_started_at, play_duration_ms, skipped, completed, replayed)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+     RETURNING id, created_at`,
+    [listenerId, sessionId || null, modelArtifactId || null, modelVersion || null, seedHash || null,
+      arrangementRef ? JSON.stringify(arrangementRef) : null, positionMs || null, feedback,
+      playStartedAt || null, playDurationMs || null, skipped ?? null, completed ?? null, replayed ?? null]
+  )
+  return result.rows[0]
+}
+
+// -- Feedback training batches: the "clean path" from accumulated listener
+// feedback to a dataset file the (future) PyTorch trainer can consume.
+// See docs/instrument/CONSUMER_FEEDBACK_PIPELINE.md and
+// src/demucs/export_feedback_dataset.py, the manual-run script that calls
+// these through routes/feedback.js's /feedback/batches endpoints.
+
+async function createFeedbackTrainingBatch(modelArtifactId, fromTs, toTs) {
+  const countResult = await pool.query(
+    `SELECT COUNT(*) FROM feedback_events WHERE model_artifact_id = $1 AND created_at >= $2 AND created_at < $3`,
+    [modelArtifactId, fromTs, toTs]
+  )
+  const result = await pool.query(
+    `INSERT INTO feedback_training_batches (model_artifact_id, from_ts, to_ts, feedback_count, status)
+     VALUES ($1, $2, $3, $4, 'queued') RETURNING *`,
+    [modelArtifactId, fromTs, toTs, parseInt(countResult.rows[0].count, 10)]
+  )
+  return result.rows[0]
+}
+
+async function getFeedbackTrainingBatch(id) {
+  const result = await pool.query(`SELECT * FROM feedback_training_batches WHERE id = $1`, [id])
+  return result.rows[0] || null
+}
+
+async function listFeedbackForBatch(batch) {
+  const result = await pool.query(
+    `SELECT * FROM feedback_events WHERE model_artifact_id = $1 AND created_at >= $2 AND created_at < $3 ORDER BY created_at ASC`,
+    [batch.model_artifact_id, batch.from_ts, batch.to_ts]
+  )
+  return result.rows
+}
+
+async function updateFeedbackTrainingBatchStatus(id, status, resultingArtifactId = null) {
+  const result = await pool.query(
+    `UPDATE feedback_training_batches
+     SET status = $2, resulting_artifact_id = $3,
+         completed_at = CASE WHEN $2 IN ('complete', 'failed') THEN NOW() ELSE completed_at END
+     WHERE id = $1 RETURNING *`,
+    [id, status, resultingArtifactId]
+  )
+  return result.rows[0]
+}
+
+// ---- password reset (see routes/auth.js /forgot + /reset) ----------------------------
+// The two reset columns are added on first use (idempotent), so an existing database needs no
+// manual migration; schema.sql carries the same ALTER for fresh installs.
+let resetColumnsReady = null
+function ensureResetColumns() {
+  if (!resetColumnsReady) {
+    resetColumnsReady = pool.query(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(64),
+                         ADD COLUMN IF NOT EXISTS reset_expires    TIMESTAMP`
+    ).catch(err => { resetColumnsReady = null; throw err })
+  }
+  return resetColumnsReady
+}
+
+// username OR email (case-insensitive for email)
+async function findUserByLogin(login) {
+  const result = await pool.query(
+    `SELECT * FROM users WHERE username = $1 OR LOWER(email) = LOWER($1) LIMIT 1`,
+    [login]
+  )
+  return result.rows[0] || null
+}
+
+async function setResetToken(userId, tokenHash, expires) {
+  await ensureResetColumns()
+  await pool.query(`UPDATE users SET reset_token_hash = $2, reset_expires = $3 WHERE id = $1`, [userId, tokenHash, expires])
+}
+
+async function findUserByResetHash(tokenHash) {
+  await ensureResetColumns()
+  const result = await pool.query(
+    `SELECT * FROM users WHERE reset_token_hash = $1 AND reset_expires > NOW() LIMIT 1`,
+    [tokenHash]
+  )
+  return result.rows[0] || null
+}
+
+async function setPasswordAndClearReset(userId, passwordHash) {
+  await ensureResetColumns()
+  await pool.query(
+    `UPDATE users SET password_hash = $2, reset_token_hash = NULL, reset_expires = NULL WHERE id = $1`,
+    [userId, passwordHash]
+  )
+}
+
 module.exports = {
   createUser,
   findUserByUsername,
+  findUserByLogin,
+  setResetToken,
+  findUserByResetHash,
+  setPasswordAndClearReset,
   openSession,
+  setSessionModel,
+  getCurrentRadioSession,
+  listReleasedModels,
+  getModelCard,
+  getModelLineage,
   getSessionLog,
   getWeightedContributions,
   getAvgSessionStats,
@@ -222,5 +501,16 @@ module.exports = {
   closeSession,
   getPendingVenueTips,
   recordPayout,
-  markTipSplit
+  markTipSplit,
+  upsertNode,
+  registerArtifact,
+  noteReplica,
+  getArtifactManifest,
+  getArtifactIdByHash,
+  listArtifacts,
+  insertFeedback,
+  createFeedbackTrainingBatch,
+  getFeedbackTrainingBatch,
+  listFeedbackForBatch,
+  updateFeedbackTrainingBatchStatus
 }

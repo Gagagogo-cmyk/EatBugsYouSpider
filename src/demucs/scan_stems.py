@@ -1,7 +1,7 @@
 from pathlib import Path
 import json
 
-# Relative to this file: src/demucs/ → src/ → EBYS/ → data/stems/htdemucs
+# Relative to this file: src/demucs/ → src/ → Gnumbat/ → data/stems/htdemucs
 ROOT = Path(__file__).parent.parent.parent / "data" / "stems" / "htdemucs"
 
 dataset = []

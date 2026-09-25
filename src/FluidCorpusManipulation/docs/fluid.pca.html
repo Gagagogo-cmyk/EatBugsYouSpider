@@ -1,0 +1,213 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.pca Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.pca</h1>
+  <div class="digest">Principal Component Analysis</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>Principal Components Analysis (PCA) of a <a href="fluid.dataset.html">fluid.dataset</a>.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <p>PCA fits to a DataSet to determine its principal components, each of which is a new axis through the data that maximises the variance, or “differences”, within the Data. PCA can then transform the original DataSet or individual points to position them in relation to the principal components (i.e., “new axes”) for better comparing how they differ from other points in the DataSet. PCA is often used for dimensionality reduction and is also useful for removing redundancy (i.e., correlation) and/or noise (i.e., dimensions that are uniformly distributed) from a DataSet.</p>
+
+
+    <p>Read more about fluid.pca on the <a href='https://learn.flucoma.org/reference/pca'>learn platform</a>.</p>
+    
+    <p>fluid.pca is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Name<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: )</span><div class="description"><p>Name for this instance, so that it can be reused or referred to by other data objects. If none is given, a name will be generated</p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">numdimensions
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 2)</span>
+      </h3>
+      <div class="description"><p>The number of dimensions (principal components) to keep after a <code>transform</code>, using PCA for dimensionality reduction.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>1</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">whiten
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>A flag (0 or 1) indicating whether or not to perform &quot;whitening&quot; on the output of PCA. For more information on whitening, visit <a class="reference external" href="https://learn.flucoma.org/reference/pca">https://learn.flucoma.org/reference/pca</a></p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2>   <div class='method_group'>
+     <h3 class='method_name' name='fit'>fit</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>dataSet (Unknown Type (input dataset)) </span><div class='description'>
+       <p>Train this model on a <a href="fluid.dataset.html">fluid.dataset</a> to determine the principal components, but don't transform any data.</p>
+
+<h5>Argument details:</h5>       <ul><li>dataSet: <p>A <a href="fluid.dataset.html">fluid.dataset</a> to analyse</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='transform'>transform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Given a trained model, transform a source <a href="fluid.dataset.html">fluid.dataset</a> into the PCA-space and write to a destination DataSet. The DataSets can be the same for both input and output (performs the operation in-place). This process returns the fraction (between 0 and 1) of explained variance. The minimum number of points in the <code>source</code> DataSet should be equal or greater than <code>numdimensions</code>.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>source DataSet</p>
+</li><li>destDataSet: <p>destination DataSet</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='fittransform'>fittransform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p><code>fit</code> and <code>transform</code> in a single pass. Returns the fraction (between 0 and 1) of explained variance. The minimum number of points in the <code>source</code> DataSet should be equal or greater than <code>numdimensions</code>.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>source DataSet</p>
+</li><li>destDataSet: <p>destination DataSet</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='inversetransform'>inversetransform</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceDataSet (Unknown Type (input dataset)),  </span><span class='arg'>destDataSet (symbol) </span><div class='description'>
+       <p>Given a trained model, invert a source <a href="fluid.dataset.html">fluid.dataset</a> containing <code>numdimensions</code> dimensions that are in PCA-space to a destination <a href="fluid.dataset.html">fluid.dataset</a> with the dimensionality of the data that was used to <code>fit</code>. <a href="fluid.dataset.html">fluid.dataset</a> can be the same for both input and output (the operation will be performed in-place).</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceDataSet: <p>source DataSet</p>
+</li><li>destDataSet: <p>destination DataSet</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='transformpoint'>transformpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceBuffer (symbol),  </span><span class='arg'>destBuffer (symbol) </span><div class='description'>
+       <p>Given a trained model, transform the data point in <code>sourcebuffer</code> from the original dimensional space to <code>numdimensions</code> in PCA-space and write the result into <code>destbuffer</code>.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceBuffer: <p>Input data</p>
+</li><li>destBuffer: <p>Output data</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='inversetransformpoint'>inversetransformpoint</h3>
+     <span class='arglist'>Arguments: </span><span class='arg'>sourceBuffer (symbol),  </span><span class='arg'>destBuffer (symbol) </span><div class='description'>
+       <p>Given a trained model, transform the data point in <code>sourcebuffer</code> from being <code>numdimensions</code> in PCA-space into the original dimensional space and write into <code>destbuffer</code>.</p>
+
+<h5>Argument details:</h5>       <ul><li>sourceBuffer: <p>Input data</p>
+</li><li>destBuffer: <p>Output data</p>
+</li></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='cols'>cols</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of columns (dimensions) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='size'>size</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>The number of data points (entries / observations) in this model or dataset / labeset</p>
+
+       <ul></ul>
+     </div>
+   </div>
+   <div class='method_group'>
+     <h3 class='method_name' name='clear'>clear</h3>
+     <span class='arglist'>Arguments: </span><div class='description'>
+       <p>Resets the internal state of the model</p>
+
+       <ul></ul>
+     </div>
+   </div>
+    <div class='method_group'><h3 class='method_name' name='read'>read</h3>
+      <span class='arglist'>Arguments</span>
+      <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Replace the internal state of the object from a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+     
+    </div>
+    <div class='method_group'><h3 class='method_name' name='write'>write</h3>
+      <span class='arglist'>Arguments</span>
+        <span class='arg'>path (symbol, optional)</span>
+      
+      <div class='description'>Save the internal state of the object to a JSON file on disk. With no argument, a file dialog will appear to choose the file.
+     </div>
+    </div>
+<div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="refer">refer</h3>
+      <div class="description">Changes the reference to the data in another named fluid.pca object. Changes to the data stored in any referenced will be shared by all other similarly named fluid.pca objects.</div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.umap.html">UMAP</a></h3><h3 class="seealso_name"><a href="fluid.mds.html">MDS</a></h3><h3 class="seealso_name"><a href="fluid.dataset.html">DataSet</a></h3></section> 
+</body>
+</html>

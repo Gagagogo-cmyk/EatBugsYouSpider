@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/settings.schema.json",
+  "title": "Machine settings (never stored inside a portable library)",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.settings/0\\.[0-9]+$"
+    },
+    "library_root": {
+      "type": "string"
+    },
+    "python": {
+      "type": "string",
+      "description": "interpreter the plugin uses to start the worker"
+    },
+    "core_path": {
+      "type": "string",
+      "description": "folder containing gnumbat_core/ when not pip-installed"
+    },
+    "autostart_worker": {
+      "type": "boolean"
+    },
+    "ring_seconds": {
+      "type": "number",
+      "minimum": 10,
+      "maximum": 900
+    },
+    "decompose_default": {
+      "type": "string",
+      "description": "default decompose param for new Bakes: auto|skip|demucs|testsplit"
+    },
+    "decomposer": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "python": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "extra_args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "extractor": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object"
+        }
+      }
+    },
+    "pd": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "patch": {
+          "type": "string"
+        },
+        "flucoma_path": {
+          "type": "string"
+        },
+        "timeout_s": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  "required": [
+    "schema"
+  ],
+  "additionalProperties": true
+}

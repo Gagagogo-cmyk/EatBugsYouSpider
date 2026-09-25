@@ -1,3 +1,3 @@
-# EBYS — Eat Bugs You Spider!
+# Gnumbat — Gnumbat!
 
 Chirp!

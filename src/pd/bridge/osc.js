@@ -27,7 +27,14 @@ function encodeString(s) {
 // Encodes one OSC message: address pattern + type tag string + args.
 // args: array of {type: 'f'|'i'|'s', value}.
 function encodeMessage(address, args = []) {
-  const addrBuf = encodeString(address);
+  // OSC 1.0 requires the address pattern to begin with "/", and Pd's
+  // [oscparse] relies on it to split the address into leading atoms. Adding
+  // it here (rather than trusting every call site to remember) is the
+  // send-side mirror of the leading-slash normalization in decodeMessage --
+  // together they mean callers can use the bare selector in both directions
+  // and the wire format stays correct.
+  const addr = String(address).charCodeAt(0) === 47 ? String(address) : "/" + address;
+  const addrBuf = encodeString(addr);
   let typeTags = ",";
   const argBufs = [];
   for (const a of args) {
@@ -62,7 +69,26 @@ function decodeMessage(buf) {
     offset = Math.ceil(offset / 4) * 4;
     return s;
   }
-  const address = readString();
+  // Pd's [oscformat] always emits a leading "/" -- it joins its address
+  // arguments with "/" and prefixes one, so `set next` on the Pd side goes
+  // out as the address "/next". Every bridge in this project dispatches on
+  // the bare selector (DISPATCH.next, DISPATCH.buildIndex, ...), because
+  // those tables were transcribed from Max's message-name dispatch, where
+  // there is no slash. Left as-is that mismatch makes EVERY inbound command
+  // miss its handler and log "no handler for '/next'".
+  //
+  // Normalizing here rather than in each bridge's onMessage fixes all four
+  // (slicer, slice_writer, analyze_reader, buffer_manager) at once and keeps
+  // the DISPATCH tables reading like the Max originals. `rawAddress` is kept
+  // on the returned object so a caller that genuinely wants the wire form
+  // (or a multi-segment address) can still see it.
+  //
+  // NOTE: single-segment addresses only, which is the convention every
+  // bridge here already follows deliberately -- see bridge_streamWatcher.pd's
+  // comment on why (oscparse splits multi-segment addresses into separate
+  // leading atoms, which would need nested [route] stages).
+  const rawAddress = readString();
+  const address = rawAddress.charCodeAt(0) === 47 ? rawAddress.slice(1) : rawAddress;
   const typeTags = readString(); // starts with ","
   const args = [];
   for (let i = 1; i < typeTags.length; i++) {
@@ -77,28 +103,51 @@ function decodeMessage(buf) {
       args.push(readString());
     }
   }
-  return { address, args };
+  return { address, rawAddress, args };
 }
 
 // Convenience wrapper: an OSC-over-UDP client bound to one destination
 // (Pd's [netreceive -u <port>]) plus an optional local listener (for
 // messages Pd sends INTO this bridge via [netsend -u]/[oscformat]).
 class OscUdpPort {
-  constructor({ sendPort, sendHost = "127.0.0.1", listenPort = null, onMessage = null }) {
+  // IPv6, NOT IPv4 -- this is load-bearing and was the reason nothing ever
+  // reached the patch.
+  //
+  // Pd 0.56's [netreceive] binds the IPv6 wildcard on macOS ("pd ... IPv6
+  // UDP *:9001" in lsof), and its [netsend]'s "connect localhost" resolves to
+  // ::1. These bridges were creating udp4 sockets and sending to 127.0.0.1,
+  // so every packet went out over a protocol nothing was listening on. UDP is
+  // fire-and-forget: no error on the sending side, no log on the receiving
+  // side, both processes reporting success. The streamWatcher bridge would
+  // cheerfully log "bang" while the patch sat there having received nothing.
+  //
+  // A udp6 socket bound to :: is dual-stack on macOS, so it also accepts
+  // IPv4-mapped traffic -- this direction works regardless of which family
+  // Pd ends up using, whereas udp4 only ever worked if Pd chose IPv4.
+  constructor({ sendPort, sendHost = "::1", listenPort = null, onMessage = null }) {
     this.sendPort = sendPort;
     this.sendHost = sendHost;
-    this.socket = dgram.createSocket("udp4");
+
+    // SEND on udp6 to ::1. Pd's [netreceive] binds the IPv6 wildcard on macOS,
+    // and this is the direction that is confirmed working end to end (the
+    // streamWatcher bang arrives).
+    this.socket = dgram.createSocket({ type: "udp6", ipv6Only: false });
+
+    // LISTEN: one dual-stack udp6 socket bound to ::. Verified to receive
+    // BOTH IPv6 and IPv4-mapped traffic, so a separate udp4 listener is
+    // unnecessary -- and actively harmful, since it collides with this socket
+    // for the same port (EADDRINUSE).
     if (listenPort != null) {
-      this.socket.bind(listenPort);
-    }
-    if (onMessage) {
-      this.socket.on("message", (msg) => {
-        try {
-          onMessage(decodeMessage(msg));
-        } catch (e) {
-          console.error("osc.js: failed to decode incoming message:", e);
-        }
-      });
+      this.socket.bind(listenPort, "::");
+      if (onMessage) {
+        this.socket.on("message", (msg) => {
+          try {
+            onMessage(decodeMessage(msg));
+          } catch (e) {
+            console.error("osc.js: failed to decode incoming message:", e);
+          }
+        });
+      }
     }
   }
 
@@ -108,7 +157,10 @@ class OscUdpPort {
   }
 
   close() {
-    this.socket.close();
+    for (const s of (this.listeners || [])) {
+      if (s !== this.socket) { try { s.close(); } catch (e) {} }
+    }
+    try { this.socket.close(); } catch (e) {}
   }
 }
 

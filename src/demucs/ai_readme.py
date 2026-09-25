@@ -4,7 +4,7 @@ import ollama
 with open("README.txt", "r") as f:
     readme = f.read()
 
-print("\n[bold yellow]EBYS AI READY (README MODE)[/bold yellow]\n")
+print("\n[bold yellow]Gnumbat AI READY (README MODE)[/bold yellow]\n")
 
 while True:
     question = input("You: ")

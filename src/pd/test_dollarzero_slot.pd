@@ -1,0 +1,17 @@
+#N canvas 100 100 620 340 12;
+#X obj 40 20 inlet;
+#X obj 40 90 value \$0-testval;
+#X obj 40 160 outlet;
+#X text 210 20 test_dollarzero_slot: the smallest thing that can answer
+the question. One [value] store scoped with \$0 \, written here in the
+ESCAPED form -- which is what Pd writes when it saves a box containing
+\$0 \, and what the vendored timeStretch~ library uses 137 times., f 46;
+#X text 210 120 A float into the inlet SETS the stored value\; a bang
+READS it back out. If \$0 is doing its job \, two copies of this
+abstraction have two separate stores and cannot see each other's
+number. If the 2026-08-03 CONVERSION_NOTES theory were right and the
+backslash made the dollar inert \, both copies would share one store
+literally named "\$0-testval" and the second write would clobber the
+first., f 46;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;

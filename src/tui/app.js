@@ -734,7 +734,7 @@ const GEN_LABELS_PATH = path.join(__dirname, '..', 'demucs', 'essentia_models', 
 const GENERATED_DIR = path.join(__dirname, '..', '..', 'data', 'generated');
 // GENERATE_PY — generate_agent.py needs stable_audio_3/torch, which lives in
 // a SEPARATE uv-managed venv OUTSIDE this repo (Stability AI's own project,
-// not EBYS code — see setup.sh section 4 and docs/instrument/USER_LORA.md
+// not Gnumbat code — see setup.sh section 4 and docs/instrument/USER_LORA.md
 // for why). STABLE_AUDIO_3_DIR must match wherever setup.sh cloned it to;
 // override the env var of the same name if you keep it somewhere else.
 // (Previously this pointed at src/demucs/genenv, which had
@@ -1049,7 +1049,7 @@ const screen = blessed.screen({
   // entire bug class instead of patching individual symptoms.
   smartCSR:    false,
   fullUnicode: true,
-  title:       'EBYS 0.1.19 — ' + ((ACTIVE_SESSION && ACTIVE_SESSION.name) || 'default'),
+  title:       'Gnumbat 0.1.19 — ' + ((ACTIVE_SESSION && ACTIVE_SESSION.name) || 'default'),
   mouse:       true,
 });
 
@@ -1070,7 +1070,7 @@ const GRAPH_SEP   = 0;   // no blank separator between stems
 
 // Normalisation ranges written by ws_server.js after each buildIndex.
 // Using a dedicated small file avoids Max JS's 32767-byte JsFile write limit
-// that truncates ebys_index.json.
+// that truncates gnumbat_index.json.
 const RANGES_PATH = path.join(DATA_DIR, 'stem_ranges.json');
 let   stemRanges  = {};
 
@@ -1821,18 +1821,18 @@ const TRAIN_TIP_TOP = 2; // bakeInfoBox/tipBox — "align prmpt: with the row of
 // by reflow() to line tipBox's own left edge up with it (user: "align the
 // tipping zone with the [REC] box").
 let recColStart = 0;
-// Column where titleCenter (the [EBYS version]/[AGPL] badge) starts on the
+// Column where titleCenter (the [Gnumbat version]/[AGPL] badge) starts on the
 // title row — same recompute-in-withLCR/read-in-reflow pattern as
 // recColStart above, used to line tipBox's own left edge up with it instead
-// (user: "move tips aligned to [EBYS version]").
+// (user: "move tips aligned to [Gnumbat version]").
 let centerColStart = 0;
 // agplColStart (used to line up bakeInfoBox's left edge with the header's
 // [AGPL-3.0] badge) removed along with the badge itself — both bakeInfoBox
 // and the header's version/AGPL center column are gone now (version/AGPL
-// moved to the footer, see renderFooter() — user: "move [ebys version] and
+// moved to the footer, see renderFooter() — user: "move [gnumbat version] and
 // [agpl] in the center of the bottom of the window").
 
-// ── ZONE 1 — Header (version + EBYS state) ───────────────────────────────────
+// ── ZONE 1 — Header (version + Gnumbat state) ───────────────────────────────────
 const statusBox = blessed.box({
   top: 0, left: 0, width: '100%', height: 3,
   tags: true, wrap: true,
@@ -2108,9 +2108,9 @@ const linkDetailBox = blessed.box({
 //
 // BAKE_MENU_LEFT — used to be a fixed 48 (past masterInfoBox's longest real
 // line, genreHeaderLine()'s ~44-col dot bar). User: "move the menu to the
-// right, align it somewhere next to EBYS version" — now computed live every
+// right, align it somewhere next to Gnumbat version" — now computed live every
 // reflow() tick instead, off centerColStart (the column withLCR() already
-// works out for the centered [EBYS version]/[AGPL] badge in the very top
+// works out for the centered [Gnumbat version]/[AGPL] badge in the very top
 // status row — see that variable's own declaration). BAKE_MENU_MIN_LEFT is
 // just the old fixed value, kept as a floor so the menu can't collapse
 // leftward into masterInfoBox's own text on a pathologically narrow
@@ -3513,7 +3513,7 @@ const tipBox = blessed.box({
 // ethernet in the same box as peer. above peer. the need to be in the
 // header section, not in the top menu.") — see renderNetworkInfo() for the
 // actual line order. Both used to live inlined in the header's title row
-// (row 0, next to the EBYS version badge) instead, but that's "the top
+// (row 0, next to the Gnumbat version badge) instead, but that's "the top
 // menu" the user wants this OUT of; this box (docked beside tipBox at
 // TRAIN_TIP_TOP, header row 2) is "the header section" they want it IN.
 // Width widened accordingly from the old peer-only box — network's own
@@ -3531,7 +3531,7 @@ const networkBox = blessed.box({
   style: { fg: SKIN.fg, bg: SKIN.bg },
 });
 
-// LINK deck-select dots — one per slot EBYS can send LINK info to (user:
+// LINK deck-select dots — one per slot Gnumbat can send LINK info to (user:
 // "i want 4 dots. grey if slot isnt connected to any system. white is
 // connected. and fill the dot if selected. if selected and link is fired,
 // the infos goes to that deck."). Three states per dot:
@@ -3572,8 +3572,8 @@ function linkDotsLine() {
 // Pulled out as its own function so it can be inlined directly into the
 // header's title row (see titleCenter in render()) instead of living in a
 // separately positioned floating box — user: "make sure the network infos
-// stay in the header, aligned with ebys version... right now, the network
-// box moved to the menu zone and is covering ebys version and agpl
+// stay in the header, aligned with gnumbat version... right now, the network
+// box moved to the menu zone and is covering gnumbat version and agpl
 // license." That covering bug was exactly because a floating box, anchored
 // off the master-meter column boundary (meaningful for rows 3+, NOT row 0),
 // had no actual guarantee of clearing titleCenter's own CENTERED text on a
@@ -3688,9 +3688,9 @@ function renderTipInfo() {
 
   // lvl — which of the tipping protocol's 3 precision levels this session
   // is running at (see docs/protocol/TIPPING_PROTOCOL.md):
-  //   1 = Web Radio (EBYS)           — mode 'web'
-  //   2 = Venue (EBYS + Card Reader) — mode 'venue', deck 'ebys'
-  //   3 = Venue (Non-EBYS + Reader)  — mode 'venue', deck 'direct'
+  //   1 = Web Radio (Gnumbat)           — mode 'web'
+  //   2 = Venue (Gnumbat + Card Reader) — mode 'venue', deck 'gnumbat'
+  //   3 = Venue (Non-Gnumbat + Reader)  — mode 'venue', deck 'direct'
   // '--' while no tipping session is open at all. Used to sit as its own
   // [LVL n/3] chip in the header (title row, then the icon cluster) —
   // moved here instead, next to tip:/ts: (user: "remove [LVL --] from the
@@ -4786,7 +4786,7 @@ function genLogPush(line) {
 //
 // Data source is generated_manifest.json (per session, written by
 // ingest_generated.py — see that script's update_generated_manifest_log())
-// rather than ebys.db directly: app.js has no sqlite client at all (only
+// rather than gnumbat.db directly: app.js has no sqlite client at all (only
 // blessed+ws are dependencies — see package.json), it only ever reads JSON.
 // generated_manifest.json already has exactly what a browse list needs
 // (track_name, stem, genre, bpm, filename, timestamps) with zero new
@@ -7034,7 +7034,7 @@ function reflow() {
   // boxes' own declaration comment). Left edge now follows centerColStart
   // (set moments ago by render()'s own withLCR(stateChips, titleCenter, ...)
   // call, well before reflow() runs — see that variable's declaration) —
-  // user: "move the menu to the right, align it somewhere next to EBYS
+  // user: "move the menu to the right, align it somewhere next to Gnumbat
   // version." Floored at BAKE_MENU_MIN_LEFT so it can't collapse back onto
   // masterInfoBox's own text on a narrow terminal where centerColStart ends
   // up small. Detail width recomputed every tick off `w`, same reasoning
@@ -7347,7 +7347,7 @@ function render() {
   const sessionName = (ACTIVE_SESSION && ACTIVE_SESSION.name) || 'default';
   const sessionLabel = `{bright-white-fg}[SESSION: ${sessionName.toUpperCase()}]{/bright-white-fg}`;
   // Header row: state chips left ([SESSION] first, then run/conn/rec),
-  // EBYS version centered on the screen, TIP/LINK cluster flush right.
+  // Gnumbat version centered on the screen, TIP/LINK cluster flush right.
   // edge defaults to the true right edge, same override convention as atCol.
   // Also records where `right` (iconCluster, which starts with [REC]) ends
   // up starting — tipBox aligns its own left edge to that same column (see
@@ -7393,8 +7393,8 @@ function render() {
   // lufsMeterLine() (near masterLufsBox's own declaration) for the shared
   // content builder — same dbMeter() bar, just relocated, not reimplemented.
   const stateChips = `${sessionLabel}   ${run}   ${conn}`;
-  // EBYS version + AGPL badge — briefly moved down to the footer, back up
-  // here now (user: "put back ebys version and agpl license at the top of
+  // Gnumbat version + AGPL badge — briefly moved down to the footer, back up
+  // here now (user: "put back gnumbat version and agpl license at the top of
   // the screen"), centered in the title row same as it always was.
   // Network/ethernet used to be inlined right here too, but moved back out
   // (user: "put network and ethernet in the same box as peer. above peer.
@@ -7402,7 +7402,7 @@ function render() {
   // is what the user means by "top menu"; "header section" is networkBox,
   // docked beside tipBox at TRAIN_TIP_TOP — see renderNetworkInfo() for
   // where network/ethernet/peer all live now, stacked in that one box.
-  const versionLabel = `{grey-fg}[EBYS 0.1.19]{/grey-fg}   `;
+  const versionLabel = `{grey-fg}[Gnumbat 0.1.19]{/grey-fg}   `;
   const agplLabel    = `{grey-fg}[{bold}🄯{/bold} AGPL-3.0]{/grey-fg}`;
   const titleCenter  = versionLabel + agplLabel + '   ' + networkChip + '   ' + lastTouchLine;
   // Used to also carry track/key, win/slices/LUFSs/quant, and genre/beats
@@ -8039,7 +8039,7 @@ function isCommand(line) {
 }
 
 // Load CRICKET.md as the knowledge base
-// NOTE: this used to point at EBYS/CRICKET.md (repo root). The 0.1.8 docs
+// NOTE: this used to point at Gnumbat/CRICKET.md (repo root). The 0.1.8 docs
 // reorg moved the real file to docs/instrument/CRICKET.md and left only a
 // 3-line redirect stub at archive/CRICKET.md — but this path was never
 // updated to match, so fs.readFileSync below has been silently failing
@@ -8066,19 +8066,19 @@ try { voiceNote = fs.readFileSync(path.join(__dirname, 'voice.md'), 'utf8').trim
 let rulesNote = '';
 try { rulesNote = fs.readFileSync(path.join(__dirname, 'rules.md'), 'utf8').trim(); } catch (e) {}
 
-const CRICKET_SYSTEM = `You are Cricket, the control interface for EBYS — a generative audio collage engine that separates songs into stems (vocals, melody, bass, drums), analyzes every transient slice, and plays them back in real time using spectral descriptors.
+const CRICKET_SYSTEM = `You are Cricket, the control interface for Gnumbat — a generative audio collage engine that separates songs into stems (vocals, melody, bass, drums), analyzes every transient slice, and plays them back in real time using spectral descriptors.
 
-EBYS stands for "Eat Bugs You Spider."
+Gnumbat stands for "Gnumbat."
 
 Default behavior: when the user gives a musical instruction, respond with engine commands only — one per line, no explanation.
 When the user asks a question or starts a conversation, answer clearly and concisely.
 You can mix commands and conversation in the same response when it makes sense.
 Never invent command names. Only use the exact commands listed in the knowledge base. If a user asks to do something the engine cannot do (like loading a track), say so in plain text — do not make up a command for it.
 Never repeat or quote the [current state] block back in your response. It is for your internal context only.
-When the user asks to see the state, or when you bring the conversation back to EBYS, emit: showState
-When the user asks what commands are available, asks for a list of commands, or asks how to control EBYS, emit: showCommands
+When the user asks to see the state, or when you bring the conversation back to Gnumbat, emit: showState
+When the user asks what commands are available, asks for a list of commands, or asks how to control Gnumbat, emit: showCommands
 Never emit showCommands when the user asks what a specific command or parameter DOES — that is a conversational question, answer it in plain language.
-When a conversation goes off-topic, follow it — don't redirect immediately. Let it go for several exchanges. Only bring it back to EBYS naturally if there's an opening, never by force.
+When a conversation goes off-topic, follow it — don't redirect immediately. Let it go for several exchanges. Only bring it back to Gnumbat naturally if there's an opening, never by force.
 Do not use terms of endearment like "mon ami", "friend", "buddy", "mate" or similar. Be warm but don't name the relationship.
 
 When explaining what a command or concept does:
@@ -8088,7 +8088,7 @@ When explaining what a command or concept does:
 - Keep it tight — one analogy, one example, done. No bullet-point dumps, no restating the same thing twice.
 - Write like someone who knows the system deeply and enjoys explaining it, not like a manual.
 ${rulesNote ? `\n--- RULES (follow these exactly) ---\n${rulesNote}\n` : ''}${voiceNote ? `\n--- VOICE (mirror this writing style in conversation) ---\n${voiceNote}\n` : ''}
---- EBYS KNOWLEDGE BASE ---
+--- Gnumbat KNOWLEDGE BASE ---
 ${cricketDocs}`;
 
 const chatHistory = [{ role: 'system', content: CRICKET_SYSTEM }];
@@ -11083,7 +11083,7 @@ function callCricket(text, onCommand) {
 
   cricketMsgCount++;
   // Inject live state every 4 messages so Cricket stays grounded without
-  // constantly pivoting the conversation back to EBYS status
+  // constantly pivoting the conversation back to Gnumbat status
   const contextualText = (cricketMsgCount % 4 === 1)
     ? buildStateContext() + '\n\n' + text
     : text;
@@ -11896,7 +11896,7 @@ function connectToMax() {
   });
 }
 
-// ── EBYS LINK IPC ─────────────────────────────────────────────────────────────
+// ── Gnumbat LINK IPC ─────────────────────────────────────────────────────────────
 // Talks to link_server.js (separate process) via localhost UDP.
 //   TUI → link_server  : port 9001  (TOUCH / MISSILE / LINK_ON / etc.)
 //   link_server → TUI  : port 9002  (incoming peer SET commands)
@@ -12628,24 +12628,24 @@ function handleInput(text) {
           // 5. Delete stream.txt so streamWatcher's readFile returns null (no spurious bang)
           wipe(path.join(DATA, 'stream.txt'));
 
-          // 5b. Wipe derived files (ebys_index.json, umap, stem_ranges, feed chunks) —
+          // 5b. Wipe derived files (gnumbat_index.json, umap, stem_ranges, feed chunks) —
           // these now live in the session's data dir (DATA_DIR), not src/max/, since
           // migrateLegacyDataIfNeeded() relocated them there for the default session.
           const MAX_DIR = DATA_DIR;
-          // Delete ebys_index.json (try unlink first, fall back to wipe)
-          const idxPath = path.join(MAX_DIR, 'ebys_index.json');
+          // Delete gnumbat_index.json (try unlink first, fall back to wipe)
+          const idxPath = path.join(MAX_DIR, 'gnumbat_index.json');
           try { fs.unlinkSync(idxPath); }
           catch (e) { try { fs.writeFileSync(idxPath, '{}', 'utf8'); } catch (_) {} }
           wipe(path.join(MAX_DIR, 'stem_ranges.json'));
           wipe(path.join(MAX_DIR, 'umap_coords.json'));
-          // Delete ebys_feed_*.json chunks
+          // Delete gnumbat_feed_*.json chunks
           try {
-            fs.readdirSync(MAX_DIR).filter(f => f.startsWith('ebys_feed_')).forEach(f => {
+            fs.readdirSync(MAX_DIR).filter(f => f.startsWith('gnumbat_feed_')).forEach(f => {
               try { fs.unlinkSync(path.join(MAX_DIR, f)); } catch (_) {}
             });
           } catch (_) {}
           // Write sentinel so ws_server blocks saveIdxChunk on next reload
-          try { fs.writeFileSync(path.join(MAX_DIR, 'ebys_reset.flag'), '1', 'utf8'); } catch (_) {}
+          try { fs.writeFileSync(path.join(MAX_DIR, 'gnumbat_reset.flag'), '1', 'utf8'); } catch (_) {}
 
           // 6. Reload in-memory DBs
           reloadGenreDb();
@@ -12666,7 +12666,7 @@ function handleInput(text) {
           // 8. Restart watch_demucs (kill current instance; cron keepalive restarts it within 60s)
           exec('pkill -f watch_demucs.py; sleep 1; /opt/homebrew/bin/python3 -u ' +
                require('path').join(__dirname, '..', 'demucs', 'watch_demucs.py') +
-               ' >> /tmp/ebys_watch.log 2>&1 &', (err) => {
+               ' >> /tmp/gnumbat_watch.log 2>&1 &', (err) => {
             if (errors.length) {
               logSys('⚠  resetAll finished with errors:');
               errors.forEach(e => logSys('   ' + e));
@@ -12684,7 +12684,7 @@ function handleInput(text) {
     if (verb === 'restartWatcher') {
       const watcherPath = require('path').join(__dirname, '..', 'demucs', 'watch_demucs.py');
       exec('pkill -f watch_demucs.py; sleep 1; /opt/homebrew/bin/python3 -u ' +
-           watcherPath + ' >> /tmp/ebys_watch.log 2>&1 &', (err) => {
+           watcherPath + ' >> /tmp/gnumbat_watch.log 2>&1 &', (err) => {
         if (err) logSys('⚠ restartWatcher failed: ' + err.message);
         else logSys('✓ watcher restarted — drop files in raw_uploads to reprocess');
       });
@@ -12698,7 +12698,7 @@ function handleInput(text) {
     if (verb === 'restartWatcherLora') {
       const watcherPath = require('path').join(__dirname, '..', 'demucs', 'watch_lora.py');
       exec('pkill -f watch_lora.py; sleep 1; /opt/homebrew/bin/python3 -u ' +
-           watcherPath + ' >> /tmp/ebys_watch_lora.log 2>&1 &', (err) => {
+           watcherPath + ' >> /tmp/gnumbat_watch_lora.log 2>&1 &', (err) => {
         if (err) logSys('⚠ restartWatcherLora failed: ' + err.message);
         else logSys('✓ lora watcher restarted — drop files in data/lora_corpus/raw to reprocess');
       });
@@ -13036,7 +13036,7 @@ function handleInput(text) {
         }
         const venvPy = path.join(__dirname, '..', 'demucs', 'demucs_env', 'bin', 'python3');
         const script = path.join(__dirname, '..', 'demucs', 'build_lora_dataset.py');
-        const caption = parts.slice(2).join(' ') || 'ebys user style';
+        const caption = parts.slice(2).join(' ') || 'gnumbat user style';
         const args = [script, '--clips-dir', P.clean, '--out-dir', P.train,
                        '--val-out-dir', P.val, '--caption', caption];
         logSys(`→ lora build — clean -> train/val, caption "${caption}"…`);
@@ -13146,7 +13146,7 @@ function handleInput(text) {
         // Best-effort: reuse whatever caption build_lora_dataset.py last used
         // (its .txt sidecars all carry the same phrase) rather than asking
         // here — falls back to the script's own documented default.
-        let caption = 'ebys user style';
+        let caption = 'gnumbat user style';
         try {
           const txts = fs.readdirSync(P.train).filter(f => f.endsWith('.txt'));
           if (txts.length) caption = fs.readFileSync(path.join(P.train, txts[0]), 'utf8').trim() || caption;
@@ -13490,7 +13490,7 @@ function handleInput(text) {
       return;
     }
 
-    // ── EBYS LINK commands ───────────────────────────────────────────────────
+    // ── Gnumbat LINK commands ───────────────────────────────────────────────────
     // :sendLink             → send last touched param to peer
     // :sendLink hold        → send full scope dump to peer
     // :link on / :link off  → enable / disable incoming sync
@@ -13597,7 +13597,7 @@ function handleInput(text) {
       // it — success, failure, or the final "still not showing connected"
       // verification outcome.
       // wifiConnecting drives the header's OWN spinner frame (networkAddrText())
-      // — the always-visible one, row 0, next to the EBYS version badge.
+      // — the always-visible one, row 0, next to the Gnumbat version badge.
       // startSpinner()/stopSpinner() drive a second one inside the chat
       // log itself; both get set/cleared together everywhere below.
       wifiConnecting = true;
@@ -13934,7 +13934,7 @@ function handleInput(text) {
     if (lang) { applyLanguage(lang); return; }
 
     if (prefix === '@') {
-      logSys('unknown — use :<language> to switch or :<command> to control EBYS');
+      logSys('unknown — use :<language> to switch or :<command> to control Gnumbat');
       return;
     }
 
@@ -14820,7 +14820,7 @@ setInterval(() => { updateNetworkInfo(); scheduleRender(); }, NETWORK_POLL_MS);
 // spinner. for the loading"). The sepBox-based spinner (startSpinner() —
 // see the :network handler) is real too, but it lives inside the
 // collapsible/scrollable chat log area, which isn't always in view; the
-// header's network: line is ALWAYS on screen (row 0, next to the EBYS
+// header's network: line is ALWAYS on screen (row 0, next to the Gnumbat
 // version badge), so that's the one guaranteed-visible place to show
 // "still connecting" — same spinFrame/SPIN_FRAMES tick startSpinner()
 // already drives, just read from a second spot instead of running a

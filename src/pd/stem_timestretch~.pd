@@ -1,36 +1,75 @@
-#N canvas 100 100 700 500 12;
+#N canvas 247 332 980 640 12;
 #X obj 40 20 inlet;
-#X obj 40 60 route ratio play stop;
-#X obj 220 100 f 1;
-#X obj 40 140 t b b;
-#X obj 40 180 array size $1;
+#X obj 40 60 route ratio play stop set;
+#X obj 62 190 f 1;
+#X obj 40 157 t b b b;
+#X obj 40 225 array size;
 #X obj 40 260 expr ($f1/44100*1000)/$f2;
-#X msg 40 300 play 0 $1 44100 \$1 0 0 0 5;
-#X msg 320 60 stop 0;
-#X obj 40 340 timeStretch~;
-#X obj 40 400 outlet~;
-#X text 200 20 stem_timestretch~ <arrayname>: wraps William Brent's
-timeStretch~ (real phase-vocoder time-stretch \, pitch-independent \,
-replaces Max's karma~) with a simple ratio-controlled interface for
-BPM-align preview. Send "ratio <f>" to set the stretch ratio (1 =
-normal speed \, 2 = double speed/half duration \, 0.5 = half speed/double
-duration) BEFORE sending "play". Send "play" to start playback of
-the whole buffer at the current ratio (always starts from the beginning
--- this does not support changing ratio smoothly mid-playback \, re-send
-"play" to restart at a new ratio). Send "stop" to stop. Voice 0 is
-always used (single-voice per stem \, matching the rest of this patch's
-one-buffer-per-stem design). Depends on timeStretch~.pd and lib/timestretch-reader-abs.pd
-(vendored unmodified from https://github.com/wbrent/timeStretch_tilde
-\, GPL-3.0) sitting alongside this abstraction., f 300;
+#X obj 40 300 list append 0 0 0 5;
+#X msg 83 114 stop 0;
+#X obj 40 420 timeStretch~;
+#X obj 40 459 outlet~;
+#X obj 40 340 list prepend;
+#X obj 40 380 list trim;
+#X obj 360 62 loadbang;
+#X obj 360 142 list prepend play 0;
+#X obj 360 182 list append 44100;
+#X text 848 50 stem_timestretch~ <arrayname>: wraps William Brent's timeStretch~ (real phase-vocoder time-stretch \, pitch-independent \, replaces Max's karma~) with a simple ratio-controlled interface for BPM-align preview. Send "ratio <f>" to set the stretch ratio (1 = normal speed \, 2 = double speed/half duration \, 0.5 = half speed/double duration) BEFORE sending "play". Send "play" to start playback of the whole buffer at the current ratio (always from the beginning -- re-send "play" to restart at a new ratio). Send "stop" to stop. Voice 0 always \, matching this patch's one-buffer-per-stem design., f 46;
+#X text 849 459 THE 2026-08-08 FIX \, and it is not cosmetic. This chain replaces a single message box that read [play 0 \$1 44100 \$1 0 0 0 5] where the FIRST \$1 was meant to be the abstraction's array-name creation argument. A message box cannot read a creation argument -- its dollars resolve against the incoming message and nothing else -- so Pd reported "\$1: argument number out of range" once per instance and the message was never sent. This object has therefore NEVER PLAYED A SOUND \, despite CONVERSION_NOTES describing it as live audio to dac~., f 46;
+#X text 849 261 How the replacement works: an OBJECT box CAN read a creation argument \, so [symbol \$1] resolves the array name at load. [list prepend play 0] and [list append 44100] build the constant prefix "play 0 <name> 44100" \, which loadbang parks in [list prepend]'s right inlet. At play time the computed duration arrives on the left \, gets "0 0 0 5" appended \, and the prefix is prepended -- producing exactly the message the old box intended. [list trim] then turns the list back into a message whose selector is "play" \, which is what timeStretch~ expects., f 46;
+#X text 101 605 Depends on timeStretch~.pd and lib/timestretch-reader-abs.pd (vendored unmodified from https://github.com/wbrent/timeStretch_tilde \, GPL-3.0) sitting alongside this abstraction., f 46;
+#X obj 590 378 print STEMSTRETCH-ARRAYSIZE;
+#X obj 590 418 print STEMSTRETCH-PLAYMSG;
+#X text 847 655 DEBUG TAPS (added to trace the load/play flow) -- ARRAYNAME = the array name this instance resolved at load \, from [symbol \$1] (obj 13). If this doesn't match a REAL array declared in gnumbat-analyze.pd \, nothing plays. ARRAYSIZE = [array size \$1]'s output (obj 4) each time "play" fires -- the frame count Pd currently sees for that array \; 0 or a Pd console "no such array" error means it never got real audio. PLAYMSG = the exact message [list trim] (obj 11) sends into [timeStretch~] -- "play 0 <name> 44100 <durMs> 0 0 0 5".;
+#X obj 269 299 t f f;
+#X msg 316 337 0;
+#X msg 269 337 1 \$1;
+#X obj 269 378 line;
+#X obj 269 418 list prepend position \$2;
+#X obj 269 458 list trim;
+#X obj 269 498 outlet;
+#X text 848 1015 POSITION FEED (2026-08-20) -- real playback position \, replacing the honest-interpolation guess gnumbat-live.js's own comment used to describe as the best available ("the Pd side does not currently have" a position outlet). [t f f] taps the SAME durMs value (obj 5's output) already sent to timeStretch~ \, so the ramp below covers exactly the segment's real playback duration at the current ratio. Right outlet fires first (trigger order) -> msg "0" jumps [line] back to 0 for a clean restart every "play" \; left outlet fires second -> msg "1 \$1" (\$1 = the incoming durMs \, a MESSAGE box's own dollar -- resolves against the incoming message \, same rule as this file's 2026-08-08 fix above -- NOT the abstraction's creation arg) starts [line] ramping 0->1 over durMs ms \, emitting a stream of floats at Pd's normal ~20ms grain. [list prepend position \$2] tags each one with this instance's stem name (the SECOND creation arg \, an OBJECT box reading it correctly per the same rule) -- \$2 must be added at every stem_timestretch~ instantiation in gnumbat-analyze.pd (e.g. "stem_timestretch~ stem_vocals.mono vocals") or this outputs "position 0.42" with no stem \, unusable downstream. This new outlet is placed at x=300\\\, clearly right of [outlet~]'s x=40\\\, so it sorts as outlet 1 -- Pd orders an abstraction's outlets left-to-right by inlet/outlet object X position\\\, and outlet 0 MUST stay the audio signal (every existing "stem_timestretch~ ... -> *~ 0.4" connection in gnumbat-analyze.pd assumes outlet 0). Wire this new outlet 1 into bridge_guiHub's telemetry inlet (same inlet stem_telemetry~ already uses) and add a "position" case to gui_hub_bridge.js's TELEMETRY table -- see that file and gnumbat-live.js for the other two legs.;
+#X msg 369 337 stop;
+#X text 847 821 STOP FIX (2026-08-20) -- without this msg box the [line] ramp above was NEVER told to stop: it just kept ramping to 1 (and streaming "position" the whole way there) regardless of what the audio engine did\\\, so the browser playhead visibly kept moving after the user hit stop. [stop] is [line]'s own documented halt message -- freezes its output at whatever value it was at\\\, no jump\\\, no further messages -- wired from the SAME route outlet that already stops the real audio (obj 7's "stop 0" -> timeStretch~)\\\, so both halt on the exact same trigger., f 50;
+#X obj 479 557 vu 19 200 empty empty -1 -10 0 12 #404040 #000000 1 0;
+#X obj 182 142 value \$0-curArray;
+#X text 848 1200 RUNTIME BUFFER SWITCH (added 2026-08-21) -- porting the original Max buffer_manager.js/slot_router.js design\\\, where prepare()/commit() repoint karma~ mid-session via its own "set <bufname>" message (karma~'s buffer is never fixed at instantiation). timeStretch~ has no built-in equivalent -- this abstraction's array name was ALWAYS the \$1 creation argument\\\, fixed forever at patch load. route (obj 1) now has a 4th case: "set <name>" repoints THIS instance to a new array without ever needing to be re-instantiated. Two [value \$0-curArray]s hold the current name (35 = write target for both the initial loadbang default and every runtime "set"\\\; 36 = read tap\\\, banged fresh before every "play" so 4/array-size always queries the array actually about to sound instead of the stale creation-arg buffer -- without this fix\\\, switching to a small ring segment would keep computing durMs from the FULL song buffer's frame count\\\, playing far too long). obj 3 gained a 3rd (rightmost\\\, fires-first) outlet specifically to bang 36 and land its answer in array-size's cold right inlet BEFORE the existing left-inlet bang (now fires last) triggers the query -- same cold-before-hot discipline used everywhere else in this codebase. "set" also feeds 14 (rebuilds the "play 0 <name> 44100" prefix with the NEW name -- without this\\\, "play" would keep announcing the OLD array in its message text even after switching) and 20 (keeps the ARRAYNAME debug tap live instead of frozen at load-time). If "set" is never sent\\\, behavior is identical to before -- loadbang still seeds \$0-curArray with the \$1 creation-arg name.;
+#X obj 360 102 symbol \$1;
+#X obj 592 328 print SETTIMESTRETCH;
+#X msg 107 191 symbol ring_1_voc-0;
 #X connect 0 0 1 0;
 #X connect 1 0 2 1;
 #X connect 1 1 3 0;
 #X connect 1 2 7 0;
+#X connect 1 2 30 0;
+#X connect 1 3 33 0;
+#X connect 1 3 13 0;
+#X connect 1 3 36 0;
 #X connect 2 0 5 1;
 #X connect 3 0 4 0;
 #X connect 3 1 2 0;
+#X connect 3 2 37 0;
 #X connect 4 0 5 0;
+#X connect 4 0 19 0;
 #X connect 5 0 6 0;
-#X connect 6 0 8 0;
+#X connect 5 0 22 0;
+#X connect 6 0 10 0;
 #X connect 7 0 8 0;
 #X connect 8 0 9 0;
+#X connect 10 0 11 0;
+#X connect 11 0 8 0;
+#X connect 11 0 20 0;
+#X connect 12 0 35 0;
+#X connect 13 0 14 0;
+#X connect 14 0 10 1;
+#X connect 22 0 24 0;
+#X connect 22 1 23 0;
+#X connect 23 0 25 0;
+#X connect 24 0 25 0;
+#X connect 25 0 26 0;
+#X connect 26 0 27 0;
+#X connect 27 0 28 0;
+#X connect 30 0 25 0;
+#X connect 35 0 13 0;
+#X connect 35 0 33 0;
+#X connect 37 0 4 1;

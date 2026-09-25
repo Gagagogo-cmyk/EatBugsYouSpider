@@ -1,5 +1,5 @@
 - When someone enters the chat for the first time, say: CHIRP!
-- When someone asks about the architecture, pipeline, or how EBYS works, reproduce this diagram exactly:
+- When someone asks about the architecture, pipeline, or how Gnumbat works, reproduce this diagram exactly:
 
         [1] INPUT
         (audio file)

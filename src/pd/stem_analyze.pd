@@ -1,0 +1,53 @@
+#N canvas 60 60 1180 900 12;
+#X obj 40 20 inlet;
+#X obj 40 80 fluid.bufcompose -source \$1 -destination \$1.mono -destgain 0.5 -numchans 1;
+#X obj 40 130 fluid.bufampslice -source \$1.mono -indices \$1.slices -highpassfreq 150 -floor -55 -fastrampup 3 -fastrampdown 383 -slowrampup 2205 -slowrampdown 2205 -minslicelength 4410 -onthreshold 14 -offthreshold 7;
+#X obj 40 180 fluid.bufspectralshape -source \$1.mono -features \$1_spectral.features;
+#X obj 40 230 fluid.bufloudness -source \$1.mono -features \$1_loud.features;
+#X obj 600 280 fluid.bufstats -source \$1_loud.features -stats \$1_loud.stats;
+#X obj 40 330 fluid.bufpitch -source \$1.mono -features \$1_pitch.features;
+#X obj 40 380 fluid.bufchroma -source \$1.mono -features \$1_chroma.features;
+#X obj 40 430 fluid.bufmfcc 13 -source \$1.mono -features \$1_mfcc.features -numbands 40;
+#X obj 40 490 t b b;
+#X obj 40 560 outlet;
+#X obj 300 560 print \$1-ANALYZED;
+#X obj 40 620 array define \$1.mono;
+#X obj 300 620 array define \$1.slices;
+#X obj 40 670 clone 7 fluid.multiarray \$1_spectral.features;
+#X obj 40 700 clone 2 fluid.multiarray \$1_loud.features;
+#X obj 40 730 clone 2 fluid.multiarray \$1_loud.stats;
+#X obj 40 760 clone 2 fluid.multiarray \$1_pitch.features;
+#X obj 40 790 clone 12 fluid.multiarray \$1_chroma.features;
+#X obj 40 820 clone 13 fluid.multiarray \$1_mfcc.features;
+#X text 620 20 stem_analyze <stembase>: the whole FluCoMa analysis for ONE
+stem \, built to match the shipped help patches rather than transcribed
+from the Max original. Instantiate as [stem_analyze stem_vocals] and bang
+the inlet once the audio is in <stembase>-0/-1. Outlet bangs when the
+last stage finishes., f 62;
+#X text 620 130 WHY THE OUTPUT BUFFERS ARE DECLARED HERE. Every FluCoMa
+buffer is really N Pd arrays named <buffer>-0 .. <buffer>-(N-1) \, and the
+shipped help patches create them with [clone N fluid.multiarray <name>] --
+fluid.multiarray being [array define \$2-\$1 \$3]. Those are RESIZABLE \,
+which fixed-size [#X array] graphs are not \, and the channel counts below
+come from each object's own help file: spectralshape 7 \, loudness 2 \,
+stats 2 \, pitch 2 \, chroma 12 \, mfcc 13., f 62;
+#X text 620 330 SEQUENCING. These objects run when banged and bang their
+outlet when done \, so the chain is simply cascaded left inlet to outlet.
+bufstats hangs off bufloudness as a LEAF rather than sitting in the chain:
+its outlet behaviour is the one thing still unconfirmed \, and putting it
+inline would stall everything after it if it never fires., f 62;
+#X text 620 460 NOTE ON NAMES. Nothing here is wired to a buffer -- Pd
+arrays are found by NAME. <stembase> must match the name stem_loader was
+given \, because that is what [soundfiler] wrote <stembase>-0/-1 into.
+A typo produces silence \, not an error., f 62;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X connect 4 0 5 0;
+#X connect 4 0 6 0;
+#X connect 6 0 7 0;
+#X connect 7 0 8 0;
+#X connect 8 0 9 0;
+#X connect 9 0 10 0;
+#X connect 9 1 11 0;

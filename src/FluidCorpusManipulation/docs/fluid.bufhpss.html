@@ -1,0 +1,288 @@
+<!--
+Part of the Fluid Corpus Manipulation Project (http://www.flucoma.org/)
+Copyright University of Huddersfield.
+Licensed under the BSD-3 License.
+See license.md file in the project root for full license information.
+This project has received funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research and innovation programme
+(grant agreement No 725899).
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./_c74_common.css">
+<title>fluid.bufhpss Reference</title>
+<style>
+	* {
+		font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+		--blue: rgb(80,164,252);
+		--dark-blue: #204265;
+	}
+
+	body {
+		padding: 1em;
+	}
+
+	h1 {
+		text-decoration: underline;
+		background-color: var(--blue);
+		color: white;
+		padding: 0.25em;
+		margin: 0;
+	}
+	h2 {
+		border-bottom: 0.5px solid rgba(128, 128, 128, 0.513);
+	}
+
+	a {
+		color: var(--blue);
+	}
+
+	a:hover {
+		background-color: var(--blue);
+		color: white;
+	}
+	
+	.type, .defaultval { 
+		font-weight: normal; 
+  }
+</style> 
+</head>
+<body>
+  <h1 class="ref_title">fluid.bufhpss</h1>
+  <div class="digest">Buffer-Based Harmonic-Percussive Source Separation Using Median Filtering</div>
+  <section class="object_description">
+    <h2>Description</h2> 
+    
+    <p>FluidBufHPSS performs Harmonic-Percussive Source Separation (HPSS) on the contents of a Buffer.</p>
+
+    
+  </section> 
+  <section class="object_discussion"> 
+    <h2>Discussion</h2> 
+    
+    <dl class="docutils">
+<dt>HPSS takes in audio and divides it into two or three outputs, depending on the <code>maskingmode</code></dt>
+<dd><ul class="first last simple">
+<li>an harmonic component</li>
+<li>a percussive component</li>
+<li>a residual of the previous two if <code>maskingmode</code> is set to 2 (interdependent thresholds). See below.</li>
+</ul>
+</dd>
+</dl>
+<p>HPSS works by using median filters on the magnitudes of a spectrogram. It makes certain assumptions about what it is looking for in a sound: that in a spectrogram “percussive” elements tend to form vertical “ridges” (tall in frequency band, narrow in time), while stable “harmonic” elements tend to form horizontal “ridges” (narrow in frequency band, long in time). By using median filters across time and frequency respectively, we get initial estimates of the &quot;harmonic-ness&quot; and &quot;percussive-ness&quot; for every spectral bin of every spectral frame in the spectrogram. These are then combined into 'masks' that are applied to the original spectrogram in order to produce a harmonic and percussive output (and residual if <code>maskingmode</code> = 2).</p>
+<p>The maskingMode parameter provides different approaches to combining estimates and producing masks. Some settings (especially in modes 1 &amp; 2) will provide better separation but with more artefacts.</p>
+<p>Driedger (2014) suggests that the size of the median filters don't affect the outcome as much as the <code>fftsize</code>. With large FFT sizes, short percussive sounds have less representation, therefore the harmonic component is more strongly represented. The result is that many of the percussive sounds leak into the harmonic component. Small FFT sizes have less resolution in the frequency domain and often lead to a blurring of horizontal structures, therefore harmonic sounds tend to leak into the percussive component. As with all FFT based-processes, finding an FFT size that balances spectral and temporal resolution for a given source sound will benefit the use of this object.</p>
+<p>For more details visit <a class="reference external" href="https://learn.flucoma.org/reference/hpss">https://learn.flucoma.org/reference/hpss</a></p>
+<p>Fitzgerald, Derry. 2010. ‘Harmonic/Percussive Separation Using Median Filtering’. (In Proceedings DaFx 10. <a class="reference external" href="https://arrow.dit.ie/argcon/67">https://arrow.dit.ie/argcon/67</a>.)</p>
+<p>Driedger, Jonathan, Meinard Müller, and Sascha Disch. 2014. ‘Extending Harmonic-Percussive Separation of Audio Signals’. (In Proc. ISMIR. <a class="reference external" href="http://www.terasoft.com.tw/conf/ismir2014/proceedings/T110_127_Paper.pdf">http://www.terasoft.com.tw/conf/ismir2014/proceedings/T110_127_Paper.pdf</a>.)</p>
+
+
+    <p>Read more about fluid.bufhpss on the <a href='https://learn.flucoma.org/reference/hpss'>learn platform</a>.</p>
+    
+    <p>fluid.bufhpss is part of the Fluid Decomposition Toolkit of the FluCoMa project. For more explanations, learning material, and discussions on its musicianly uses, visit <a href="http://www.flucoma.org/">flucoma.org</a>.</p>
+  </section>
+  <section class="argument_section">
+    <h2>Arguments</h2><h3 class="argument_name">Harmonic Filter Size<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: 17)</span><div class="description"><p>Shorthand argument for <code>harmfiltersize</code></p>
+</div>
+      <!--  --><h3 class="argument_name">Percussive Filter Size<span class="type"> [number]</span></h3> 
+      <div class="optional">Optional</div><span class="defaultval"> (default: 31)</span><div class="description"><p>Shorthand argument for <code>percfiltersize</code></p>
+</div>
+      <!--  --></section> 
+  <section class="attribute_section">
+    <h2>Attributes</h2><div class="attribute_group">
+      <h3 class="attribute_name">fftsettings
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: [[&#39;winSize&#39;, 1024], [&#39;hopSize&#39;, -1], [&#39;fftSize&#39;, -1]])</span>
+      </h3>
+      <div class="description"><p>FFT settings consist of three numbers representing the window size, hop size and FFT size in samples:</p>
+<p>The hop size and fft size can both be set to -1 (and are by default), with slightly different meanings:</p>
+<ul class="simple">
+<li>For the hop size, -1 = <code>windowsize/2</code></li>
+<li>For the FFT size, -1 = <code>windowsize</code> snapped to the nearest equal / greater power of 2 (e.g. <code>windowsize 1024</code> =&gt; <code>fftsize 1024</code>, but <code>windowssize 1000</code> also =&gt; <code>fftsize 1024</code>)</li>
+</ul>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>FFTSize, if != -1, will snap to the next greatest power of two &amp;gt; 4</li>
+<li>The maximum FFT size is limited to the value of the <code>maxfftsize</code> argument</li>
+<li>if FFT size != -1, then window size is clipped at FFT size</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">harmfiltersize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 17)</span>
+      </h3>
+      <div class="description"><p>The size, in spectral frames, of the median filter for the harmonic component. Must be an odd number, &gt;= 3.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>3</code></li>
+<li>Maximum: <code>maxharmfiltersize</code></li>
+<li>Snaps to odd numbers</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">harmthresh
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: {&#39;value&#39;: [[0.0, 1.0], [1.0, 1.0]]})</span>
+      </h3>
+      <div class="description"><p>When <code>maskingmode</code> is 1 or 2, set the threshold curve for classifying an FFT bin as harmonic. Takes a list of two frequency-amplitude pairs as coordinates: between these coordinates the threshold is linearly interpolated, and is kept constant between DC and coordinate 1, and coordinate 2 and Nyquist.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Two amplitude + frequency pairs. Amplitudes are unbounded, frequencies in range 0-1</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">harmonic
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer where the extracted harmonic component will be reconstructed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maskingmode
+        <span class="type"> [int]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>The way the masking is applied to the original spectrogram.</p>
+</div><div class="enumvals">      
+      <ol start='0'><li>
+          <p>Soft masks provide the fewest artefacts, but the weakest separation. Complimentary, soft masks are made for the harmonic and percussive parts by allocating some fraction of every magnitude in the spectrogram to each mask. The two resulting buffers will sum to exactly the original material. This mode uses a soft mask in Fitzgerald's (2010) original method of 'Wiener-inspired' filtering.</p>
+
+        </li><li>
+          <p>Binary masks provide better separation, but with more artefacts. The harmonic mask is constructed using a binary decision, based on whether a threshold is exceeded for every magnitude in the spectrogram (these are set using <code>harmthreshfreq1</code>, <code>harmthreshamp1</code>, <code>harmthreshfreq2</code>, <code>harmthreshamp2</code>, see below). The percussive mask is then formed as the inverse of the harmonic one, meaning that as above, the two components will sum to the original sound.</p>
+
+        </li><li>
+          <p>Soft masks (with a third stream containing a residual component). First, binary masks are made separately for the harmonic and percussive components using different thresholds (set with the respective <code>harmthresh-</code> and <code>percthresh-</code> parameters below). Because these masks aren't guaranteed to represent the entire spectrogram, any residual energy is considered as a third output.  The independently created binary masks are converted to soft masks at the end of the process so that everything null-sums.</p>
+
+        </li></ol>
+      </div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxfftsize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Set an explicit upper bound on the FFT size at object instantiation. The default of -1 sets this to whatever the initial FFT size is</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxharmfiltersize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Manually sets a maximum value for <code>harmfiltersize</code>. Can only be set at object instantiation. The default of -1 sets this equal to the initial value of <code>harmfiltersize</code></p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">maxpercfiltersize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>Manually sets a maximum value for <code>percfiltersize</code>. Can only be set at object instantiation. The default of -1 sets this equal to the initial value of <code>percfiltersize</code></p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numchans
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>For multichannel srcBuf, how many channels should be processed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">numframes
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: -1)</span>
+      </h3>
+      <div class="description"><p>How many frames should be processed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">percfiltersize
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 31)</span>
+      </h3>
+      <div class="description"><p>The size, in spectral bins, of the median filter for the percussive component. Must be an odd number, &gt;=3</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>3</code></li>
+<li>Maximum: <code>maxpercfiltersize</code></li>
+<li>Snaps to odd numbers</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">percthresh
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: {&#39;value&#39;: [[0.0, 1.0], [1.0, 1.0]]})</span>
+      </h3>
+      <div class="description"><p>In maskingmode 2, an independant pair of frequency-amplitude pairs defining the threshold for the percussive part. Its format is the same as above.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Two amplitude + frequency pairs. Amplitudes are unbounded, frequencies in range 0-1</li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">percussive
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer where the extracted percussive component will be reconstructed.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">residual
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer where the residual component will be reconstructed in mode 2.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">source
+        <span class="type"> [symbol]</span>
+        <span class="defaultval"> (default: None)</span>
+      </h3>
+      <div class="description"><p>The buffer to use as the source material. The channels of multichannel buffers will be processed sequentially.</p>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startchan
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>For multichannel srcBuf, which channel to start processing at.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">startframe
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Where in the srcBuf should the HPSS process start, in samples.</p>
+<p><strong>Constraints</strong></p>
+<ul class="simple">
+<li>Minimum: <code>0</code></li>
+</ul>
+</div><!--  -->
+    </div><div class="attribute_group">
+      <h3 class="attribute_name">warnings
+        <span class="type"> [number]</span>
+        <span class="defaultval"> (default: 0)</span>
+      </h3>
+      <div class="description"><p>Enable warnings to be issued whenever a parameter value is constrained (e.g. clipped)</p>
+</div><!--  -->
+    </div></section> 
+  <section class="method_section"> 
+    <h2>Messages</h2><div class="method_group">
+      <h3 class="method_name" name="bang">bang</h3>
+      <div class="description"> A bang will commence processing on object given its current settings, unless it is already busy. In that case, the behaviour depends on the value of the <span class="messagename" data-message="queue"> queue </span>
+        attribute. </div>
+    </div>
+    <div class="method_group">
+      <h3 class="method_name" name="cancel">cancel</h3>
+      <div class="description"> When processing in non-blocking mode, this will cancel the job underway, without updating destination buffers. </div>
+    </div><div class="method_group">
+      <h3 class="method_name" name="reset">reset</h3>
+      <div class="description"> Calling <span class="messagename" data-message="reset"> reset </span> will change parameter values back to those the object was <em> created </em> with, i.e. any attribute values set in the box will be retained </div>
+    </div></section> 
+  <section class="seealso"> 
+    <h2>See Also</h2><h3 class="seealso_name"><a href="fluid.hpss~.html">HPSS</a></h3><h3 class="seealso_name"><a href="fluid.bufsines.html">BufSines</a></h3><h3 class="seealso_name"><a href="fluid.buftransients.html">BufTransients</a></h3></section> 
+</body>
+</html>

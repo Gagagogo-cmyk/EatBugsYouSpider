@@ -1,4 +1,4 @@
-# EBYS — Default Settings
+# Gnumbat — Default Settings
 
 All parameters listed here are the **factory defaults** — values active at startup before any command is sent. Use the commands below to override them during a session or performance. Changes are not persisted across restarts; to make a new default permanent, edit this file and the corresponding variable in `slicer.js` / `sdj-tui.js`.
 
@@ -20,7 +20,7 @@ All parameters listed here are the **factory defaults** — values active at sta
 | Parameter | Default | Command | Notes |
 |-----------|---------|---------|-------|
 | **Stay probability** | `0.5` (per stem) | `:setStayProb <stem> <0–1>` | Probability that a stem stays on its current source track for the next segment. `0` = always move, `1` = never move. `0.5` = coin flip each cycle. |
-| **Descriptor matching** | `0.9` (all descriptors) | `:setWeight <descriptor> <0–1>` | How strongly EBYS tries to match spectral continuity across cuts. Applied to all 6 descriptors (C, E, F, P, H, T). `0` = pure random, `1` = strict match. `0.9` = always picks the spectrally nearest neighbor (continuity), but never the exact same slice. Variety comes from STAY_PROB moving between source tracks. |
+| **Descriptor matching** | `0.9` (all descriptors) | `:setWeight <descriptor> <0–1>` | How strongly Gnumbat tries to match spectral continuity across cuts. Applied to all 6 descriptors (C, E, F, P, H, T). `0` = pure random, `1` = strict match. `0.9` = always picks the spectrally nearest neighbor (continuity), but never the exact same slice. Variety comes from STAY_PROB moving between source tracks. |
 | **Direction preference** | `0.0` (neutral) | `:setDirPref <descriptor> <-1–1>` | Per-descriptor bias: `+1` = prefer rising, `-1` = prefer falling, `0` = neutral. |
 | **Direction weight** | `1.0` | `:setDirWeight <0–∞>` | Global scale multiplier for all direction preferences. |
 | **Max slices per stem** | auto | `:setMaxSlices <n>` | Auto-set at `buildIndex` time to `trackCount × 100` — always 100 slices per source track. Override with `:setMaxSlices <n>` if needed. `0` = unlimited. |

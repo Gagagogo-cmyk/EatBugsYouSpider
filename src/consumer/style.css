@@ -1,0 +1,307 @@
+/* Gnumbat consumer app -- design language taken directly from the three
+   provided mockups: black background, monochrome terminal aesthetic,
+   compact monospace typography, thin borders, sparse layout, small
+   circular controls, bracket-style active-tab labels ("[CRKT] SHOWS").
+   No gradients, no shadows-as-decoration, no color beyond monochrome grays
+   -- see spec item 9/28. */
+
+:root {
+  --bg: #000000;
+  --fg: #f2f2f3;
+  --dim: #9a9aa0;
+  --dim2: #5a5a5f;
+  --border: rgba(255,255,255,0.16);
+  --card-bg: rgba(120,120,128,0.20);
+  --card-border: rgba(255,255,255,0.10);
+  --chip-border: rgba(255,255,255,0.28);
+  --mono: ui-monospace, "SF Mono", Menlo, "Cascadia Mono", Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.hidden { display: none !important; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: var(--mono);
+  font-size: 13px;
+  display: flex;
+  justify-content: center;
+}
+
+#app {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ---------- shared top bar (CRKT / SHOWS screens) ---------- */
+
+.topbar {
+  padding: 14px 20px 0;
+  text-align: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.topbar .copyright {
+  color: var(--dim2);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.topbar .avatar {
+  position: absolute;
+  right: 20px;
+  top: 12px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #6b6b70;
+}
+
+.tabnav {
+  display: flex;
+  gap: 18px;
+  padding: 14px 20px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.tabnav .tab { color: var(--dim2); cursor: pointer; user-select: none; }
+.tabnav .tab.active { color: var(--fg); }
+.tabnav .tab.active::before { content: "["; color: var(--fg); }
+.tabnav .tab.active::after  { content: "]"; color: var(--fg); }
+
+/* ---------- RADIO screen ---------- */
+
+.radio-view { flex: 1; display: flex; flex-direction: column; min-height: 100dvh; }
+
+.radio-header { padding: 28px 26px 0; flex-shrink: 0; }
+.radio-header .date {
+  font-family: var(--sans);
+  font-size: 17px;
+  color: var(--dim);
+  font-weight: 500;
+}
+.radio-header .time {
+  font-family: var(--sans);
+  font-size: 76px;
+  font-weight: 300;
+  color: #c9c9ce;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.radio-visual { flex: 1; min-height: 120px; }
+
+.nowplaying-wrap { padding: 0 14px 22px; flex-shrink: 0; }
+
+.nowplaying {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 26px;
+  padding: 16px 18px 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.nowplaying .seedline {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nowplaying .seedline .live-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #e6e6ea;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.nowplaying .seedline.offline .live-dot { background: var(--dim2); }
+
+.timerow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+.scrubber {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.18);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.scrubber .fill { height: 100%; background: #d8d8dc; width: 0%; }
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.controls .cluster { display: flex; gap: 10px; align-items: center; }
+.controls .cluster.transport { gap: 22px; }
+
+.ctl-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  cursor: pointer;
+  padding: 0;
+}
+.ctl-btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.ctl-btn.primary { width: 46px; height: 46px; }
+.ctl-btn.primary svg { width: 20px; height: 20px; fill: currentColor; }
+.ctl-btn.like.active { color: #f2f2f3; }
+.ctl-btn.like.active svg { fill: currentColor; }
+.ctl-btn.dislike.active { color: #f2f2f3; }
+.ctl-btn.dislike.active svg { fill: currentColor; }
+.ctl-btn:disabled { color: var(--dim2); cursor: default; }
+.ctl-btn:active:not(:disabled) { opacity: 0.5; }
+
+/* ---------- CRKT (seed/branch) screen ---------- */
+
+.crkt-view { padding: 4px 20px 100px; }
+.seed-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--fg);
+  color: #000;
+  font-size: 12.5px;
+  margin-bottom: 2px;
+}
+.tree-row {
+  padding: 7px 0 7px 2px;
+  font-size: 12.5px;
+  color: var(--fg);
+  white-space: pre;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tree-row .prefix { color: var(--dim2); }
+.empty-line { color: var(--dim2); font-size: 12.5px; padding: 3px 0; }
+.crkt-empties { margin-top: 40px; }
+
+/* ---------- SHOWS screen ---------- */
+
+.shows-view { padding: 0 20px 100px; }
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+  margin-bottom: 16px;
+}
+.field label {
+  display: block;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.field input, .field select {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 7px 8px;
+  border-radius: 2px;
+  appearance: none;
+}
+.field select { cursor: pointer; }
+
+.events-meta { color: var(--dim2); font-size: 11px; margin: 2px 0 14px; }
+
+.event-card { border-top: 1px solid var(--border); padding: 16px 0; }
+.event-card:first-child { border-top: none; }
+.event-card img.poster {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  margin-bottom: 10px;
+  filter: contrast(1.15) saturate(0.9);
+  background: #111;
+}
+.event-card .title { font-size: 13.5px; font-weight: 700; line-height: 1.35; margin-bottom: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.chip {
+  border: 1px solid var(--chip-border);
+  font-size: 10.5px;
+  padding: 3px 7px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.event-card .venue { font-size: 12px; color: var(--fg); }
+.event-card .address { font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+.event-card .datetime { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.event-card .price { font-size: 12px; color: var(--dim); margin-bottom: 8px; }
+.event-card a.link { color: var(--fg); font-size: 12px; text-decoration: underline; }
+
+/* ---------- persistent floating nav (CRKT / SHOWS) ---------- */
+
+.floatnav {
+  position: fixed;
+  left: max(20px, calc((100vw - 430px) / 2 + 20px));
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+}
+.float-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(90,90,95,0.55);
+  border: none;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+.float-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.float-btn.like.active svg { fill: currentColor; }
+
+@media (min-width: 431px) {
+  #app { border-left: 1px solid var(--card-border); border-right: 1px solid var(--card-border); }
+}

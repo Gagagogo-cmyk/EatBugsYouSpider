@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gnumbat.local/schemas/library.schema.json",
+  "title": "Library manifest",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^gnumbat\\.library/0\\.[0-9]+$"
+    },
+    "library_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "gnumbat_version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "library_id",
+    "created_at"
+  ],
+  "additionalProperties": true
+}

@@ -1,4 +1,4 @@
-EBYS event-scraper — hardcoded venues backup
+Gnumbat event-scraper — hardcoded venues backup
 ==============================================
 Removed from venues.go's `allVenues` map on 2026-08-24 so the crawler could be
 tested "cold" (no hardcoded venues loaded, no selectors to lean on). Keeping

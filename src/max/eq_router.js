@@ -1,4 +1,4 @@
-// EBYS — EQ Router  v1
+// Gnumbat — EQ Router  v1
 //
 // ── Role ──────────────────────────────────────────────────────────────────────
 // eq_router.js owns all per-stem EQ and trim parameters.
@@ -69,7 +69,7 @@ var MID_Q_MAX = 10;
 // fader default raised 0.3 → 0.7 (was ~21% of unity through the chain's fixed
 // ×0.7 stage; now ~49%) — the old default read as generally "weak." Safe to
 // raise because the master bus now has a hard clip~ -1..1 safety net right
-// before every dac~ output (main/booth/rec — see ebys-analyze.maxpat), so
+// before every dac~ output (main/booth/rec — see gnumbat-analyze.maxpat), so
 // even if all 4 stems' peaks happened to align, the output is guaranteed
 // bounded rather than wrapping/digital-overing. Left short of 1.0 so normal
 // mixing still has some headroom before the clipper is doing constant work
