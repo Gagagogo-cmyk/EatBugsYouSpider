@@ -6710,7 +6710,39 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 #modelChatResizer:hover::after,#modelChatResizer.dragging::after{border-color:#fff}
 .plugin.mrlcfShelf #modelSelectView:not(.hide) + #modelChatResizer{display:block}
 .plugin.modelListSized.mrlcfShelf #modelSelectView:not(.hide){flex:0 0 var(--modelListH)!important;min-height:0}
+.plugin.modelListSized.mrlcfShelf #modelSelectView #modelList{flex:1 1 auto}   /* the list's box fills the zone (the BOOKING box matches it) */
 body.editLocking #modelChatResizer{pointer-events:auto}
+
+/* BOOKING -- see #bookingBox. 16px rows like the list; the box's top and
+   height come from placeBooking(). The list keeps at least 3 rows of room
+   so the 4-row form (plus its title row) always fits beside it. */
+#bookingBox{position:absolute;right:10px;box-sizing:border-box;margin:0;padding:0;
+  display:flex;flex-direction:column;overflow:hidden;z-index:4;color:var(--w,#fff)}
+#modelSelectView #modelList{min-height:calc(4 * var(--row,16px))}   /* title + 4 rows = the box */
+#bookingBox .bkRow{flex:0 0 16px;height:16px;line-height:16px;display:flex;gap:1ch;align-items:center;white-space:nowrap;min-width:0}
+#bookingBox .bkTitle{flex:0 0 auto}
+#bookingBox .bkModel{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--g3,#7d8281);text-align:right}
+#bookingBox .bkModel.on{color:#fff}
+#bookingBox .bkIn{height:14px;line-height:12px;box-sizing:border-box;padding:0 3px;margin:0;border:1px solid var(--g2,#555);border-radius:0;
+  background:transparent;color:#fff;font:inherit;min-width:0;outline:none;color-scheme:dark}
+#bookingBox .bkIn:focus{border-color:#fff}
+#bookingBox .bkIn::placeholder{color:var(--g3,#7d8281)}
+#bookingBox .bkIn::-webkit-calendar-picker-indicator{display:none}   /* no room: a click opens the picker (showPicker) */
+#bookingBox #bkDate{flex:1 1 auto}
+#bookingBox #bkTime{flex:0 0 10ch}
+#bookingBox #bkDate,#bookingBox #bkTime{cursor:pointer}
+#bookingBox #bkHours{flex:0 0 5ch;-moz-appearance:textfield}
+#bookingBox #bkHours::-webkit-inner-spin-button{display:none}
+#bookingBox .bkUnit{color:var(--g3,#7d8281);margin-left:-.5ch}
+#bookingBox #bkVenue,#bookingBox #bkContact{flex:1 1 0}
+#bookingBox .bkBook{flex:0 0 auto;cursor:pointer;font:inherit;border:0;padding:0;background:none;color:inherit}
+#bookingBox .bkBook:disabled{opacity:.4;cursor:default}
+#bookingBox .bkMsg{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--g3,#7d8281)}
+#bookingBox .bkMsg.ok{color:#fff}
+#bookingBox .bkMsg.err{color:#ff6b6b}
+#bookingBox .bkList{flex:1 1 auto;min-height:0;overflow-y:auto;color:var(--g3,#7d8281)}
+#bookingBox .bkList div{height:16px;line-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.editLocking #bookingBox,body.editLocking #bookingBox *{pointer-events:auto}
 
 /* ── RADIO TAB (user's reference picture + list of asks) ───────────────── */
 /* "remove the console tab ... keep them but do not display them": the ^C
@@ -7568,6 +7600,20 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
        hidden, same as #omgmView itself: nothing shows until tabOMGM is
        actually clicked once. -->
   <div id="modelSelectView" class="hide">
+    <!-- #bookingBox -- user: "create a compact booking system in the left
+         over space to the right of the model selection page. make it the
+         same height as the current model selection menu." Books the model
+         highlighted in the list for a show (POST /bookings on the backend,
+         src/backend/routes/bookings.js). Placed by placeBooking(): top on
+         the M-RLCF MODELS title line, bottom on the list's bottom edge. -->
+    <form id="bookingBox" autocomplete="off" novalidate>
+      <div class="bkRow"><span class="bkTitle">BOOKING</span><span class="bkModel" id="bkModel">pick a model</span></div>
+      <div class="bkRow"><input class="bkIn" id="bkDate" type="date" title="date" required><input class="bkIn" id="bkTime" type="time" value="21:00" step="900" title="start" required></div>
+      <div class="bkRow"><input class="bkIn" id="bkVenue" placeholder="venue" maxlength="255" required><input class="bkIn" id="bkHours" type="number" min="0.5" max="24" step="0.5" value="3" title="hours" required><span class="bkUnit">h</span></div>
+      <div class="bkRow"><input class="bkIn" id="bkContact" placeholder="contact" title="how to reach you (email, @handle...)" maxlength="255" required><button type="submit" class="chip bkBook" id="bkBook"><b>&#9166;</b>book</button></div>
+      <div class="bkRow"><span class="bkMsg" id="bkMsg"></span></div>
+      <div class="bkList" id="bkList"></div>
+    </form>
     <div class="states">
       <span class="grp mid-grp">
         <span class="off"></span>
@@ -8363,7 +8409,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
          first word). Applies to every <b>keycap</b>Title chip in the
          footer/panels, both the static HTML below and the matching
          innerHTML/textContent assignments further down the file. -->
-    <span class="fg"><span class="chip" id="mrlcfChip"><b>^W</b>wadio</span><span class="chip hide" id="chatChip" style="margin-left:6px"><b>^C</b>chat</span></span><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
+    <span class="fg"><span class="chip" id="mrlcfChip"><b>^C</b>console</span></span><!-- ^W wadio -> ^C console, and the hidden ^C chat chip REMOVED -- user: "remove the chat shortcut, use ^C console instead of ^W wadio." --><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
     <!-- id="editModeGroup" ADDED -- EDIT INTERFACE (spec: a global button,
          above/near the chat, that suspends normal page behavior and lets
          the user talk to Cricket about changing this page itself). Lives
@@ -11247,6 +11293,7 @@ function hist(seed,live){
   // introduce, per the user's own follow-up on why this matters for the
   // ML side of things.
   let clipboardClip=null;
+  window.gnClipSelected=()=>!!selectedClip && !omgmView.classList.contains('hide');   /* ^C console yields to clip copy */
   window.addEventListener('keydown',event=>{
     if(event.key.toLowerCase()!=='c'||!(event.metaKey||event.ctrlKey)) return;
     if(!selectedClip) return;
@@ -13292,8 +13339,7 @@ function updateConsoleLabel(){
   const ruleEl = document.querySelector('.chatHeader .chatRule');
   if(ruleEl) ruleEl.textContent = label;
   if(!chatOpen){
-    const chip=document.getElementById('chatChip');
-    if(chip) chip.innerHTML = `<b>^C</b>${label==='console'?'console':'chat'}`;
+    /* #chatChip removed (see #mrlcfChip) -- ^C is the console tab now */
   }
 }
 tabOMSC.onclick=()=>{
@@ -17732,8 +17778,7 @@ function setChatOpen(on){
      that shared function. */
   updateConsoleLabel();
   if(on){
-    const chatChip=document.getElementById('chatChip');
-    if(chatChip) chatChip.innerHTML='<b>^C</b>close';
+    /* #chatChip removed -- see #mrlcfChip */
   }
 }
 /* NOTE: these three .onclick handlers deliberately re-query #cin via
@@ -17745,7 +17790,7 @@ function setChatOpen(on){
    does nothing. Symptom this caused: click a chip, then typing stops
    working ("if I click somewhere, it gets disconnected"). Re-querying
    here always resolves to whichever #cin is currently live in the DOM. */
-document.getElementById('chatChip').onclick=function(){setChatOpen(!chatOpen);document.getElementById('cin').focus();};
+/* #chatChip.onclick removed with the chip -- see #mrlcfChip */
 /* setEditMode -- EDIT INTERFACE on/off. Flips the mode flag and relabels
    the chip/buttons -- the real work (repo-aware tool use) happens hub-side
    in src/gui/edit_agent.js once gnumbat-live.js's Enter handler starts
@@ -18958,6 +19003,83 @@ renderNpVotes();
   /* a smaller window / zoom: keep the chat its CHAT_MIN */
   window.addEventListener('resize',()=>{ if(plug.classList.contains('modelListSized')) set(parseFloat(plug.style.getPropertyValue('--modelListH'))||MIN); });
 })();
+/* initBooking -- see #bookingBox. The model is whichever row is highlighted
+   in the list (selectedModelId); upcoming bookings for it fill the rows
+   under the form. The backend is the same one the login uses (AUTH_URL). */
+(function initBooking(){
+  const box=document.getElementById('bookingBox'), view=document.getElementById('modelSelectView');
+  if(!box||!view) return;
+  const $=id=>document.getElementById(id);
+  const api=()=>(typeof AUTH_URL==='string'?AUTH_URL:'http://localhost:3000').replace(/\/+$/,'')+'/bookings';
+  const pad=n=>String(n).padStart(2,'0');
+  const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  $('bkDate').min=ymd(new Date()); if(!$('bkDate').value) $('bkDate').value=ymd(new Date(Date.now()+864e5));   /* tomorrow */
+  const cur=()=>{ try{ return selectedModelId!=null ? modelById(selectedModelId) : null; }catch(e){ return null; } };
+  const msg=(t,cls)=>{ const m=$('bkMsg'); m.textContent=t||''; m.className='bkMsg'+(cls?' '+cls:''); m.title=t||''; };
+  const fmt=iso=>{ const d=new Date(iso); return pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); };
+  let shownRef=null, loadSeq=0;
+  function load(){
+    const m=cur(), seq=++loadSeq;
+    if(!m){ $('bkList').innerHTML=''; return; }
+    fetch(api()+'?model='+encodeURIComponent(String(m.id))).then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status))).then(rows=>{
+      if(seq!==loadSeq) return;
+      if(!$('bkMsg').textContent) msg(rows&&rows.length ? rows.length+' upcoming' : 'free -- no bookings yet');
+      $('bkList').innerHTML=(rows||[]).map(b=>'<div title="'+escapeHtml(b.venue+' -- '+b.status)+'">'+escapeHtml(fmt(b.starts_at)+' '+Number(b.hours)+'h '+b.venue)+'</div>').join('');
+    }).catch(()=>{ if(seq===loadSeq){ $('bkList').innerHTML=''; msg('backend offline'); } });
+  }
+  function sync(){
+    const m=cur(), ref=m?String(m.id):null, el=$('bkModel');
+    el.textContent=m?m.n:'pick a model'; el.title=el.textContent; el.classList.toggle('on',!!m);
+    $('bkBook').disabled=!m;
+    if(ref!==shownRef){ shownRef=ref; msg(''); load(); }
+  }
+  box.addEventListener('submit',e=>{
+    e.preventDefault();
+    const m=cur(); if(!m){ msg('pick a model','err'); return; }
+    const date=$('bkDate').value, time=$('bkTime').value, hours=Number($('bkHours').value), venue=$('bkVenue').value.trim(), contact=$('bkContact').value.trim();
+    if(!date||!time){ msg('date and time?','err'); return; }
+    if(!(hours>0&&hours<=24)){ msg('hours: 0.5 to 24','err'); return; }
+    if(!venue){ msg('venue?','err'); $('bkVenue').focus(); return; }
+    if(!contact){ msg('contact?','err'); $('bkContact').focus(); return; }
+    const startsAt=new Date(date+'T'+time);   /* local time on this computer */
+    if(isNaN(startsAt)||startsAt<new Date()){ msg('that time has passed','err'); return; }
+    $('bkBook').disabled=true; msg('booking\u2026');
+    fetch(api(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({modelRef:String(m.id),modelName:m.n,startsAt:startsAt.toISOString(),hours,venue,contact})})
+      .then(r=>r.json().catch(()=>({})).then(j=>({ok:r.ok,status:r.status,j})))
+      .then(({ok,status,j})=>{
+        if(ok){ msg('booked '+fmt(j.starts_at),'ok'); $('bkVenue').value=''; load(); }
+        else if(status===409 && j.conflict) msg('taken: '+fmt(j.conflict.starts_at)+' '+j.conflict.venue,'err');
+        else msg(j.error||('error '+status),'err');
+      })
+      .catch(()=>msg('backend offline','err'))
+      .finally(()=>{ $('bkBook').disabled=!cur(); });
+  });
+  ['bkDate','bkTime'].forEach(id=>$(id).addEventListener('click',()=>{ try{ $(id).showPicker(); }catch(e){} }));
+  /* keys typed here are the form's, never the list's/page's shortcuts */
+  box.addEventListener('keydown',e=>{ if(!e.ctrlKey && !e.metaKey) e.stopPropagation(); if(e.key==='Escape'){ document.activeElement&&document.activeElement.blur(); } });
+  /* same height as the model menu: from the M-RLCF MODELS title line to the
+     bottom of the list's zone (the list/chat grip) */
+  function placeBooking(){
+    const head=$('modelListHead'), body=view.querySelector('.modelSelectBody');
+    if(!head||!body||view.classList.contains('hide')) return;
+    const V=view.getBoundingClientRect(), H=head.getBoundingClientRect(), B=body.getBoundingClientRect();
+    const padB=parseFloat(getComputedStyle(body).paddingBottom)||0;
+    const ch=parseFloat(getComputedStyle(box).fontSize)*0.6||7.2;
+    box.style.left=Math.round(H.right-V.left+2*ch)+'px';   /* 2ch right of the list's own right edge */
+    box.style.top=Math.round(H.top-V.top)+'px';
+    box.style.height=Math.max(64, Math.round(B.bottom-padB-H.top))+'px';
+  }
+  window.gnPlaceBooking=placeBooking;
+  try{ new ResizeObserver(()=>requestAnimationFrame(placeBooking)).observe(view); }catch(e){}
+  window.addEventListener('resize',()=>requestAnimationFrame(placeBooking));
+  new MutationObserver(()=>{ requestAnimationFrame(placeBooking); sync(); }).observe(view,{attributes:true,attributeFilter:['class']});
+  /* follow the highlighted row: the list re-renders on every selection move */
+  ['renderModelList','renderCurrentModelView'].forEach(fn=>{
+    const orig=window[fn]; if(typeof orig!=='function') return;
+    window[fn]=function(){ const r=orig.apply(this,arguments); try{ sync(); requestAnimationFrame(placeBooking); }catch(e){} return r; };
+  });
+  sync(); requestAnimationFrame(placeBooking);
+})();
 /* fitShelf -- see "TALL SHELF ON MODEL SELECT" */
 function fitShelf(){
   const f=document.getElementById('omscFrame'), meta=document.querySelector('.npMeta');
@@ -19060,9 +19182,7 @@ function applyLayer(){
   if(typeof syncRadioChat==='function') requestAnimationFrame(syncRadioChat);
   if(window.gnPlaceClosedGrip) requestAnimationFrame(window.gnPlaceClosedGrip);
   const m = document.getElementById('mrlcfChip');
-  if(m) m.innerHTML = mrlcfOpen ? '<b>^W</b>close' : '<b>^W</b>wadio';   /* ^R -> ^W -- user: "rename ^R for ^W Wadio" */
-  const c = document.getElementById('chatChip');
-  if(c) c.classList.toggle('hide', !mrlcfOpen);
+  if(m) m.innerHTML = mrlcfOpen ? '<b>^C</b>close' : '<b>^C</b>console';   /* ^W wadio -> ^C console -- user: "use ^C console instead of ^W wadio" */
 }
 /* chatBeforeRadio -- user: "when the ^R tab comes down, it should return to
    its original position... the infos should come back to where they were
@@ -19090,7 +19210,15 @@ document.getElementById('mrlcfChip').onclick = () => setMrlcfOpen(!mrlcfOpen);
 /* capture phase so ^M still works while typing in the console / a model
    rename field, even if their own keydown handlers stop propagation */
 addEventListener('keydown',e=>{
- if(e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='w'){e.preventDefault();e.stopPropagation();setMrlcfOpen(!mrlcfOpen);} /* ^M -> ^R -- user: "rename the ^M M-RLCF tab to ^R Radio" */
+ /* ^W -> ^C -- user: "use ^C console instead of ^W wadio". Copy still wins:
+    selected text, or a selected clip in the DAW (Ctrl+C = clip copy there,
+    see clipboardClip), leaves ^C to the copy. */
+ if(e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='c'){
+   const sel=window.getSelection&&String(window.getSelection()||'');
+   const ae=document.activeElement, inSel=ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && (()=>{ try{ return ae.selectionStart!==ae.selectionEnd; }catch(err){ return false; } })();
+   if(sel || inSel || (window.gnClipSelected && window.gnClipSelected())) return;
+   e.preventDefault();e.stopPropagation();setMrlcfOpen(!mrlcfOpen);
+ }
 },true);
 (function(){ const plug=document.querySelector('.plugin'), a=document.getElementById('omscCo2Line1'), b=document.getElementById('omscCo2Line2');
   if(!plug||!a||!b) return; const box=document.createElement('div'); box.id='headCo2';

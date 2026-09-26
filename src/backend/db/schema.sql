@@ -203,3 +203,22 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires    TIMESTAMP;
 -- [{ "label": "instagram", "url": "https://..." }, ...]. Also applied
 -- automatically on first use by db/queries.js ensureSocialColumn().
 ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '[]'::jsonb;
+
+-- Bookings (routes/bookings.js) -- the compact BOOKING box next to the
+-- panel's model list: book a model (an M-RLCF set) for a show. The panel's
+-- models live on the hub, not here, so model_ref is the panel's own model id
+-- and model_name is kept for display. Overlaps for the same model are
+-- refused by the route. Also created automatically on first use by
+-- db/queries.js ensureBookingsTable().
+CREATE TABLE IF NOT EXISTS bookings (
+  id          SERIAL PRIMARY KEY,
+  model_ref   VARCHAR(255) NOT NULL,
+  model_name  VARCHAR(255),
+  starts_at   TIMESTAMPTZ NOT NULL,
+  hours       NUMERIC(4,1) NOT NULL CHECK (hours > 0 AND hours <= 24),
+  venue       VARCHAR(255) NOT NULL,
+  contact     VARCHAR(255) NOT NULL,
+  status      VARCHAR(20) DEFAULT 'requested' CHECK (status IN ('requested','confirmed','cancelled')),
+  created_at  TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS bookings_model_idx ON bookings(model_ref, starts_at);

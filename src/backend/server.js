@@ -38,6 +38,7 @@ const networkRouter  = require('./routes/network')
 const modelsRouter   = require('./routes/models')
 const radioRouter    = require('./routes/radio')
 const feedbackRouter = require('./routes/feedback')
+const bookingsRouter = require('./routes/bookings')   // the panel's BOOKING box
 
 app.use('/tips',     tipsRouter)
 app.use('/slices',   slicesRouter)
@@ -47,6 +48,7 @@ app.use('/network',  networkRouter)
 app.use('/models',   modelsRouter)
 app.use('/radio',    radioRouter)
 app.use('/feedback', feedbackRouter)
+app.use('/bookings', bookingsRouter)
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => console.log(`Gnumbat backend running on port ${PORT}`))
