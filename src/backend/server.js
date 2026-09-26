@@ -63,9 +63,16 @@ if (process.env.GNUMBAT_DEV_ACCOUNT) {
     if (i < 1 || !password) return console.log('GNUMBAT_DEV_ACCOUNT should look like username:password')
     try {
       const bcrypt = require('bcryptjs')
-      const { findUserByUsername, createUser, setPasswordAndClearReset } = require('./db/queries')
+      const { findUserByUsername, createUser, setPasswordAndClearReset, renameUser } = require('./db/queries')
       const hash = await bcrypt.hash(password, 10)
-      const existing = await findUserByUsername(username)
+      let existing = await findUserByUsername(username)
+      // GNUMBAT_DEV_ACCOUNT_FROM=<old name>: rename that account instead of
+      // making a new one (user: "change my account name from abc to ap3")
+      const from = (process.env.GNUMBAT_DEV_ACCOUNT_FROM || '').trim()
+      if (!existing && from) {
+        const old = await findUserByUsername(from)
+        if (old) { await renameUser(old.id, username); existing = await findUserByUsername(username); console.log(`dev account "${from}" renamed to "${username}"`) }
+      }
       if (existing) await setPasswordAndClearReset(existing.id, hash)
       else await createUser({ username, passwordHash: hash, email: null, is_dj: false, is_artist: false })
       console.log(`dev account "${username}" ready`)

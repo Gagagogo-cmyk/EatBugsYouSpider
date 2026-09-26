@@ -82,7 +82,8 @@
 
 const fs = require("fs");
 const path = require("path");
-const { execFileSync } = require("child_process");
+const { execFileSync, spawn } = require("child_process");
+const os = require("os");
 const crypto = require("crypto");
 
 const EXCLUDED_DIRS = new Set([
@@ -611,6 +612,7 @@ function createEditAgent(opts) {
 
     const updated = content.slice(0, idx) + newStr + content.slice(idx + oldStr.length);
     fs.writeFileSync(full, updated, "utf8");
+    noteAgentWrite(full);
 
     return {
       ok: true,
@@ -711,6 +713,7 @@ function createEditAgent(opts) {
     }
 
     fs.writeFileSync(full, restoreContent);
+    noteAgentWrite(full);
 
     return {
       ok: true,
@@ -846,6 +849,8 @@ Rules:
             try {
               const json = JSON.parse(data);
               const reply = json.message && json.message.content;
+              noteUsage("cricket", json.prompt_eval_count || 0, json.eval_count || 0);
+              setCricketUp("connected");
               if (!reply) { reject(new Error("no response from Ollama — check --ollama-model (" + ollamaModel + ")")); return; }
               resolve(reply);
             } catch (e) {
@@ -855,7 +860,7 @@ Rules:
         }
       );
       req.on("timeout", () => { req.destroy(); reject(new Error("Ollama timed out after " + Math.round(ollamaTimeoutMs / 1000) + "s — model may be overloaded, or this step needed more context than usual (e.g. reading a large file like base.html)")); });
-      req.on("error", () => { reject(new Error("Ollama unreachable — is it running? (" + ollamaHost + ":" + ollamaPort + ")")); });
+      req.on("error", () => { setCricketUp("disconnected"); reject(new Error("Ollama unreachable — is it running? (" + ollamaHost + ":" + ollamaPort + ")")); });
       req.write(body);
       req.end();
     });
@@ -967,7 +972,419 @@ Rules:
     editHistory = [editHistory[0]].concat(editHistory.slice(-MAX_HISTORY_MESSAGES));
   }
 
+  // ── AGENTS: cricket (local Ollama) | claude (Claude Code) ────────────
+  // user: "I wonder if I can connect claude directly into this website?
+  // like the chat of the website becomes the claude coding agent, or
+  // whatever the user chooses... in edit mode, the tasks and discussion
+  // list should appear in the chat zone... keep track of the token use
+  // also. with a visual counter... the circle that fills up."
+  // The edit chat can be answered by Cricket (the Ollama loop below) or by
+  // Claude, through the Claude Code CLI installed on this computer
+  // (`claude -p ... --output-format stream-json`), so it uses the user's
+  // own Claude login -- no key lives in this repo. Claude edits the files
+  // with its own Read/Edit/Write/Grep/Glob tools (no shell), in acceptEdits
+  // mode, rooted at the repo.
+  // TASKS = every request typed in edit mode (running / done / failed /
+  // stopped). DISCUSSIONS = conversations: Claude keeps its context
+  // within one (its session is resumed), ":new" starts a fresh one.
+  // USAGE = tokens per agent; ctx is how full the context window was on the
+  // last call (what the panel's ring shows), in/out are running totals.
+  // Chat commands (typed in edit mode, or sent by the panel's buttons):
+  //   :agent claude | :agent cricket   :new   :disc <n>   :stop
+  // Claude by default -- user: "when open edit mode, select claude by
+  // default and not cricket" (GNUMBAT_EDIT_AGENT=cricket to change it)
+  const DEFAULT_AGENT = process.env.GNUMBAT_EDIT_AGENT === "cricket" ? "cricket" : "claude";
+  let agentName = DEFAULT_AGENT;
+  const tasks = [];
+  // each agent keeps its own discussions -- user: "cricket needs to have
+  // its own discussions, not share the same with claude."
+  const newDisc = (id) => ({ id, createdAt: new Date().toISOString(), claudeSession: null, tasks: 0, title: "" });
+  const discsBy = { cricket: [newDisc(1)], claude: [newDisc(1)] };
+  const curBy = { cricket: 1, claude: 1 };
+  const usage = {
+    cricket: { ctx: 0, max: 32768, in: 0, out: 0, cost: 0 },
+    claude: { ctx: 0, max: 200000, in: 0, out: 0, cost: 0 },
+  };
+  let currentChild = null, currentTask = null;
+  // CLAUDE ACCOUNT STATE -- user: "i need to know when it is connected or
+  // disconnected from an account. i need an indicator." "connected" after
+  // a login or any Claude answer, "disconnected" after an auth error or
+  // :logout, "unknown" until one of those happens (a saved login counts
+  // as connected until proven otherwise).
+  let claudeAuth = "unknown";
+  // CRICKET STATE -- user: "and do the same for cricket": connected = the
+  // local Ollama answers (checked every 30s, and on every call)
+  let cricketUp = "unknown";
+  function setCricketUp(v) { if (cricketUp !== v) { cricketUp = v; post("cricket (ollama): " + v); pushAgentState(); } }
+  function pingOllama() {
+    try {
+      const req = http.request({ hostname: ollamaHost, port: ollamaPort, path: "/api/tags", method: "GET", timeout: 4000 }, (res) => { res.resume(); setCricketUp(res.statusCode === 200 ? "connected" : "disconnected"); });
+      req.on("timeout", () => { req.destroy(); setCricketUp("disconnected"); });
+      req.on("error", () => setCricketUp("disconnected"));
+      req.end();
+    } catch (e) { setCricketUp("disconnected"); }
+  }
+  setTimeout(pingOllama, 500);
+  setInterval(pingOllama, 30000).unref();
+  function setClaudeAuth(v) { if (claudeAuth !== v) { claudeAuth = v; post("claude account: " + v); pushAgentState(); } }
+  function noteUsage(agent, inTok, outTok) {
+    const u = usage[agent]; if (!u) return;
+    u.ctx = inTok + outTok; u.in += inTok; u.out += outTok;
+    pushAgentState();
+  }
+  function agentFrame() {
+    return {
+      t: "editAgentState", agent: agentName, busy: !!editThinking,
+      tasks: tasks.filter((x) => x.agent === agentName).slice(-40).map((x) => ({ id: x.id, text: x.text, agent: x.agent, status: x.status, disc: x.disc, steps: x.steps, reply: x.reply })),
+      discussions: discsBy[agentName].map((d) => ({ id: d.id, tasks: d.tasks, title: d.title, agent: agentName })),
+      current: curBy[agentName], usage: usage[agentName], usageAll: usage,
+      claudeAuth: claudeAuth === "unknown" && loadTokenSafe() ? "connected" : claudeAuth,
+      cricketUp,
+    };
+  }
+  function pushAgentState() { try { broadcast(agentFrame()); } catch (e) {} }
+  function disc() { const L = discsBy[agentName]; return L.find((d) => d.id === curBy[agentName]) || L[L.length - 1]; }
+  function claudeBin() {
+    const cands = [process.env.GNUMBAT_CLAUDE_BIN, path.join(os.homedir(), ".local/bin/claude"), path.join(os.homedir(), ".claude/local/claude"), "/opt/homebrew/bin/claude", "/usr/local/bin/claude"].filter(Boolean);
+    for (const c of cands) { try { if (fs.existsSync(c)) return c; } catch (e) {} }
+    return "claude";   // on PATH, hopefully
+  }
+  const CLAUDE_SYSTEM = [
+    "You are editing the Gnumbat website live, from its own edit mode; the user sees each change after the page reloads.",
+    "Front-end files: src/gui/panel.html (the panel: header, radio, chat, DAW -- about 1.2MB, NEVER read it whole: Grep for the spot, then Read with offset/limit), src/backend/event-crawler/frontend/base.html (the show posters page, shown in an iframe), src/gui/ebys-live.js, src/gui/ebys-link.js.",
+    "Make small, targeted Edits. Keep the file's habit of a short comment quoting the user's request next to what you change.",
+    "Your final answer is shown in a small chat line: 1-3 short sentences, plain text, no markdown.",
+  ].join(" ");
+  function claudeStepSummary(c) {
+    const i = c.input || {};
+    const f = i.file_path ? path.relative(repoRoot, i.file_path) : "";
+    if (c.name === "Read") return "read " + f;
+    if (c.name === "Edit" || c.name === "MultiEdit") return "edit " + f;
+    if (c.name === "Write") return "write " + f;
+    if (c.name === "Grep") return 'grep "' + String(i.pattern || "").slice(0, 40) + '"';
+    if (c.name === "Glob") return "glob " + String(i.pattern || "");
+    if (c.name === "TodoWrite") return "planning";
+    return c.name;
+  }
+  // ── CLAUDE LOGIN FROM THE PAGE ────────────────────────────────────────
+  // user: "when clicking on claude on the website and writing a prompt
+  // without account, it should automatically redirect the users through
+  // those steps. it should redirect to claude website to log in."
+  // When a Claude request fails because this computer isn't logged in, the
+  // hub runs `claude setup-token` itself (in a pseudo-terminal, via
+  // `script`). Claude Code opens the Claude login page in the browser and
+  // catches the approval on its own localhost callback; the panel also gets
+  // the link ('claudeLogin' frame) in case no tab opened, and while the
+  // login is pending a line typed in edit mode is passed to it as the
+  // authorization code (the fallback flow). The long-lived token it prints
+  // is kept in data/.claude-oauth-token (data/ is git-ignored, and the edit
+  // tools refuse it) and handed to every later `claude -p` as
+  // CLAUDE_CODE_OAUTH_TOKEN. The prompt that needed the login re-runs by
+  // itself once it succeeds. ":login" starts it by hand, ":logout" forgets
+  // the token.
+  const TOKEN_FILE = path.join(repoRoot, "data", ".claude-oauth-token");
+  function loadTokenSafe() { try { return !!fs.readFileSync(TOKEN_FILE, "utf8").trim(); } catch (e) { return false; } }
+  function loadToken() { try { const t = fs.readFileSync(TOKEN_FILE, "utf8").trim(); return t || null; } catch (e) { return null; } }
+  function claudeEnv() {
+    const env = Object.assign({}, process.env);
+    const t = loadToken();
+    if (t && !env.ANTHROPIC_API_KEY && !env.CLAUDE_CODE_OAUTH_TOKEN) env.CLAUDE_CODE_OAUTH_TOKEN = t;
+    return env;
+  }
+  const AUTH_ERR = /\/login|not logged in|log ?in to|please log|authenticat|invalid api key|oauth|unauthori[sz]ed|\b401\b|credential|expired/i;
+  let loginChild = null, loginPending = null, loginUrl = null;
+  const stripAnsi = (t) => String(t).replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, "").replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]/g, "").replace(/\x1b[()][A-Z0-9]/g, "").replace(/\r/g, "\n");
+  function startClaudeLogin(pending) {
+    if (pending) loginPending = pending;
+    if (loginChild) { broadcast({ t: "claudeLogin", state: "open", url: loginUrl }); return; }
+    const bin = claudeBin();
+    // a real terminal for it: pty_run.py (python3, ships with macOS's
+    // developer tools) -- macOS `script` refuses the hub's pipes
+    // ("tcgetattr/ioctl: Operation not supported on socket")
+    const cmd = [process.env.GNUMBAT_PYTHON || "python3", [path.join(__dirname, "pty_run.py"), bin, "setup-token"]];
+    let child;
+    const env = Object.assign({}, process.env); delete env.CLAUDE_CODE_OAUTH_TOKEN;
+    try { child = spawn(cmd[0], cmd[1], { cwd: repoRoot, env, stdio: ["pipe", "pipe", "pipe"] }); }
+    catch (e) { broadcast({ t: "claudeLogin", state: "failed", msg: "could not start the Claude login: " + e.message }); return; }
+    loginChild = child; loginUrl = null;
+    post("claude login: started (setup-token)");
+    broadcast({ t: "claudeLogin", state: "starting" });
+    let out = "", done = false;
+    const timer = setTimeout(() => { if (!done) { try { child.kill("SIGTERM"); } catch (e) {} } }, 20 * 60 * 1000);   // room for a slow sign-in
+    setTimeout(() => {
+      if (!done && !loginUrl) {
+        const tail = out.trim().split("\n").map((l) => l.trim()).filter(Boolean).slice(-3).join(" ").slice(0, 300);
+        post("claude login: no login link after 20s" + (tail ? " -- " + tail : " (no output)"));
+        broadcast({ t: "claudeLogin", state: "stuck", msg: "Claude Code didn't give a login link" + (tail ? ": " + tail : " (no output)") + ". Details in data/logs/claude-login.log" });
+      }
+    }, 20000);
+    let logged = 0;
+    const logFile = path.join(repoRoot, "data", "logs", "claude-login.log");
+    try { fs.mkdirSync(path.dirname(logFile), { recursive: true }); fs.writeFileSync(logFile, "[" + new Date().toISOString() + "] " + cmd[0] + " " + cmd[1].join(" ") + "\n"); } catch (e) {}
+    const onData = (c) => {
+      if (done) return;
+      const clean = stripAnsi(c);
+      if (logged < 6000) { try { fs.appendFileSync(logFile, clean.replace(/sk-ant-[A-Za-z0-9_\-]+/g, "sk-ant-<redacted>")); } catch (e) {} logged += clean.length; }
+      out = (out + clean).slice(-20000);
+      if (!loginUrl) {
+        const m = out.match(/https:\/\/[^\s"'<>]*(oauth|authorize|login)[^\s"'<>]*/i) || out.match(/https:\/\/[^\s"'<>]*(claude\.ai|claude\.com|anthropic\.com)[^\s"'<>]*/);
+        if (m) {
+          loginUrl = m[0]; post("claude login: url ready");
+          // open it in this computer's browser ourselves: Claude Code doesn't
+          // when the hub runs it (user: "its not actually opening the page")
+          let opened = false;
+          try {
+            const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? null : "xdg-open";
+            if (opener) { const o = spawn(opener, [loginUrl], { stdio: "ignore", detached: true }); o.on("error", () => {}); o.unref(); opened = true; }
+          } catch (e) {}
+          broadcast({ t: "claudeLogin", state: "open", url: loginUrl, opened });
+        }
+      }
+      const tok = out.match(/sk-ant-[a-z0-9]+-[A-Za-z0-9_\-]{20,}/);
+      if (tok && !done) {
+        done = true; clearTimeout(timer);
+        try { fs.mkdirSync(path.dirname(TOKEN_FILE), { recursive: true }); fs.writeFileSync(TOKEN_FILE, tok[0] + "\n", { mode: 0o600 }); } catch (e) { post("claude login: could not save token: " + e.message); }
+        try { child.kill("SIGTERM"); } catch (e) {}
+        loginChild = null; loginUrl = null;
+        post("claude login: ok");
+        claudeAuth = "connected";
+        broadcast({ t: "claudeLogin", state: "ok" });
+        const p = loginPending; loginPending = null;
+        if (p && p.task) { p.task.status = "done"; p.task.reply = "logged in -- ran again"; }
+        pushAgentState();
+        if (p) setTimeout(() => handleEditChat(p.text, p.replyTo), 300);
+      }
+    };
+    child.stdout.on("data", onData); child.stderr.on("data", onData);
+    child.on("error", (e) => { if (!done) { done = true; clearTimeout(timer); loginChild = null; broadcast({ t: "claudeLogin", state: "failed", msg: e.code === "ENOENT" ? "Claude Code isn't installed on this computer" : e.message }); } });
+    child.on("close", () => {
+      if (done) return;
+      done = true; clearTimeout(timer); loginChild = null; loginUrl = null;
+      const tail = out.trim().split("\n").map((l) => l.trim()).filter(Boolean).slice(-2).join(" ").slice(0, 300);
+      post("claude login: ended without a token" + (tail ? " -- " + tail.replace(/sk-ant-[A-Za-z0-9_\-]+/g, "<redacted>") : " (no output)"));
+      broadcast({ t: "claudeLogin", state: "failed", msg: "the Claude login didn't finish" + (tail ? " (" + tail + ")" : "") });
+    });
+  }
+  // ── CLAUDE PLAN USAGE ─────────────────────────────────────────────────
+  // user: "the tokens count isnt reflected on the panel.html side. i'm
+  // almost out here on claude. but on panel it says i'm almost full". The
+  // ring is the CONTEXT of the current discussion (how full Claude's working
+  // memory is), not your plan's 5-hour/weekly limit. Claude Code doesn't
+  // document a way to read the plan limit without its interactive /usage,
+  // so this picks up whatever limit information its output does carry
+  // (rate-limit events, "usage limit reached" answers) and passes it on as
+  // usage.claude.plan; every event type it prints is noted once in
+  // data/logs/claude-events.log so the real field names can be checked.
+  const seenEventTypes = new Set();
+  function findLimitInfo(o, depth) {
+    if (!o || typeof o !== "object" || depth > 4) return null;
+    const keys = Object.keys(o);
+    const has = (re) => keys.find((k) => re.test(k));
+    const util = has(/utili[sz]ation|percent|usedPercent|used_percent/i);
+    const reset = has(/resets?_?at|resetsAt|reset_time|resetTime/i);
+    if (util || (reset && has(/rate|limit|status/i))) {
+      return { utilization: util ? Number(o[util]) : null, resetsAt: reset ? o[reset] : null, status: o.status || o.state || null, kind: o.rateLimitType || o.rate_limit_type || o.type || null };
+    }
+    for (const k of keys) { const r = findLimitInfo(o[k], depth + 1); if (r) return r; }
+    return null;
+  }
+  function notePlanUsage(ev) {
+    try {
+      const key = (ev.type || "?") + (ev.subtype ? "/" + ev.subtype : "");
+      if (!seenEventTypes.has(key)) {
+        seenEventTypes.add(key);
+        fs.mkdirSync(path.join(repoRoot, "data", "logs"), { recursive: true });
+        fs.appendFileSync(path.join(repoRoot, "data", "logs", "claude-events.log"), new Date().toISOString() + " " + key + " keys=" + Object.keys(ev).join(",") + "\n");
+      }
+      let info = null;
+      if (/rate|limit/i.test(key) || ev.rate_limit_info || ev.rateLimitInfo) info = findLimitInfo(ev, 0) || { status: ev.status || "limited" };
+      const txt = typeof ev.result === "string" ? ev.result : "";
+      const m = txt.match(/usage limit|limit reached|rate limit|out of (extra )?usage/i);
+      if (m) { info = info || {}; info.status = "limited"; const ep = txt.match(/\|(\d{9,})/); if (ep) info.resetsAt = Number(ep[1]) * 1000; }
+      if (info) { usage.claude.plan = Object.assign({}, usage.claude.plan || {}, info, { at: Date.now() }); pushAgentState(); }
+    } catch (e) {}
+  }
+  function runClaude(text, replyTo, task, outerReply) {
+    return new Promise((resolve) => {
+      const d = disc();
+      const before = currentHashes();
+      let done = false;
+      const finish = () => { if (done) return; done = true; currentChild = null; resolve(); };
+      const markAgentWrites = () => {
+        const after = currentHashes(); let changed = 0;
+        for (const rel of BRANCH_FILES) if (after[rel] !== before[rel]) { noteAgentWrite(path.join(repoRoot, rel)); changed++; }
+        return changed;
+      };
+      const args = ["-p", text, "--output-format", "stream-json", "--verbose",
+        "--permission-mode", "acceptEdits", "--allowedTools", "Read,Edit,MultiEdit,Write,Grep,Glob,TodoWrite",
+        "--disallowedTools", "Bash", "--append-system-prompt", CLAUDE_SYSTEM];
+      if (process.env.GNUMBAT_CLAUDE_MODEL) args.push("--model", process.env.GNUMBAT_CLAUDE_MODEL);
+      if (d.claudeSession) args.push("--resume", d.claudeSession);
+      let child;
+      try { child = spawn(claudeBin(), args, { cwd: repoRoot, env: claudeEnv(), stdio: ["ignore", "pipe", "pipe"] }); }
+      catch (e) { replyTo({ t: "editError", msg: "claude failed to start: " + e.message }); finish(); return; }
+      currentChild = child;
+      let buf = "", finalText = "", gotResult = false, stderr = "";
+      child.on("error", (e) => {
+        gotResult = true;
+        replyTo({ t: "editError", msg: e.code === "ENOENT"
+          ? "Claude Code isn't installed on this computer -- install it (claude.com/claude-code), run `claude` once in a terminal to log in, then restart run.sh"
+          : "claude failed to start: " + e.message });
+      });
+      child.stderr.on("data", (c) => { stderr = (stderr + c).slice(-4000); });
+      child.stdout.on("data", (c) => {
+        buf += c; let i;
+        while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); if (line.trim()) handle(line); }
+      });
+      function handle(line) {
+        let ev; try { ev = JSON.parse(line); } catch (e) { return; }
+        notePlanUsage(ev);
+        if (ev.session_id && !d.claudeSession) d.claudeSession = ev.session_id;
+        if (ev.type === "assistant" && ev.message) {
+          const u = ev.message.usage;
+          if (u) { usage.claude.ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.output_tokens || 0); pushAgentState(); }
+          for (const c of ev.message.content || []) {
+            if (c.type === "tool_use") {
+              const sum = claudeStepSummary(c); task.steps++;
+              post("edit-agent (claude): " + sum);
+              broadcast({ t: "editStep", tool: c.name, args: c.input, ok: true, summary: sum, agent: "claude" });
+            } else if (c.type === "text" && c.text && c.text.trim()) finalText = c.text.trim();
+          }
+        }
+        if (ev.type === "result") {
+          gotResult = true;
+          if (ev.session_id) d.claudeSession = ev.session_id;
+          const u = ev.usage || {};
+          usage.claude.in += (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+          usage.claude.out += u.output_tokens || 0;
+          if (typeof ev.total_cost_usd === "number") usage.claude.cost += ev.total_cost_usd;
+          if (ev.modelUsage) for (const k in ev.modelUsage) { const cw = ev.modelUsage[k] && ev.modelUsage[k].contextWindow; if (cw) usage.claude.max = cw; }
+          // record Claude's edits as the agent's BEFORE anyone re-checks the
+          // dirty state, or they'd be folded into the snapshot as "outside"
+          // changes (see adoptOutsideChanges)
+          const changed = markAgentWrites();
+          if ((ev.is_error || (ev.subtype && ev.subtype !== "success")) && AUTH_ERR.test(String(ev.result || ""))) {
+            needLogin();
+          } else if (ev.is_error || (ev.subtype && ev.subtype !== "success")) replyTo({ t: "editError", msg: String(ev.result || ev.subtype || "claude failed").slice(0, 600) });
+          else { setClaudeAuth("connected"); replyTo({ t: "editReply", text: String(ev.result || finalText || "done") }); }
+          if (changed) broadcast({ t: "reloadUI" });
+        }
+      }
+      function needLogin() {
+        setClaudeAuth("disconnected");
+        task.status = "login";
+        replyTo({ t: "editReply", text: "Claude needs you to log in -- opening the Claude login page. Your request runs as soon as you're in." });
+        startClaudeLogin({ text, replyTo: outerReply || replyTo, task });
+      }
+      child.on("close", (code) => {
+        if (!gotResult && AUTH_ERR.test(stderr)) { gotResult = true; needLogin(); }
+        if (!gotResult) {
+          const changed = markAgentWrites();
+          replyTo({ t: "editError", msg: task.status === "stopped" ? "stopped" : ("claude exited (" + code + ")" + (stderr ? ": " + stderr.trim().split("\n").slice(-2).join(" ").slice(0, 400) : "")) });
+          if (changed) broadcast({ t: "reloadUI" });
+        }
+        finish();
+      });
+    });
+  }
   async function handleEditChat(text, replyTo) {
+    // commands first (":stop" has to work while a request is running)
+    let m;
+    if ((m = /^:agent\s+(claude|cricket|ollama)\s*$/i.exec(text))) {
+      if (editThinking) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
+      agentName = m[1].toLowerCase() === "ollama" ? "cricket" : m[1].toLowerCase(); pushAgentState();   // shown as "ollama"
+      replyTo({ t: "editReply", text: "edit agent: " + (agentName === "claude" ? "claude (Claude Code on this computer)" : "ollama (the local model)"), agent: agentName });
+      return;
+    }
+    if (/^:new\s*$/i.test(text)) {
+      if (editThinking) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
+      const L = discsBy[agentName];
+      const id = L.reduce((a, d) => Math.max(a, d.id), 0) + 1;
+      L.push(newDisc(id));
+      curBy[agentName] = id; pushAgentState();
+      replyTo({ t: "editReply", text: "new " + agentName + " discussion #" + id });
+      return;
+    }
+    if ((m = /^:disc\s+(\d+)\s*$/i.exec(text))) {
+      const id = Number(m[1]);
+      if (!discsBy[agentName].some((d) => d.id === id)) { replyTo({ t: "editError", msg: "no " + agentName + " discussion #" + id }); return; }
+      if (editThinking) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
+      curBy[agentName] = id; pushAgentState();
+      replyTo({ t: "editReply", text: agentName + " discussion #" + id });
+      return;
+    }
+    if (/^:stop\s*$/i.test(text)) {
+      if (currentTask) currentTask.status = "stopped";
+      if (currentChild) { try { currentChild.kill("SIGTERM"); } catch (e) {} }
+      else if (editThinking) stopCricket = true;
+      pushAgentState();
+      return;
+    }
+    if (/^:(state|tasks)\s*$/i.test(text)) { pushAgentState(); return; }
+    if (/^:login\s*$/i.test(text)) {
+      // start over (a wrong code leaves the old one stuck on "Press Enter to retry")
+      if (loginChild) { const c = loginChild; loginChild = null; loginUrl = null; try { c.removeAllListeners("close"); c.kill("SIGTERM"); } catch (e) {} }
+      startClaudeLogin(null); return;
+    }
+    if (/^:logout\s*$/i.test(text)) { try { fs.unlinkSync(TOKEN_FILE); } catch (e) {} setClaudeAuth("disconnected"); replyTo({ t: "editReply", text: "Claude token forgotten on this computer." }); return; }
+    if (/^:enter\s*$/i.test(text)) { if (loginChild) { try { loginChild.stdin.write("\r"); } catch (e) {} } return; }
+    if (/^:cancel\s*$/i.test(text)) {
+      if (loginChild) { try { loginChild.kill("SIGTERM"); } catch (e) {} loginPending = null; replyTo({ t: "editReply", text: "Claude login cancelled" }); }
+      return;
+    }
+    if (loginChild && !text.startsWith(":")) {
+      // the login page shows a code after you approve: only a line that
+      // looks like one (a single long word, no spaces) is sent to Claude --
+      // anything else would be taken as a wrong code (user typed "whats
+      // happening" and it went in as the code)
+      const code = text.trim();
+      if (/^[A-Za-z0-9_\-#.~]{20,}$/.test(code)) {
+        // the code and the Enter go separately: sent together, the login
+        // prompt took the whole chunk as a paste and never submitted it
+        // (user: "stuck on finishing the login")
+        const lc = loginChild;
+        try { lc.stdin.write(code); } catch (e) {}
+        setTimeout(() => { try { lc.stdin.write("\r"); } catch (e) {} }, 400);
+        replyTo({ t: "editReply", text: "login code sent to Claude -- finishing the login…" });
+      } else {
+        replyTo({ t: "editReply", text: "Waiting for your Claude login. Sign in on the Claude page (the log in to claude \u2197 link gnumbot posted in the chat), approve, then paste the code it shows here. :cancel to stop, :login to start over." });
+      }
+      return;
+    }
+    if (editThinking) { replyTo({ t: "editError", msg: "still working on the last request — one at a time (:stop to cancel)" }); return; }
+
+    const d = disc();
+    const task = { id: tasks.length + 1, text: text.slice(0, 300), agent: agentName, status: "running", disc: d.id, steps: 0, reply: "", startedAt: Date.now() };
+    tasks.push(task); d.tasks++; if (!d.title) d.title = text.slice(0, 60);
+    currentTask = task;
+    const reply2 = (obj) => {
+      if (obj && obj.t === "editStep" && task.agent === "cricket") task.steps++;
+      if (obj && (obj.t === "editReply" || obj.t === "editError")) {
+        if (task.status === "running") task.status = obj.t === "editReply" ? "done" : "failed";
+        task.reply = String(obj.text || obj.msg || "").slice(0, 600);
+        obj.agent = task.agent;
+      }
+      replyTo(obj);
+      pushAgentState();
+    };
+    pushAgentState();
+    try {
+      if (agentName === "claude") {
+        editThinking = true; replyTo({ t: "editThinking", agent: "claude" }); pushAgentState();
+        try { await runClaude(text, reply2, task, replyTo); } finally { editThinking = false; }
+      } else {
+        stopCricket = false;
+        await runCricket(text, reply2);
+      }
+    } finally {
+      if (task.status === "running") task.status = "done";
+      currentTask = null;
+      pushAgentState();
+    }
+  }
+  let stopCricket = false;
+
+  async function runCricket(text, replyTo) {
     if (editThinking) {
       replyTo({ t: "editError", msg: "still working on the last request — one at a time" });
       return;
@@ -1000,6 +1417,7 @@ Rules:
 
     try {
       for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+        if (stopCricket) { replyTo({ t: "editError", msg: "stopped" }); return; }
         const remaining = MAX_TOOL_ITERATIONS - i;
         if (!madeFileChange && !urgencyNudged && remaining <= URGENCY_AT) {
           urgencyNudged = true;
@@ -1129,7 +1547,63 @@ Rules:
     const b = m.branches.find((x) => x.id === m.head);
     return b ? b.hashes : m.seed.hashes;
   }
+  /* EDIT MODE MUST NEVER LOSE WORK -- user: "i created a new branch from
+     edit mode and it fucked up the ui... make sure edit mode doesnt fuck up
+     anything." What happened: the seed snapshot was taken the first time
+     edit mode was entered (Sep 22) and never followed the site as it kept
+     being developed outside edit mode, so entering the seed from the
+     network page rolled every file back three days.
+     Fix 1 -- noteAgentWrite(): every write Cricket makes (apply_patch, undo)
+     records the resulting hash. adoptOutsideChanges(): any file that differs
+     from the head's snapshot WITHOUT being Cricket's last write was changed
+     outside edit mode (by hand, by a dev session) -- that is the site itself
+     moving on, not an uncommitted edit, so it is folded into the head's
+     snapshot instead of being left behind by it. Runs before every dirty
+     check (changedFiles), i.e. on ^E, commit and enter.
+     Fix 2 -- enterBranch() copies the current working files into
+     branches/_autosave/<time>-before-<id>/ before overwriting anything. */
+  function noteAgentWrite(full) {
+    try {
+      const rel = path.relative(repoRoot, full).split(path.sep).join("/");
+      if (!BRANCH_FILES.includes(rel)) return;
+      const m = loadBranchManifest();
+      m.agentHashes = m.agentHashes || {};
+      m.agentHashes[rel] = fileHash(full);
+      saveBranchManifest(m);
+    } catch (e) { /* bookkeeping only -- never block the edit itself */ }
+  }
+  function adoptOutsideChanges(m) {
+    if (editThinking) return [];   // an agent is mid-edit: its changes aren't "outside" ones
+    const base = headHashes(m);
+    if (!base) return [];
+    const cur = currentHashes();
+    const agent = m.agentHashes || {};
+    const dir = path.join(BRANCH_ROOT, m.head);
+    const adopted = [];
+    for (const rel of BRANCH_FILES) {
+      if (!cur[rel] || cur[rel] === base[rel] || cur[rel] === agent[rel]) continue;
+      fs.mkdirSync(dir, { recursive: true });
+      fs.copyFileSync(path.join(repoRoot, rel), path.join(dir, path.basename(rel)));
+      base[rel] = cur[rel];
+      adopted.push(rel);
+    }
+    if (adopted.length) {
+      saveBranchManifest(m);
+      post("branches: " + adopted.length + " file(s) changed outside edit mode -> folded into '" + m.head + "' snapshot");
+    }
+    return adopted;
+  }
+  function autosaveWorking(label) {
+    const dir = path.join(BRANCH_ROOT, "_autosave", timestamp() + "-" + slugify(label || "enter"));
+    fs.mkdirSync(dir, { recursive: true });
+    for (const rel of BRANCH_FILES) {
+      const src = path.join(repoRoot, rel);
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dir, path.basename(rel)));
+    }
+    return dir;
+  }
   function changedFiles(m) {
+    adoptOutsideChanges(m);
     const base = headHashes(m);
     if (!base) return [];
     const cur = currentHashes();
@@ -1138,6 +1612,7 @@ Rules:
   // Called when the panel enters edit mode: makes sure the seed snapshot
   // exists (taken BEFORE this session's first edit), then reports state.
   function editBegin() {
+    if (!editThinking) agentName = DEFAULT_AGENT;   // every time edit mode opens
     const m = loadBranchManifest();
     if (!m.seed.hashes) {
       copySnapshot(SEED_ID);
@@ -1210,7 +1685,9 @@ Rules:
     if (id === m.head) return { id, name: b.name, already: true };
     if (!b.hashes) throw new Error((isSeed ? '"' + b.name + '" has' : "this branch has") + " no snapshot yet -- enter edit mode (^E) once to take it");
     const dirty = changedFiles(m);
-    if (dirty.length) throw new Error("there are edits that aren't committed (" + dirty.map((f) => path.basename(f)).join(", ") + ") -- commit them with ^R first");
+    if (dirty.length) throw new Error("there are edits that aren't committed (" + dirty.map((f) => path.basename(f)).join(", ") + ") -- commit them with ^S first");
+    const saved = autosaveWorking("before-" + id);
+    post("network: working files saved to " + path.relative(repoRoot, saved) + " before entering '" + id + "'");
     const dir = path.join(BRANCH_ROOT, id);
     for (const rel of BRANCH_FILES) {
       const src = path.join(dir, path.basename(rel));
@@ -1225,6 +1702,7 @@ Rules:
   return {
     handleEditChat, TOOLS, resolveSafe, getCurrentBranch, createBranch, mergeBranch,
     editBegin, editStateFrame, branchesFrame, commitBranch, enterBranch,
+    agentFrame,
   };
 }
 

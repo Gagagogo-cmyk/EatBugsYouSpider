@@ -2,7 +2,7 @@ const express = require('express')
 const bcrypt  = require('bcryptjs')
 const jwt     = require('jsonwebtoken')
 const crypto  = require('crypto')
-const { createUser, findUserByUsername, findUserByLogin, setResetToken, findUserByResetHash, setPasswordAndClearReset } = require('../db/queries')
+const { createUser, findUserByUsername, findUserByLogin, setResetToken, findUserByResetHash, setPasswordAndClearReset, setSocialLinks } = require('../db/queries')
 const { sendMail } = require('../mailer')
 
 const router = express.Router()
@@ -98,6 +98,31 @@ router.post('/reset', async (req, res) => {
 // GET /auth/me  (protected — requires Authorization: Bearer <token>)
 router.get('/me', requireAuth, async (req, res) => {
   res.json({ user: req.user })
+})
+
+// PUT /auth/me/socials  (protected) -- the dj's own social links, shown
+// above the play bar while they hold the radio slot.
+// Body: { links: [{ label: 'instagram', url: 'https://instagram.com/...' }, ...] }
+// Up to 6 links, http(s) only, label <= 24 chars (defaults to the host).
+router.put('/me/socials', requireAuth, async (req, res) => {
+  const raw = req.body && req.body.links
+  if (!Array.isArray(raw)) return res.status(400).json({ error: 'links must be an array' })
+  if (raw.length > 6) return res.status(400).json({ error: 'at most 6 links' })
+  const links = []
+  for (const l of raw) {
+    let url
+    try { url = new URL(String(l && l.url || '')) } catch { return res.status(400).json({ error: 'invalid url' }) }
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return res.status(400).json({ error: 'links must be http(s)' })
+    const label = String((l && l.label) || url.hostname.replace(/^www\./, '')).trim().slice(0, 24)
+    links.push({ label, url: url.href })
+  }
+  try {
+    const saved = await setSocialLinks(req.user.userId, links)
+    if (saved === null) return res.status(404).json({ error: 'user not found' })
+    res.json({ links: saved })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // Middleware: verify JWT

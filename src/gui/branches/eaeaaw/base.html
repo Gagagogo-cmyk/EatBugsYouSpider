@@ -1699,52 +1699,7 @@
         /* Enter chip on the right margin -- user: "enter branch needs to be
            aligned with the right-margin." */
         .netFoot { justify-content: flex-end; }
-
-        /* CARDS DOWN -- user: "move the poster cards down a little so their
-           top aligns with the bottom of [SHOWS]" (panel.html's header line;
-           the white [SHOWS] box ends ~15.5px down this iframe) */
-        .events-grid { margin-top: 23px !important; }   /* user: "move the show cards down until the top of the cards align with the top of ALL" -- ALL's letters start 23px down */ /* was 17px:   /* user: "move the poster cards so the outside of the card sits under CO2" -- the header CO2 line (panel.html #headCo2) ends 17px down: the cards' top border starts right there */
-
-        /* inside the panel, TRAINED MODELS sits in the top-right corner
-           (panel.html "TRAINED MODELS IN THE CORNER": 170px + 10px margin)
-           -- the poster row stops 3ch short of it */
-        .gnEmbedded .events-grid { margin-right: calc(170px + 3ch) !important; }
-
-        /* GALLERY ENDS -- user (picture of a card cut at the gallery's
-           edge): "on both horizontal limits of the poster cards gallery, i
-           want lines that close the open ending." A vertical line in the
-           cards' border grey on the scroll row's left and right edges,
-           reaching 4px past the cards top and bottom (the cards themselves
-           stay exactly where they were: 23px down, same x). */
-        .events-grid {
-            border-left: 1px solid #7d8281 !important;
-            border-right: 1px solid #7d8281 !important;
-            margin-top: 19px !important;
-            padding-top: 4px !important;
-            padding-bottom: 4px !important;
-            margin-left: -9px !important;
-            /* the left line sat right on the first card's own border, so it
-               didn't read as a line -- user: "put the line for the posters
-               zone sides on both sides". 8px of room now, like the right one
-               (the cards stay at the same x) */
-            padding-left: 8px !important;
-        }
-        /* .page clips its overflow at its own padding edge: give it 9px of
-           left padding (and 9px less margin) so that edge -- and the left
-           line -- sits 9px left of the content, which itself doesn't move */
-        .page { margin-left: 191px !important; padding-left: 9px !important; box-sizing: border-box; }
-
-        /* CARDS CENTERED -- user: "center the poster cards in between the
-           two row infos on both sides of the cards" (the sidebar on the left,
-           TRAINED MODELS on the right). centerCards() (script, end of body)
-           sizes the gallery to a whole number of cards and centres it in
-           the space between the two; scroll-snap keeps every scroll stop on
-           whole cards, and the 200px scroll-end room became the same 8px the
-           left side has so the last stop is centred too. */
-        .events-grid { padding-right: 8px !important; scroll-snap-type: x mandatory; scroll-padding-left: 8px; box-sizing: border-box; }
-        .event { scroll-snap-align: start; }
 </style>
-<script>/* embedded in panel.html -> .gnEmbedded (see the TRAINED MODELS corner rule) */ if (window.parent && window.parent !== window) document.documentElement.classList.add('gnEmbedded');</script>
 </head>
 <body>
 <!-- GRID INSPECTOR overlay markup -- see the CSS comment above (search
@@ -2649,10 +2604,6 @@
     }
     function openCityModal() {
         cityModal.classList.remove('hide');
-        /* always open on the node you're on -- a selection left over from a
-           previous visit made Enter jump to the old seed right after a commit
-           (renderCityMap() falls back to the current node when this is null) */
-        NET_SEL = null;
         tellNetworkState(true);
         renderCityMap();
         /* the iframe is resized to full window right after the message above,
@@ -3268,36 +3219,6 @@ cityModal.addEventListener('click', function(e) {
         if (e.source !== window.parent || !e.data || e.data.type !== 'gnumbat-spider-eat') return;
         if (e.data.eaten) document.head.appendChild(eatStyle); else if (eatStyle.parentNode) eatStyle.parentNode.removeChild(eatStyle);
     });
-})();
-</script>
-<script>
-/* CARDS CENTERED -- see the CSS comment of the same name. Left edge: the
-   sidebar's own right edge. Right edge: TRAINED MODELS' left edge when
-   embedded in panel.html (its corner box: 170px wide + 10px margin), else
-   the window's 10px margin. As many whole cards as fit with at least MIN_GAP
-   on each side, then the gallery (its two end lines included) sits in the
-   middle of that space. */
-(function () {
-    var CARD = 260, GAP = 16, CHROME = 8 + 8 + 2, MIN_GAP = 10;
-    function centerCards() {
-        var grid = document.querySelector('.events-grid'), side = document.querySelector('.sidebar'), page = document.querySelector('.page');
-        if (!grid || !side || !page) return;
-        var cards = grid.querySelectorAll('.event').length || 1;
-        var L = side.getBoundingClientRect().right;
-        var R = window.innerWidth - (document.documentElement.classList.contains('gnEmbedded') ? 170 + 10 : 10);
-        var avail = R - L;
-        var n = Math.max(1, Math.min(cards, Math.floor((avail - 2 * MIN_GAP - CHROME + GAP) / (CARD + GAP))));
-        var w = n * (CARD + GAP) - GAP + CHROME;
-        var x = Math.round(L + Math.max(0, (avail - w) / 2));
-        var pr = page.getBoundingClientRect(), pl = parseFloat(getComputedStyle(page).paddingLeft) || 0;
-        grid.style.setProperty('width', w + 'px', 'important');
-        grid.style.setProperty('margin-left', (x - (pr.left + pl)) + 'px', 'important');
-        grid.style.setProperty('margin-right', '0', 'important');
-    }
-    window.gnCenterCards = centerCards;
-    window.addEventListener('resize', centerCards);
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', centerCards); else centerCards();
-    window.addEventListener('load', centerCards);
 })();
 </script>
 </body>

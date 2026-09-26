@@ -348,7 +348,7 @@ body{background:var(--bg);color:var(--g1);font-family:var(--mono);font-size:var(
    showing FAKE DATA, not about giving no signal at all that something's
    trying to connect. */
 .disconnected{position:fixed;inset:0;background:#00000000;z-index:10;
-  display:flex;align-items:flex-end;justify-content:flex-start;
+  display:flex;align-items:center;justify-content:center;   /* centred -- user: "make the ... hub error message ... centered in the page" */
   padding:14px 18px;font-family:ui-monospace,"SF Mono","SFMono-Regular",Menlo,Monaco,monospace;
   font-size:var(--fs);color:#4a4d4a}
 .disconnected.hide{display:none!important}
@@ -938,7 +938,7 @@ body.editLocking .marginText{color:#fff}
    counts themselves, now the actual click targets -- see
    modelRowHTML()'s own comment -- replacing the old
    #modelUpvoteChip/#modelDownvoteChip shortcut chips entirely). */
-.brow.modelListRow,.modelListHead{display:grid;grid-template-columns:1fr 150px 150px 150px 90px 100px 130px 90px;
+.brow.modelListRow,.modelListHead{display:grid;grid-template-columns:1fr 150px 150px 150px 90px 70px 90px; /* TEAM dropped, CONTRIB narrower -- matches the user's reference picture */
   gap:0 16px;align-items:center}
 .modelListRow>span.modelVotes{text-align:right}
 .modelVotes .voteUp,.modelVotes .voteDown{cursor:var(--cursor-cross)}
@@ -1784,6 +1784,8 @@ body.editLocking .conv,body.editLocking .conv *{pointer-events:auto}
 /* #editCommitChip (^R) -- the one shortcut tab besides the console that stays
    clickable while editing locks the page; it only exists in edit mode. */
 body.editLocking #editCommitChip,body.editLocking #editCommitChip *{pointer-events:auto}
+/* the wadio drag spot works in edit mode too -- user: "make the drag spot draggable in edit mode too." */
+body.editLocking #mrlcfResizer,body.editLocking #mrlcfResizer *{pointer-events:auto}
 .pb .ln{white-space:nowrap;height:var(--row);line-height:var(--row)}
 .pb .k{color:var(--g3)}
 .pb .v{color:var(--w)}
@@ -4902,7 +4904,12 @@ body.editLocking #chatModels,body.editLocking #chatModels *{pointer-events:auto}
 @keyframes clineCurBlink{0%,50%{opacity:1}50.01%,100%{opacity:0}}
 .cline .cur{display:inline-block;width:7px;height:12px;background:var(--w);
   vertical-align:-2px;opacity:1}
-.cline:focus-within .cur{animation:clineCurBlink 1s step-end infinite}
+.cline:focus-within .cur{animation:none}
+/* PERF -- the CSS blink kept the compositor ticking every frame, and every
+   tick re-ran .plugin's whole-page posterize filter (the main cause of the
+   lag). A class flipped twice a second (script, next to setMrlcfOpen) does
+   the same blink with 2 repaints a second. */
+.cline:focus-within .cur.blinkOff{opacity:0}
 /* cursor: the old plain hollow-square glyph -> var(--cursor-textbox)'s
    new "][" shape -- user: "when hovering above text selection zones, i
    want the cursor to become ][." This is the one genuinely selectable/
@@ -6689,6 +6696,370 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 #mrlcfResizer::after{left:6px!important;right:6px!important;top:3px!important;height:2px!important;
   background:transparent!important;border-top:1px solid var(--g3);border-bottom:1px solid var(--g3);height:4px!important;box-sizing:border-box}
 #mrlcfResizer:hover::after,#mrlcfResizer.dragging::after{border-color:#fff}
+
+/* ── RADIO TAB (user's reference picture + list of asks) ───────────────── */
+/* "remove the console tab ... keep them but do not display them": the ^C
+   chip and the command list are hidden; ^C and the typed commands still
+   work. With the list gone the open chat's log and room lines use the full
+   width again. */
+#chatChip{display:none!important}
+#cmdSearchPanel{display:none!important}
+.conv.chatOpen .log{margin-right:0!important}
+.conv.chatOpen .chatDock{right:10px!important}
+/* TRAINED MODELS column to the right of the model list (see placeRadio()) */
+#modelSelectView{position:relative}
+#modelSelectView > #chatModels.radioUp{position:absolute;right:10px;top:20px;width:220px;margin:0}
+#modelSelectView:has(> #chatModels) .modelSelectBody{padding-right:250px}
+#chatModels.radioUp .chatModelsTitle{color:#fff}
+#chatModels .cmListening{color:var(--g3);margin-top:2px}
+/* votes next to play / forward */
+.nowPlayingBar .npVotes{display:inline-flex;gap:8px;margin-left:16px;color:rgba(255,255,255,.55);white-space:nowrap}
+.nowPlayingBar .npVote{cursor:var(--cursor-cross)}
+.nowPlayingBar .npVote:hover{color:#fff}
+.nowPlayingBar .npVotes.none{opacity:.5;pointer-events:none}
+/* grip: one line instead of two */
+/* back to two bars -- user: "keep the 2 bars for the grab spot" (the one-line version is undone) */
+/* drag-to-close feedback */
+.plugin.shelfClosing #modelSelectView,.plugin.shelfClosing #omgmView,.plugin.shelfClosing .radioUp{opacity:.35;transition:opacity .12s}
+
+/* the ":language / :commands -- type to expand" hint line is part of the
+   command UI that's hidden now (see RADIO TAB); the typed commands still work */
+#langHint,#cmdHint{display:none!important}
+#cmdStatus{display:none!important}   /* holds only those two hints */
+.nowPlayingBar .npVotes{color:rgba(255,255,255,.75)!important}
+.nowPlayingBar .npVote:hover{color:#fff!important}
+
+/* CHAT HISTORY UP -- user: "move the chat history higher so its closer to
+   MEM and the edit mode toggle." With the chat open, the MEM block drops
+   its fixed 80px height (its content is ~40px) and the empty title bar
+   left over from the console is hidden, so the first history line sits
+   just under the MEM / edit-mode row. */
+.conv.chatOpen #omscHead{height:auto!important;min-height:0!important;padding-bottom:0!important}
+.conv.chatOpen #chatHeader{display:none!important}
+.conv.chatOpen #clog{margin-top:8px}
+/* "remove room:" -- the [ROOM: ...] line is gone */
+#roomNameLine{display:none!important}
+/* "remove tree view" -- list only */
+#modelTree{display:none!important}
+#modelSelectView #modelList{display:block!important}
+
+/* user: "move this section up 50px. dont move the playing now bar" -- the
+   model list + TRAINED MODELS (and, following them, MEM and the chat
+   history) sit 50px higher on the radio tab; the song/artist lines and the
+   play bar above them stay put. */
+#modelSelectView:has(> #chatModels.radioUp){margin-top:-25px}   /* 50px -> 25px -- user: "actually dont move it 50px up, but 25" */
+/* ...which slides the list's box up under the play bar's lower padding, so
+   the bar and the song/artist lines are layered above it (still visible and
+   clickable) */
+#nowPlayingBar.radioUp,.npMeta.radioUp{position:relative;z-index:3}
+#modelSelectView:has(> #chatModels.radioUp){background:transparent}
+
+/* MENU IN THE CHAT ZONE (tab closed) -- see placeMenuUnderBar() */
+.conv > #chatModels{position:absolute;right:10px;width:170px;margin:0;z-index:6}
+
+/* user: "reduce the space between the votes and the nowplaying bar. make the
+   bar longer" -- tighter button cluster on the right (votes right after
+   the forward button), so the waveform line (flex:1) runs longer */
+.nowPlayingBar .npBtns{gap:10px!important;margin-left:6px!important}
+.nowPlayingBar .npVotes{margin-left:2px!important;gap:6px!important}
+.nowPlayingBar .npScrub{gap:6px!important}
+.nowPlayingBar{padding-left:0!important;padding-right:0!important}   /* bar runs margin to margin; votes end on the right margin */
+
+/* ROW GRID FOR TRAINED MODELS (radio tab) -- user: "align TRAINED MODELS with
+   VOTES" and "align each line of text under TRAINED MODELS with the lines of
+   the model selection menu". The list's header and rows are 16px apart;
+   every line of the menu gets that same 16px (title, search box, "no
+   channel tuned", each model, "0 listening"), no extra gaps, so each one
+   sits level with a list row. */
+#chatModels.radioUp .chatModelsTitle,
+#chatModels.radioUp #chatModelOnAir,
+#chatModels.radioUp .cmListening,
+#chatModels.radioUp #chatModelList > *{line-height:16px!important;height:16px;margin:0!important;padding-top:0!important;padding-bottom:0!important;box-sizing:border-box}
+#chatModels.radioUp #chatModelSearch{display:block;height:16px!important;line-height:14px!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;box-sizing:border-box}
+#chatModels.radioUp #chatModelList{margin:0!important;padding:0!important;gap:0!important;max-height:calc(16px * 6)}
+
+/* your own vote (see REMOVABLE VOTES) */
+.nowPlayingBar .npVote.mine{color:#fff!important}
+.modelListRow .voteUp.mine,.modelListRow .voteDown.mine{color:#fff}
+.brow.sel.modelListRow .voteUp.mine,.brow.sel.modelListRow .voteDown.mine{color:var(--bg)}
+
+/* VOTE COLOURS -- user: "just make the voted one white the rest grey".
+   Literal greys (#7d8281 = the dark theme's --g3): outside the console the
+   theme variables resolve to the light-theme values. On the selected
+   (white) list row the voted arrow is black so it still shows. */
+.nowPlayingBar .npVotes .npVote{color:#7d8281!important}
+.nowPlayingBar .npVotes .npVote.mine{color:#fff!important}
+.modelListRow .modelVotes .voteUp,.modelListRow .modelVotes .voteDown{color:#7d8281!important}
+.modelListRow .modelVotes .voteUp.mine,.modelListRow .modelVotes .voteDown.mine{color:#fff!important}
+.brow.sel.modelListRow .modelVotes .voteUp.mine,.brow.sel.modelListRow .modelVotes .voteDown.mine{color:#000!important}
+
+/* user: "in radio tab, move these 100 px to the right in order to separate
+   them from the radio and edit mode shortcut as they are not occupying the
+   same 'world' of commands" -- the model commands (^N new seed, ^B new
+   branch, ^K rename, ^D delete) start 100px further right */
+#modelSelectGroup{margin-left:100px!important}
+
+/* FLUID GRIP, tab closed -- see initMrlcfResizer(): the grip sits centred
+   just above the song/artist lines in the chat zone */
+.plugin.gripClosed #mrlcfResizer{display:block!important;position:absolute!important;left:50%;margin:0 0 0 -18px!important;z-index:8;height:12px}
+
+/* vote hover -- user: "when hovering above a vote on the playingnow bar,
+   make the vote text white." (the grey rule above out-ranked the older
+   :hover one) */
+.nowPlayingBar .npVotes .npVote:hover{color:#fff!important}
+/* CO2 IN THE HEADER -- user: "remove the co2 from the chat zone and put in
+   the header, on the same line as [SHOWS]. put them side to side... co2
+   zone aligned with right margin." #omscCo2Line1/2 are moved (script,
+   next to setMrlcfOpen) into #headCo2, pinned to .plugin's top-right on
+   the same 15.6px line as the tabs, 10px in like every other right edge. */
+#headCo2{position:absolute;top:1px;right:10px;height:15.6px;line-height:15.6px;display:flex;gap:4ch;
+  align-items:center;white-space:nowrap;font-size:12px;color:#7d8281;z-index:3;pointer-events:none}
+#headCo2 > div{display:block!important;margin:0!important;position:static!important}
+#roomCountBox .rcbGap{display:none!important}
+.plugin.networkOpen #headCo2{display:none}
+
+/* the song lines keep their own black behind the text, so they stay
+   readable over the posters/sidebar showing through (see "SEE-THROUGH
+   NOW-PLAYING ZONE", fitShelf()) */
+.npMeta #npSong,.npMeta #npArtist{width:fit-content;max-width:100%;background:#000;padding-right:1ch}
+/* #npDj -- DJ TIPS + SOCIALS (see its HTML comment). Absolutely placed in
+   the gap between the dj/genre lines and the play bar (not above the song
+   line: .conv clips its own overflow, so a row above .npMeta, its first
+   child, was cut off and sat under the poster iframe), so .npMeta keeps its height and
+   everything aligned to it (the grab bars, the radio-tab layout) stays put.
+   .npMeta's overflow opens up for it; the song/artist lines still clip
+   themselves (.npTitle/.npArtistLine have their own ellipsis). */
+.npMeta{position:relative;overflow:visible}
+#npDj{position:absolute;left:0;top:100%;margin-top:4px;z-index:4;display:flex;align-items:center;gap:2ch;
+  height:16px;line-height:16px;max-width:100%;white-space:nowrap;background:#000;padding-right:1ch;color:#7d8281;font-size:12px}
+#npDj[hidden],#npDj [hidden]{display:none!important}
+#npDj .npDjMain,#npDj .npDjPay,#npDj .npDjLinks{display:flex;align-items:center;gap:2ch;min-width:0}
+#npDj .npDjLinks{overflow:hidden}
+#npDj a,#npDj .npDjBtn{color:#7d8281;text-decoration:none;cursor:var(--cursor-cross)}
+#npDj a:hover,#npDj .npDjBtn:hover,#npDj .npDjBtn:focus-visible{color:#fff;outline:0}
+#npDj .npDjTip,#npDj .npDjAmt.on,#npDj .npDjSend,#npDj .npDjPayLbl{color:#fff}
+#npDj .npDjOtherWrap{display:flex;align-items:center}
+#npDjOther{width:7ch;height:14px;margin:0;padding:0 2px;box-sizing:border-box;background:var(--bg,#000);border:1px solid var(--g2,#4a4d4a);
+  color:#fff;font-family:var(--mono);font-size:12px;line-height:12px}
+#npDjOther::placeholder{color:#7d8281;opacity:1}
+#npDjOther.on{border-color:#fff}
+#npDj .npDjNote:empty{display:none}
+/* radio tab (placeRadio's .radioUp layout): the gap under the genre line is
+   too tight there, so the strip takes a real row and pushes the play bar
+   down by it, only while a dj holds the slot */
+.npMeta.radioUp #npDj{position:relative;top:auto;margin-top:2px}
+.npMeta.radioUp{z-index:4}
+
+/* EDIT SIDE -- user: "in edit mode, the tasks and discussion list should
+   appear in the chat zone... try something i'll correct you. i want to keep
+   track of the token use also. with a visual counter... the circle that
+   fills up." Takes the TRAINED MODELS spot (right margin, under the play
+   bar) while edit mode is on. Rows on the same 16px grid. */
+#editSide{display:none;position:absolute;right:10px;width:220px;z-index:6;font-size:12px;line-height:16px;color:#7d8281;background:#000}
+body.editLocking #editSide{display:block}
+#editSide .esHead{display:flex;justify-content:space-between;align-items:center;height:16px}
+#editSide .esRing{display:inline-flex;align-items:center;gap:5px;color:#7d8281;cursor:default}
+#editSide .esRing svg{transform:rotate(-90deg);display:block}
+#editSide .esRingBg{fill:none;stroke:#7d8281;stroke-width:1}
+#editSide .esRingFg{fill:none;stroke:#fff;stroke-width:2;stroke-dasharray:0 100;transition:stroke-dasharray .3s}
+#editSide .esRing.warn .esRingFg{stroke:#f00}
+#editSide .esAgents{display:flex;gap:2ch;height:16px}
+#editSide .esAgent,#editSide .esStop,#editSide .esNew,#editSide .esRow{cursor:var(--cursor-cross)}
+#editSide .esAgent.on{color:#fff}
+#editSide .esAgent:hover,#editSide .esNew:hover,#editSide .esRow:hover,#editSide .esStop:hover{color:#fff}
+#editSide .esStop{display:none;text-transform:none}
+#editSide.busy .esStop{display:inline}
+#editSide .esSub{margin-top:4px;display:flex;justify-content:space-between}
+#editSide .esNew{text-transform:none}
+#editSide .esList{max-height:32px;overflow-y:auto;scrollbar-width:none}
+#editSide .esList::-webkit-scrollbar{display:none}
+#editSide .esRow{display:flex;gap:1ch;height:16px;white-space:nowrap}
+#editSide .esRow .esTxt{overflow:hidden;text-overflow:ellipsis;flex:1}
+#editSide .esRow.cur,#editSide .esRow.running{color:#fff}
+#editSide .esMark{flex:0 0 1ch}
+#editSide .esEmpty{color:#4a4d4a}
+
+/* EDIT SIDE, 2nd pass -- user: "make sure no infos get cut and put the
+   claude menu near the center... off-centered to the right so it is not
+   hidden by the edit mode tag messages". Starts just right of the centred
+   #editStatus toast and runs to the right margin; TASKS and DISCUSSIONS
+   side by side so both get the full height down to the input line (lists
+   sized to whole rows by placeEditSide(), scrolling past that). The chat
+   history stops short of it instead of running underneath. */
+#editSide{left:min(calc(50% + 250px), calc(100% - 202px - 370px));   /* 320 -> 370 wide so "plan 95%" fits whole */right:calc(10px + 170px + 3ch);width:auto}   /* TRAINED MODELS stays on the right margin -- user: "dont hide the trained model tab" */
+#editSide .esCols{display:grid;grid-template-columns:1fr 1fr;gap:0 3ch}
+#editSide .esCol{min-width:0}
+#editSide .esList{max-height:var(--esListH,48px)}
+
+/* DISCUSSIONS x TRAINED MODELS -- user: "make sure at least 5 discussions
+   are visible under the discussions tab. and make them aligned with the
+   infos of trained models". The closed-tab TRAINED MODELS column gets the
+   same 16px row grid it already has on the radio tab (title, search, then
+   one line each), and the edit menu shares it: the agent/ring line sits one
+   row above (in the empty band under the play bar), TASKS / DISCUSSIONS on
+   the TRAINED MODELS line, then one row per item down to the input line --
+   5 rows at the usual size. */
+.conv > #chatModels .chatModelsTitle,
+.conv > #chatModels #chatModelOnAir,
+.conv > #chatModels .cmListening,
+.conv > #chatModels #chatModelList > *{line-height:16px!important;height:16px;margin:0!important;padding-top:0!important;padding-bottom:0!important;box-sizing:border-box}
+.conv > #chatModels #chatModelSearch{display:block;height:16px!important;line-height:14px!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;box-sizing:border-box}
+.conv > #chatModels #chatModelList{margin:0!important;padding:0!important;gap:0!important}
+#editSide .esSub{margin-top:0!important;height:16px}
+#editSide .esRow{height:16px;line-height:16px}
+
+/* DISCUSSIONS NEVER CUT -- user: "make sure discussions tabs dont get cut.
+   right now some of them are hidden by something". The edit-mode toast
+   (#editStatus) is up to 480px wide around the centre, so the menu starts
+   past it (50% + 250px) and the toast can't grow into it; placeEditSide()
+   also lifts the menu when there isn't room for 5 rows above the input
+   line, instead of cutting them. */
+#editStatus{max-width:min(480px,80vw,calc(50vw + 230px))}
+
+/* TRAINED MODELS IN THE CORNER -- see placeRadio(). Title text centred on
+   the ALL line (base.html's #allLink: 19.2px line at y 19), 16px rows. */
+.plugin > #chatModels.tmCorner{position:absolute;top:21px;right:10px;width:170px;margin:0;z-index:6}
+/* #tmFact -- the computer-virus fun fact under TRAINED MODELS (no title):
+   one blank row below the list, same grey as the list's own empty text,
+   wrapping inside the 170px column */
+#chatModels .tmFact{margin-top:var(--row,16px);color:var(--g3,#7d8281);line-height:16px;white-space:normal;overflow-wrap:break-word}
+.plugin > #chatModels .chatModelsTitle,
+.plugin > #chatModels #chatModelOnAir,
+.plugin > #chatModels .cmListening,
+.plugin > #chatModels #chatModelList > *{line-height:16px!important;height:16px;margin:0!important;padding-top:0!important;padding-bottom:0!important;box-sizing:border-box}
+.plugin > #chatModels #chatModelSearch{display:block;height:16px!important;line-height:14px!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;box-sizing:border-box}
+.plugin > #chatModels #chatModelList{margin:0!important;padding:0!important;gap:0!important}
+.plugin.networkOpen > #chatModels{display:none!important}
+
+/* CLAUDE LOGIN -- while the hub's `claude setup-token` waits for you, the
+   ring's spot shows a link to the Claude login page (Claude Code opens it
+   itself; the link is there in case no tab appeared). */
+#editSide .esLogin{color:#fff;text-decoration:none;cursor:var(--cursor-cross)}
+#editSide .esLogin:hover{text-decoration:underline}
+#editSide .esLogin.hide{display:none}
+#editSide.loggingIn .esRing{display:none}
+
+
+/* the model list keeps its right-hand room for TRAINED MODELS, which now
+   stays in the top-right corner while the wadio tab is open */
+#modelSelectView .modelSelectBody{padding-right:250px}
+
+
+/* user (screenshot): "make the model selection menu align with the right
+   side of the claude token zone" -- the list ends where the edit menu does
+   (10px margin + DJS 170px + 3ch gap), DJS in the corner beyond it.
+   "and move the playbarnow zone down one row so it sits closer to the chat
+   zone" -- on the wadio tab the song lines + play bar sit one 16px row
+   lower (the drag spot follows them). */
+#modelSelectView .modelSelectBody{padding-right:calc(10px + 170px + 3ch)!important}
+.npMeta.radioUp,#nowPlayingBar.radioUp{top:16px}
+
+/* CO2 IN THE FOOTER -- user: "move CO2 to the footer, align it in between
+   delete and select of the edit mode. keep it still across all modes."
+   placeCo2() centres it in the gap between ^D delete and Enter select (the
+   model-select footer), on the shortcut row, in every mode; the login
+   fields step left if they'd run into it. */
+#headCo2{top:auto;right:auto;gap:2ch}
+
+/* gnumbot's links in the chat (the Claude login) */
+.conv .botLink{color:#fff;text-decoration:underline;cursor:var(--cursor-cross)}
+
+/* CLAUDE ACCOUNT DOT -- user: "i need to know when it is connected or
+   disconnected from an account. i need an indicator." Same plain dot as
+   the DJs: white = connected to a Claude account, grey = not (or not known
+   yet). Not a control. */
+#editSide .esAuth{pointer-events:none;color:#4a4d4a}
+#editSide .esAuth.on{color:#fff}
+#editSide .esAuth.off{color:#7d8281}
+
+/* CO2 hidden for now -- user: "remove Co2 zone for now" (placeCo2 still
+   keeps its spot ready) */
+#headCo2{display:none!important}
+/* "make sure Yo [username] and log out stay on every page": logged in, the
+   Yo/log out pair shows on the wadio tab and in the DAW too (only the
+   logged-out fields stay off those pages) */
+body:not(.loggedOut) .plugin:has(#omscView.hide) #loginGroup{display:inline-flex!important;position:absolute;right:calc(10px + 93px + var(--gap-lg,28px));margin:0!important}
+body:not(.loggedOut) .plugin:has(#omscView.hide) #loginLinks{display:inline-flex!important}
+/* the DAW's shortcut row is full: there it sits one line up, on the right
+   margin (the empty right end of the input line) */
+body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;transform:translateY(-21px)}
+
+/* the ring is the discussion's CONTEXT (Claude's working memory), labelled
+   so it isn't read as the plan limit; the plan limit shows next to it
+   whenever Claude Code reports one (edit_agent.js "CLAUDE PLAN USAGE") */
+#editSide .esCtxLbl{color:#7d8281}
+#editSide .esPlan{color:#7d8281;margin:0 1ch 0 1ch}
+#editSide .esRing{gap:3px!important}
+#editSide .esHead .esAgents{gap:1.5ch!important}
+#editSide .esHead,#editSide .esRing,#editSide .esAgents{white-space:nowrap}
+#editSide .esRing{flex-shrink:0}
+#editSide .esAgents{overflow:hidden;min-width:0}
+#editSide .esPlan.warn{color:#fff}
+#editSide .esPlan:empty{display:none}
+
+/* NO CO2 ANYWHERE -- user: "remove CO2 from all pages". Every CO2 readout
+   (footer #headCo2, the old OMGM .touched counter, the chat-stack lines)
+   is off; the counters keep running unseen so it can come back by
+   deleting this rule. */
+#headCo2,.touched,#co2Counter,#omscCo2Line1,#omscCo2Line2,#roomCountBox .rcbGap{display:none!important}
+
+/* PLAN NEVER CUTS ANYTHING -- user: "make sure plan doesnt go above and cut
+   anything." The agent names + their dots keep their full width; the right
+   group takes what's left, and inside it only the plan text gives way
+   (ellipsis), the ring and token count never. */
+#editSide .esHead .esAgents{flex:0 0 auto!important;overflow:visible!important}
+#editSide .esRing{flex:1 1 auto!important;min-width:0!important;justify-content:flex-end;margin-left:1.5ch}
+#editSide .esRing > *:not(.esPlan){flex:0 0 auto}
+#editSide .esPlan{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 1ch 0 0!important}
+
+/* AGENT ROLLING WINDOW -- user: "if i wanted to add another llm, it would
+   add after claude, with its own dot. but there wouldn't be enough space,
+   so i want it to act like a rolling window. 2 llm per frame, but if i
+   scroll horizontally, i could see the other choices. make sure they snap
+   so they dont stop scrolling mid way." Two 9ch slots show at a time; the
+   strip scrolls sideways (trackpad, shift+wheel, or the plain wheel over
+   it) and always settles on a whole name. */
+#editSide .esHead .esAgents{flex:0 0 21ch!important;width:21ch;   /* 2 slots + a 3ch peek at the next one -- user: "show like a cropped part of the next llm. like: ollama ° claude ° gem..." */
+  display:flex!important;gap:0!important;
+  overflow-x:auto!important;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+#editSide .esHead .esAgents::-webkit-scrollbar{display:none}
+#editSide .esHead .esAgents .esAgent{flex:0 0 9ch;width:9ch;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;white-space:nowrap}
+
+#editSide .esHead .esAgents .esMore{flex:0 0 3ch;color:#7d8281;pointer-events:none;line-height:16px;display:flex;align-items:center;letter-spacing:-0.4ch}   /* closer -- user: "make the dots closer" */
+
+#editSide .esTitle{height:16px;line-height:16px}
+
+/* user: "move the playnow bar, the coding agent and the djs section down
+   one row" -- the chat-zone play bar sits one 16px row lower; CODING AGENT
+   and DJS are placed from its bottom edge, so they follow */
+.conv #nowPlayingBar:not(.radioUp){position:relative;top:16px}
+
+/* TEXT NEVER CUT -- user (screenshot of "yo" with its lower half gone):
+   "make sure text dont get cut". The rows clip sideways for the "…" and
+   the lists clip to whole rows; with Safari's mono font the letters sit a
+   little lower than the 16px row, so the clip box now reaches 3px past the
+   row top and bottom (negative margins keep the 16px grid unchanged). */
+#editSide .esRow .esTxt{padding:3px 0;margin:-3px 0;line-height:16px}
+#editSide .esRow{overflow:visible}
+
+/* position box like the [SHOWS] selector -- user: "dont put any borders
+   around the position rectangle. just make it white without border. make
+   it the same style/size as the [SHOWS] white selector box": plain white,
+   14.75px tall, on the same line as [SHOWS] (0.75px down), right margin */
+#gridPosIndicator{border:0!important;outline:0!important;box-shadow:none!important;border-radius:0!important;
+  top:0.75px!important;right:10px!important;height:14.75px!important;line-height:14.75px!important;padding:0 1.5px!important;
+  background:#fff!important;color:#000!important;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}   /* grey text smoothing, no coloured fringe */
+
+/* CODING AGENT on the right margin -- user: "move CODING AGENT to the right
+   margin" (DJS left the chat zone) */
+#editSide{left:auto!important;right:10px!important;width:370px!important}
+
+/* the plan slot keeps its place (empty for ollama / before Claude reports
+   it), so DISCUSSIONS sits in the same column on every agent -- user:
+   "keep discussion of ollama tab aligned with discussion of claude tab" */
+#editSide .esPlan:empty{display:inline-block!important}
+#editSide .esPlan{min-width:8ch;flex:0 0 auto!important}
+#editSide #esTok{display:inline-block;min-width:10ch;text-align:right}
 </style>
 <!-- FIX -- user: "the page is all black." Root cause: a stray, unmatched
      style-element opening tag had been inserted right here (no closing
@@ -6737,7 +7108,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
      the mockup's fake data while gnumbat-link.js is still figuring out whether
      there's a real hub to talk to. JS below hides this once Gnumbat.state is
      actually "open", and brings it back if the connection ever drops. -->
-<div class="disconnected" id="disconnected">waiting for hub — run ./run.sh, then reload this page</div>
+<div class="disconnected" id="disconnected">missing hub - refresh</div>
 <!-- MARGIN WATERMARK -- see .marginText's own CSS comment. Two static,
      JS-untouched strings; not gated by .hide like most elements here. -->
 <div class="marginText" id="marginTextLeft">(c) 2026 Gnumbat AGPL 3.0</div>
@@ -7216,8 +7587,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
         <span class="modelEdited">Edited</span>
         <span class="modelState">State</span>
         <span class="modelScan">Scan</span>
-        <span class="modelTeam">Team</span>
-        <span class="modelContributors">Contributors</span>
+        <span class="modelContributors">Contrib</span>
         <span class="modelVotes">Votes</span>
       </div>
       <div class="blist" id="modelList"></div>
@@ -7365,7 +7735,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
         <span class="off"></span>
       </span>
     </div>
-    <iframe id="omscFrame" src="http://localhost:6969" title="G-ANS — Grassroot-Agentic Node Spiderbot"></iframe>
+    <iframe id="omscFrame" src="base.html"></iframe> src="http://localhost:6969" title="G-ANS — Grassroot-Agentic Node Spiderbot"></iframe>
     <!-- #nowPlayingBar MOVED -- user: "move the [playback bar] just
          above MEM." Used to be a plain child of #omscView right here,
          docked position:absolute to its bottom edge (see .nowPlayingBar's
@@ -7455,8 +7825,23 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
     <input type="text" id="chatModelSearch" placeholder=": search" spellcheck="false" autocomplete="off">
     <div class="djOnAir" id="chatModelOnAir">no channel tuned</div>
     <div class="djList" id="chatModelList"></div>
+    <!-- #tmFact -- user: "add a fun fact section under TRAINED MODEL. dont
+         write fun fact. just write the fun fact. A fun fact about computer
+         viruses." No title on purpose. -->
+    <div class="tmFact" id="tmFact">The first PC virus, Brain (1986), was written by two brothers in Lahore, Pakistan. They put their names, shop address and phone number right inside its code.</div>
   </div>
   <div class="conv">
+    <!-- #editSide -- edit mode's own column in the chat zone (tasks,
+         discussions, agent switch, token ring). See "EDIT SIDE" in the
+         script, next to setMrlcfOpen(). -->
+    <div id="editSide" aria-label="edit agent">
+      <div class="chatModelsTitle esTitle">Coding agent</div>
+      <div class="esHead"><span class="esAgents"><span class="esAgent" data-agent="cricket">ollama <span class="esAuth" id="esCricketUp" aria-hidden="true">•</span></span><span class="esAgent" data-agent="claude">claude <span class="esAuth" id="esAuth" aria-hidden="true">•</span></span></span><span class="esRing" id="esRing" title="context"><span class="esPlan" id="esPlan"></span><span class="esCtxLbl">ctx</span><svg viewBox="0 0 14 14" width="14" height="14"><circle cx="7" cy="7" r="5.5" class="esRingBg"/><circle cx="7" cy="7" r="5.5" class="esRingFg" id="esRingFg"/></svg><span id="esTok">0</span></span></div>
+      <div class="esCols">
+        <div class="esCol"><div class="chatModelsTitle esSub">Tasks <span class="esStop" id="esStop">stop</span></div><div class="esList" id="esTasks"></div></div>
+        <div class="esCol"><div class="chatModelsTitle esSub">Discussions <span class="esNew" id="esNew">+ new</span></div><div class="esList" id="esDiscs"></div></div>
+      </div>
+    </div>
     <!-- last touched rides the console's first line, flush right. It used to
          sit outside .conv and be pulled up with a negative margin, but once
          the console got its own black background that background painted
@@ -7557,10 +7942,32 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
          own markup (npTop/npMeta/npScrub/npCtl) is untouched, only where
          it sits and how it's positioned changed. -->
          <div class="npMeta">
-        <div class="npTitle" id="npSong">--</div>
+        <div class="npTitle" id="npSong">model : no model loaded</div>
         <!-- honest "--" empty state (see this bar's own CSS comment,
              near .conv's own rule, for why) -- bare value, no label. -->
-        <div class="npArtistLine" id="npArtist">--</div>
+        <div class="npArtistLine" id="npArtist">N/A</div>
+        <!-- #npDj -- DJ TIPS + SOCIALS. user: "the djs will need to be able
+             to receive tips and have social media links above their playnow
+             bar". Shown only while a dj holds the slot (TUNED_DJ); hidden
+             while the community models play. Floats in the gap between the
+             dj/genre lines and the play bar (see #npDj's CSS) so it adds no
+             height and nothing that lines up with .npMeta moves. Filled by renderNpDj(). -->
+        <div id="npDj" hidden aria-label="dj">
+          <span class="npDjMain" id="npDjMain">
+            <span class="npDjBtn npDjTip" id="npDjTip" role="button" tabindex="0" title="tip this dj">[tip]</span>
+            <span class="npDjLinks" id="npDjLinks"></span>
+          </span>
+          <span class="npDjPay" id="npDjPay" hidden>
+            <span class="npDjPayLbl" id="npDjPayLbl">tip :</span>
+            <span class="npDjBtn npDjAmt" data-cents="200">$2</span>
+            <span class="npDjBtn npDjAmt on" data-cents="500">$5</span>
+            <span class="npDjBtn npDjAmt" data-cents="1000">$10</span>
+            <span class="npDjOtherWrap">$<input type="text" id="npDjOther" inputmode="decimal" placeholder="other" spellcheck="false" autocomplete="off" aria-label="other tip amount"></span>
+            <span class="npDjBtn npDjSend" id="npDjSend" role="button" tabindex="0">[send]</span>
+            <span class="npDjBtn" id="npDjCancel" role="button" tabindex="0" title="cancel">[x]</span>
+          </span>
+          <span class="npDjNote" id="npDjNote"></span>
+        </div>
       </div>
     <div class="nowPlayingBar" id="nowPlayingBar">
       <!-- npScrub -- user, with a mockup screenshot: "look this is the
@@ -7594,6 +8001,10 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
             <span class="npNextGlyph">&#9654;</span>
             <span class="npNextGlyph npNextGlyph2">&#9654;</span>
           </span>
+          <!-- #npVotes -- user: "add upvote and downvotes next to the play/forward
+               buttons." Votes for what's on the radio: the tuned model, else the
+               model selected in the list. See renderNpVotes(). -->
+          <span class="npVotes" id="npVotes"><span class="npVote" data-dir="up">&#8593;0</span> <span class="npVote" data-dir="down">&#8595;0</span></span>
         </div>
       </div>
       <!-- .npThumb (40x40 album-art placeholder square) REMOVED -- user:
@@ -7931,7 +8342,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
          first word). Applies to every <b>keycap</b>Title chip in the
          footer/panels, both the static HTML below and the matching
          innerHTML/textContent assignments further down the file. -->
-    <span class="fg"><span class="chip" id="mrlcfChip"><b>^M</b>M-RLCF</span><span class="chip hide" id="chatChip" style="margin-left:6px"><b>^C</b>chat</span></span><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
+    <span class="fg"><span class="chip" id="mrlcfChip"><b>^W</b>wadio</span><span class="chip hide" id="chatChip" style="margin-left:6px"><b>^C</b>chat</span></span><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
     <!-- id="editModeGroup" ADDED -- EDIT INTERFACE (spec: a global button,
          above/near the chat, that suspends normal page behavior and lets
          the user talk to Cricket about changing this page itself). Lives
@@ -7954,7 +8365,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
          a few lines down (before #cityModalGroup) already uses for
          exactly that "distinct GROUP boundary" job instead of the
          same-group gap. -->
-    <span class="fg" id="editModeGroup" style="margin-left:var(--gap-lg)"><span class="chip" id="editModeChip"><b>^E</b>edit mode</span><!-- ^R commit -- user: "when entering edit mode, a new tab must be created next to ^E. create ^R to commit changes into a new branch." Hidden until edit mode is on (setEditMode()); requestEditCommit() is the action. --><span class="chip hide" id="editCommitChip" style="margin-left:6px"><b>^R</b>commit</span></span>
+    <span class="fg" id="editModeGroup" style="margin-left:var(--gap-lg)"><span class="chip" id="editModeChip"><b>^E</b>edit mode</span><!-- ^R commit -- user: "when entering edit mode, a new tab must be created next to ^E. create ^R to commit changes into a new branch." Hidden until edit mode is on (setEditMode()); requestEditCommit() is the action. --><span class="chip hide" id="editCommitChip" style="margin-left:6px"><b>^S</b>commit</span></span>
     <span style="width:var(--gap-lg)"></span>
     <!-- id="cityModalGroup" ADDED — user: "make sure ^M city is aligned on
          the shortcut tab line. it has to be in the panel.html. on the same
@@ -8048,7 +8459,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
            comment on that variable), just inline within one .fg rather
            than between two separate ones. -->
       <span style="display:inline-block;width:var(--gap-lg)"></span>
-      <span class="chip" id="modelRenameChip"><b>^R</b>rename</span>
+      <span class="chip" id="modelRenameChip"><b>^K</b>rename</span>
       <span class="chip" id="modelDeleteChip" style="margin-left:6px"><b>^D</b>delete</span>
     </span>
     <!-- id="modelSelectGroupR" -- second-pass user: "put QUIT and SELECT
@@ -8091,8 +8502,10 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
            script) rather than a static "View" -- same "chip tells you
            what happens if you press it" idiom #modelChip's own
            "[MODEL: name]" already uses. -->
-      <span class="chip" id="modelViewToggleChip"><b>^T</b><span id="modelViewToggleLbl">tree view</span></span>
-      <span style="display:inline-block;width:var(--gap-lg)"></span>
+      <!-- ^T tree view chip REMOVED -- user: "remove tree view". The list is
+           the only model view now; the element stays (hidden) because other
+           code still updates its label. -->
+      <span class="chip hide" id="modelViewToggleChip" style="display:none"><b>^T</b><span id="modelViewToggleLbl">tree view</span></span>
       <span class="chip" id="modelEnterChip"><b>Enter</b>select</span>
     </span>
     <span class="fg hide" id="startGroup"><span class="chip" id="startChip"><b>&#9251;</b>start</span></span>
@@ -8173,7 +8586,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
     <span class="fg hide" id="bakeStemGroup"><span class="chip" id="bakeNewChip"><b>^N</b>new</span>
       <span class="chip" id="bakeBranchChip" style="margin-left:6px"><b>^B</b>branch</span>
       <span style="display:inline-block;width:var(--gap-lg)"></span>
-      <span class="chip" id="bakeRenameChip"><b>^R</b>rename</span>
+      <span class="chip" id="bakeRenameChip"><b>^K</b>rename</span>
       <!-- #stemNavChip REMOVED -- user: "remove 'uiop updown clips' from
            the shortcut tabs." The ^U/^I/^O/^P keys themselves (STEM_NAV_KEY/
            setArrowTarget(), bottom of this file's script) still work
@@ -13596,9 +14009,8 @@ function modelRowHTML(entry){
        "2 bakes" (normal colour) then the grey status word. */
     +`<span class="modelState">${(m.bakes||[]).length} bake${(m.bakes||[]).length===1?'':'s'} <span class="stateWord">${isTrainedModel(m)?'trained':(/^(flagged|archived|unavailable)$/.test(modelStateText(m))?modelStateText(m):'in training')}</span></span>`
     +`<span class="modelScan">${pickleGlyph(m)} ${scanStatusText(m)}</span>`
-    +`<span class="modelTeam">${m.team?escapeHtml(m.team):'—'}</span>`
     +`<span class="modelContributors" ${contributorsTip}>${contributorsList.length}</span>`
-    +`<span class="modelVotes"><span class="voteUp" data-id="${m.id}" title="upvote">&#8593;${votes.up}</span> <span class="voteDown" data-id="${m.id}" title="downvote">&#8595;${votes.down}</span></span>`
+    +`<span class="modelVotes"><span class="voteUp${myVote(m.id)==='up'?' mine':''}" data-id="${m.id}" title="upvote (click again to take it back)">&#8593;${votes.up}</span> <span class="voteDown${myVote(m.id)==='down'?' mine':''}" data-id="${m.id}" title="downvote (click again to take it back)">&#8595;${votes.down}</span></span>`
     +`</div>`;
 }
 function renderModelList(){
@@ -14012,20 +14424,34 @@ function updateModelActionChips(){
 // optimistic increment when no hub is reachable, same "still visibly
 // does something in the detached/no-hub mockup state" convention
 // newModel()/branchModel()/deleteModel() already follow above.
+/* REMOVABLE VOTES -- user: "make the votes next to the playbar removable. if
+   clicking again it should remove the upvote or the downvote that has been
+   made". One vote per person per model (the hub's ledger already works that
+   way -- votes.js castVote(), 0 = retract). Clicking the arrow you already
+   picked takes your vote back; clicking the other arrow switches it. Your
+   own vote is remembered here (localStorage 'gnumbat.myVotes') and shown
+   in white (.mine). Used by both the play-bar votes and the list's. */
+function myVotes(){ try{ return JSON.parse(localStorage.getItem('gnumbat.myVotes')||'{}')||{}; }catch(e){ return {}; } }
+function myVote(id){ return myVotes()[id]||null; }
+function setMyVote(id, dir){ try{ const v=myVotes(); if(dir) v[id]=dir; else delete v[id]; localStorage.setItem('gnumbat.myVotes', JSON.stringify(v)); }catch(e){} }
 function voteModel(id, direction){
   const m=modelById(id);
   if(!m) return;
+  const prev=myVote(m.id), next=(prev===direction)?null:direction;
   if(hubReady()){
     const voter=localIdentity();
-    sendModelsCmd('vote', [m.id, direction, voter.id, 'trainer'], (ok, data)=>{
+    sendModelsCmd('vote', [m.id, next||0, voter.id, 'trainer'], (ok, data)=>{
       if(!ok){ console.warn('Gnumbat: vote failed', data); return; }
+      setMyVote(m.id, next);
       m.votes = data;
       renderCurrentModelView();
     });
     return;
   }
   if(!m.votes) m.votes={up:0,down:0};
-  m.votes[direction]=(m.votes[direction]||0)+1;
+  if(prev) m.votes[prev]=Math.max(0,(m.votes[prev]||0)-1);
+  if(next) m.votes[next]=(m.votes[next]||0)+1;
+  setMyVote(m.id, next);
   saveModels();
   renderCurrentModelView();
 }
@@ -14717,9 +15143,9 @@ addEventListener('keydown',e=>{
     const k=e.key.toLowerCase();
     if(k==='n'){ e.preventDefault(); newModel(); }
     else if(k==='b'){ e.preventDefault(); branchModel(); }
-    else if(k==='r'){ e.preventDefault(); startRenameModel(); }
+    else if(k==='k'){ e.preventDefault(); startRenameModel(); }   /* ^R -> ^K: ^R is the radio tab now */
     else if(k==='d'){ e.preventDefault(); deleteModel(); }
-    else if(k==='t'){ e.preventDefault(); toggleModelView(); }
+    /* ^T (tree view) REMOVED -- user: "remove tree view" */
     return;
   }
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){
@@ -14795,7 +15221,7 @@ window.addEventListener('keydown',e=>{
   if(authOk() || !e.ctrlKey || e.metaKey || e.altKey) return;
   const k=(e.key||'').toLowerCase();
   const onModelSelect = omscView.classList.contains('hide') && !modelSelectView.classList.contains('hide');
-  if(k==='e' || (onModelSelect && (k==='n'||k==='b'||k==='r'||k==='d'))){
+  if(k==='e' || (onModelSelect && (k==='n'||k==='b'||k==='k'||k==='d'))){
     e.preventDefault(); e.stopImmediatePropagation();
     /* ^N on the model select page is also the network page -- keep that one working */
     if(k==='n'){ const f=document.getElementById('omscFrame'); if(f&&f.contentWindow) f.contentWindow.postMessage({type:'gnumbat-toggle-city-modal'},'*'); }
@@ -15571,8 +15997,90 @@ function renderNowPlaying(){
      page through `songs` by npIdx, just without a visible [i/N]. Artist
      stays the honest "--" empty state: no such data exists anywhere in
      this app (see this bar's own CSS comment, near .conv's own rule). */
-  document.getElementById('npSong').textContent = song || (bakesLive.length ? 'no tracks assigned yet' : '--');
-  document.getElementById('npArtist').textContent = '--';
+  /* NOW PLAYING = THE RADIO CHANNEL -- user: "instead of -- -- use
+     model : no model loaded / genre : no model loaded. when djs book the
+     space, use dj name and track name (or genre, to be defined)". The two
+     lines follow what the radio is tuned to: a trained model (name +
+     genre), a dj (name + track, or their genre until track names exist),
+     or nothing. (song/bakesLive above are the DAW's own bake paging,
+     unused here now -- this bar is hidden in the DAW.) */
+  void song;
+  const L=npChannelLines();
+  document.getElementById('npSong').textContent = L[0];
+  document.getElementById('npArtist').textContent = L[1];
+  if(typeof renderNpDj==='function') renderNpDj();
+}
+/* ── #npDj: DJ TIPS + SOCIALS ────────────────────────────────────────────
+   Visible only while a dj holds the slot (TUNED_DJ). [tip] swaps the row
+   for amount choices; [send] hands off to window.gnTipDj({dj, amountCents,
+   currency}) -- the Stripe side (POST /tips/create on the backend, tagged
+   with the live session so the split pays this dj) plugs in there, same
+   pattern as window.gnSpiderPay for donations. Until that hook exists the
+   row says so instead of pretending a payment went through. */
+let npDjCents=500;
+function npDjEsc(t){ return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function npDjCurrent(){
+  /* try/catch, not just typeof: this script runs before DJS/TUNED_DJ's own
+     `let` lines, and typeof still throws on a let in its dead zone */
+  try{
+    if(TUNED_DJ==null) return null;
+    return DJS.find(x=>x.id===TUNED_DJ)||{id:TUNED_DJ};
+  }catch(e){ return null; }
+}
+function npDjNote(msg){ const n=document.getElementById('npDjNote'); if(n) n.textContent=msg||''; }
+function npDjShowPay(open){
+  const main=document.getElementById('npDjMain'), pay=document.getElementById('npDjPay');
+  if(!main||!pay) return;
+  main.hidden=!!open; pay.hidden=!open; npDjNote('');
+  if(open){ const d=npDjCurrent(); document.getElementById('npDjPayLbl').textContent='tip '+(d?d.id:'')+' :'; }
+}
+function renderNpDj(){
+  const box=document.getElementById('npDj'); if(!box) return;
+  const d=npDjCurrent();
+  if(!d){ box.hidden=true; npDjShowPay(false); return; }
+  if(box.dataset.dj!==d.id){ box.dataset.dj=d.id; npDjShowPay(false); }
+  const links=(Array.isArray(d.socials)?d.socials:[]).filter(l=>l && /^https?:\/\//i.test(String(l.url||'')));
+  document.getElementById('npDjLinks').innerHTML=links.map(l=>
+    '<a href="'+npDjEsc(l.url)+'" target="_blank" rel="noopener noreferrer" title="'+npDjEsc(l.url)+'">'+npDjEsc(l.label||l.url)+'</a>').join('');
+  box.hidden=false;
+}
+(function(){
+  const box=document.getElementById('npDj'); if(!box) return;
+  const other=document.getElementById('npDjOther');
+  const act=(el,fn)=>{ if(!el) return; el.addEventListener('click',fn); el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fn(e); } }); };
+  const pick=el=>{ box.querySelectorAll('.npDjAmt').forEach(b=>b.classList.toggle('on',b===el)); if(other) other.classList.toggle('on',!el); };
+  act(document.getElementById('npDjTip'),()=>npDjShowPay(true));
+  act(document.getElementById('npDjCancel'),()=>npDjShowPay(false));
+  box.querySelectorAll('.npDjAmt').forEach(b=>act(b,()=>{ npDjCents=+b.dataset.cents; if(other) other.value=''; pick(b); npDjNote(''); }));
+  if(other){
+    other.addEventListener('input',()=>{ const v=parseFloat(other.value.replace(',','.')); npDjCents=isFinite(v)?Math.round(v*100):0; pick(null); npDjNote(''); });
+    /* keep typing in this box from reaching the chat's own key handlers */
+    other.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); document.getElementById('npDjSend').click(); } if(e.key==='Escape'){ npDjShowPay(false); other.blur(); } });
+  }
+  act(document.getElementById('npDjSend'),()=>{
+    const d=npDjCurrent(); if(!d) return;
+    if(!(npDjCents>=100)){ npDjNote('minimum tip is $1'); return; }
+    if(typeof window.gnTipDj!=='function'){ npDjNote("tips aren't connected yet"); return; }
+    npDjNote('...');
+    Promise.resolve().then(()=>window.gnTipDj({dj:d.id, amountCents:npDjCents, currency:'cad'})).then(ok=>{
+      if(ok===false){ npDjNote('tip cancelled'); return; }
+      npDjShowPay(false); npDjNote('thanks -- $'+(npDjCents/100).toFixed(2)+' to '+d.id);
+      setTimeout(()=>npDjNote(''),4000);
+    }).catch(err=>npDjNote('tip failed'+(err&&err.message?' -- '+err.message:'')));
+  });
+})();
+function npChannelLines(){
+  try{
+    if(typeof TUNED_DJ!=='undefined' && TUNED_DJ!=null){
+      const d=(typeof DJS!=='undefined'?DJS:[]).find(x=>x.id===TUNED_DJ)||{id:TUNED_DJ};
+      return ['dj : '+d.id, d.track ? 'track : '+d.track : (d.genre||'N/A')];
+    }
+    if(typeof TUNED_MODEL!=='undefined' && TUNED_MODEL!=null){
+      const m=(typeof MODELS!=='undefined'?MODELS:[]).find(x=>x.id===TUNED_MODEL);
+      if(m) return ['model : '+(m.n||'untitled'), m.genre||'N/A'];
+    }
+  }catch(e){}
+  return ['model : no model loaded','N/A'];   /* genre line: the genre alone, N/A when there's none -- user: "remove genre: ... use N/A" */
 }
 /* forward pages through the current bake's distinct songs, same "no-op
    rather than wrap when there's nothing to page" idiom stepStemTrack()
@@ -15865,9 +16373,12 @@ let DJS=[
  // message: "add a green led knob to rollypolly dj... green means
  // connected" -- see .djRow .rd.on/.off's own CSS comment for the
  // red/green convention this now lights up under.
- {id:'hgg@#c90nc',genre:'techno',live:true,followed:true},
- {id:'@#dj08hf-dk30',genre:'house',live:true,followed:true,next:null,interested:[],history:['Olympia — Jun 5']},
- {id:'RWOE32932%$[',genre:'jungle',live:true,followed:true},
+ // socials -- [{label,url}] shown above the play bar while this dj holds
+ // the slot (renderNpDj). Demo values until accounts carry them
+ // (users.social_links, backend).
+ {id:'hgg@#c90nc',genre:'techno',live:true,followed:true,socials:[{label:'instagram',url:'https://instagram.com/'},{label:'soundcloud',url:'https://soundcloud.com/'},{label:'bandcamp',url:'https://bandcamp.com/'}]},
+ {id:'@#dj08hf-dk30',genre:'house',live:false,followed:true,next:null,interested:[],history:['Olympia — Jun 5']},
+ {id:'RWOE32932%$[',genre:'jungle',live:false,followed:true},
  {id:'geckosoleil',genre:'techno',live:true,followed:false,next:'Bar Le Ritz PDB — Sept 12',interested:['MTELUS — Oct 3'],history:['Casa del Popolo — Aug 2','Turbo Haüs — Jul 19']},
  {id:'KIKI403',genre:'ambient',live:false,followed:false},
 ];
@@ -16035,11 +16546,13 @@ if(window.Gnumbat && typeof Gnumbat.on==='function'){
 }
 function renderDjPanel(){
   renderDjListInto('chatDjList','chatDjOnAir','chatDjSearch');
+  if(typeof renderFriendsPanel==='function') renderFriendsPanel();
 }
 /* tuneToDj -- "when a user clicks on a profile, the radio switches to
    that dj's channel." Sets TUNED_DJ, re-renders the dj list(s) (so [on air]
    follows), and opens/updates the corner video popup. */
 function tuneToDj(id){
+  setTimeout(()=>{ if(typeof renderNowPlaying==='function') renderNowPlaying(); },0);
   TUNED_DJ=id;
   TUNED_MODEL=null; // one channel at a time -- tuning a dj un-tunes any model
   renderDjPanel();
@@ -16051,6 +16564,7 @@ function tuneToDj(id){
    channel" behaviour tuneToDj() has, pointed at a trained model instead of a
    dj: the corner popup opens titled with the model's name. */
 function tuneToModel(id){
+  setTimeout(()=>{ if(typeof renderNowPlaying==='function') renderNowPlaying(); },0);
   const m=MODELS.find(x=>x.id===id);
   if(!m || !isTrainedModel(m)) return;
   TUNED_MODEL=id;
@@ -16219,7 +16733,7 @@ function openDjVideo(id){
   const resizeHandle=document.getElementById('djVideoResize');
   let dragging=false, resizing=false, dx=0, dy=0;
   minBtn.onclick=()=>pop.classList.toggle('min');
-  closeBtn.onclick=()=>{ pop.classList.add('hide'); TUNED_DJ=null; TUNED_MODEL=null; renderDjPanel(); renderChatModels(); renderRoomStack(); };
+  closeBtn.onclick=()=>{ pop.classList.add('hide'); TUNED_DJ=null; TUNED_MODEL=null; renderDjPanel(); renderChatModels(); renderRoomStack(); if(typeof renderNowPlaying==='function') renderNowPlaying(); };
   /* UPDATE — user: "make sure the dj video feed box can be moved above
      the base.html iframe too cause right now it cant follow the cursor
      above this zone." #omscFrame is a real iframe (a separate document/
@@ -16513,7 +17027,10 @@ cin.addEventListener('input',()=>{mirror.textContent=cin.value;});
    the reply lands back through the private-flagged Gnumbat.on("chatReply", …)
    listener below, into DMS['cricket'], never broadcast. */
 function handleOmscInput(v){
-  const who=(loggedIn && usernameField.value.trim()) ? usernameField.value.trim() : null;
+  /* the account name whenever you're logged in -- user: "i need to always
+     send through the account name". The username field is emptied once the
+     login goes through, so read the account (AUTH_USER) instead. */
+  const who=loggedIn ? ((typeof AUTH_USER!=='undefined' && AUTH_USER) || usernameField.value.trim() || null) : null;
   const me=who||ANON_ID;
   /* ":msg username [text]" / ":msg username" / ":r text" -- spec item 1.
      Kept as plain regex matches on #cin's own raw input, same style
@@ -16657,9 +17174,17 @@ Gnumbat.on('cricketAmbient', function(m){
    and does nothing if there's a real one. */
 document.querySelector('.conv').addEventListener('click', e=>{
   if(e.target.closest('#cmdSearchPanel')) return;
+  /* FIX -- user: "when clicking in the chat zone, the cursor the text zone
+     and the overall chat, make sure the user can write. make the text zone
+     selected." This never worked: ebys-live.js swaps #cin for a clone at
+     load, so the `cin` const above points at the detached original --
+     focus() on it did nothing. Look the live one up every time. Other
+     fields (the TRAINED MODELS search, a rename box) keep their focus. */
+  if(e.target.closest('input,textarea,select,[contenteditable="true"]')) return;
   const sel=window.getSelection();
-  if(sel && sel.toString().length>0) return;
-  cin.focus();
+  if(sel && sel.type==='Range' && sel.toString().length>0) return;
+  const live=document.getElementById('cin');
+  if(live) live.focus({preventScroll:true});
 });
 /* {preventScroll:true} — this call runs unconditionally on page load, not
    from a click. Without it, a browser auto-scrolls a newly-focused element
@@ -17356,6 +17881,7 @@ document.getElementById('chatChip').onclick=function(){setChatOpen(!chatOpen);do
     // Leave the inspector panel's own text selectable -- the one true
     // exception, since identifying a click inside itself makes no sense.
     if (e.target.closest && e.target.closest('#gridInspector')) return;
+    if (e.target.closest && e.target.closest('#mrlcfResizer')) return;   // the drag spot is a control, not something to inspect
     // UPDATE -- user: "why are elements from the chat not clickable? i
     // want to see what item name they have." .conv used to return early
     // above, same as #gridInspector -- that was deliberate (body.
@@ -17444,6 +17970,8 @@ function setEditMode(on, opts){
   // one place that flag flips, same pattern #editModeFrame's own
   // classList.toggle just below already uses.
   document.body.classList.toggle('editLocking', on);
+  if(window.gnSpiderRelax) window.gnSpiderRelax(on);
+  if(typeof placeEditSide==='function'){ requestAnimationFrame(placeEditSide); setTimeout(placeEditSide,200); }
   const chip=document.getElementById('editModeChip');
   /* 'edit Interface' -> 'edit mode' -- user: "edit mode* not edit
      Interface" -- same rename as #editModeChip's own static HTML,
@@ -17485,7 +18013,7 @@ function setEditMode(on, opts){
   // the log() line above is invisible whenever OMSC is the active tab
   // (see #editStatus's own CSS comment).
   if(typeof editStatusShow==='function'){
-    if(on) editStatusShow('ok','EDIT INTERFACE on — tell Cricket what to change.');
+    if(on) editStatusShow('ok','EDIT INTERFACE on — tell '+(window.EDIT_AGENT_NAME==='cricket'?'Ollama':'Claude')+' what to change.');
     // Only hide the toast on exit if nothing is still running -- see
     // editRequestPending's own comment, above editMode's declaration.
     // While a request is pending this leaves whatever editStatusShow
@@ -17540,7 +18068,7 @@ document.getElementById('editModeChip').onclick=function(){setEditMode(!editMode
 function editCommitChipRefresh(){
   const chip=document.getElementById('editCommitChip');
   if(!chip) return;
-  chip.innerHTML='<b>^R</b>commit'+(editDirty && editChanged.length ? ' ('+editChanged.length+')' : '');
+  chip.innerHTML='<b>^S</b>commit'+(editDirty && editChanged.length ? ' ('+editChanged.length+')' : '');
 }
 function requestEditCommit(){
   if(!editMode) return;
@@ -17580,7 +18108,7 @@ document.getElementById('editCommitChip').onclick=function(){requestEditCommit()
 // platforms. Outside edit mode this does nothing and those all behave as before.
 window.addEventListener('keydown',function(e){
   if(!editMode || !e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-  if(e.key.toLowerCase()!=='r') return;
+  if(e.key.toLowerCase()!=='s') return;   /* ^R -> ^S: ^R is the radio tab now */
   e.preventDefault(); e.stopImmediatePropagation();
   if(!e.repeat) requestEditCommit();
 },true);
@@ -17876,10 +18404,11 @@ addEventListener('keydown',e=>{
  e.preventDefault();
  document.getElementById('startChip').click();
 });
-addEventListener('keydown',e=>{
- if(e.ctrlKey&&e.key.toLowerCase()==='c'){if(typeof mrlcfOpen!=='undefined'&&!mrlcfOpen) return; /* ^C is the M-RLCF console only now -- see #mrlcfChip */ e.preventDefault();document.getElementById('chatChip').click();
-}
-});
+/* ^C keydown listener REMOVED -- user: "completely remove ^C shortcut". The
+   chat now opens and folds with the ^R radio tab (see syncRadioChat()), so
+   there's no console toggle any more; #chatChip stays in the markup, hidden,
+   only because other code still updates its label. (Ctrl/Cmd+C in the DAW's
+   arrangement is clip copy -- a different listener, untouched.) */
 // ^E -- EDIT INTERFACE toggle, same click-through-the-chip convention as
 // ^C/chatChip immediately above.
 addEventListener('keydown',e=>{
@@ -18011,7 +18540,7 @@ addEventListener('keydown',e=>{
   // exclusive.
   if(k==='n'){ e.preventDefault(); newBake(); }
   else if(k==='b'){ e.preventDefault(); branchBake(); }
-  else if(k==='r'){ e.preventDefault(); startRenameBake(); }
+  else if(k==='k'){ e.preventDefault(); startRenameBake(); }   /* ^R -> ^K: ^R is the radio tab now */
   else if(k==='d'){ e.preventDefault(); deleteBake(); }
 });
 // user: "make the shortcut tabs clickable." Same three actions the ^B/^R/
@@ -18121,19 +18650,115 @@ new MutationObserver(syncRadioForDaw).observe(omgmView,{attributes:true,attribut
    showOgtmContent()/selectModel()/logoutModel()/applyLayer()). */
 const RADIO_UP=[document.getElementById('chatModels'),document.querySelector('.npMeta'),document.getElementById('nowPlayingBar')].filter(Boolean);
 const RADIO_HOME=RADIO_UP.map(el=>{const c=document.createComment('radio home');el.before(c);return c;});
+/* MENU IN THE CHAT ZONE -- user: "when the ^R is closed put this menu inside
+   the chat zone, under the nowplaying bar, and aligned on the right margin."
+   #chatModels' closed-tab home is now inside .conv, right after the play
+   bar; it's absolutely placed (placeMenuUnderBar()) so it sits on the right
+   margin just under the bar without pushing MEM / the chat down. */
+(function(){
+  const cm=document.getElementById('chatModels'), bar=document.getElementById('nowPlayingBar');
+  if(!cm||!bar) return;
+  const i=RADIO_UP.indexOf(cm);
+  bar.after(RADIO_HOME[i]); RADIO_HOME[i].after(cm);
+})();
+/* alignTrainedTitle -- TRAINED MODELS title level with the list's column
+   titles on the radio tab; re-run whenever the list area changes size */
+function alignTrainedTitle(){
+  const cm=document.getElementById('chatModels'), head=document.getElementById('modelListHead'), title=cm&&cm.querySelector('.chatModelsTitle');
+  if(!cm||!head||!title||cm.parentElement!==modelSelectView) return;
+  const cur=parseFloat(getComputedStyle(cm).top)||0;   /* the real top (CSS gives 20px before any inline value) */
+  const delta=head.getBoundingClientRect().top - title.getBoundingClientRect().top;
+  if(Math.abs(delta)>0.5) cm.style.top=Math.round(cur+delta)+'px';
+}
+try{ new ResizeObserver(()=>requestAnimationFrame(alignTrainedTitle)).observe(modelSelectView); }catch(e){}
+window.addEventListener('resize',()=>requestAnimationFrame(alignTrainedTitle));
+function placeMenuUnderBar(){
+  const cm=document.getElementById('chatModels'), bar=document.getElementById('nowPlayingBar'), conv=document.querySelector('.conv');
+  if(!cm||!bar||!conv) return;
+  if(cm.parentElement!==conv){ cm.style.top=''; return; }
+  const top=bar.getBoundingClientRect().bottom - conv.getBoundingClientRect().top + conv.scrollTop;
+  cm.style.top=Math.round(top)+'px';
+}
+window.addEventListener('resize',()=>requestAnimationFrame(placeMenuUnderBar));
+try{ new ResizeObserver(()=>requestAnimationFrame(placeMenuUnderBar)).observe(document.querySelector('.conv')); }catch(e){}
+requestAnimationFrame(placeMenuUnderBar);
 function placeRadio(){
   const up = mrlcfOpen && !modelSelectView.classList.contains('hide');
   if(up){
-    RADIO_UP.forEach(el=>{ modelSelectView.before(el); el.classList.add('radioUp'); });
+    /* RADIO TAB LAYOUT -- user's reference picture: song/artist + play bar
+       on top, the model list below, TRAINED MODELS in a column to its right
+       (lined up with the list's header). chatModels goes INTO
+       #modelSelectView for that; the other two go just above it. */
+    /* TRAINED MODELS stays in its corner -- user: "when opening the wadio
+       tab, make sure the TRAINED MODELS remain still" */
+    RADIO_UP.forEach(el=>{ if(el.id==='chatModels') return; modelSelectView.before(el); el.classList.add('radioUp'); });
+    { const cmx=document.getElementById('chatModels'), plug=document.querySelector('.plugin');
+      if(cmx && plug && cmx.parentElement!==plug){ plug.appendChild(cmx); } if(cmx){ cmx.classList.add('tmCorner'); cmx.classList.remove('radioUp'); cmx.style.top=''; } }
+    /* line the TRAINED MODELS title up with the list's column titles --
+       user: "align trained models with the model selection titles" */
+    requestAnimationFrame(alignTrainedTitle);
   } else {
-    RADIO_UP.forEach((el,i)=>{ if(el.previousSibling!==RADIO_HOME[i]) RADIO_HOME[i].after(el); el.classList.remove('radioUp'); });
+    RADIO_UP.forEach((el,i)=>{ if(el.previousSibling!==RADIO_HOME[i]) RADIO_HOME[i].after(el); el.classList.remove('radioUp'); if(el.id==='chatModels') el.style.top=''; });
+    /* TRAINED MODELS IN THE CORNER -- user: "I actually [want] TRAINED
+       MODELS to be moved top right corner of the page, under CO2, and
+       aligned with ALL. That said, you should cut on the poster horizontal
+       range so they dont overlap." With the wadio tab closed it lives on
+       .plugin's top-right, its title on the ALL line (base.html's sidebar);
+       base.html ends the poster row short of it (".gnEmbedded .events-grid"). */
+    { const cmx=document.getElementById('chatModels'), plug=document.querySelector('.plugin');
+      if(cmx && plug && cmx.parentElement!==plug){ plug.appendChild(cmx); } if(cmx) cmx.classList.add('tmCorner'); }
+    requestAnimationFrame(placeMenuUnderBar);
   }
 }
 new MutationObserver(placeRadio).observe(modelSelectView,{attributes:true,attributeFilter:['class']});
+/* CHAT UNFOLDS WITH THE RADIO TAB -- user: "make sure that when opening the
+   tab, the chat opens up. we need to see more history. the cursor and the
+   text zone stays put. but the chat history unfold." On the model select
+   page the chat is opened (history grows upward, the input line stays at
+   the bottom); in the DAW it's closed again so the track lanes have their
+   room (an open chat hides #bands). */
+function syncRadioChat(){
+  if(typeof setChatOpen!=='function') return;
+  const onSelect = mrlcfOpen && !modelSelectView.classList.contains('hide');
+  const inDaw = mrlcfOpen && !omgmView.classList.contains('hide');
+  if(onSelect && !chatOpen) setChatOpen(true);
+  else if(inDaw && chatOpen) setChatOpen(false);
+}
+new MutationObserver(()=>requestAnimationFrame(syncRadioChat)).observe(modelSelectView,{attributes:true,attributeFilter:['class']});
+new MutationObserver(()=>requestAnimationFrame(syncRadioChat)).observe(omgmView,{attributes:true,attributeFilter:['class']});
+/* "put 0 listening under no trained model yet" -- the listening count moves
+   into the Trained Models menu (it travels with it, open or closed) */
+(function(){ const rc=document.getElementById('roomCount'), cm=document.getElementById('chatModels'); if(rc&&cm){ cm.appendChild(rc); rc.classList.add('cmListening'); } })();
+/* renderNpVotes -- see #npVotes */
+function npVoteTarget(){ return (typeof TUNED_MODEL!=='undefined' && TUNED_MODEL!=null) ? TUNED_MODEL : selectedModelId; }
+function renderNpVotes(){
+  const el=document.getElementById('npVotes'); if(!el) return;
+  const m=npVoteTarget()!=null ? modelById(npVoteTarget()) : null;
+  const v=(m&&m.votes)||{up:0,down:0};
+  el.children[0].textContent='\u2191'+(v.up||0); el.children[1].textContent='\u2193'+(v.down||0);
+  const mine=m?myVote(m.id):null;
+  el.children[0].classList.toggle('mine', mine==='up'); el.children[1].classList.toggle('mine', mine==='down');
+  el.classList.toggle('none',!m);
+}
+document.getElementById('npVotes').addEventListener('click',e=>{
+  const b=e.target.closest('.npVote'); const id=npVoteTarget(); if(!b||id==null) return;
+  voteModel(id, b.dataset.dir);
+});
+['renderModelList','renderCurrentModelView','renderChatModels'].forEach(fn=>{
+  const orig=window[fn]; if(typeof orig!=='function') return;
+  window[fn]=function(){ const r=orig.apply(this,arguments); try{ renderNpVotes(); }catch(e){} return r; };
+});
+renderNpVotes();
 /* initMrlcfResizer -- see "M-RLCF RESIZER" */
 (function initMrlcfResizer(){
   const plug=document.querySelector('.plugin');
   const h=document.createElement('div'); h.id='mrlcfResizer'; h.title='drag to resize';
+  /* protected from the spider -- user: "make sure that the grab spot is
+     protected from the spider". data-spider-solid cuts the grip's box out of
+     her (she's never drawn over it) and makes it a no-grab zone, so a press
+     on the grip always starts a resize, never catches a leg. */
+  /* protection REMOVED -- user: "remove the protection of the grab zone
+     for the radio tab." */
   omscView.after(h);
   /* ZOOM-SAFE SIZE -- user: "fix the daw. its glitchy. when zooming to far
      the daw dissapears. make sure zooming doesnt make anything dissapears."
@@ -18144,7 +18769,7 @@ new MutationObserver(placeRadio).observe(modelSelectView,{attributes:true,attrib
      ruler and lanes, or the model select page's play bar and list, plus the
      console and shortcut row. The shelf gives way first (never under MIN);
      zoom back out and it's back to your size. */
-  const MIN=60, DEFAULT=350;
+  const MIN=15, DEFAULT=350;   /* MIN 60 -> 15: at 15 the grip's centre sits on the [SHOWS] line -- user: "make it possible to open the tab completely until the very top of the page... leave the drag spot on the same line as [SHOWS]" */
   const reserve=()=> !omgmView.classList.contains('hide') ? 520 : 440;
   const maxH=()=>Math.max(MIN, plug.getBoundingClientRect().height-reserve());
   let wanted=DEFAULT;
@@ -18152,30 +18777,131 @@ new MutationObserver(placeRadio).observe(modelSelectView,{attributes:true,attrib
   const setH=px=>{ wanted=Math.max(MIN,px); return applyShelf(); };
   try{ const saved=parseInt(localStorage.getItem('gnumbat.mrlcfShelfH'),10); if(saved>0) wanted=saved; }catch(e){}
   applyShelf();
+  /* OPEN AT THE CARDS -- user: "make sure that when ^R opens, no info is
+     hidden ... the ^R must open the tab until the bottom of the poster
+     cards." The crawler page reports where its poster cards end
+     ('gnumbat-cards-bottom', sent with its spider mask); every time the tab
+     opens it starts right there (+8px), so the M-RLCF side gets all the rest
+     of the window. Dragging still adjusts it until the next open. Before
+     that message has arrived, the last size (or 350px) is used. */
+  let cardsBottom=null;
+  window.addEventListener('message',e=>{
+    const m=e.data, f=document.getElementById('omscFrame');
+    if(!m||m.type!=='gnumbat-cards-bottom'||!f||e.source!==f.contentWindow) return;
+    const y=Number(m.y); if(!(y>0)) return;
+    const first=cardsBottom==null; cardsBottom=y;
+    /* the cards' own bottom edge (the row adds 4px under them) -- DJS lines up on it */
+    { const cb=y-4; if(window.gnCardsBottom!==cb){ window.gnCardsBottom=cb; if(typeof placeDjPanel==='function') requestAnimationFrame(placeDjPanel); } }
+    if(first && mrlcfOpen){ wanted=cardsBottom+8; reapply(); }
+  });
+  window.gnShelfToCards=function(){ if(window.gnShelfDragOpen) return; if(cardsBottom!=null){ wanted=cardsBottom+8; } applyShelf(); if(typeof fitShelf==='function') fitShelf(); };
   const reapply=()=>requestAnimationFrame(()=>{ applyShelf(); if(typeof fitShelf==='function') fitShelf(); });
   window.addEventListener('resize', reapply);
   new MutationObserver(reapply).observe(omgmView,{attributes:true,attributeFilter:['class']});
   new MutationObserver(reapply).observe(modelSelectView,{attributes:true,attributeFilter:['class']});
+  /* FLUID GRIP -- user: "keep the drag spot when the radio tab is closed.
+     draging it up would manually open the radio tab. make it fluid.
+     dragging down the radio menu until the model selection disappears and
+     the playing bar arrives at its original position."
+     - Tab closed (SHOWS / FORUM): the grip stays, just above the song/artist
+       lines in the chat zone (placeClosedGrip()). Dragging it up opens the
+       tab and, from there, the tab's top edge follows the pointer.
+     - Tab open: dragging down is no longer stopped at the size limit -- the
+       model list squeezes away and the play bar slides down toward its
+       closed-tab spot. Let go once the list is gone (or in the bottom 80px)
+       and the tab closes; let go earlier and it settles at the nearest size
+       that still fits.
+     The size you settle on is kept for next time. */
   let start=null;
+  const plugTop=()=>plug.getBoundingClientRect().top;
+  const looseMax=()=>Math.max(MIN, plug.getBoundingClientRect().height-150);
+  const setLoose=px=>{ wanted=Math.max(MIN,px); plug.style.setProperty('--mrlcfShelfH', Math.round(Math.min(looseMax(),wanted))+'px'); };
+  const listGone=()=> !modelSelectView.classList.contains('hide') && modelSelectView.getBoundingClientRect().height < 30;
+  const nearBottom=y=> y > window.innerHeight - 80;
+  function placeClosedGrip(){
+    const closedSpot = !mrlcfOpen && !networkOpenNow() && (activePanel==='shows' || activePanel==='forum');
+    plug.classList.toggle('gripClosed', closedSpot);
+    if(!closedSpot){ h.style.top=''; return; }
+    const meta=document.querySelector('.npMeta');
+    if(!meta){ return; }
+    /* on the "model : no model loaded" line -- user: "align the 2 grab bars
+       with model:no model loaded" (12px grip centred in its 16px row) */
+    h.style.top=Math.round(meta.getBoundingClientRect().top - plugTop() + 2)+'px';
+    closedMetaY=meta.getBoundingClientRect().top - plugTop();
+  }
+  /* closedMetaY -- where the song/artist lines sit with the tab closed.
+     Dragging the open tab down stops there: the moment they reach it the
+     tab closes live (user: "dont make the infos go down too much, they
+     should come back to where they were before opening the panel"), and
+     the same drag can pull it open again. */
+  let closedMetaY=null;
+  const metaY=()=>{ const m=document.querySelector('.npMeta'); return m ? m.getBoundingClientRect().top - plugTop() : null; };
+  function networkOpenNow(){ try{ return !!networkOpen; }catch(e){ return false; } }
+  window.gnPlaceClosedGrip=placeClosedGrip;
+  window.addEventListener('resize',()=>requestAnimationFrame(placeClosedGrip));
+  try{ new ResizeObserver(()=>requestAnimationFrame(placeClosedGrip)).observe(document.querySelector('.conv')); }catch(e){}
+  requestAnimationFrame(placeClosedGrip);
   h.addEventListener('pointerdown',e=>{
     e.preventDefault();
-    start={y:e.clientY, h:omscView.getBoundingClientRect().height};
-    wanted=start.h;   /* dragging starts from what's on screen */
     h.setPointerCapture(e.pointerId); h.classList.add('dragging'); plug.classList.add('shelfDragging');
+    if(!mrlcfOpen){ start={y:e.clientY, closed:true}; return; }
+    start={y:e.clientY, h:omscView.getBoundingClientRect().height, wanted:wanted};
   });
+  /* PERF -- pointermove can fire 120+ times a second; each one resized the
+     layout and re-ran the posterize filter. Coalesced to one per frame. */
+  let moveEv=null, moveRaf=0;
   h.addEventListener('pointermove',e=>{
     if(!start) return;
-    setH(start.h + (e.clientY-start.y));
-    if(typeof fitShelf==='function') fitShelf();
+    moveEv={clientY:e.clientY};
+    if(!moveRaf) moveRaf=requestAnimationFrame(()=>{ moveRaf=0; const ev=moveEv; moveEv=null; if(ev) onGripMove(ev); });
   });
-  const end=e=>{
+  function onGripMove(e){
     if(!start) return;
-    start=null; h.classList.remove('dragging'); plug.classList.remove('shelfDragging');
+    if(start.closed){
+      if(e.clientY - start.y > -6) return;          // needs a real upward pull
+      window.gnShelfDragOpen=true;                   // don't snap to the cards on this open
+      const topAt=e.clientY - plugTop();
+      setMrlcfOpen(true);
+      window.gnShelfDragOpen=false;
+      if(activePanel!=='shows'){ start=null; h.classList.remove('dragging'); plug.classList.remove('shelfDragging'); return; }
+      setLoose(topAt);
+      start={y:e.clientY, h:Math.min(looseMax(),Math.max(MIN,topAt)), wanted:DEFAULT, fromClosed:true};
+      if(typeof fitShelf==='function') fitShelf();
+      return;
+    }
+    setLoose(start.h + (e.clientY-start.y));
+    if(typeof fitShelf==='function') fitShelf();
+    const my=metaY();
+    if(closedMetaY!=null && my!=null && my >= closedMetaY - 1){
+      wanted = start.wanted!=null ? start.wanted : DEFAULT; applyShelf();
+      plug.classList.remove('shelfClosing');
+      setMrlcfOpen(false); placeClosedGrip();
+      start={y:e.clientY, closed:true};                // keep dragging: pull up to reopen
+      return;
+    }
+    plug.classList.toggle('shelfClosing', nearBottom(e.clientY) || listGone());
+  }
+  const end=e=>{
+    if(moveRaf){ cancelAnimationFrame(moveRaf); moveRaf=0; if(moveEv){ const ev=moveEv; moveEv=null; onGripMove(ev); } }
+    if(!start) return;
+    [0,120,300].forEach(t=>setTimeout(()=>{ if(typeof alignTrainedTitle==='function') alignTrainedTitle(); },t));
+    const wasClosedPress=!!start.closed;
+    const closing = !wasClosedPress && e && e.type==='pointerup' && (nearBottom(e.clientY) || listGone());
+    const back=start.wanted;
+    start=null; h.classList.remove('dragging'); plug.classList.remove('shelfDragging','shelfClosing');
+    if(wasClosedPress) return;                       // a click / tiny move on the closed grip: nothing
+    if(closing){
+      wanted = back!=null ? back : DEFAULT; applyShelf();
+      setMrlcfOpen(false);
+      requestAnimationFrame(placeClosedGrip);
+      return;
+    }
+    applyShelf();                                    // settle inside the limits
+    wanted=parseFloat(getComputedStyle(plug).getPropertyValue('--mrlcfShelfH'))||wanted;
     try{ localStorage.setItem('gnumbat.mrlcfShelfH', Math.round(wanted)); }catch(err){}
     if(typeof fitShelf==='function') fitShelf();
   };
   h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
-  h.addEventListener('dblclick',()=>{ wanted=DEFAULT; applyShelf(); try{ localStorage.removeItem('gnumbat.mrlcfShelfH'); }catch(e){} if(typeof fitShelf==='function') fitShelf(); });
 })();
 /* fitShelf -- see "TALL SHELF ON MODEL SELECT" */
 function fitShelf(){
@@ -18183,12 +18909,25 @@ function fitShelf(){
   const on = mrlcfOpen && activePanel==='shows' && !modelSelectView.classList.contains('hide') && meta && !networkOpen;
   const grip=document.getElementById('mrlcfResizer');
   if(!on){ f.style.removeProperty('height'); f.style.removeProperty('max-height'); if(grip) grip.style.transform=''; return; }
-  const h=Math.max(0, Math.floor(meta.getBoundingClientRect().top - f.getBoundingClientRect().top - 6));
+  /* SEE-THROUGH NOW-PLAYING ZONE -- user: "make sure the posters and infos
+     arent hidden by a black panel when the playingnow bar drags above.
+     remove the black background behind this zone." The show panel now runs
+     on down BEHIND the song lines and the bar, to the M-RLCF MODELS title
+     row (the radio's black starts there, like the spider's zone). The grip
+     stays where it was, just above the song lines. */
+  const lh=document.getElementById('modelListHead');
+  const edge = (lh && lh.getBoundingClientRect().height) ? lh.getBoundingClientRect().top : meta.getBoundingClientRect().top - 6;
+  const h=Math.max(0, Math.floor(edge - f.getBoundingClientRect().top));
   f.style.setProperty('height', h+'px','important'); f.style.setProperty('max-height', h+'px','important');
   /* the grip sits on the frame's real bottom edge (the edge of the black
      show-panel zone), not on its shorter layout slot -- user: "align the
      handle with the actual black zone edge" */
-  if(grip){ const off=f.getBoundingClientRect().bottom - omscView.getBoundingClientRect().bottom; grip.style.transform='translateY('+Math.round(off)+'px)'; }
+  if(grip){ const off=(meta.getBoundingClientRect().top + 8) - omscView.getBoundingClientRect().bottom; grip.style.transform='translateY('+Math.round(off)+'px)'; }   /* +8 (was -6): on the song line */
+  /* keep TRAINED MODELS on the M-RLCF MODELS line while the tab is dragged
+     (a move isn't a resize, so its ResizeObserver alone missed it) -- user:
+     "align TRAINED MODELS with M-RLCF MODELS" */
+  if(typeof alignTrainedTitle==='function') alignTrainedTitle();
+  if(typeof placeDjPanel==='function') placeDjPanel();
 }
 new MutationObserver(()=>requestAnimationFrame(fitShelf)).observe(modelSelectView,{attributes:true,attributeFilter:['class']});
 window.addEventListener('resize', ()=>requestAnimationFrame(fitShelf));
@@ -18263,17 +19002,30 @@ function applyLayer(){
   if(window.gnSpiderSetActive) window.gnSpiderSetActive(activePanel==='shows' && !(typeof networkOpen!=='undefined' && networkOpen));
   if(typeof placeRadio==='function') placeRadio();
   if(typeof fitShelf==='function') requestAnimationFrame(fitShelf);
+  if(typeof syncRadioChat==='function') requestAnimationFrame(syncRadioChat);
+  if(window.gnPlaceClosedGrip) requestAnimationFrame(window.gnPlaceClosedGrip);
   const m = document.getElementById('mrlcfChip');
-  if(m) m.innerHTML = mrlcfOpen ? '<b>^M</b>close' : '<b>^M</b>M-RLCF';
+  if(m) m.innerHTML = mrlcfOpen ? '<b>^W</b>close' : '<b>^W</b>wadio';   /* ^R -> ^W -- user: "rename ^R for ^W Wadio" */
   const c = document.getElementById('chatChip');
   if(c) c.classList.toggle('hide', !mrlcfOpen);
 }
+/* chatBeforeRadio -- user: "when the ^R tab comes down, it should return to
+   its original position... the infos should come back to where they were
+   before opening the panel." Opening the radio opens the chat; closing it
+   now puts the chat back the way it was (open or closed) instead of
+   always closing it. */
+let chatBeforeRadio=false;
 function setMrlcfOpen(on){
-  if(!on && chatOpen) setChatOpen(false);   // don't strand an open console with no ^C chip
+  if(on && !mrlcfOpen) chatBeforeRadio=chatOpen;
+  if(!on && mrlcfOpen && chatOpen!==chatBeforeRadio) setChatOpen(chatBeforeRadio);
   mrlcfOpen = on; applyLayer();
+  /* re-align TRAINED MODELS once the tab (and the chat opening with it)
+     has settled -- see alignTrainedTitle() */
+  if(on){ [60,200,500].forEach(t=>setTimeout(()=>{ if(typeof alignTrainedTitle==='function') alignTrainedTitle(); },t)); }
+  if(on && window.gnShelfToCards && !window.gnShelfDragOpen) requestAnimationFrame(window.gnShelfToCards);
 }
 function setPanel(name){
-  if(mrlcfOpen && chatOpen) setChatOpen(false);
+  if(mrlcfOpen && chatOpen!==chatBeforeRadio) setChatOpen(chatBeforeRadio);
   activePanel = name; mrlcfOpen = false; applyLayer();
 }
 tabOMSC.onclick = () => setPanel('shows');
@@ -18283,8 +19035,235 @@ document.getElementById('mrlcfChip').onclick = () => setMrlcfOpen(!mrlcfOpen);
 /* capture phase so ^M still works while typing in the console / a model
    rename field, even if their own keydown handlers stop propagation */
 addEventListener('keydown',e=>{
- if(e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='m'){e.preventDefault();e.stopPropagation();setMrlcfOpen(!mrlcfOpen);}
+ if(e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='w'){e.preventDefault();e.stopPropagation();setMrlcfOpen(!mrlcfOpen);} /* ^M -> ^R -- user: "rename the ^M M-RLCF tab to ^R Radio" */
 },true);
+(function(){ const plug=document.querySelector('.plugin'), a=document.getElementById('omscCo2Line1'), b=document.getElementById('omscCo2Line2');
+  if(!plug||!a||!b) return; const box=document.createElement('div'); box.id='headCo2';
+  a.classList.remove('rcbChatOnly'); b.classList.remove('rcbChatOnly'); box.append(a,b); plug.appendChild(box); })();
+setInterval(()=>{ document.querySelectorAll('.cline .cur').forEach(c=>c.classList.toggle('blinkOff')); },500);
+
+/* EDIT SIDE -- see its CSS comment. Fed by the hub's 'editAgentState'
+   frame (edit_agent.js "AGENTS"); every button just types the matching
+   edit-chat command (:agent / :disc / :new / :stop), so the keyboard way
+   and the click way are the same thing. */
+let EDIT_AGENT_STATE=null;
+window.EDIT_AGENT_NAME='claude';
+function esFmt(n){ n=Number(n)||0; return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(n>=1e4?0:1)+'k':String(n); }
+function esEsc(t){ return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function renderEditSide(){
+  const st=EDIT_AGENT_STATE, side=document.getElementById('editSide'); if(!side) return;
+  const agent=(st&&st.agent)||'claude'; window.EDIT_AGENT_NAME=agent;
+  /* shown as "ollama" -- user: "rename cricket for ollama" (the hub still
+     calls it cricket internally) */
+  window.EDIT_AGENT_LABEL = agent==='cricket' ? 'ollama' : agent;
+  /* more agents (st.agents: [{id,label,status}]) line up after claude, each
+     with its own dot, in the rolling window */
+  const strip=side.querySelector('.esAgents');
+  if(strip && st && Array.isArray(st.agents)){
+    st.agents.forEach(a=>{
+      if(!a || !a.id || strip.querySelector('.esAgent[data-agent="'+CSS.escape(a.id)+'"]')) return;
+      const el=document.createElement('span'); el.className='esAgent'; el.dataset.agent=a.id;
+      el.innerHTML=esEsc(a.label||a.id)+' <span class="esAuth" aria-hidden="true">\u2022</span>'; strip.appendChild(el);
+    });
+    st.agents.forEach(a=>{
+      const el=a&&a.id&&strip.querySelector('.esAgent[data-agent="'+CSS.escape(a.id)+'"]'); if(!el||a.id==='claude'||a.id==='cricket') return;
+      const d=el.querySelector('.esAuth'); if(d){ d.classList.toggle('on',a.status==='connected'); d.classList.toggle('off',a.status==='disconnected'); d.textContent=a.status==='disconnected'?'\u2298':'\u2022'; }
+      el.title=(a.label||a.id)+' -- '+(a.status||'not checked yet');
+    });
+  }
+  side.querySelectorAll('.esAgent').forEach(b=>b.classList.toggle('on', b.dataset.agent===agent));
+  /* only two agents: "..." fills the peek space -- user: "if there is only
+     ollama and claude just write ... in the remaining space. center the
+     ... vertically in the height of the text." (middle dots: they sit at
+     mid-height) */
+  if(strip){
+    const n=strip.querySelectorAll('.esAgent').length; let more=strip.querySelector('.esMore');
+    if(n<=2 && !more){ more=document.createElement('span'); more.className='esMore'; more.textContent='\u00b7\u00b7\u00b7'; more.setAttribute('aria-hidden','true'); strip.appendChild(more); }
+    else if(n>2 && more) more.remove();
+  }
+  /* keep the one in use inside the window */
+  if(strip){ const on=strip.querySelector('.esAgent.on'); if(on && (on.offsetLeft < strip.scrollLeft || on.offsetLeft+on.offsetWidth > strip.scrollLeft+strip.clientWidth+1)) strip.scrollTo({left:on.offsetLeft-strip.firstElementChild.offsetLeft, behavior:'smooth'}); }
+  side.classList.toggle('busy', !!(st&&st.busy));
+  const auth=(st&&st.claudeAuth)||'unknown', dot=document.getElementById('esAuth'), cl=side.querySelector('.esAgent[data-agent="claude"]');
+  if(dot){ dot.classList.toggle('on', auth==='connected'); dot.classList.toggle('off', auth==='disconnected'); dot.textContent = auth==='disconnected' ? '\u2298' : '\u2022'; }   /* ⊘ disconnected -- user: "use something that resembles Ø (but no lines that exit the circle)" */
+  if(cl) cl.title = auth==='connected' ? 'claude -- connected to your Claude account' : auth==='disconnected' ? 'claude -- not connected: send a prompt (or :login) to log in' : 'claude -- account not checked yet';
+  if(window.__claudeAuthSeen && window.__claudeAuthSeen!==auth && auth!=='unknown'){
+    try{ OMSC_CHAT.push({who:'gnumbot',t0:chatTimestamp(),t: auth==='connected' ? 'Claude is connected to your account.' : 'Claude is disconnected from your account.'}); renderActiveChat(); }catch(e){}
+  }
+  window.__claudeAuthSeen=auth;
+  /* cricket: same dot, for the local Ollama being reachable */
+  const up=(st&&st.cricketUp)||'unknown', cdot=document.getElementById('esCricketUp'), cr=side.querySelector('.esAgent[data-agent="cricket"]');
+  if(cdot){ cdot.classList.toggle('on', up==='connected'); cdot.classList.toggle('off', up==='disconnected'); cdot.textContent = up==='disconnected' ? '\u2298' : '\u2022'; }
+  if(cr) cr.title = up==='connected' ? 'ollama -- the local model is running' : up==='disconnected' ? 'ollama -- not reachable (is Ollama running?)' : 'ollama -- not checked yet';
+  const u=(st&&st.usage)||{ctx:0,max:1,in:0,out:0,cost:0};
+  const frac=Math.max(0,Math.min(1,(u.ctx||0)/(u.max||1)));
+  const C=2*Math.PI*5.5;
+  document.getElementById('esRingFg').style.strokeDasharray=(frac*C).toFixed(2)+' '+C.toFixed(2);
+  document.getElementById('esTok').textContent=esFmt(u.ctx)+' / '+esFmt(u.max);
+  const ring=document.getElementById('esRing'); ring.classList.toggle('warn', frac>0.85);
+  ring.title='context of this '+window.EDIT_AGENT_LABEL+' discussion: '+Math.round(frac*100)+'% full ('+(u.ctx||0).toLocaleString()+' / '+(u.max||0).toLocaleString()+' tokens) -- a new discussion starts empty.\nNot your Claude plan limit.\nthis session: '+(u.in||0).toLocaleString()+' in, '+(u.out||0).toLocaleString()+' out'+(u.cost?' -- $'+u.cost.toFixed(3):'');
+  const planEl=document.getElementById('esPlan'), plan=u.plan;
+  if(planEl){
+    let txt='', warn=false;
+    if(agent==='claude' && plan){
+      const reset=plan.resetsAt ? new Date(typeof plan.resetsAt==='number' && plan.resetsAt<1e12 ? plan.resetsAt*1000 : plan.resetsAt) : null;
+      const rs=reset && !isNaN(reset) ? ' \u00b7 resets '+reset.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+      if(plan.utilization!=null && !isNaN(plan.utilization)){ const pc=plan.utilization<=1?plan.utilization*100:plan.utilization; txt='plan '+Math.round(pc)+'%'; warn=pc>=80; }
+      else if(/limit|reject|exceed/i.test(String(plan.status||''))){ txt='plan full'; warn=true; }
+      planEl.dataset.reset=rs;
+    }
+    planEl.textContent=txt; planEl.classList.toggle('warn',warn);
+    planEl.title='your Claude plan usage, as reported by Claude Code'+(planEl.dataset.reset||'');
+  }
+  alignDiscToPlan();
+  const tasks=(st&&st.tasks)||[], cur=st?st.current:1;
+  const mine=tasks.filter(t=>t.disc===cur && t.agent===agent).slice().reverse();   /* each agent has its own discussions */
+  const mark={running:'●',done:'✓',failed:'✗',stopped:'■',login:'…'};
+  document.getElementById('esTasks').innerHTML = mine.length ? mine.map(t=>'<div class="esRow '+esEsc(t.status)+'" data-task="'+t.id+'" title="'+esEsc(t.agent+' -- '+t.status+(t.reply?': '+t.reply:''))+'"><span class="esMark">'+(mark[t.status]||'·')+'</span><span class="esTxt">'+esEsc(t.text)+'</span></div>').join('') : '<div class="esEmpty">no tasks yet</div>';
+  const discs=((st&&st.discussions)||[{id:1,tasks:0,title:''}]).slice().reverse();
+  document.getElementById('esDiscs').innerHTML = discs.map(d=>'<div class="esRow'+(d.id===cur?' cur':'')+'" data-disc="'+d.id+'"><span class="esMark">#'+d.id+'</span><span class="esTxt">'+esEsc(d.title||'(empty)')+'</span><span>'+d.tasks+'</span></div>').join('');
+}
+/* DISCUSSIONS starts where "plan" does -- user: "align discussion with
+   plan" (or where the ctx group starts when there's no plan figure) */
+function alignDiscToPlan(){
+  const side=document.getElementById('editSide'), cols=side&&side.querySelector('.esCols'); if(!cols) return;
+  const plan=document.getElementById('esPlan'), ring=document.getElementById('esRing');
+  const ref = plan && plan.getClientRects().length ? plan : (ring && ring.firstElementChild && [...ring.children].find(c=>c.getClientRects().length && c.getBoundingClientRect().width));
+  if(!ref){ cols.style.gridTemplateColumns=''; return; }
+  const x=ref.getBoundingClientRect().left - cols.getBoundingClientRect().left;
+  const gap=parseFloat(getComputedStyle(cols).columnGap)||0;
+  if(x>gap+40) cols.style.gridTemplateColumns=Math.round(x-gap)+'px 1fr';
+}
+function placeEditSide(){
+  const side=document.getElementById('editSide'), bar=document.getElementById('nowPlayingBar'), conv=document.querySelector('.conv');
+  if(!side||!bar||!conv) return;
+  const inConv = bar.parentElement===conv || conv.contains(bar);
+  const top = inConv ? bar.getBoundingClientRect().bottom - conv.getBoundingClientRect().top + conv.scrollTop : 8;
+  /* agent row on the DJS search bar's line -- user: "move this down one
+     row. align it with the Dj search bar." (the DJS title sits one row
+     above the play bar's bottom, its search bar on the bar's bottom) */
+  /* ...with a CODING AGENT title on the DJS title's line above it -- user:
+     "and aligned on DJ line call this section CODING AGENT" */
+  side.style.top=Math.round(top - (inConv ? 16 : 0))+'px';
+  alignDiscToPlan();
+  /* whole rows down to the input line, nothing cut */
+  const cin=document.querySelector('.cline')||document.getElementById('cin');
+  const convR=conv.getBoundingClientRect();
+  const floor=cin ? cin.getBoundingClientRect().top : convR.bottom;
+  const listTop=side.getBoundingClientRect().top + 16 + 16 + 16;   /* title + head row + list titles */
+  let rows=Math.floor((floor - listTop)/16);
+  if(rows<3){   /* not enough room: lift the whole menu so 3 rows fit */
+    side.style.top=Math.round(parseFloat(side.style.top) - (3-rows)*16)+'px';
+    rows=3;
+  }
+  side.style.setProperty('--esListH', (rows*16)+'px');
+  /* the toast stays left of the menu, whatever the window width */
+  const toast=document.getElementById('editStatus');
+  if(toast){
+    if(document.body.classList.contains('editLocking')){
+      /* right edge pinned just left of the menu, growing leftward */
+      const edge=side.getBoundingClientRect().left - 12;
+      toast.style.left='auto'; toast.style.transform='none';
+      toast.style.right=Math.round(window.innerWidth - edge)+'px';
+      toast.style.maxWidth=Math.max(160, Math.min(480, edge - 10))+'px';
+    } else { toast.style.left=''; toast.style.right=''; toast.style.transform=''; toast.style.maxWidth=''; }
+  }
+  /* chat history stops short of the menu */
+  const clog=document.getElementById('clog');
+  if(clog){
+    if(document.body.classList.contains('editLocking')){
+      clog.style.removeProperty('padding-right');
+      const extra=clog.getBoundingClientRect().right - (side.getBoundingClientRect().left - 16);
+      const cur=parseFloat(getComputedStyle(clog).paddingRight)||0;
+      if(extra>0) clog.style.setProperty('padding-right', Math.ceil(cur+extra)+'px','important');
+    } else clog.style.removeProperty('padding-right');
+  }
+}
+window.addEventListener('resize',()=>requestAnimationFrame(placeEditSide));
+try{ new ResizeObserver(()=>requestAnimationFrame(placeEditSide)).observe(document.querySelector('.conv')); }catch(e){}
+(function(){
+  const side=document.getElementById('editSide'); if(!side) return;
+  const strip0=side.querySelector('.esAgents');
+  if(strip0) strip0.addEventListener('wheel', e=>{
+    if(Math.abs(e.deltaY)>Math.abs(e.deltaX) && strip0.scrollWidth>strip0.clientWidth){ e.preventDefault(); strip0.scrollBy({left: Math.sign(e.deltaY)*strip0.clientWidth/2, behavior:'smooth'}); }
+  }, {passive:false});
+  const say=cmd=>{ if(window.Gnumbat && Gnumbat.chatEdit) Gnumbat.chatEdit(cmd); };
+  side.addEventListener('click',e=>{
+    const a=e.target.closest('.esAgent'); if(a){ say(':agent '+a.dataset.agent); return; }
+    if(e.target.closest('#esStop')){ say(':stop'); return; }
+    if(e.target.closest('#esNew')){ say(':new'); return; }
+    const d=e.target.closest('[data-disc]'); if(d){ say(':disc '+d.dataset.disc); return; }
+    const t=e.target.closest('[data-task]');
+    if(t && EDIT_AGENT_STATE){ const task=(EDIT_AGENT_STATE.tasks||[]).find(x=>String(x.id)===t.dataset.task); if(task){ try{ OMSC_CHAT.push({who:(task.agent==='cricket'?'ollama':task.agent),t0:chatTimestamp(),t:escapeHtml(task.status+': '+(task.reply||task.text))}); renderActiveChat(); }catch(e){} } }
+  });
+  if(window.Gnumbat && Gnumbat.on) Gnumbat.on('editAgentState', m=>{ EDIT_AGENT_STATE=m; renderEditSide(); });
+  /* 'claudeLogin' -- see edit_agent.js "CLAUDE LOGIN FROM THE PAGE" */
+  if(window.Gnumbat && Gnumbat.on) Gnumbat.on('claudeLogin', m=>{
+    if(!m) return;
+    /* the link comes from gnumbot, in the chat -- user: "the log in to
+       claude link should be given by the bot in the chat. i dont want it
+       above discussion" */
+    const bot=html=>{ try{ OMSC_CHAT.push({who:'gnumbot',t0:chatTimestamp(),t:html}); LOG.push(['res','gnumbot: '+html]); renderActiveChat(); }catch(e){} };
+    if(m.state==='open' && m.url){
+      if(m.url!==window.__claudeLoginUrl){
+        window.__claudeLoginUrl=m.url;
+        bot('Claude needs you to log in: <a class="botLink" href="'+escapeHtml(m.url)+'" target="_blank" rel="noopener">log in to claude \u2197</a> -- then paste the code it shows here.');
+      }
+      /* open the page ourselves too -- Claude Code's own browser launch
+         doesn't happen when the hub runs it (user: "its not actually
+         opening the page. but it says it does"). A pop-up blocker may still
+         stop this, so the link stays in the menu and the chat. */
+      /* the hub opens it in this computer's browser (m.opened); the link
+         stays in the menu in case it didn't */
+      /* no toast: it covered gnumbot's link -- the chat line says it all */
+      if(typeof editStatusHide==='function') editStatusHide();
+    } else if(m.state==='starting'){
+      if(typeof editStatusHide==='function') editStatusHide();
+    } else {
+      window.__claudeLoginUrl=null;
+      if(m.state==='failed'||m.state==='stuck') bot(escapeHtml(m.msg||'the Claude login failed')+' -- type :login to try again.');
+      if(m.state==='ok'){ if(typeof editStatusShow==='function') editStatusShow('ok','Claude is connected.'); if(typeof log==='function') log('res','claude -- connected'); }
+      else if(m.state==='stuck'){ if(typeof editStatusShow==='function') editStatusShow('err', m.msg||'the Claude login is stuck'); if(typeof log==='function') log('res','claude -- '+(m.msg||'login stuck')); }
+      else if(m.state==='failed'){ if(typeof editStatusShow==='function') editStatusShow('err', m.msg||'the Claude login failed'); if(typeof log==='function') log('res','claude -- '+(m.msg||'login failed')); }
+    }
+  });
+  renderEditSide(); requestAnimationFrame(placeEditSide);
+})();
+
+
+/* placeCo2 -- see "CO2 IN THE FOOTER". The chips are fixed-width, so the
+   gap's centre is known even while they're hidden. */
+function placeCo2(){
+  const box=document.getElementById('headCo2'), plug=document.querySelector('.plugin'), row=document.getElementById('mrlcfChip');
+  if(!box||!plug||!row) return;
+  const P=plug.getBoundingClientRect(), R=row.getBoundingClientRect();
+  const del=document.getElementById('modelDeleteChip'), ent=document.getElementById('modelEnterChip');
+  /* fixed, from the edit-mode footer (^S commit showing): ^D delete ends
+     832px in, Enter select starts 103px before the right edge -- the same
+     spot in every mode, never following the chips around */
+  void del; void ent;
+  const gapL=832, gapR=P.width-103;
+  const w=box.getBoundingClientRect().width;
+  /* ...but never under "log out / Yo abc!" (they end up 276px from the right
+     edge when you're logged in), 3ch clear of them */
+  const ch=parseFloat(getComputedStyle(box).fontSize)*0.6||7.2;
+  const lo=gapL+1.5*ch, hi=Math.min(gapR, P.width-276)-2*ch;
+  let left=Math.round(Math.max(lo, Math.min((gapL+gapR)/2 - w/2, hi-w)));
+  let top=R.top-P.top + (R.height-box.getBoundingClientRect().height)/2;
+  /* a narrow window has no room on the shortcut row: then it sits one row
+     up, on the right margin (the input line's empty right end) */
+  if(left+w > hi+1){ left=Math.round(P.width-10-w); top-=16; }
+  box.style.left=left+'px';
+  box.style.top=Math.round(top)+'px';
+  /* the login row stays where it was -- user: "keep yo abc and log where
+     they were, just move the co2" */
+  const lg=document.getElementById('loginGroup'); if(lg) lg.style.transform='';
+}
+window.addEventListener('resize',()=>requestAnimationFrame(placeCo2));
+try{ new ResizeObserver(()=>requestAnimationFrame(placeCo2)).observe(document.querySelector('.plugin')); }catch(e){}
+{ let co2Raf=0; const q=()=>{ if(!co2Raf) co2Raf=requestAnimationFrame(()=>{ co2Raf=0; placeCo2(); }); };
+  try{ new MutationObserver(ms=>{ if(ms.some(m=>!(m.target.classList&&m.target.classList.contains('cur')))) q(); }).observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']}); }catch(e){} }
+requestAnimationFrame(placeCo2); setTimeout(placeCo2,300);
 tabOMSC.onclick();
 </script>
 <!-- SAFARI CURSOR-REFRESH KICK -- user confirmed they're viewing this in
@@ -18532,6 +19511,7 @@ tabOMSC.onclick();
   // and gives up (back to chill) past LOSE px or when the cursor leaves the page
   const ENGAGE = 500, LOSE = 750;
   let mode = 'chill';
+  let relaxed = false;   /* edit mode: she stops hunting -- user: "in edit mode, the spider stops hunting too. relax." */
   const chill = { x: 0, y: 0, next: 0 };
 
   const body = { x: 0, y: 0, vx: 0, vy: 0, h: -Math.PI / 2 };
@@ -18636,7 +19616,7 @@ tabOMSC.onclick();
     '#gnSpiderPay .x{position:absolute;top:6px;right:12px;width:28px;height:28px;border:0;border-radius:6px;' +
     'background:transparent;color:#8b8c96;font-size:18px;line-height:28px;padding:0}' +
     '#gnSpiderPay .x:hover{background:#2a2b32;color:#fff}' +
-    '#gnSpiderPay .l{margin:0;line-height:20px;padding:0 30px;text-align:center;color:#9a9ba5;font-size:14px;font-weight:500}' +
+    '#gnSpiderPay .l{margin:0;line-height:20px;padding:0 30px;text-align:center;color:#9a9ba5;font-size:14px;font-weight:500;white-space:nowrap}' +
     '#gnSpiderPay .a{font-size:36px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#fff;margin-bottom:20px}' +
     '#gnSpiderPay .r{display:flex;justify-content:space-between;padding:12px 0;font-size:14px;border-top:1px solid #2e2f37}' +
     '#gnSpiderPay .r span:last-child{font-variant-numeric:tabular-nums}' +
@@ -18868,6 +19848,7 @@ tabOMSC.onclick();
     if (mode === 'follow') {
       if ((!senses() && (!ptr.inside ? now - ptr.goneAt > 200 : true)) || pd > LOSE) { mode = 'chill'; chill.next = 0; }
     } else if (senses() && pd < ENGAGE) mode = 'follow';
+    if (relaxed && mode === 'follow') { mode = 'chill'; chill.next = 0; }
 
     let gx, gy, maxSp;
     if (dead) {                       // no legs left: the body stays where it fell, twitching
@@ -19370,6 +20351,17 @@ tabOMSC.onclick();
        the chat opened up, down to its top. */
     const mrlcfUp = omscView.classList.contains('hide');
     let bottom = r.bottom;
+    /* ^R tab open: she stops at the TOP of the grip, never in its band --
+       user: "make sure the spider is hidden behind the ^R tab ... the spider
+       passes through the horizontal zone of the grab spot" */
+    /* UPDATE -- user: "remove the protection of the grab zone for the radio
+       tab. and when dragging the radio tab, make sure the black background
+       actually starts where M-RLCF MODELS title is." On the model select
+       page her zone now runs over the grip, the song/artist lines and the
+       now-playing bar, down to the top of the M-RLCF MODELS title row --
+       the radio's black starts there. (In the DAW: the frame's bottom.) */
+    const listHead = document.getElementById('modelListHead');
+    if (mrlcfUp && listHead && !modelSelectView.classList.contains('hide') && listHead.getBoundingClientRect().height) bottom = listHead.getBoundingClientRect().top;
     const conv = document.querySelector('.conv');
     if (!mrlcfUp) {
       const mem = document.getElementById('omscHead');
@@ -19404,7 +20396,20 @@ tabOMSC.onclick();
     refreshMask(now);
     update(dt, now);
     updatePieces(dt, now);
-    draw();
+    /* PERF -- her canvas covers the whole window, and every redraw of it
+       made the browser re-composite it over .plugin's posterize filter.
+       When nothing about her (or the cut-outs) changed since the last
+       frame, skip the redraw. */
+    const sig = sceneSig();
+    if (sig !== lastSig || press) { lastSig = sig; draw(); }
+  }
+  let lastSig = '';
+  function sceneSig() {
+    const r = v => (typeof v === 'number' ? Math.round(v * 4) : 0);
+    let s = (showZone ? showZone.map(r).join(',') : '') + '/' + r(body.x) + ',' + r(body.y) + ',' + r(body.h);
+    for (const l of legs) s += '|' + r(l.fx) + ',' + r(l.fy) + ',' + r(l.cx) + ',' + r(l.cy) + ',' + r(l.kx) + ',' + r(l.ky) + ',' + r(l.th);
+    for (const pc of pieces) { s += '#' + (pc.cursor ? 1 : 0); for (const q of pc.pts) s += r(q[0]) + ',' + r(q[1]) + ';'; }
+    return s + '@' + r(ptr.x) + ',' + r(ptr.y) + (ptr.inside ? 1 : 0) + (headCursor ? 1 : 0) + (gone ? 1 : 0) + ',' + maskAt + ',' + legs.length + ',' + W + 'x' + H;
   }
   // all legs gone and fallen away: stop for good and get out of the page's way
   function finish() {
@@ -19450,9 +20455,9 @@ tabOMSC.onclick();
   // a ring fills around the foot over HOLD seconds and the leg drops.
   const RING_DELAY = 0.2, HOLD = 0.6;
   let press = null;                  // { t0 } while a long click is in progress
-  function startPress() {
+  function startPress(e) {
     if (!cursorLeg && !headCursor) return;
-    press = { t0: performance.now() };
+    press = { t0: performance.now(), x: e && e.clientX, y: e && e.clientY };
   }
   function endPress() { press = null; }
   function checkPress(now) {
@@ -19462,6 +20467,14 @@ tabOMSC.onclick();
   }
   // runs before the click that picks one up, so picking up never starts a press
   window.addEventListener('pointerdown', startPress, true);
+  /* a press that MOVES is a drag (the wadio grip, a slider, a selection...),
+     not "put the leg down": cancel it -- user: "make sure that when having
+     a spider legs as cursor, dragging an object doesnt trigger the drop
+     loadbar." */
+  window.addEventListener('pointermove', e => {
+    if (press && press.x != null && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 4) press = null;
+  }, true);
+  window.addEventListener('dragstart', endPress, true);
   window.addEventListener('pointerup', endPress, true);
   window.addEventListener('pointercancel', endPress, true);
   window.addEventListener('blur', endPress);
@@ -19685,6 +20698,7 @@ tabOMSC.onclick();
      (even if she ate it or you're carrying a leg) and the donate prompt
      closes. On: everything picks up where it was left. */
   let payWasOpen = false;
+  window.gnSpiderRelax = function (on) { relaxed = !!on; if (relaxed && mode === 'follow') { mode = 'chill'; chill.next = 0; } };
   window.gnSpiderSetActive = function (on) {
     on = !!on;
     if (suspended === !on) return;

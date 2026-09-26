@@ -48,7 +48,7 @@ router.get('/current', async (req, res) => {
     const icecast = await fetchIcecastStatus()
 
     if (!session) {
-      return res.json({ live: false, model: null, seedHash: null, stream: icecast ? { url: icecast.streamUrl } : null })
+      return res.json({ live: false, model: null, seedHash: null, dj: null, stream: icecast ? { url: icecast.streamUrl } : null })
     }
 
     const hasModel = !!session.model_artifact_id
@@ -63,6 +63,13 @@ router.get('/current', async (req, res) => {
         releaseState: session.model_release_state
       } : null,
       seedHash: session.seed_hash || null,
+      // the dj holding the slot, if it's a dj set (null while the models play)
+      // -- the panel shows their [tip] + social links above the play bar
+      dj: session.dj_username ? {
+        name: session.dj_username,
+        socials: Array.isArray(session.dj_social_links) ? session.dj_social_links : [],
+        canTip: !!session.dj_can_tip
+      } : null,
       stream: {
         url: (icecast && icecast.streamUrl) || ICECAST_STREAM_URL || null,
         listeners: icecast ? icecast.listeners : null,

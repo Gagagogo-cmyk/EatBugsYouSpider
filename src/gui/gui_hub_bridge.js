@@ -1554,6 +1554,15 @@ function checkCricketAmbient() {
     });
 }
 
+// CHIRP -- user: "make the cricketbot chirp at a certain interval of time,
+// maybe once every 15mins?" Every panel gets a plain "Chirp!" from
+// cricketbot every GNUMBAT_CHIRP_MINUTES (default 15; 0 turns it off). A
+// fixed line, no model call. Sent the same way as her ambient remarks.
+const CHIRP_MINUTES = process.env.GNUMBAT_CHIRP_MINUTES !== undefined ? Number(process.env.GNUMBAT_CHIRP_MINUTES) : 15;
+if (CHIRP_MINUTES > 0) {
+  setInterval(() => { broadcast({ t: "cricketAmbient", text: "Chirp!" }); }, CHIRP_MINUTES * 60 * 1000).unref();
+}
+
 // ── LIBRARY: real tracks for the panel's library list ────────────────────
 // Session-dir resolution copied verbatim from analyze_reader_bridge.js
 // (search that file for this same comment) rather than re-derived, so the
@@ -2642,6 +2651,7 @@ server.on("upgrade", (req, socket) => {
     // editBegin: the panel just entered edit mode (or reloaded while in it).
     else if (msg.t === "editBegin") {
       try { reply(editAgent.editBegin()); } catch (err) { reply({ t: "editError", msg: "edit baseline failed: " + err.message }); }
+      try { reply(editAgent.agentFrame()); } catch (err) {}   // tasks / discussions / token ring (edit_agent.js "AGENTS")
     }
     // editCommit: ^R + a branch name. Broadcast the new branch list to every
     // panel (the Branches network modal is fed from it), reply to the

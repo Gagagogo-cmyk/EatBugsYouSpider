@@ -74,11 +74,15 @@ async function setSessionModel(sessionId, modelArtifactId, seedHash = null) {
 // model's manifest (for name/version) -- what RadioService's GET
 // /radio/current reports as "what's actually playing right now."
 async function getCurrentRadioSession() {
+  await ensureSocialColumn()
   const result = await pool.query(
     `SELECT s.*, a.manifest as model_manifest, a.version as model_version,
-            a.release_state as model_release_state
+            a.release_state as model_release_state,
+            u.username as dj_username, u.social_links as dj_social_links,
+            (u.stripe_account_id IS NOT NULL) as dj_can_tip
      FROM sessions s
      LEFT JOIN artifacts a ON a.id = s.model_artifact_id
+     LEFT JOIN users u ON u.id = s.dj_id
      WHERE s.mode = 'web' AND s.status = 'active'
      ORDER BY s.started_at DESC
      LIMIT 1`
@@ -448,6 +452,27 @@ function ensureResetColumns() {
   return resetColumnsReady
 }
 
+// social_links column (DJ socials above the play bar) -- same lazy-migration
+// pattern as ensureResetColumns(), so existing databases need no manual step.
+let socialColumnReady = null
+function ensureSocialColumn() {
+  if (!socialColumnReady) {
+    socialColumnReady = pool.query(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '[]'::jsonb`
+    ).catch(err => { socialColumnReady = null; throw err })
+  }
+  return socialColumnReady
+}
+
+async function setSocialLinks(userId, links) {
+  await ensureSocialColumn()
+  const result = await pool.query(
+    `UPDATE users SET social_links = $2::jsonb WHERE id = $1 RETURNING social_links`,
+    [userId, JSON.stringify(links)]
+  )
+  return result.rows[0] ? result.rows[0].social_links : null
+}
+
 // username OR email (case-insensitive for email)
 async function findUserByLogin(login) {
   const result = await pool.query(
@@ -479,7 +504,15 @@ async function setPasswordAndClearReset(userId, passwordHash) {
   )
 }
 
+// renameUser -- the dev account rename (server.js DEV ACCOUNT, user: "change
+// my account name from abc to ap3"): same user row, so everything tied to
+// its id stays with it.
+async function renameUser(id, username) {
+  await pool.query(`UPDATE users SET username = $2 WHERE id = $1`, [id, username])
+}
+
 module.exports = {
+  renameUser,
   createUser,
   findUserByUsername,
   findUserByLogin,
@@ -489,6 +522,7 @@ module.exports = {
   openSession,
   setSessionModel,
   getCurrentRadioSession,
+  setSocialLinks,
   listReleasedModels,
   getModelCard,
   getModelLineage,

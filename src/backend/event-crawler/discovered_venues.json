@@ -6,7 +6,7 @@
 		"events_url": "https://evenko.ca/fr/evenements",
 		"render": true,
 		"promoted_at": "2026-08-24T15:23:02-04:00",
-		"last_verified_at": "2026-09-25T05:18:32-04:00"
+		"last_verified_at": "2026-09-26T16:49:41-04:00"
 	},
 	{
 		"key": "discover-casadelpopolo-com",
@@ -15,7 +15,7 @@
 		"events_url": "https://casadelpopolo.com/en",
 		"render": false,
 		"promoted_at": "2026-08-24T15:45:31-04:00",
-		"last_verified_at": "2026-09-25T08:01:45-04:00",
+		"last_verified_at": "2026-09-26T16:52:36-04:00",
 		"last_rediscovered_at": "2026-09-25T08:01:45-04:00"
 	},
 	{
@@ -25,7 +25,7 @@
 		"events_url": "https://quaidesbrumes.ca/calendrier/",
 		"render": true,
 		"promoted_at": "2026-08-26T01:52:18-04:00",
-		"last_verified_at": "2026-09-25T08:03:49-04:00",
+		"last_verified_at": "2026-09-26T16:54:17-04:00",
 		"last_rediscovered_at": "2026-09-23T02:24:59-04:00"
 	},
 	{
@@ -35,7 +35,7 @@
 		"events_url": "https://mtelus.com/en/events?display=list",
 		"render": true,
 		"promoted_at": "2026-08-26T07:42:49-04:00",
-		"last_verified_at": "2026-09-25T08:06:01-04:00",
+		"last_verified_at": "2026-09-26T16:56:19-04:00",
 		"last_rediscovered_at": "2026-09-15T17:21:19-04:00"
 	},
 	{
@@ -45,6 +45,15 @@
 		"events_url": "https://www.barleritzpdb.com/vnements",
 		"render": false,
 		"promoted_at": "2026-09-15T19:58:29-04:00",
-		"last_verified_at": "2026-09-25T08:07:33-04:00"
+		"last_verified_at": "2026-09-26T16:57:43-04:00"
+	},
+	{
+		"key": "fairmount-theatre",
+		"name": "Fairmount Theatre",
+		"start_url": "https://www.theatrefairmount.com/",
+		"events_url": "https://www.theatrefairmount.com/evenements-prives",
+		"render": true,
+		"promoted_at": "2026-09-26T06:28:50-04:00",
+		"last_verified_at": "2026-09-26T16:58:09-04:00"
 	}
 ]

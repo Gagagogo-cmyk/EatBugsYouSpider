@@ -3,13 +3,36 @@
     "id": "gnumbat-agpl-3.0",
     "name": "Gnumbat AGPL 3.0",
     "hashes": {
-      "src/gui/panel.html": "0fac1a2af7e96838731fd068ee7dcbca21916b045de7c66d72608b0f991b1e19",
-      "src/gui/ebys-live.js": "8f714ee5dfd117f875222591e72cb50e8685afabbf4adeaa0720a50aaa97704e",
-      "src/gui/ebys-link.js": "224e0a582d0b26d16c986757db8807ee4397a3c003dbb31a041541b7e95be36d",
-      "src/backend/event-crawler/frontend/base.html": "b4f9ab3194b548375d878b72039db8a82a3cfdf130b1d5fe3e70df68a118aa5d"
+      "src/gui/panel.html": "f85f3e40fd3e2ec955d89c617b0b041b010dbaca56a254cfb0d2a4dcd50b1218",
+      "src/gui/ebys-live.js": "2df9c7666b50f9a1712d42577cfd19463a9c5937ee3af587220e6b292d9efbc7",
+      "src/gui/ebys-link.js": "d450466cd640bd807dc6c1350218b025f35c9ba8955dc680e78b30c21f7ba40e",
+      "src/backend/event-crawler/frontend/base.html": "aa918ea65a1ef80257d4122f9c9c50d5a40ce9e456737354bb0aeac1dd6f510e"
     },
-    "createdAt": "2026-09-22T03:00:33.719Z"
+    "createdAt": "2026-09-22T03:00:33.719Z",
+    "refreshedAt": "2026-09-26T00:30:00Z"
   },
-  "branches": [],
-  "head": "gnumbat-agpl-3.0"
+  "branches": [
+    {
+      "id": "eaeaaw",
+      "name": "eaeaaw",
+      "parent": "gnumbat-agpl-3.0",
+      "createdAt": "2026-09-26T00:03:15.085Z",
+      "hashes": {
+        "src/gui/panel.html": "35b89109757157c2e971ed2109e56e09ce549f225167c24306c17ca255e2b389",
+        "src/gui/ebys-live.js": "0e87a837c9b6168a6ad2e697e652faf64b9f24d097d2e05cb536c1965f9273b7",
+        "src/gui/ebys-link.js": "d450466cd640bd807dc6c1350218b025f35c9ba8955dc680e78b30c21f7ba40e",
+        "src/backend/event-crawler/frontend/base.html": "9bf15fe37be2e5628e2e01abbfbf5e8676b8008154ad91f3d502b2244398d13e"
+      },
+      "files": [
+        "src/gui/panel.html",
+        "src/gui/ebys-live.js",
+        "src/gui/ebys-link.js",
+        "src/backend/event-crawler/frontend/base.html"
+      ]
+    }
+  ],
+  "head": "gnumbat-agpl-3.0",
+  "agentHashes": {
+    "src/gui/panel.html": "979c0774ce2a98975c54c825ed083462dc8640af317c6e816f7849e6a313df3f"
+  }
 }

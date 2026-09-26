@@ -34,6 +34,28 @@
      have made it invisible to the command-line code that now runs BEFORE
      that try block (confirmed the hard way: "log is not defined" the first
      time this reorder ran, thrown from the Enter-key handler below). */
+  /* mirrorEdit -- user: "when sending a message in closed wadio mode, it
+     should always appear above the cursor zone when sent. the 3 lines
+     above the cursor zone are just a small window of the last 3 chat
+     interactions. right now, when im sending a message i dont see it."
+     Edit-mode lines only went to LOG (the console, shown with the wadio
+     tab open); the closed-tab chat window shows OMSC_CHAT. They now go to
+     both: your line under your name, the agent's answer under its name. */
+  function mirrorEdit(who, text) {
+    try {
+      if (typeof OMSC_CHAT === "undefined") return;
+      var esc = typeof escapeHtml === "function" ? escapeHtml : function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+      OMSC_CHAT.push({ who: who, t0: typeof chatTimestamp === "function" ? chatTimestamp() : "", t: esc(String(text)) });
+      if (typeof renderActiveChat === "function") renderActiveChat();
+    } catch (e) {}
+  }
+  function agentLabel(a) { return a === "cricket" ? "ollama" : (a || "claude"); }   // "rename cricket for ollama"
+  function editWho() { return agentLabel(window.EDIT_AGENT_NAME); }
+  function meWho() {
+    try { if (typeof AUTH_USER !== "undefined" && AUTH_USER) return AUTH_USER; } catch (e) {}
+    try { if (typeof ANON_ID !== "undefined") return ANON_ID; } catch (e) {}
+    return null;
+  }
   function log(kind, text) {
     LOG.push([kind, text]);
     /* renderActiveChat(), not renderLog() directly -- panel.html's own
@@ -224,28 +246,30 @@
   // cross-file global here is, in case an older cached panel.html is
   // ever served without it.
   Gnumbat.on("editThinking", function () {
-    log("res", "cricket (edit) — thinking…");
-    if (typeof editStatusShow === "function") editStatusShow("thinking", "Cricket is thinking…");
+    log("res", agentLabel(window.EDIT_AGENT_NAME) + " (edit) — thinking…");
+    if (typeof editStatusShow === "function") editStatusShow("thinking", (window.EDIT_AGENT_NAME === "cricket" ? "Ollama" : "Claude") + " is thinking…");
   });
   Gnumbat.on("editStep", function (m) {
     var t = (m && m.summary) || (m && m.tool) || "…";
-    log("res", "cricket (edit) — " + t);
-    if (typeof editStatusShow === "function") editStatusShow("thinking", "Cricket — " + t);
+    log("res", agentLabel(window.EDIT_AGENT_NAME) + " (edit) — " + t);
+    if (typeof editStatusShow === "function") editStatusShow("thinking", (window.EDIT_AGENT_NAME === "cricket" ? "Ollama" : "Claude") + " — " + t);
   });
   Gnumbat.on("editReply", function (m) {
     if (!(m && m.text)) return;
-    log("res", "cricket (edit): " + m.text);
+    log("res", agentLabel((m && m.agent) || window.EDIT_AGENT_NAME) + " (edit): " + m.text);
+    mirrorEdit(m && m.agent ? agentLabel(m.agent) : editWho(), m.text);
     if (typeof editRequestPending !== "undefined") editRequestPending = false;
     if (typeof editStatusShow === "function") editStatusShow("ok", m.text);
   });
   Gnumbat.on("editError", function (m) {
     var t = (m && m.msg) || "something went wrong";
-    log("res", "cricket (edit) — " + t);
+    log("res", agentLabel(window.EDIT_AGENT_NAME) + " (edit) — " + t);
+    mirrorEdit(m && m.agent ? agentLabel(m.agent) : editWho(), t);
     if (typeof editRequestPending !== "undefined") editRequestPending = false;
     if (typeof editStatusShow === "function") editStatusShow("err", t);
   });
   Gnumbat.on("reloadUI", function () {
-    log("res", "cricket (edit) — reloading to show the change…");
+    log("res", agentLabel(window.EDIT_AGENT_NAME) + " (edit) — reloading to show the change…");
     /* Stay in edit mode across the reload -- otherwise every change Cricket
        makes would drop the user out of edit mode and the ^R commit chip
        (and the uncommitted-edits state it stands for) would vanish before
@@ -465,6 +489,7 @@
     // appeared to silently do nothing.
     if (typeof editMode !== "undefined" && editMode) {
       log("cmd", v);
+      mirrorEdit(meWho(), v);
       // See editRequestPending's own comment (panel.html, above editMode's
       // declaration) -- marks the request as in-flight the instant it's
       // sent, so switching to chat mode before it finishes doesn't hide
@@ -1152,7 +1177,7 @@
     if (modeEl) {
       var modeSpans = modeEl.querySelectorAll("span:not(.sep2)");
       var agentMode = "remix"; // matches the mockup's seeded [RMX| state
-      modeEl.style.cursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default";
+      modeEl.style.cursor = "var(--cursor-cross)";
       modeEl.onclick = function () {
         agentMode = agentMode === "remix" ? "generate" : "remix";
         modeSpans[0].classList.toggle("on", agentMode === "remix");
@@ -1168,7 +1193,7 @@
          slicer_bridge-side too, so an out-of-range value here is harmless). */
       var stayVal = wdhM.children[0].querySelectorAll(".val")[0];
       var matchVal = wdhM.children[0].querySelectorAll(".val")[1];
-      if (stayVal) stayVal.style.cursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default";
+      if (stayVal) stayVal.style.cursor = "var(--cursor-cross)";
       if (stayVal) stayVal.onclick = function () {
         var v = promptNum("stay[" + track + "]", stayVal.textContent.replace(/[\[\]]/g, ""), 0, 1);
         if (v === null) return;
@@ -1176,7 +1201,7 @@
         Gnumbat.slicer("setStayProb", track, v);
         log("cmd", "setStayProb " + track + " " + v);
       };
-      if (matchVal) matchVal.style.cursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default";
+      if (matchVal) matchVal.style.cursor = "var(--cursor-cross)";
       if (matchVal) matchVal.onclick = function () {
         var v = promptNum("match[" + track + "]", matchVal.textContent.replace(/[\[\]]/g, ""), 0, 1);
         if (v === null) return;
@@ -1194,7 +1219,7 @@
         var leaders = STEM_KEY.filter(function (k) { return k !== track; });
         var lockOptions = leaders.concat([null]); // null = unlocked
         var lockIdx = lockOptions.length - 1; // start unlocked, matches "--"/none seed state
-        lockVal.style.cursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default";
+        lockVal.style.cursor = "var(--cursor-cross)";
         lockVal.onclick = function () {
           lockIdx = (lockIdx + 1) % lockOptions.length;
           var leader = lockOptions[lockIdx];
@@ -1213,7 +1238,7 @@
       /* dirWgt — setDirWeight(stem, val), 0..5 (slicer_bridge.js's clamp). */
       var dirWgtVal = wdhM.children[2].querySelector(".val");
       if (dirWgtVal) {
-        dirWgtVal.style.cursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default";
+        dirWgtVal.style.cursor = "var(--cursor-cross)";
         dirWgtVal.onclick = function () {
           var v = promptNum("dirWgt[" + track + "]", dirWgtVal.textContent.replace(/^\+/, ""), 0, 5);
           if (v === null) return;
@@ -1231,7 +1256,7 @@
     wdCells.forEach(function (cell, i) {
       var dim = DIMS[i];
       if (!dim) return;
-      cell.style.cursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default";
+      cell.style.cursor = "var(--cursor-cross)";
       cell.onclick = function () {
         var parts = cell.textContent.split("/").map(function (s) { return s.trim(); });
         var raw = prompt("weight / dir for " + dim + "[" + track + "] (two numbers, e.g. \"2.0 -1.0\"):",
@@ -1256,7 +1281,7 @@
     var entHdr = band.querySelector(".bc-ent .hdr.rt .mv");
     var entKnob = band.querySelector(".bc-ent .vfad.sm .kn");
     if (entHdr && entKnob) {
-      entKnob.parentNode.style.cursor = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default";
+      entKnob.parentNode.style.cursor = "var(--cursor-cross)";
       entKnob.parentNode.onclick = function () {
         var v = promptNum("entropy (all stems)", entHdr.textContent, 0, 1);
         if (v === null) return;

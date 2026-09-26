@@ -197,3 +197,9 @@ CREATE TABLE IF NOT EXISTS feedback_training_batches (
 -- db/queries.js ensureResetColumns(), so existing databases need no manual step.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(64);   -- sha256 of the emailed token
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires    TIMESTAMP;
+
+-- DJ social links, shown above the play bar while the dj holds the radio slot
+-- (GET /radio/current -> dj.socials; set via PUT /auth/me/socials).
+-- [{ "label": "instagram", "url": "https://..." }, ...]. Also applied
+-- automatically on first use by db/queries.js ensureSocialColumn().
+ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '[]'::jsonb;

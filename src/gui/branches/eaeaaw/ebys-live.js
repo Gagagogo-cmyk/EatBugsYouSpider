@@ -34,28 +34,6 @@
      have made it invisible to the command-line code that now runs BEFORE
      that try block (confirmed the hard way: "log is not defined" the first
      time this reorder ran, thrown from the Enter-key handler below). */
-  /* mirrorEdit -- user: "when sending a message in closed wadio mode, it
-     should always appear above the cursor zone when sent. the 3 lines
-     above the cursor zone are just a small window of the last 3 chat
-     interactions. right now, when im sending a message i dont see it."
-     Edit-mode lines only went to LOG (the console, shown with the wadio
-     tab open); the closed-tab chat window shows OMSC_CHAT. They now go to
-     both: your line under your name, the agent's answer under its name. */
-  function mirrorEdit(who, text) {
-    try {
-      if (typeof OMSC_CHAT === "undefined") return;
-      var esc = typeof escapeHtml === "function" ? escapeHtml : function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
-      OMSC_CHAT.push({ who: who, t0: typeof chatTimestamp === "function" ? chatTimestamp() : "", t: esc(String(text)) });
-      if (typeof renderActiveChat === "function") renderActiveChat();
-    } catch (e) {}
-  }
-  function agentLabel(a) { return a === "cricket" ? "ollama" : (a || "claude"); }   // "rename cricket for ollama"
-  function editWho() { return agentLabel(window.EDIT_AGENT_NAME); }
-  function meWho() {
-    try { if (typeof AUTH_USER !== "undefined" && AUTH_USER) return AUTH_USER; } catch (e) {}
-    try { if (typeof ANON_ID !== "undefined") return ANON_ID; } catch (e) {}
-    return null;
-  }
   function log(kind, text) {
     LOG.push([kind, text]);
     /* renderActiveChat(), not renderLog() directly -- panel.html's own
@@ -246,30 +224,28 @@
   // cross-file global here is, in case an older cached panel.html is
   // ever served without it.
   Gnumbat.on("editThinking", function () {
-    log("res", agentLabel(window.EDIT_AGENT_NAME) + " (edit) — thinking…");
-    if (typeof editStatusShow === "function") editStatusShow("thinking", (window.EDIT_AGENT_NAME === "cricket" ? "Ollama" : "Claude") + " is thinking…");
+    log("res", "cricket (edit) — thinking…");
+    if (typeof editStatusShow === "function") editStatusShow("thinking", "Cricket is thinking…");
   });
   Gnumbat.on("editStep", function (m) {
     var t = (m && m.summary) || (m && m.tool) || "…";
-    log("res", agentLabel(window.EDIT_AGENT_NAME) + " (edit) — " + t);
-    if (typeof editStatusShow === "function") editStatusShow("thinking", (window.EDIT_AGENT_NAME === "cricket" ? "Ollama" : "Claude") + " — " + t);
+    log("res", "cricket (edit) — " + t);
+    if (typeof editStatusShow === "function") editStatusShow("thinking", "Cricket — " + t);
   });
   Gnumbat.on("editReply", function (m) {
     if (!(m && m.text)) return;
-    log("res", agentLabel((m && m.agent) || window.EDIT_AGENT_NAME) + " (edit): " + m.text);
-    mirrorEdit(m && m.agent ? agentLabel(m.agent) : editWho(), m.text);
+    log("res", "cricket (edit): " + m.text);
     if (typeof editRequestPending !== "undefined") editRequestPending = false;
     if (typeof editStatusShow === "function") editStatusShow("ok", m.text);
   });
   Gnumbat.on("editError", function (m) {
     var t = (m && m.msg) || "something went wrong";
-    log("res", agentLabel(window.EDIT_AGENT_NAME) + " (edit) — " + t);
-    mirrorEdit(m && m.agent ? agentLabel(m.agent) : editWho(), t);
+    log("res", "cricket (edit) — " + t);
     if (typeof editRequestPending !== "undefined") editRequestPending = false;
     if (typeof editStatusShow === "function") editStatusShow("err", t);
   });
   Gnumbat.on("reloadUI", function () {
-    log("res", agentLabel(window.EDIT_AGENT_NAME) + " (edit) — reloading to show the change…");
+    log("res", "cricket (edit) — reloading to show the change…");
     /* Stay in edit mode across the reload -- otherwise every change Cricket
        makes would drop the user out of edit mode and the ^R commit chip
        (and the uncommitted-edits state it stands for) would vanish before
@@ -489,7 +465,6 @@
     // appeared to silently do nothing.
     if (typeof editMode !== "undefined" && editMode) {
       log("cmd", v);
-      mirrorEdit(meWho(), v);
       // See editRequestPending's own comment (panel.html, above editMode's
       // declaration) -- marks the request as in-flight the instant it's
       // sent, so switching to chat mode before it finishes doesn't hide

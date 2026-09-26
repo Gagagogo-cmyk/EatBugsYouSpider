@@ -51,12 +51,14 @@
                11x11 hollow-square SVG (identical markup/colours) as
                panel.html's own --cursor-cross, defined locally here since
                custom properties don't cross document/origin boundaries. */
-            --cursor-cross: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            --stylized-cursor-cross: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            --cursor-cross: default; /* stylized cursor OFF -- to restore: --cursor-cross: var(--stylized-cursor-cross); */
             /* --cursor-textbox -- panel.html's "][" text-zone cursor, copied
                verbatim (same reason --cursor-cross is defined locally: this
                page is a cross-origin iframe, panel.html's variables cannot
                reach it). */
-            --cursor-textbox: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHBhdGggZD0iTTIuNSwxIEw0LjUsMSBNNC41LDEgTDQuNSwxMCBNMi41LDEwIEw0LjUsMTAgTTYuNSwxIEw4LjUsMSBNNi41LDEgTDYuNSwxMCBNNi41LDEwIEw4LjUsMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzBhMGQwYSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMi41LDEgTDQuNSwxIE00LjUsMSBMNC41LDEwIE0yLjUsMTAgTDQuNSwxMCBNNi41LDEgTDguNSwxIE02LjUsMSBMNi41LDEwIE02LjUsMTAgTDguNSwxMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNWJmZjZhIiBzdHJva2Utd2lkdGg9IjEiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==') 5 5, text;
+            --stylized-cursor-textbox: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHBhdGggZD0iTTIuNSwxIEw0LjUsMSBNNC41LDEgTDQuNSwxMCBNMi41LDEwIEw0LjUsMTAgTTYuNSwxIEw4LjUsMSBNNi41LDEgTDYuNSwxMCBNNi41LDEwIEw4LjUsMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzBhMGQwYSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMi41LDEgTDQuNSwxIE00LjUsMSBMNC41LDEwIE0yLjUsMTAgTDQuNSwxMCBNNi41LDEgTDguNSwxIE02LjUsMSBMNi41LDEwIE02LjUsMTAgTDguNSwxMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNWJmZjZhIiBzdHJva2Utd2lkdGg9IjEiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==') 5 5, text;
+            --cursor-textbox: text; /* stylized cursor OFF -- to restore: --cursor-textbox: var(--stylized-cursor-textbox); */
         }
         /* Map REMOVED -- see the <head> comment on the deleted Leaflet <link>/<script> tags for why. That was the one place on this page a CSS filter would have had to reach into third-party map imagery. */
         /* html gets the literal dark colour directly (not var(--bg), not
@@ -71,7 +73,7 @@
            var(--bg), see that file's own comment on this exact point.
            min-height:100% on both keeps that sliver as small as possible
            in the first place, so this is a backstop, not the only guard. */
-        html { background: #000000; min-height: 100%; cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default; }
+        html { background: #000000; min-height: 100%; cursor:var(--cursor-cross); }
         /* UPDATE — user screenshot: the sidebar and the main content were
            rendering on top of each other, overlapping into unreadable
            double-exposed text, and the events grid showed 0 events despite
@@ -216,12 +218,26 @@
            are all untouched -- user: "the zone dont spread left,
            right," this is a vertical-only change. */
         .page {
-            /* one column of posters -- user: "I only want one row of poster
-               instead of 3." Was 1100px for the three-column grid; panel.html
-               now shows this page in a ~580px-wide strip left of the chat. */
-            max-width: 420px;
+            /* HORIZONTAL SCROLL -- user (2nd revision): "put the chat where it
+               was, full length of the site. but make the poster scroll
+               horizontally. make them display above the chat as a horizontal
+               scroll." panel.html no longer confines this iframe to a narrow
+               left strip (that grid split is reverted -- see panel.html's own
+               SPLIT LAYOUT comment), so .page is full width again -- no
+               max-width cap, no auto-centering (there's nothing to center
+               against any more). Height stays a full 100vh-ish column: the
+               sidebar filters need the full iframe height to render (they're
+               position:fixed, independent of .page), and #cityModal's own
+               inset:0 is sized against THIS element (see the POSTERIZE
+               ARCHITECTURE comment, below, and this rule's own history) --
+               shrinking .page itself to just the poster row's height would
+               also shrink that modal. The actual "one row, horizontal" shape
+               now lives on .events-grid alone (see its own rule) -- .page
+               just gives it a full-width lane to scroll sideways in; the
+               height that isn't used sits blank underneath, next to the
+               (still full-height) sidebar. */
             height: calc(100vh - 10px);
-            margin: 0 auto 10px 200px;
+            margin: 0 10px 10px 200px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -292,48 +308,44 @@
         .pageScroll {
             flex: 1 1 auto;
             min-height: 0;
-            overflow-y: auto;
+            /* was overflow-y:auto (the whole poster column scrolled
+               vertically). .events-grid now owns its own horizontal
+               scrollbar directly (see its own rule) since it's only ever
+               one row tall -- .pageScroll itself has nothing left to
+               scroll, so this is just a plain box around it now. */
+            overflow: visible;
         }
         .events-grid {
-            display: grid;
-            /* minmax(0, 1fr) not bare 1fr -- ROOT CAUSE of the horizontal-
-               scroll bug: a bare `1fr` track's minimum size is `auto`, which
-               means "never shrink a track below its content's own
-               min-content width." Any unbreakable string inside a card (the
-               likeliest offender: .bandTag, below, is white-space:nowrap by
-               design so a band/DJ name stays one unit) forces THAT track --
-               and every other track sized off the same `1fr`, plus the grid
-               itself, .page, and the page -- wider than the viewport instead
-               of wrapping/clipping inside its own card. minmax(0, 1fr)
-               explicitly floors the track's minimum at 0, so tracks size to
-               the available space like the grid always visually appeared to
-               do, and any card content that's still too wide has to be
-               handled INSIDE that card (see .bandTag's own fix) rather than
-               inflating the whole page. Same fix mirrored into both
-               @media variants below (2-col and 1-col) -- same bug, same root
-               cause, at each of those track counts. */
-            grid-template-columns: minmax(0, 1fr);
+            /* ONE ROW, HORIZONTAL SCROLL -- user (2nd revision): "make the
+               poster scroll horizontally. make them display above the chat
+               as a horizontal scroll." Was a CSS grid, one column, every
+               card stacked vertically with .pageScroll doing the scrolling;
+               now a flex ROW, cards side by side (.event's own flex-basis,
+               see that rule), this element doing its own horizontal
+               scrolling instead. flex-wrap stays the default (nowrap) on
+               purpose -- a wrapped second row is exactly the "3 rows of
+               posters" look the FIRST revision of this request removed. */
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            /* flex-start -> stretch -- user: "make all cards the same
+               height." Every card in the row now takes the tallest card's
+               height; the one-line tag row and two-line title below keep
+               that tallest card from being much taller than the rest. */
+            align-items: stretch;
             gap: 16px;
             margin-top: 8px;
-            /* UPDATE -- padding-bottom:200px ADDED. User: "for the bottom
-               of the scrolling endpoint, put it lower, aligned with the
-               artist name" -- with no filler space after the last row,
-               .pageScroll's own max scroll position landed right at the
-               last card's bottom edge, cutting the scroll off exactly
-               where the card's own border/padding ends rather than
-               leaving room for its h3 (the show/artist name -- see
-               .event h3's own rule) to settle lower in the viewport once
-               scrolled all the way down. Posters/cards themselves are
-               UNCHANGED SIZE (user: "the posters remain the same length,
-               they simply move further in the page when scrolling up and
-               down") -- this is pure extra scroll travel, not a resize:
-               .events-grid's own total content height grows by 200px of
-               blank space, which is what lets .pageScroll's scrollTop
-               reach further before hitting its max. 200px is a starting
-               guess, not a measured value -- nudge it up/down once this
-               is actually visible if the last row's name doesn't land
-               where it should yet. */
-            padding-bottom: 200px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            /* UPDATE -- padding-bottom:200px (vertical scroll-endpoint
+               room) -> padding-right (same idea, rotated 90 degrees now
+               that the scroll axis is horizontal): without it the last
+               card's own right border IS the scroll's max position, no
+               breathing room past it. 200px carried over unchanged -- same
+               "starting guess, nudge later" the original comment called
+               it, never actually measured either way. */
+            padding-bottom: 8px;
+            padding-right: 200px;
         }
         h1, h2, h3 { font-weight: 400; }
         /* FIX -- user: "make sure nothing is bold in the text. if something
@@ -473,7 +485,7 @@
                .search-input above -- was transparent, now explicit. */
             background: var(--bg);
             color: var(--mid);
-            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            cursor:var(--cursor-cross);
         }
         .search-arrow:hover {
             color: var(--w);
@@ -637,7 +649,7 @@
             font-family: var(--mono);
             font-size: 12px;
             color: var(--mid);
-            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            cursor:var(--cursor-cross);
             list-style: none;
             /* transparent, not #000 -- see the .weekend-dropdown UPDATE above
                (the sidebar's posterize filter turns opaque black into #0d0d0d). */
@@ -842,7 +854,7 @@
             border: 1px solid var(--mid);
             background: var(--bg);
             color: var(--mid);
-            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            cursor:var(--cursor-cross);
         }
         .add-venue-form button:hover {
             color: var(--w);
@@ -882,7 +894,7 @@
             font-size: 12px;
             color: var(--mid);
             padding: 2px 0;
-            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            cursor:var(--cursor-cross);
         }
         .dj-row:hover { color: var(--w); }
         /* .dj-dot -- plain dot, not .bandTag's own bordered-box language:
@@ -935,7 +947,7 @@
             padding-left: 18px;
         }
 
-        /* no filter here (or on .events-grid, above -- pure grid layout,
+        /* no filter here (or on .events-grid, above -- pure flex layout,
            paints nothing of its own) -- see the POSTERIZE ARCHITECTURE
            comment near .page. var(--mid)'s literal RGB already lands
            dead-center in the SAME mid band #posterize3 would have
@@ -943,6 +955,16 @@
            here; only the hard-alpha edge-snap is lost, and a 1px solid
            border has negligible anti-aliasing to begin with. */
         .event {
+            /* flex:0 0 260px -- fixed card width now that .events-grid is a
+               horizontal row (see that rule's own comment): a card can't
+               size itself off its own text content any more (every card
+               would end up a different width), and it can't shrink to fit
+               the row either -- .event-empty's longer "not available" text
+               needs a floor no card should go under, so cards are a fixed
+               size, same idea as the poster <img> row's own fixed 160px. */
+            flex: 0 0 260px;
+            width: 260px;
+            box-sizing: border-box;
             border: 1px solid var(--mid);
             padding: 6px;
         }
@@ -996,6 +1018,19 @@
             font-size: 12px;
             color: var(--w);
             margin: 6px 0 2px 0;
+            /* TWO LINES, always -- user: "if the show name takes up 3 lines
+               of text instead of 2 max, make the card larger so the three
+               rows become 2." fitCardWidths() (script, near splitLineup)
+               widens a card until its title fits in 2 lines; line-clamp is
+               only the backstop for a name still too long at the widest
+               card. min-height keeps 1-line titles on the same 2-line slot
+               so every card's lines up underneath. */
+            line-height: 1.3;
+            min-height: 2.6em;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
             /* same horizontal-overflow backstop as .bandTag, above -- a
                show/venue name that's one long unbreakable word (no spaces
                for normal wrapping to break on) shouldn't be able to bleed
@@ -1034,12 +1069,27 @@
            when splitLineup() actually finds a large lineup; ordinary
            single-act shows get no .bandTags element at all, so this never
            adds empty space to a normal card. */
+        /* ONE LINE, SCROLLS SIDEWAYS -- user: "reserve one line of the
+           card for the tags and add the extra tags in line with a scroll.
+           so they dont change line, they just disappear from the card
+           window until the user scroll horizontally." Was flex-wrap:wrap
+           (a long lineup stacked several tag rows and stretched the card).
+           Every card now gets a .bandTags row (empty when there's no
+           lineup -- see the script) so the line is reserved on all of
+           them. Scrollbar hidden so the row stays exactly one tag tall;
+           trackpad swipe / shift+wheel / plain wheel (see the wheel
+           handler in the script) scroll it. */
         .event .bandTags {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 4px;
             margin: 4px 0;
+            height: 18px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;
         }
+        .event .bandTags::-webkit-scrollbar { display: none; }
         .event .bandTag {
             border: 1px solid var(--mid);
             padding: 1px 4px;
@@ -1070,6 +1120,12 @@
             text-overflow: ellipsis;
             max-width: 100%;
             min-width: 0;
+            /* in the one-line scrolling row: keep each tag its full width
+               (don't squeeze them to fit) and 18px tall to match the row */
+            flex: 0 0 auto;
+            line-height: 14px;
+            box-sizing: border-box;
+            height: 18px;
         }
         /* .filter-group .bandTags/.bandTag -- spec item 6's genre tags
            (sidebar, underneath "Add a venue"). A parallel selector rather
@@ -1104,7 +1160,7 @@
             max-width: 100%;
             min-width: 0;
             text-decoration: none;
-            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            cursor:var(--cursor-cross);
             /* UPDATE -- user: "make sure the backgrounds of the scraper
                menu buttons and search bars are black." These are the
                Genres filter buttons in the sidebar menu -- had no
@@ -1171,14 +1227,14 @@
                the sidebar into a single-tap summary here, so a
                permanently-pinned search bar matters far less on a phone
                than it does on a tall desktop events list. */
-            .events-grid {
-                /* minmax(0, 1fr) -- same fix/reason as the base rule above,
-                   at a single full-width column. */
-                grid-template-columns: minmax(0, 1fr);
-            }
+            /* .events-grid's own grid-template-columns override REMOVED --
+               dead now that .events-grid is a flex row, not a grid (see its
+               own rule, near .page): a fixed-width flex row doesn't have
+               columns to retarget at this breakpoint, it just keeps
+               scrolling sideways, same as at any other width. */
             .filter-toggle > summary {
                 display: block;
-                cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+                cursor:var(--cursor-cross);
                 font-size: 12px;
                 text-transform: uppercase;
                 padding: 12px;
@@ -1369,7 +1425,7 @@
         }
         .cityModalHead .cityModalClose {
             color: var(--mid);
-            cursor:url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMSIgaGVpZ2h0PSIxMSI+PHJlY3QgeD0iMSIgeT0iMSIgd2lkdGg9IjkiIGhlaWdodD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGEwZDBhIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iOSIgaGVpZ2h0PSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiM1YmZmNmEiIHN0cm9rZS13aWR0aD0iMSIvPjwvc3ZnPg==') 5 5, default;
+            cursor:var(--cursor-cross);
         }
         .cityModalHead .cityModalClose:hover {
             color: var(--w);
@@ -1537,7 +1593,158 @@
         }
         *::-webkit-scrollbar-track { background: transparent; }
         *::-webkit-scrollbar-corner { background: transparent; }
-    </style>
+        /* user: "remove the scroll bar of the show posters." Hides only the
+           poster row's bar; the row still scrolls sideways (trackpad,
+           shift+wheel). */
+        .events-grid { scrollbar-width: none; }
+        .events-grid::-webkit-scrollbar { display: none; width: 0; height: 0; }
+    
+        /* NO SELECTION ANYWHERE -- user: "make the website imposible to
+           select" (dragging to grab a spider leg kept selecting the page).
+           Typing fields keep normal selection. */
+        html, body, * { -webkit-user-select: none !important; user-select: none !important; }
+        input, textarea, [contenteditable="true"] { -webkit-user-select: text !important; user-select: text !important; }
+
+        /* NETWORK = FULL PAGE -- user: "when using the network shortcut tab,
+           it should open a page in base.html. It should open a full page of
+           the network of gnumbat. Like, above everything. It's the higher
+           page of the website where you see the whole system of branches
+           that users edited... when you enter a branch, you enter its
+           system. It's building the seed right now." The 560px box is now
+           the whole window (panel.html lifts this iframe over everything
+           while it's open -- see its "NETWORK PAGE" CSS), the map fills
+           whatever height is left under the header. */
+        .cityModal { align-items: stretch; justify-content: stretch; }
+        .cityModalBody {
+            width: 100%;
+            max-width: none;
+            height: 100%;
+            box-sizing: border-box;
+            border: 0;
+            padding: 16px 24px;
+            display: flex;
+            flex-direction: column;
+        }
+        .cityModalBody .cityMapWrap { flex: 1 1 auto; height: auto; min-height: 0; }
+        .cityNode.enterable { cursor: pointer; }
+
+        /* user: "remove the vertical line next to ALL when its selected."
+           The border stays (transparent) so ALL's text doesn't shift. */
+        .filter-group #allLink.active { border-left-color: transparent; }
+
+        /* NETWORK PAGE, round 2 -- user: "put the (c) 2026 Gnumbat AGPL tags on
+           both side of the screen. and add the command shortcut [enter] to
+           access the selected branch. remove the ESC and the gnumbat network
+           with the line. also remove the 'No branches yet...'"
+           Header (title, [esc], rule) and the hint line are gone; the two
+           margin tags copy panel.html's .marginText exactly; the footer row
+           copies its shortcut row (.zoneF/.chip), sitting in the same
+           centred column panel.html's .plugin uses, so Enter lands where the
+           panel's own shortcuts are. Escape / ^N still close the page. */
+        .cityModalHead { display: none !important; }
+        .cityHint { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+                    margin: 0; color: var(--mid); min-height: 0; }
+        .cityHint:empty { display: none; }
+        .cityModalBody { padding-bottom: 30px; }
+        .netMargin { position: fixed; top: 50%; white-space: nowrap; pointer-events: none;
+                     color: var(--mid); font-family: var(--mono); font-size: 12px; letter-spacing: .5px; text-transform: none; }
+        #netMarginL { left: 20px; transform: translate(-50%, -50%) rotate(-90deg); }
+        #netMarginR { right: 20px; transform: translate(50%, -50%) rotate(-90deg); }
+        .netFoot { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+                   width: min(100%, max(1498px, 72%)); box-sizing: border-box; padding: 5px 10px 4px;
+                   display: flex; align-items: baseline; font-family: var(--mono); font-size: 12px; }
+        .netChip { color: #e2e4e3; cursor: pointer; white-space: nowrap; }
+        .netChip:hover { color: #fff; }
+        .netChip, .netChip b { text-transform: none; }
+        .netChip b { background: #fff; color: #000; padding: 0 4px; margin-right: 6px; font-weight: normal; }
+        /* the map sits in the same centred column as panel.html's .plugin */
+        .cityModalBody { width: min(100%, max(1498px, 72%)); margin: 0 auto; padding-left: 10px; padding-right: 10px; }
+        .cityNode.sel { outline: 1px solid var(--w); outline-offset: 3px; }
+        .cityNode.enterable { cursor: pointer; }
+
+        /* BRANCH TREE LOOK -- user (with a screenshot of the model select page's
+           ^T tree view): "for the network page branches, they need to look that
+           way." Same drawing as panel.html's renderModelTree(): fixed-size
+           boxes in columns by generation, a parent centred on its children,
+           square H/V/H elbow connectors, grey outline + grey text; the branch
+           the working copy is on is filled white, the selected one (click /
+           arrows, Enter enters it) gets a white outline and white text. */
+        .cityMapWrap { display: flex; align-items: center; justify-content: center; }
+        .netTree { display: block; overflow: visible; }
+        .netTree .netLines path { fill: none; stroke: var(--mid); stroke-width: 1.5; }
+        .netNode rect { fill: #000; stroke: var(--mid); stroke-width: 1.5; cursor: pointer; }
+        .netNode text { fill: var(--mid); font: 12px var(--mono); pointer-events: none; }
+        .netNode:hover rect, .netNode.sel rect { stroke: var(--w); }
+        .netNode:hover text, .netNode.sel text { fill: var(--w); }
+        .netNode.current rect { fill: var(--w); stroke: var(--w); }
+        .netNode.current text { fill: #000; }
+
+        /* user: "remove the white vertical line next to the selected menu
+           items." Every selected sidebar item (All, Right Now, Tonight...,
+           and the weekend / venues dropdown picks) loses its left bar; the
+           border stays transparent so nothing shifts sideways. */
+        .filter-group a.active,
+        .filter-group .weekend-dropdown-menu a.active { border-left-color: transparent !important; }
+
+        /* NETWORK = PURE BLACK -- user: "make the background of network pure
+           black. just like the rest of the website." #cityModal was picking up
+           filter:url(#posterize3) on top of the one panel.html already puts
+           over this whole iframe -- quantized twice, black comes out as the
+           filter's grey-black band (#0e0e0e) instead of #000 in Safari. Only
+           the page's own filter goes; everything is still posterized once,
+           like every other page. */
+        .cityModal { filter: none !important; background: #000 !important; }
+        .cityModalBody, .cityMapWrap { background: transparent !important; }
+
+        /* Enter chip on the right margin -- user: "enter branch needs to be
+           aligned with the right-margin." */
+        .netFoot { justify-content: flex-end; }
+
+        /* CARDS DOWN -- user: "move the poster cards down a little so their
+           top aligns with the bottom of [SHOWS]" (panel.html's header line;
+           the white [SHOWS] box ends ~15.5px down this iframe) */
+        .events-grid { margin-top: 23px !important; }   /* user: "move the show cards down until the top of the cards align with the top of ALL" -- ALL's letters start 23px down */ /* was 17px:   /* user: "move the poster cards so the outside of the card sits under CO2" -- the header CO2 line (panel.html #headCo2) ends 17px down: the cards' top border starts right there */
+
+        /* inside the panel, TRAINED MODELS sits in the top-right corner
+           (panel.html "TRAINED MODELS IN THE CORNER": 170px + 10px margin)
+           -- the poster row stops 3ch short of it */
+        .gnEmbedded .events-grid { margin-right: calc(170px + 3ch) !important; }
+
+        /* GALLERY ENDS -- user (picture of a card cut at the gallery's
+           edge): "on both horizontal limits of the poster cards gallery, i
+           want lines that close the open ending." A vertical line in the
+           cards' border grey on the scroll row's left and right edges,
+           reaching 4px past the cards top and bottom (the cards themselves
+           stay exactly where they were: 23px down, same x). */
+        .events-grid {
+            border-left: 1px solid #7d8281 !important;
+            border-right: 1px solid #7d8281 !important;
+            margin-top: 19px !important;
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+            margin-left: -9px !important;
+            /* the left line sat right on the first card's own border, so it
+               didn't read as a line -- user: "put the line for the posters
+               zone sides on both sides". 8px of room now, like the right one
+               (the cards stay at the same x) */
+            padding-left: 8px !important;
+        }
+        /* .page clips its overflow at its own padding edge: give it 9px of
+           left padding (and 9px less margin) so that edge -- and the left
+           line -- sits 9px left of the content, which itself doesn't move */
+        .page { margin-left: 191px !important; padding-left: 9px !important; box-sizing: border-box; }
+
+        /* CARDS CENTERED -- user: "center the poster cards in between the
+           two row infos on both sides of the cards" (the sidebar on the left,
+           TRAINED MODELS on the right). centerCards() (script, end of body)
+           sizes the gallery to a whole number of cards and centres it in
+           the space between the two; scroll-snap keeps every scroll stop on
+           whole cards, and the 200px scroll-end room became the same 8px the
+           left side has so the last stop is centred too. */
+        .events-grid { padding-right: 8px !important; scroll-snap-type: x mandatory; scroll-padding-left: 8px; box-sizing: border-box; }
+        .event { scroll-snap-align: start; }
+</style>
+<script>/* embedded in panel.html -> .gnEmbedded (see the TRAINED MODELS corner rule) */ if (window.parent && window.parent !== window) document.documentElement.classList.add('gnEmbedded');</script>
 </head>
 <body>
 <!-- GRID INSPECTOR overlay markup -- see the CSS comment above (search
@@ -1887,7 +2094,7 @@
 <div id="cityModal" class="cityModal hide" role="dialog" aria-label="switch rooms">
     <div class="cityModalBody">
         <div class="cityModalHead">
-            <span>Branches network</span>
+            <span>Gnumbat network</span>
             <span class="cityModalClose" id="cityModalClose">[esc]</span>
         </div>
         <div class="cityMapWrap" id="cityMapWrap">
@@ -1895,6 +2102,9 @@
         </div>
         <div class="cityHint" id="cityHint"></div>
     </div>
+    <div class="netMargin" id="netMarginL">(c) 2026 Gnumbat AGPL 3.0</div>
+    <div class="netMargin" id="netMarginR">(c) 2026 Gnumbat AGPL 3.0</div>
+    <div class="netFoot"><span class="netChip" id="netEnterChip"><b>Enter</b>enter branch</span></div>
 </div>
 
 <script>
@@ -2293,6 +2503,8 @@
         cityMapWrap.querySelectorAll('.cityNode').forEach(function(n) { n.remove(); });
         var w = cityMapWrap.clientWidth, h = cityMapWrap.clientHeight;
         var lay = layoutBranchTree(w, h);
+        if (!lay.nodes.some(function(n) { return n.id === NET_SEL; })) NET_SEL = BRANCH_STATE.head;
+        NET_ORDER = lay.nodes.map(function(n) { return n; });
         var els = {};
         lay.nodes.forEach(function(n) {
             var el = document.createElement('div');
@@ -2301,6 +2513,13 @@
             el.style.left = n.x + 'px';
             el.style.top = n.y + 'px';
             el.title = n.isSeed ? 'seed' : ('branch' + (n.createdAt ? ' -- ' + String(n.createdAt).replace('T', ' ').slice(0, 16) : ''));
+            /* selecting / entering a branch -- click selects, Enter (or the
+               footer chip, or a double-click) enters. Starts on the branch the
+               working copy is on. */
+            if (n.id === NET_SEL) el.classList.add('sel');
+            if (n.id !== BRANCH_STATE.head) el.classList.add('enterable');
+            el.addEventListener('click', (function(id) { return function() { NET_SEL = id; renderCityMap(); }; })(n.id));
+            el.addEventListener('dblclick', (function(id) { return function() { NET_SEL = id; enterSelectedBranch(); }; })(n.id));
             cityMapWrap.appendChild(el);
             els[n.id] = el;
         });
@@ -2314,19 +2533,157 @@
             line.setAttribute('x2', pb.x); line.setAttribute('y2', pb.y);
             cityMapLines.appendChild(line);
         });
-        var count = (BRANCH_STATE.branches || []).length;
-        cityHint.textContent = count === 0
-            ? 'No branches yet. Enter edit mode (^E), change the page, then commit with ^R to branch out.'
-            : count + (count === 1 ? ' branch' : ' branches') + ' -- working copy is on "' +
-              ((BRANCH_STATE.branches.filter(function(b) { return b.id === BRANCH_STATE.head; })[0] || BRANCH_STATE.seed).name) + '".';
+        // (branch-count hint removed -- see NETWORK PAGE, round 2)
+        cityHint.textContent = '';
+    }
+    /* tellNetworkState -- panel.html lifts this iframe over the whole
+       window while the network page is open (see the NETWORK = FULL PAGE
+       CSS comment), so it needs to hear every open/close, including the
+       ones that start here ([esc], Escape, ^N, clicking outside). */
+    function tellNetworkState(open) {
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({type: 'gnumbat-network-state', open: open}, '*');
+        }
+    }
+    /* renderCityMap, redrawn as the model-tree look (see BRANCH TREE LOOK).
+       Declared after the radial version above in the same scope, so this one
+       is the renderCityMap every caller gets. Same sizes as panel.html's
+       TREE_* constants. */
+    var NT_COL_W = 180, NT_ROW_H = 28, NT_NODE_W = 150, NT_NODE_H = 18, NT_PAD = 14, NT_NAME_MAX = 16;
+    function renderCityMap() {
+        /* MODEL NETWORK -- user: "when pressing enter i need to enter the
+           model." The page draws panel.html's MODELS forest (every seed and
+           its branches, sent in as 'gnumbat-model-network'), the same tree
+           as the model select page's ^T view; until that arrives it falls
+           back to the site's own seed/branch list. */
+        var byId = {}, roots = [], CUR;
+        if (MODEL_NET && MODEL_NET.models && MODEL_NET.models.length) {
+            MODEL_NET.models.forEach(function(m) { byId[m.id] = { id: m.id, name: m.name, kids: [], parentId: m.parent }; });
+            MODEL_NET.models.forEach(function(m) {
+                var n = byId[m.id], par = m.parent != null && m.parent !== m.id ? byId[m.parent] : null;
+                if (par) { n.parentNode = par; par.kids.push(n); } else { n.isSeed = true; roots.push(n); }
+            });
+            CUR = MODEL_NET.current;
+        } else {
+            /* every seed roots its own tree (Gnumbat AGPL 3.0 first; friends'
+               services -- e.g. a sound-system booking page -- below it) */
+            var seed = BRANCH_STATE.seed, seedList = BRANCH_STATE.seeds && BRANCH_STATE.seeds.length ? BRANCH_STATE.seeds : [seed];
+            seedList.forEach(function(sd) { byId[sd.id] = { id: sd.id, name: sd.name, isSeed: true, kids: [] }; roots.push(byId[sd.id]); });
+            (BRANCH_STATE.branches || []).forEach(function(b) {
+                byId[b.id] = { id: b.id, name: b.name, createdAt: b.createdAt, kids: [], parentId: b.parent };
+            });
+            Object.keys(byId).forEach(function(id) {
+                var n = byId[id]; if (n.isSeed) return;
+                var par = byId[n.parentId] && n.parentId !== id ? byId[n.parentId] : byId[seed.id];
+                n.parentNode = par; par.kids.push(n);
+            });
+            CUR = BRANCH_STATE.head;
+        }
+        NET_CUR = CUR;
+        var cursor = 0, maxDepth = 0, order = [];
+        roots.forEach(function(r) { (function place(n, depth) {
+            n.depth = depth; if (depth > maxDepth) maxDepth = depth;
+            order.push(n);
+            if (!n.kids.length) { n.slot = cursor++; return; }
+            n.kids.forEach(function(k) { place(k, depth + 1); });
+            n.slot = (n.kids[0].slot + n.kids[n.kids.length - 1].slot) / 2;
+        })(r, 0); cursor += 1; });   /* a blank row between seeds */
+        cursor = Math.max(1, cursor - 1);
+        NET_ORDER = order;
+        if (!byId[NET_SEL]) NET_SEL = byId[CUR] ? CUR : (order[0] && order[0].id);
+        var W = NT_PAD * 2 + (maxDepth + 1) * NT_COL_W - (NT_COL_W - NT_NODE_W);
+        var H = NT_PAD * 2 + Math.max(0, cursor - 1) * NT_ROW_H + NT_NODE_H;
+        var px = function(n) { return NT_PAD + n.depth * NT_COL_W; };
+        var py = function(n) { return NT_PAD + n.slot * NT_ROW_H; };
+        var esc = function(t) { return String(t).replace(/[&<>"]/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+        var lines = '', nodes = '';
+        order.forEach(function(n) {
+            if (n.parentNode) {
+                var x1 = px(n.parentNode) + NT_NODE_W, y1 = py(n.parentNode) + NT_NODE_H / 2;
+                var x2 = px(n), y2 = py(n) + NT_NODE_H / 2, mid = x1 + (NT_COL_W - NT_NODE_W) / 2;
+                lines += '<path d="M' + x1 + ',' + y1 + ' H' + mid + ' V' + y2 + ' H' + x2 + '"/>';
+            }
+            var label = n.name.length > NT_NAME_MAX ? n.name.slice(0, NT_NAME_MAX - 1) + '\u2026' : n.name;
+            var tip = n.isSeed ? 'seed' : ('branch' + (n.createdAt ? ' -- ' + String(n.createdAt).replace('T', ' ').slice(0, 16) : ''));
+            nodes += '<g class="netNode' + (n.id === CUR ? ' current' : '') + (n.id === NET_SEL ? ' sel' : '') + '" data-id="' + esc(n.id) + '">'
+                + '<title>' + esc(n.name + ' -- ' + tip) + '</title>'
+                + '<rect x="' + px(n) + '" y="' + py(n) + '" width="' + NT_NODE_W + '" height="' + NT_NODE_H + '"/>'
+                + '<text x="' + (px(n) + NT_NODE_W / 2) + '" y="' + (py(n) + NT_NODE_H / 2) + '" text-anchor="middle" dominant-baseline="central">' + esc(label) + '</text></g>';
+        });
+        /* natural size, shrunk (never grown) to fit the page */
+        var fit = Math.min(1, cityMapWrap.clientWidth / W || 1, cityMapWrap.clientHeight / H || 1);
+        cityMapWrap.innerHTML = '<svg class="netTree" width="' + Math.round(W * fit) + '" height="' + Math.round(H * fit) + '" viewBox="0 0 ' + W + ' ' + H + '">'
+            + '<g class="netLines">' + lines + '</g>' + nodes + '</svg>';
+        cityMapWrap.querySelectorAll('.netNode').forEach(function(g) {
+            g.addEventListener('click', function() { NET_SEL = g.getAttribute('data-id'); renderCityMap(); });
+            g.addEventListener('dblclick', function() { NET_SEL = g.getAttribute('data-id'); enterSelectedBranch(); });
+        });
+    }
+    var NET_SEL = null, NET_ORDER = [], netHintTimer = 0, MODEL_NET = null, NET_CUR = null;
+    /* enterSelectedBranch -- "when you enter a branch, you enter its system."
+       The panel owns the hub connection, so this relays 'gnumbat-enter-branch'
+       out; switching the working copy is the hub's job and isn't wired yet
+       ("it's building the seed right now"), so a short note says so. */
+    function enterSelectedBranch() {
+        var node = NET_ORDER.filter(function(n) { return n.id === NET_SEL; })[0];
+        if (!node) return;
+        /* (models are no longer drawn here -- user: "dont create fake data.
+           just keep the basic gnumbat AGPL 3.0 seed" -- so this never runs) */
+        if (MODEL_NET && MODEL_NET.models && MODEL_NET.models.length) {
+            closeCityModal();
+            if (window.parent && window.parent !== window) window.parent.postMessage({type: 'gnumbat-enter-model', id: node.id}, '*');
+            return;
+        }
+        /* ENTER ANY NODE -- user: "enter branch still doesnt enter the seed
+           branch. it should enter whatever is selected. not only branches.
+           seeds also." The one you're already on (filled white): entering it
+           is just going into it -- the page closes and you're in that
+           system. Any other seed or branch: switch to it. */
+        if (node.id === NET_CUR) { closeCityModal(); return; }
+        /* the panel asks the hub (edit_agent.js enterBranch); the outcome
+           comes back as 'gnumbat-network-note', and on success every panel
+           reloads onto the branch */
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({type: 'gnumbat-enter-branch', id: node.id}, '*');
+        }
     }
     function openCityModal() {
         cityModal.classList.remove('hide');
+        /* always open on the node you're on -- a selection left over from a
+           previous visit made Enter jump to the old seed right after a commit
+           (renderCityMap() falls back to the current node when this is null) */
+        NET_SEL = null;
+        tellNetworkState(true);
         renderCityMap();
+        /* the iframe is resized to full window right after the message above,
+           so measure again once that has landed */
+        setTimeout(function() { if (!cityModal.classList.contains('hide')) renderCityMap(); }, 60);
     }
     function closeCityModal() {
         cityModal.classList.add('hide');
+        tellNetworkState(false);
     }
+    document.getElementById('netEnterChip').addEventListener('click', enterSelectedBranch);
+    window.addEventListener('resize', function() {
+        if (!cityModal.classList.contains('hide')) renderCityMap();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (cityModal.classList.contains('hide')) return;
+        var k = (e.key || '').toLowerCase();
+        if (k === 'escape' || (e.ctrlKey && !e.metaKey && !e.altKey && k === 'n')) {
+            e.preventDefault();
+            closeCityModal();
+        } else if (k === 'enter') {
+            e.preventDefault();
+            enterSelectedBranch();
+        } else if (/^arrow/.test(k) && NET_ORDER.length) {
+            e.preventDefault();
+            var ix = Math.max(0, NET_ORDER.findIndex(function(n) { return n.id === NET_SEL; }));
+            ix = (ix + (k === 'arrowup' || k === 'arrowleft' ? -1 : 1) + NET_ORDER.length) % NET_ORDER.length;
+            NET_SEL = NET_ORDER[ix].id;
+            renderCityMap();
+        }
+    });
     // Relay from src/gui/panel.html's own #cityModalChip -- when this page
     // is loaded inside OMSC's iframe (see panel.html's #omscFrame), it sits
     // on a different port than the panel itself, which counts as a
@@ -2354,10 +2711,20 @@ window.addEventListener('message', function(e) {
             closeCityModal();
         }
     }
+    if (e.data && e.data.type === 'gnumbat-network-note') {
+        cityHint.textContent = String(e.data.text || '');
+        clearTimeout(netHintTimer);
+        netHintTimer = setTimeout(function() { cityHint.textContent = ''; }, 4000);
+    }
+    if (e.data && e.data.type === 'gnumbat-model-network' && Array.isArray(e.data.models)) {
+        MODEL_NET = { models: e.data.models, current: e.data.current };
+        if (!cityModal.classList.contains('hide')) renderCityMap();
+    }
     // Branches network -- see BRANCH_STATE's own comment (map code above).
     if (e.data && e.data.type === 'gnumbat-branch-list' && e.data.seed) {
         BRANCH_STATE = {
             seed: e.data.seed,
+            seeds: e.data.seeds || [e.data.seed],
             branches: e.data.branches || [],
             head: e.data.head || e.data.seed.id
         };
@@ -2559,10 +2926,11 @@ cityModal.addEventListener('click', function(e) {
         var parts = splitLineup(name);
         var sceneMatch = SCENE_KEYWORDS.test(name) || (venueLine && SCENE_KEYWORDS.test(venueLine.textContent));
         var isLargeLineup = parts.length >= 3 || (parts.length >= 2 && sceneMatch);
-        if (!isLargeLineup) return;
+        /* every card gets the row (empty for single acts) so the tag line
+           is reserved everywhere and all cards stay the same height */
         var tags = document.createElement('div');
         tags.className = 'bandTags';
-        parts.forEach(function(p) {
+        if (isLargeLineup) parts.forEach(function(p) {
             var tag = document.createElement('span');
             tag.className = 'bandTag';
             tag.textContent = '[ ' + p.toUpperCase() + ' ]';
@@ -2570,6 +2938,38 @@ cityModal.addEventListener('click', function(e) {
         });
         h3.insertAdjacentElement('afterend', tags);
     });
+    /* empty card gets the same reserved tag line as real ones */
+    document.querySelectorAll('.event.event-empty h3').forEach(function(h3) {
+        var tags = document.createElement('div');
+        tags.className = 'bandTags';
+        h3.insertAdjacentElement('afterend', tags);
+    });
+    /* plain mouse wheel over a tag row that overflows scrolls it sideways */
+    document.querySelectorAll('.event .bandTags').forEach(function(row) {
+        row.addEventListener('wheel', function(e) {
+            if (row.scrollWidth <= row.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+            e.preventDefault();
+            row.scrollLeft += e.deltaY;
+        }, {passive: false});
+    });
+    /* fitCardWidths -- widen any card whose title needs 3+ lines at the
+       base 260px, 20px at a time, until it fits in 2 (cap 560px; past that
+       the h3's line-clamp cuts it). See .event h3's own CSS comment. */
+    function fitCardWidths() {
+        document.querySelectorAll('.event').forEach(function(card) {
+            var h3 = card.querySelector('h3');
+            if (!h3) return;
+            card.style.flexBasis = card.style.width = '';
+            var lh = parseFloat(getComputedStyle(h3).lineHeight) || 16;
+            var w = card.getBoundingClientRect().width;
+            while (h3.scrollHeight > lh * 2 + 2 && w < 560) {
+                w += 20;
+                card.style.flexBasis = card.style.width = w + 'px';
+            }
+        });
+    }
+    fitCardWidths();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitCardWidths);
 
     // Map REMOVED -- user: "remove the map from the show scraper. just keep
     // address." This used to be the Leaflet map init (dark CARTO tiles,
@@ -2748,6 +3148,157 @@ cityModal.addEventListener('click', function(e) {
         window.addEventListener('resize', refresh);
         refresh();
     })();
+</script>
+<script>
+/* SPIDER CURSOR RELAY -- panel.html's graphgazer spider can't see the mouse
+   inside this cross-origin iframe, so pass its position up (this frame's own
+   viewport coords; panel.html adds the iframe's offset). One message per
+   animation frame at most. 'out' when the cursor leaves this page.
+   Also: when the spider "eats" the cursor, panel.html tells this page to hide
+   its pointer too (clicks keep working), and to bring it back when she's gone.
+   Presses and releases are passed up too, so a long click here can put down a spider leg you carry. */
+(function(){
+    if (window.parent === window) return;
+    /* the spider walks above this page's background but behind its
+       information: tell panel.html where the text, poster cards, images,
+       buttons and fields are (viewport rects, refreshed a few times a second
+       and on scroll/resize, sent only when they change) so it cuts them out
+       of her. */
+    /* the dropdown boxes too (the week/venue dropdown's own box, and its list
+       while open) -- just those boxes, not the filter menu around them -- so
+       the cursor is safe on them */
+    var MASK_SEL = 'img,video,canvas,svg,button,input,select,textarea,.event,.bandTag,.search-field,' +
+        '.weekend-dropdown > summary,.weekend-dropdown[open] .weekend-dropdown-menu,[role=menu],[role=listbox],[data-spider-solid]';
+    function inter(a, b){
+        var x0 = Math.max(a[0], b[0]), y0 = Math.max(a[1], b[1]), x1 = Math.min(a[2], b[2]), y1 = Math.min(a[3], b[3]);
+        return x1 > x0 && y1 > y0 ? [Math.round(x0), Math.round(y0), Math.round(x1), Math.round(y1)] : null;
+    }
+    function collectMask(){
+        var out = [], view = [0, 0, window.innerWidth, window.innerHeight], styles = new Map(), clips = new Map();
+        function st(el){ var v = styles.get(el); if (!v) { v = getComputedStyle(el); styles.set(el, v); } return v; }
+        function clipOf(el){
+            if (!el || el === document.body || el === document.documentElement) return view;
+            if (clips.has(el)) return clips.get(el);
+            var v = st(el), c = v.position === 'fixed' ? view : clipOf(el.parentElement);
+            if (c && (v.overflowX !== 'visible' || v.overflowY !== 'visible')) {
+                var r = el.getBoundingClientRect(); c = inter(c, [r.left, r.top, r.right, r.bottom]);
+            }
+            clips.set(el, c); return c;
+        }
+        function push(r, clipEl){
+            if (r.width < 1 || r.height < 1) return;
+            var c = clipOf(clipEl); if (!c) return;
+            var q = inter(c, [r.left - 1, r.top - 1, r.right + 1, r.bottom + 1]); if (q) out.push(q);
+        }
+        function hidden(el){ var v = st(el); return v.visibility === 'hidden' || v.opacity === '0'; }
+        var els = document.querySelectorAll(MASK_SEL);
+        for (var k = 0; k < els.length; k++) if (!hidden(els[k])) push(els[k].getBoundingClientRect(), els[k].parentElement);
+        var tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), rg = document.createRange(), n;
+        while ((n = tw.nextNode())) {
+            if (!/\S/.test(n.data)) continue;
+            var el = n.parentElement;
+            if (!el || /^(SCRIPT|STYLE|NOSCRIPT|TEXTAREA|OPTION|TITLE|SELECT|BUTTON)$/.test(el.tagName) || hidden(el) || el.closest('.event')) continue;
+            rg.selectNodeContents(n);
+            var rs = rg.getClientRects();
+            for (var m = 0; m < rs.length; m++) push(rs[m], el);
+        }
+        return out;
+    }
+    /* buttons and search fields with a see-through background get a solid
+       black one, so the spider doesn't show through them (more specific
+       hover/active styles still win). Opt out with data-spider-clear. */
+    var solidCss = document.createElement('style');
+    solidCss.textContent = ':is(button,input,select,textarea,div,span,a,summary,ul,ol,nav).gnSpiderSolidBg{background-color:#000}';
+    document.body.appendChild(solidCss);   /* late in the page, so it wins ties */
+    var CTRL_SEL = 'button,[role=button],select,textarea,.search-field,.weekend-dropdown > summary,.weekend-dropdown-menu,[role=menu],[role=listbox],input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]):not([type=color])';
+    function solidify(){
+        var els = document.querySelectorAll(CTRL_SEL);
+        for (var k = 0; k < els.length; k++) {
+            var el = els[k];
+            if (el.classList.contains('gnSpiderSolidBg') || el.closest('[data-spider-clear]')) continue;
+            var c = getComputedStyle(el).backgroundColor;
+            if (!c || c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c)) {
+                el.classList.add('gnSpiderSolidBg');
+                if (el.style.backgroundColor) el.style.backgroundColor = '#000';   /* an inline background beats the class */
+            }
+        }
+    }
+    var lastMask = '', maskQueued = false;
+    function sendMask(){
+        maskQueued = false;
+        try { solidify(); } catch (err) {}
+        var rects; try { rects = collectMask(); } catch (err) { rects = []; }
+        var key = JSON.stringify(rects);
+        if (key === lastMask) return;
+        lastMask = key;
+        window.parent.postMessage({type: 'gnumbat-spider-mask', rects: rects}, '*');
+        /* where the poster cards end (this page's own coordinates) -- panel.html
+           opens the ^R radio tab exactly there, see its 'gnumbat-cards-bottom' */
+        try {
+            var grid = document.querySelector('.events-grid');
+            if (grid) window.parent.postMessage({type: 'gnumbat-cards-bottom', y: Math.round(grid.getBoundingClientRect().bottom + window.scrollY)}, '*');
+        } catch (err) {}
+    }
+    function queueMask(){ if (!maskQueued) { maskQueued = true; requestAnimationFrame(sendMask); } }
+    window.addEventListener('scroll', queueMask, {capture: true, passive: true});
+    window.addEventListener('resize', queueMask);
+    setInterval(queueMask, 300);
+    queueMask();
+    var x = 0, y = 0, queued = false;
+    function send(){ queued = false; window.parent.postMessage({type: 'gnumbat-spider-pointer', x: x, y: y}, '*'); }
+    window.addEventListener('pointermove', function(e){
+        x = e.clientX; y = e.clientY;
+        if (!queued) { queued = true; requestAnimationFrame(send); }
+    }, {passive: true, capture: true});
+    window.addEventListener('pointerdown', function(){
+        window.parent.postMessage({type: 'gnumbat-spider-pointer', down: true}, '*');
+    }, {passive: true, capture: true});
+    /* releases too: holding the click long enough puts a carried spider leg down */
+    function up(){ window.parent.postMessage({type: 'gnumbat-spider-pointer', up: true}, '*'); }
+    window.addEventListener('pointerup', up, {passive: true, capture: true});
+    window.addEventListener('pointercancel', up, {passive: true, capture: true});
+    document.addEventListener('mouseout', function(e){
+        if (!e.relatedTarget) window.parent.postMessage({type: 'gnumbat-spider-pointer', out: true}, '*');
+    }, true);
+    var eatStyle = document.createElement('style');
+    /* id-level specificity so it beats this page's own !important cursor
+       rules (the search fields' text cursor) */
+    eatStyle.textContent = 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: none !important; }';
+    window.addEventListener('message', function(e){
+        if (e.source !== window.parent || !e.data || e.data.type !== 'gnumbat-spider-eat') return;
+        if (e.data.eaten) document.head.appendChild(eatStyle); else if (eatStyle.parentNode) eatStyle.parentNode.removeChild(eatStyle);
+    });
+})();
+</script>
+<script>
+/* CARDS CENTERED -- see the CSS comment of the same name. Left edge: the
+   sidebar's own right edge. Right edge: TRAINED MODELS' left edge when
+   embedded in panel.html (its corner box: 170px wide + 10px margin), else
+   the window's 10px margin. As many whole cards as fit with at least MIN_GAP
+   on each side, then the gallery (its two end lines included) sits in the
+   middle of that space. */
+(function () {
+    var CARD = 260, GAP = 16, CHROME = 8 + 8 + 2, MIN_GAP = 10;
+    function centerCards() {
+        var grid = document.querySelector('.events-grid'), side = document.querySelector('.sidebar'), page = document.querySelector('.page');
+        if (!grid || !side || !page) return;
+        var cards = grid.querySelectorAll('.event').length || 1;
+        var L = side.getBoundingClientRect().right;
+        var R = window.innerWidth - (document.documentElement.classList.contains('gnEmbedded') ? 170 + 10 : 10);
+        var avail = R - L;
+        var n = Math.max(1, Math.min(cards, Math.floor((avail - 2 * MIN_GAP - CHROME + GAP) / (CARD + GAP))));
+        var w = n * (CARD + GAP) - GAP + CHROME;
+        var x = Math.round(L + Math.max(0, (avail - w) / 2));
+        var pr = page.getBoundingClientRect(), pl = parseFloat(getComputedStyle(page).paddingLeft) || 0;
+        grid.style.setProperty('width', w + 'px', 'important');
+        grid.style.setProperty('margin-left', (x - (pr.left + pl)) + 'px', 'important');
+        grid.style.setProperty('margin-right', '0', 'important');
+    }
+    window.gnCenterCards = centerCards;
+    window.addEventListener('resize', centerCards);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', centerCards); else centerCards();
+    window.addEventListener('load', centerCards);
+})();
 </script>
 </body>
 </html>
