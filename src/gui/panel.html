@@ -6697,6 +6697,21 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
   background:transparent!important;border-top:1px solid var(--g3);border-bottom:1px solid var(--g3);height:4px!important;box-sizing:border-box}
 #mrlcfResizer:hover::after,#mrlcfResizer.dragging::after{border-color:#fff}
 
+/* LIST / CHAT GRIP -- user: "add grab lines above the chat too. not only
+   above the model selection, also above the chat (so, in between the model
+   selection and the chat)." Same two-bar handle as #mrlcfResizer, sitting on
+   the line between #modelSelectView and .conv (only while the model list is
+   showing on the ^W tab). Dragging it sets --modelListH, the list's height:
+   up = more chat, down = more list (the list scrolls once it's shorter than
+   its rows). Remembered in localStorage; double-click forgets it. See
+   initModelChatResizer(). */
+#modelChatResizer{display:none;flex:0 0 12px;margin:-6px auto;width:36px;position:relative;z-index:8;cursor:ns-resize;touch-action:none}
+#modelChatResizer::after{content:"";position:absolute;left:6px;right:6px;top:3px;height:4px;box-sizing:border-box;border-top:1px solid var(--g3);border-bottom:1px solid var(--g3)}
+#modelChatResizer:hover::after,#modelChatResizer.dragging::after{border-color:#fff}
+.plugin.mrlcfShelf #modelSelectView:not(.hide) + #modelChatResizer{display:block}
+.plugin.modelListSized.mrlcfShelf #modelSelectView:not(.hide){flex:0 0 var(--modelListH)!important;min-height:0}
+body.editLocking #modelChatResizer{pointer-events:auto}
+
 /* ── RADIO TAB (user's reference picture + list of asks) ───────────────── */
 /* "remove the console tab ... keep them but do not display them": the ^C
    chip and the command list are hidden; ^C and the typed commands still
@@ -7025,9 +7040,15 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
 #editSide .esHead .esAgents::-webkit-scrollbar{display:none}
 #editSide .esHead .esAgents .esAgent{flex:0 0 9ch;width:9ch;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;white-space:nowrap}
 
-#editSide .esHead .esAgents .esMore{flex:0 0 3ch;color:#7d8281;pointer-events:none;line-height:16px;display:flex;align-items:center;letter-spacing:-0.4ch}   /* closer -- user: "make the dots closer" */
 
 #editSide .esTitle{height:16px;line-height:16px}
+
+/* "+" after the agents (was "...") and its menu -- see #esAddMenu in the script */
+#editSide .esHead .esAdd{flex:0 0 auto;margin-left:1.5ch;color:#7d8281;cursor:pointer;line-height:16px;pointer-events:auto}
+#editSide .esHead .esAdd:hover{color:#fff}
+#esAddMenu{position:absolute;z-index:20;background:#000;border:1px solid var(--g3,#7d8281);padding:2px 0;min-width:16ch;pointer-events:auto}
+#esAddMenu .esAddOpt{height:16px;line-height:16px;padding:0 1ch;color:#fff;cursor:pointer;white-space:nowrap}
+#esAddMenu .esAddOpt:hover{background:#fff;color:#000}
 
 /* user: "move the playnow bar, the coding agent and the djs section down
    one row" -- the chat-zone play bar sits one 16px row lower; CODING AGENT
@@ -7735,7 +7756,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
         <span class="off"></span>
       </span>
     </div>
-    <iframe id="omscFrame" src="base.html"></iframe> src="http://localhost:6969" title="G-ANS — Grassroot-Agentic Node Spiderbot"></iframe>
+    <iframe id="omscFrame" src="http://localhost:6969" title="G-ANS — Grassroot-Agentic Node Spiderbot"></iframe>
     <!-- #nowPlayingBar MOVED -- user: "move the [playback bar] just
          above MEM." Used to be a plain child of #omscView right here,
          docked position:absolute to its bottom edge (see .nowPlayingBar's
@@ -7828,7 +7849,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
     <!-- #tmFact -- user: "add a fun fact section under TRAINED MODEL. dont
          write fun fact. just write the fun fact. A fun fact about computer
          viruses." No title on purpose. -->
-    <div class="tmFact" id="tmFact">The first PC virus, Brain (1986), was written by two brothers in Lahore, Pakistan. They put their names, shop address and phone number right inside its code.</div>
+    <div class="tmFact" id="tmFact">The first computer worm, Creeper (1971), only printed &ldquo;I&rsquo;M THE CREEPER: CATCH ME IF YOU CAN&rdquo; &mdash; so someone wrote Reaper to hunt it down, the first antivirus.</div>
   </div>
   <div class="conv">
     <!-- #editSide -- edit mode's own column in the chat zone (tasks,
@@ -8506,7 +8527,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
            the only model view now; the element stays (hidden) because other
            code still updates its label. -->
       <span class="chip hide" id="modelViewToggleChip" style="display:none"><b>^T</b><span id="modelViewToggleLbl">tree view</span></span>
-      <span class="chip" id="modelEnterChip"><b>Enter</b>select</span>
+      <span class="chip" id="modelEnterChip"><b>Enter</b>train</span><!-- select -> train -- user: "change the shortcut for enter select to enter train" (same action: Enter opens the model to train it) -->
     </span>
     <span class="fg hide" id="startGroup"><span class="chip" id="startChip"><b>&#9251;</b>start</span></span>
     <!-- id="gapAfterModelR" ADDED — FIX, user: "put [enter] Select to the
@@ -17881,7 +17902,7 @@ document.getElementById('chatChip').onclick=function(){setChatOpen(!chatOpen);do
     // Leave the inspector panel's own text selectable -- the one true
     // exception, since identifying a click inside itself makes no sense.
     if (e.target.closest && e.target.closest('#gridInspector')) return;
-    if (e.target.closest && e.target.closest('#mrlcfResizer')) return;   // the drag spot is a control, not something to inspect
+    if (e.target.closest && e.target.closest('#mrlcfResizer,#modelChatResizer')) return;   // the drag spots are controls, not something to inspect
     // UPDATE -- user: "why are elements from the chat not clickable? i
     // want to see what item name they have." .conv used to return early
     // above, same as #gridInspector -- that was deliberate (body.
@@ -18903,6 +18924,40 @@ renderNpVotes();
   };
   h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
 })();
+/* initModelChatResizer -- see "LIST / CHAT GRIP" */
+(function initModelChatResizer(){
+  const plug=document.querySelector('.plugin'), view=document.getElementById('modelSelectView');
+  if(!plug||!view) return;
+  const g=document.createElement('div'); g.id='modelChatResizer'; g.title='drag to resize (double-click: reset)';
+  view.after(g);
+  const KEY='gnumbat.modelListH', MIN=48, CHAT_MIN=120;
+  const maxH=()=>{ const c=document.querySelector('.conv'); const room=view.getBoundingClientRect().height+(c?c.getBoundingClientRect().height:0); return Math.max(MIN, room-CHAT_MIN); };
+  const set=px=>{ const h=Math.round(Math.min(maxH(),Math.max(MIN,px))); plug.style.setProperty('--modelListH',h+'px'); plug.classList.add('modelListSized'); return h; };
+  const refit=()=>requestAnimationFrame(()=>{ if(typeof fitShelf==='function') fitShelf(); if(typeof alignTrainedTitle==='function') alignTrainedTitle(); });
+  try{ const saved=parseInt(localStorage.getItem(KEY),10); if(saved>0) set(saved); }catch(e){}
+  let start=null, raf=0, lastY=0;
+  g.addEventListener('pointerdown',e=>{
+    if(e.button!==0) return;
+    e.preventDefault(); e.stopPropagation();
+    g.setPointerCapture(e.pointerId); g.classList.add('dragging'); plug.classList.add('shelfDragging');
+    start={y:e.clientY, h:view.getBoundingClientRect().height};
+  });
+  g.addEventListener('pointermove',e=>{
+    if(!start) return; lastY=e.clientY;
+    if(!raf) raf=requestAnimationFrame(()=>{ raf=0; if(start){ set(start.h+(lastY-start.y)); refit(); } });
+  });
+  const end=()=>{
+    if(!start) return;
+    start=null; g.classList.remove('dragging'); plug.classList.remove('shelfDragging');
+    const h=parseFloat(plug.style.getPropertyValue('--modelListH'));
+    try{ if(h>0) localStorage.setItem(KEY,String(Math.round(h))); }catch(e){}
+    refit();
+  };
+  g.addEventListener('pointerup',end); g.addEventListener('pointercancel',end);
+  g.addEventListener('dblclick',()=>{ plug.classList.remove('modelListSized'); plug.style.removeProperty('--modelListH'); try{ localStorage.removeItem(KEY); }catch(e){} refit(); });
+  /* a smaller window / zoom: keep the chat its CHAT_MIN */
+  window.addEventListener('resize',()=>{ if(plug.classList.contains('modelListSized')) set(parseFloat(plug.style.getPropertyValue('--modelListH'))||MIN); });
+})();
 /* fitShelf -- see "TALL SHELF ON MODEL SELECT" */
 function fitShelf(){
   const f=document.getElementById('omscFrame'), meta=document.querySelector('.npMeta');
@@ -19076,11 +19131,16 @@ function renderEditSide(){
      ollama and claude just write ... in the remaining space. center the
      ... vertically in the height of the text." (middle dots: they sit at
      mid-height) */
+  /* "..." -> "+" -- user: "remove the little dots after claude (dot)
+     coding agent selector. instead put a "+". and the + should give the
+     option of adding another model, such as chat gpt, or other." The "+"
+     sits right after the agents (outside the rolling strip, so it never
+     scrolls away) and opens #esAddMenu -- see initEsAdd below. */
   if(strip){
-    const n=strip.querySelectorAll('.esAgent').length; let more=strip.querySelector('.esMore');
-    if(n<=2 && !more){ more=document.createElement('span'); more.className='esMore'; more.textContent='\u00b7\u00b7\u00b7'; more.setAttribute('aria-hidden','true'); strip.appendChild(more); }
-    else if(n>2 && more) more.remove();
+    if(!side.querySelector('.esAdd')){ const add=document.createElement('span'); add.className='esAdd'; add.id='esAdd'; add.textContent='+'; add.title='add another model'; strip.after(add); }
   }
+  /* an added agent's own label (chatgpt, gemini, ...) in the chat */
+  if(st && Array.isArray(st.agents)){ const a=st.agents.find(x=>x&&x.id===agent); if(a) window.EDIT_AGENT_LABEL=a.label||a.id; }
   /* keep the one in use inside the window */
   if(strip){ const on=strip.querySelector('.esAgent.on'); if(on && (on.offsetLeft < strip.scrollLeft || on.offsetLeft+on.offsetWidth > strip.scrollLeft+strip.clientWidth+1)) strip.scrollTo({left:on.offsetLeft-strip.firstElementChild.offsetLeft, behavior:'smooth'}); }
   side.classList.toggle('busy', !!(st&&st.busy));
@@ -19157,16 +19217,21 @@ function placeEditSide(){
     rows=3;
   }
   side.style.setProperty('--esListH', (rows*16)+'px');
-  /* the toast stays left of the menu, whatever the window width */
+  /* the toast stays CENTRED on the page -- user: "make sure the edit
+     interface helper box always remains centered in the page." (it used to
+     be pinned just left of the menu, which pulled it off-centre). Its width
+     is capped symmetrically so it ends 12px before the menu; when the window
+     is too narrow for even 160px of that, it rises above the menu instead of
+     leaving the centre. */
   const toast=document.getElementById('editStatus');
   if(toast){
+    toast.style.left=''; toast.style.right=''; toast.style.transform=''; toast.style.bottom='';
     if(document.body.classList.contains('editLocking')){
-      /* right edge pinned just left of the menu, growing leftward */
-      const edge=side.getBoundingClientRect().left - 12;
-      toast.style.left='auto'; toast.style.transform='none';
-      toast.style.right=Math.round(window.innerWidth - edge)+'px';
-      toast.style.maxWidth=Math.max(160, Math.min(480, edge - 10))+'px';
-    } else { toast.style.left=''; toast.style.right=''; toast.style.transform=''; toast.style.maxWidth=''; }
+      const sr=side.getBoundingClientRect();
+      const half=sr.left - 12 - window.innerWidth/2;
+      if(half*2 >= 160) toast.style.maxWidth=Math.min(480, Math.floor(half*2))+'px';
+      else { toast.style.maxWidth=''; toast.style.bottom=Math.round(window.innerHeight - sr.top + 12)+'px'; }
+    } else toast.style.maxWidth='';
   }
   /* chat history stops short of the menu */
   const clog=document.getElementById('clog');
@@ -19188,7 +19253,40 @@ try{ new ResizeObserver(()=>requestAnimationFrame(placeEditSide)).observe(docume
     if(Math.abs(e.deltaY)>Math.abs(e.deltaX) && strip0.scrollWidth>strip0.clientWidth){ e.preventDefault(); strip0.scrollBy({left: Math.sign(e.deltaY)*strip0.clientWidth/2, behavior:'smooth'}); }
   }, {passive:false});
   const say=cmd=>{ if(window.Gnumbat && Gnumbat.chatEdit) Gnumbat.chatEdit(cmd); };
+  /* #esAddMenu -- the "+" menu: a preset adds the model right away (the hub
+     reads its API key from its own environment -- edit_agent.js "EXTRA
+     AGENTS"); "ollama model" / "other" fill the chat line with the command
+     so you type the model name / server address yourself */
+  const ADD_OPTS=[
+    ['chatgpt','chatgpt',':agent add chatgpt'],
+    ['gemini','gemini',':agent add gemini'],
+    ['mistral','mistral',':agent add mistral'],
+    ['deepseek','deepseek',':agent add deepseek'],
+    ['ollama model\u2026','another local model',':agent add ollama '],
+    ['other\u2026','any OpenAI-compatible server: :agent add other <baseUrl> <model> [KEY_ENV]',':agent add other '],
+  ];
+  let addMenu=null;
+  const closeAdd=()=>{ if(addMenu){ addMenu.remove(); addMenu=null; } };
+  const openAdd=btn=>{
+    closeAdd();
+    addMenu=document.createElement('div'); addMenu.id='esAddMenu';
+    addMenu.innerHTML=ADD_OPTS.map((o,i)=>'<div class="esAddOpt" data-i="'+i+'" title="'+esEsc(o[1])+'">'+esEsc(o[0])+'</div>').join('');
+    side.appendChild(addMenu);
+    const sr=side.getBoundingClientRect(), br=btn.getBoundingClientRect();
+    addMenu.style.left=Math.round(br.left-sr.left)+'px';
+    addMenu.style.bottom=Math.round(sr.bottom-br.top+2)+'px';
+  };
+  document.addEventListener('click',e=>{ if(addMenu && !e.target.closest('#esAddMenu,#esAdd')) closeAdd(); },true);
+  document.addEventListener('keydown',e=>{ if(addMenu && e.key==='Escape') closeAdd(); },true);
   side.addEventListener('click',e=>{
+    const add=e.target.closest('#esAdd'); if(add){ if(addMenu) closeAdd(); else openAdd(add); return; }
+    const opt=e.target.closest('.esAddOpt');
+    if(opt){
+      const o=ADD_OPTS[+opt.dataset.i]; closeAdd();
+      if(/ $/.test(o[2])){ const cin=document.getElementById('cin'); if(cin){ cin.value=o[2]; cin.focus(); try{ cin.setSelectionRange(cin.value.length,cin.value.length); }catch(err){} } }
+      else say(o[2]);
+      return;
+    }
     const a=e.target.closest('.esAgent'); if(a){ say(':agent '+a.dataset.agent); return; }
     if(e.target.closest('#esStop')){ say(':stop'); return; }
     if(e.target.closest('#esNew')){ say(':new'); return; }

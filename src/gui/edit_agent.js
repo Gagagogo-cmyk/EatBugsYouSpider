@@ -801,7 +801,7 @@ Rules:
 4. After a change that affects what's on screen, call run_check and then reload_ui before your final answer.
 5. If asked to undo, call undo_change on the file(s) you changed, then reload_ui.
 6. Never touch .git, node_modules, data/, any *.bak-* file directly, or anything outside the repo — your tools already refuse these, but don't try either.
-7. When you are done (or if the request is unclear enough that you should ask rather than guess), respond in plain prose with NO fenced \`\`\`tool block. That prose is shown to the user as your final answer for this request.
+7. If the message isn't asking for a change at all (a greeting, a thank-you, small talk), answer in one short line of prose and call NO tools. When you are done (or if the request is unclear enough that you should ask rather than guess), respond in plain prose with NO fenced \`\`\`tool block. That prose is shown to the user as your final answer for this request.
 8. Never emit both a \`\`\`tool block and prose in the same reply — a tool call reply contains ONLY the fenced block.
 9. NEVER say a change is "done", "fixed", or similar, and never promise to make one, unless you have already called apply_patch (or undo_change) successfully earlier in THIS conversation. Saying it is done without having called the tool is worse than being slow — the user sees a false "done" and the file never changed. If the request needs a file changed and you have not yet called apply_patch, your reply must be a \`\`\`tool block, not prose, even if you are confident about what the change should be.
 10. Never repeat a tool call with the same tool AND the same arguments you've already made earlier in this conversation — its result is already above in the history, re-read it instead of asking again. If a search found nothing useful, change your approach (a shorter or different query, a different file, or list_files to see what's actually there) rather than retrying the same one.
@@ -809,7 +809,8 @@ Rules:
 12. If the request asks you to match, copy, or make one element the SAME as another ("make A's height the same as B's", "align A with B", "same width as", etc.), you must read_file (or search_files then read_file) the SOURCE element's own CSS rule and see its ACTUAL current value with your own eyes in a tool result before you write anything. Never invent, estimate, round, or reuse a number from a similar-looking rule elsewhere — a value you have not actually just read is a guess, and this kind of request has exactly one correct answer: whatever the source element's real value already is. If the source and target are in different files (see Repo layout above — a request can name one element "-- panel.html" and the other "-- base.html"), read_file BOTH files before touching either.`;
 
   // ── OLLAMA CALL ───────────────────────────────────────────────────────
-  function callOllamaEdit(messages) {
+  function callOllamaEdit(messages, model, usageKey) {
+    model = model || ollamaModel; usageKey = usageKey || "cricket";
     return new Promise((resolve, reject) => {
       // UPDATE -- user pasted aider's own context-window report for this
       // same model (ollama/qwen2.5-coder:7b): a hard 32,768-token ceiling,
@@ -832,7 +833,7 @@ Rules:
       // requests; -1 would never unload it at all, but 30m already covers
       // realistic idle time without permanently pinning the model in RAM
       // if the panel is left open unused overnight.
-      const body = JSON.stringify({ model: ollamaModel, messages, stream: false, options: { num_ctx: 32768 }, keep_alive: "30m" });
+      const body = JSON.stringify({ model, messages, stream: false, options: { num_ctx: 32768 }, keep_alive: "30m" });
       const req = http.request(
         {
           hostname: ollamaHost,
@@ -849,9 +850,9 @@ Rules:
             try {
               const json = JSON.parse(data);
               const reply = json.message && json.message.content;
-              noteUsage("cricket", json.prompt_eval_count || 0, json.eval_count || 0);
+              noteUsage(usageKey, json.prompt_eval_count || 0, json.eval_count || 0);
               setCricketUp("connected");
-              if (!reply) { reject(new Error("no response from Ollama — check --ollama-model (" + ollamaModel + ")")); return; }
+              if (!reply) { reject(new Error("no response from Ollama — check the model name (" + model + ")")); return; }
               resolve(reply);
             } catch (e) {
               reject(new Error("parse error from Ollama: " + e.message));
@@ -1032,6 +1033,93 @@ Rules:
     u.ctx = inTok + outTok; u.in += inTok; u.out += outTok;
     pushAgentState();
   }
+  // ── EXTRA AGENTS -- the "+" after claude in the edit menu ─────────────
+  // user: "remove the little dots after claude... instead put a "+". and
+  // the + should give the option of adding another model, such as chat
+  // gpt, or other." An added agent runs the SAME tool loop as Cricket
+  // (runCricket: SYSTEM_PROMPT + the TOOLS whitelist), only the model call
+  // differs: any OpenAI-compatible chat endpoint, or another model on the
+  // local Ollama. Keys are never typed into the page or saved here -- each
+  // provider reads its own environment variable on the hub's computer.
+  //   :agent add chatgpt|gemini|mistral|deepseek
+  //   :agent add ollama <model>              e.g. :agent add ollama llama3.1:8b
+  //   :agent add other <baseUrl> <model> [KEY_ENV]
+  //   :agent remove <id>
+  const PROVIDERS = {
+    chatgpt: { label: "chatgpt", base: "https://api.openai.com/v1", keyEnv: "OPENAI_API_KEY", modelEnv: "GNUMBAT_OPENAI_MODEL", model: "gpt-4o", ctx: 128000 },
+    gemini: { label: "gemini", base: "https://generativelanguage.googleapis.com/v1beta/openai", keyEnv: "GEMINI_API_KEY", modelEnv: "GNUMBAT_GEMINI_MODEL", model: "gemini-2.5-flash", ctx: 1000000 },
+    mistral: { label: "mistral", base: "https://api.mistral.ai/v1", keyEnv: "MISTRAL_API_KEY", modelEnv: "GNUMBAT_MISTRAL_MODEL", model: "codestral-latest", ctx: 256000 },
+    deepseek: { label: "deepseek", base: "https://api.deepseek.com/v1", keyEnv: "DEEPSEEK_API_KEY", modelEnv: "GNUMBAT_DEEPSEEK_MODEL", model: "deepseek-chat", ctx: 64000 },
+  };
+  const AGENTS_FILE = path.join(repoRoot, "data", ".edit-agents.json");   // added agents survive a hub restart (no keys in it)
+  const extraAgents = [];
+  const agentStatus = (a) => a.kind === "ollama" ? cricketUp : (a.keyEnv && !process.env[a.keyEnv] ? "disconnected" : (a.status || "unknown"));
+  function registerAgent(a) {
+    extraAgents.push(a);
+    if (!discsBy[a.id]) discsBy[a.id] = [newDisc(1)];
+    if (!curBy[a.id]) curBy[a.id] = 1;
+    if (!usage[a.id]) usage[a.id] = { ctx: 0, max: a.ctx || 32768, in: 0, out: 0, cost: 0 };
+  }
+  function saveAgents() {
+    try { fs.mkdirSync(path.dirname(AGENTS_FILE), { recursive: true }); fs.writeFileSync(AGENTS_FILE, JSON.stringify(extraAgents.map(({ status, ...a }) => a), null, 2)); } catch (e) {}
+  }
+  try { const saved = JSON.parse(fs.readFileSync(AGENTS_FILE, "utf8")); if (Array.isArray(saved)) saved.forEach((a) => { if (a && a.id && a.kind && !extraAgents.some((x) => x.id === a.id)) registerAgent(a); }); } catch (e) {}
+  // parse ":agent add ..." into an agent, or throw a message for the chat
+  function makeAgent(args) {
+    const [kind, ...rest] = args;
+    const k = String(kind || "").toLowerCase();
+    if (PROVIDERS[k]) {
+      const pv = PROVIDERS[k];
+      return { id: k, label: pv.label, kind: "openai", base: pv.base, keyEnv: pv.keyEnv, model: process.env[pv.modelEnv] || pv.model, ctx: pv.ctx };
+    }
+    if (k === "ollama") {
+      const model = rest[0];
+      if (!model) throw new Error("which Ollama model? e.g. :agent add ollama llama3.1:8b");
+      return { id: "ollama-" + model.replace(/[^\w.:-]/g, ""), label: model.split(":")[0].slice(0, 12), kind: "ollama", model, ctx: 32768 };
+    }
+    if (k === "other") {
+      const [base, model, keyEnv] = rest;
+      if (!/^https?:\/\/\S+$/i.test(base || "") || !model) throw new Error("usage: :agent add other <baseUrl> <model> [KEY_ENV]  (any OpenAI-compatible server, e.g. http://localhost:1234/v1)");
+      if (keyEnv && !/^[A-Z_][A-Z0-9_]*$/.test(keyEnv)) throw new Error("KEY_ENV is the NAME of an environment variable holding the key (e.g. MY_API_KEY), never the key itself");
+      return { id: "other-" + model.replace(/[^\w.:-]/g, "").slice(0, 24), label: model.split(/[/:]/).pop().slice(0, 12), kind: "openai", base: base.replace(/\/+$/, ""), keyEnv: keyEnv || null, model, ctx: 32768 };
+    }
+    throw new Error("add which model? :agent add chatgpt | gemini | mistral | deepseek | ollama <model> | other <baseUrl> <model> [KEY_ENV]");
+  }
+  // one chat turn for an added agent -- same (messages) -> Promise<reply>
+  // shape as callOllamaEdit, so runCricket can use either
+  function callAgent(a, messages) {
+    if (a.kind === "ollama") return callOllamaEdit(messages, a.model, a.id);
+    return new Promise((resolve, reject) => {
+      const key = a.keyEnv ? process.env[a.keyEnv] : null;
+      if (a.keyEnv && !key) { reject(new Error(a.label + " needs an API key: set " + a.keyEnv + " in the hub's environment and restart it")); return; }
+      let url;
+      try { url = new URL(a.base + "/chat/completions"); } catch (e) { reject(new Error("bad base URL for " + a.label)); return; }
+      const body = JSON.stringify({ model: a.model, messages });
+      const headers = { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) };
+      if (key) headers.Authorization = "Bearer " + key;
+      const lib = url.protocol === "https:" ? require("https") : http;
+      const req = lib.request(url, { method: "POST", headers, timeout: ollamaTimeoutMs }, (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          let json;
+          try { json = JSON.parse(data); } catch (e) { reject(new Error(a.label + ": bad reply (HTTP " + res.statusCode + ")")); return; }
+          if (res.statusCode === 401 || res.statusCode === 403) { a.status = "disconnected"; pushAgentState(); }
+          if (res.statusCode >= 400 || json.error) { reject(new Error(a.label + ": " + ((json.error && (json.error.message || json.error)) || ("HTTP " + res.statusCode)))); return; }
+          const reply = json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content;
+          const u = json.usage || {};
+          noteUsage(a.id, u.prompt_tokens || 0, u.completion_tokens || 0);
+          if (a.status !== "connected") { a.status = "connected"; pushAgentState(); }
+          if (!reply) { reject(new Error("no response from " + a.label + " (" + a.model + ")")); return; }
+          resolve(reply);
+        });
+      });
+      req.on("timeout", () => { req.destroy(); reject(new Error(a.label + " timed out after " + Math.round(ollamaTimeoutMs / 1000) + "s")); });
+      req.on("error", (e) => { reject(new Error(a.label + " unreachable (" + url.host + "): " + e.message)); });
+      req.write(body);
+      req.end();
+    });
+  }
   function agentFrame() {
     return {
       t: "editAgentState", agent: agentName, busy: !!editThinking,
@@ -1040,6 +1128,7 @@ Rules:
       current: curBy[agentName], usage: usage[agentName], usageAll: usage,
       claudeAuth: claudeAuth === "unknown" && loadTokenSafe() ? "connected" : claudeAuth,
       cricketUp,
+      agents: extraAgents.map((a) => ({ id: a.id, label: a.label, status: agentStatus(a) })),
     };
   }
   function pushAgentState() { try { broadcast(agentFrame()); } catch (e) {} }
@@ -1290,6 +1379,33 @@ Rules:
   async function handleEditChat(text, replyTo) {
     // commands first (":stop" has to work while a request is running)
     let m;
+    if ((m = /^:agent\s+add\s+(.+)$/i.exec(text))) {
+      if (editThinking) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
+      let a;
+      try { a = makeAgent(m[1].trim().split(/\s+/)); } catch (e) { replyTo({ t: "editError", msg: e.message }); return; }
+      if (!extraAgents.some((x) => x.id === a.id)) { registerAgent(a); saveAgents(); }
+      agentName = a.id; pushAgentState();
+      const need = a.keyEnv && !process.env[a.keyEnv] ? " -- set " + a.keyEnv + " in the hub's environment (then restart it) to use it" : "";
+      replyTo({ t: "editReply", text: "added " + a.label + " (" + a.model + ")" + need, agent: agentName });
+      return;
+    }
+    if ((m = /^:agent\s+remove\s+(\S+)\s*$/i.exec(text))) {
+      const i = extraAgents.findIndex((x) => x.id === m[1] || x.label === m[1]);
+      if (i < 0) { replyTo({ t: "editError", msg: "no added agent " + m[1] }); return; }
+      if (editThinking && agentName === extraAgents[i].id) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
+      const [gone] = extraAgents.splice(i, 1); saveAgents();
+      if (agentName === gone.id) agentName = DEFAULT_AGENT;
+      pushAgentState();
+      replyTo({ t: "editReply", text: "removed " + gone.label });
+      return;
+    }
+    if ((m = /^:agent\s+(\S+)\s*$/i.exec(text)) && extraAgents.some((x) => x.id === m[1])) {
+      if (editThinking) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
+      const a = extraAgents.find((x) => x.id === m[1]);
+      agentName = a.id; pushAgentState();
+      replyTo({ t: "editReply", text: "edit agent: " + a.label + " (" + a.model + ")", agent: agentName });
+      return;
+    }
     if ((m = /^:agent\s+(claude|cricket|ollama)\s*$/i.exec(text))) {
       if (editThinking) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
       agentName = m[1].toLowerCase() === "ollama" ? "cricket" : m[1].toLowerCase(); pushAgentState();   // shown as "ollama"
@@ -1358,7 +1474,7 @@ Rules:
     tasks.push(task); d.tasks++; if (!d.title) d.title = text.slice(0, 60);
     currentTask = task;
     const reply2 = (obj) => {
-      if (obj && obj.t === "editStep" && task.agent === "cricket") task.steps++;
+      if (obj && obj.t === "editStep" && task.agent !== "claude") task.steps++;
       if (obj && (obj.t === "editReply" || obj.t === "editError")) {
         if (task.status === "running") task.status = obj.t === "editReply" ? "done" : "failed";
         task.reply = String(obj.text || obj.msg || "").slice(0, 600);
@@ -1374,7 +1490,8 @@ Rules:
         try { await runClaude(text, reply2, task, replyTo); } finally { editThinking = false; }
       } else {
         stopCricket = false;
-        await runCricket(text, reply2);
+        const extra = extraAgents.find((x) => x.id === agentName);
+        await runCricket(text, reply2, extra ? (msgs) => callAgent(extra, msgs) : callOllamaEdit);
       }
     } finally {
       if (task.status === "running") task.status = "done";
@@ -1384,9 +1501,27 @@ Rules:
   }
   let stopCricket = false;
 
-  async function runCricket(text, replyTo) {
+  // A message with no change in it: a bare greeting/thanks/ack (optionally
+  // followed by "cricket"/"there"/...). Anything longer goes to Cricket.
+  function isSmallTalk(text) {
+    const t = String(text || "").trim().toLowerCase().replace(/[!?.,:;~'"*()\s]+/g, " ").trim();
+    if (!t) return true;
+    if (/^(yo+|hey+|hi+|hello+|sup|wass?up|hola|salut|allo|bonjour|thanks?|thank you|thx|merci|ty|ok(ay)?|k|cool|nice|lol|yes|no|yep|nope|gm|gn)( (cricket|there|man|bro|dude|friend))?$/.test(t)) return true;
+    return false;
+  }
+
+  async function runCricket(text, replyTo, callModel = callOllamaEdit) {
     if (editThinking) {
       replyTo({ t: "editError", msg: "still working on the last request — one at a time" });
+      return;
+    }
+    // user: "i wrote "yo" to ollama coding agent and it broke the
+    // website." A greeting isn't a change request, but the NUDGE_TEXT
+    // retry below pushes Cricket to patch SOMETHING whenever it answers
+    // in prose -- "yo" ended up mangling #omscFrame's <iframe> tag in
+    // panel.html. Small talk never enters the tool loop at all.
+    if (isSmallTalk(text)) {
+      replyTo({ t: "editReply", text: "hey -- I'm in edit mode. Tell me what to change on the page (e.g. \"move the play bar 20px down\") and I'll do it." });
       return;
     }
     editThinking = true;
@@ -1427,7 +1562,7 @@ Rules:
         trimHistory();
         let reply;
         try {
-          reply = await callOllamaEdit(editHistory);
+          reply = await callModel(editHistory);
         } catch (e) {
           replyTo({ t: "editError", msg: e.message });
           editThinking = false;
