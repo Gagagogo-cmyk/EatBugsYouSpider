@@ -6731,6 +6731,12 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    on them). TRAINED MODELS + its fun fact is clipped where the chat starts
    (placeCovers()). */
 .conv{isolation:isolate}
+/* the chat's own black used to start 32px under its top -- right across the
+   play bar. #convCover (from the MEM row down) is the chat's black now. */
+.conv{background:none!important}
+/* the poster frame may run past its own slot, down behind the play bar (fitShelf) */
+.plugin:not(.mrlcfShelf) #omscView:not(.hide){overflow:visible}
+.plugin:not(.mrlcfShelf) #omscView:not(.hide) #omscFrame{flex:0 0 auto}
 #convCover{position:absolute;left:0;right:0;bottom:0;top:var(--convCoverTop,0px);background:#000;z-index:-1;pointer-events:none}
 
 /* BOOKING -- see #bookingBox. 16px rows like the list; the box's top and
@@ -19074,6 +19080,7 @@ renderNpVotes();
     }
   }
   window.gnPlaceCovers=placeCovers;
+  try{ new ResizeObserver(()=>requestAnimationFrame(()=>{ if(typeof fitShelf==='function') fitShelf(); })).observe(conv); }catch(e){}
   try{ const ro=new ResizeObserver(()=>requestAnimationFrame(placeCovers)); ro.observe(conv); const cm=document.getElementById('chatModels'); if(cm) ro.observe(cm); }catch(e){}
   window.addEventListener('resize',()=>requestAnimationFrame(placeCovers));
   requestAnimationFrame(placeCovers);
@@ -19204,7 +19211,20 @@ function fitShelf(){
   const f=document.getElementById('omscFrame'), meta=document.querySelector('.npMeta');
   const on = mrlcfOpen && activePanel==='shows' && !modelSelectView.classList.contains('hide') && meta && !networkOpen;
   const grip=document.getElementById('mrlcfResizer');
-  if(!on){ f.style.removeProperty('height'); f.style.removeProperty('max-height'); if(grip) grip.style.transform=''; return; }
+  if(!on){
+    if(grip) grip.style.transform='';
+    /* console closed: the posters still run on down behind the song lines
+       and the play bar, to the MEM row -- user: "the play bar zone should be
+       a transparent background. the black background should start with the
+       memory indicator" (#convCover starts there) */
+    const mem=document.getElementById('omscHead');
+    const closedOn = !mrlcfOpen && activePanel==='shows' && meta && !networkOpen && mem && mem.getBoundingClientRect().height;
+    if(closedOn){
+      const h=Math.max(0, Math.floor(mem.getBoundingClientRect().top - f.getBoundingClientRect().top));
+      f.style.setProperty('height', h+'px','important'); f.style.setProperty('max-height', h+'px','important');
+    } else { f.style.removeProperty('height'); f.style.removeProperty('max-height'); }
+    return;
+  }
   /* SEE-THROUGH NOW-PLAYING ZONE -- user: "make sure the posters and infos
      arent hidden by a black panel when the playingnow bar drags above.
      remove the black background behind this zone." The show panel now runs
