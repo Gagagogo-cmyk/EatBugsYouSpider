@@ -511,7 +511,8 @@ async function renameUser(id, username) {
   await pool.query(`UPDATE users SET username = $2 WHERE id = $1`, [id, username])
 }
 
-// -- Bookings (routes/bookings.js) -- see schema.sql's bookings table.
+// -- Bookings (routes/bookings.js) -- DJ slots on a model's 24/7 timeline,
+// see schema.sql's bookings table.
 let bookingsTableReady = null
 function ensureBookingsTable() {
   if (!bookingsTableReady) {
@@ -520,38 +521,66 @@ function ensureBookingsTable() {
          id          SERIAL PRIMARY KEY,
          model_ref   VARCHAR(255) NOT NULL,
          model_name  VARCHAR(255),
+         dj_id       INTEGER REFERENCES users(id),
+         dj_name     VARCHAR(255) NOT NULL,
          starts_at   TIMESTAMPTZ NOT NULL,
          hours       NUMERIC(4,1) NOT NULL CHECK (hours > 0 AND hours <= 24),
-         venue       VARCHAR(255) NOT NULL,
-         contact     VARCHAR(255) NOT NULL,
-         status      VARCHAR(20) DEFAULT 'requested' CHECK (status IN ('requested','confirmed','cancelled')),
+         status      VARCHAR(20) DEFAULT 'booked',
          created_at  TIMESTAMP DEFAULT NOW()
        );
+       -- the first version booked a venue + contact: move it over
+       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dj_id INTEGER REFERENCES users(id);
+       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dj_name VARCHAR(255);
+       UPDATE bookings SET dj_name = COALESCE(dj_name, 'dj') WHERE dj_name IS NULL;
+       ALTER TABLE bookings ALTER COLUMN dj_name SET NOT NULL;
+       ALTER TABLE bookings DROP COLUMN IF EXISTS venue;
+       ALTER TABLE bookings DROP COLUMN IF EXISTS contact;
+       ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check;
+       UPDATE bookings SET status = 'booked' WHERE status NOT IN ('booked','cancelled');
+       ALTER TABLE bookings ALTER COLUMN status SET DEFAULT 'booked';
        CREATE INDEX IF NOT EXISTS bookings_model_idx ON bookings(model_ref, starts_at);`
     ).catch(err => { bookingsTableReady = null; throw err })
   }
   return bookingsTableReady
 }
 
-// upcoming (not cancelled) bookings, optionally for one model
+const BOOKING_COLS = `id, model_ref, model_name, dj_name, starts_at, hours, status,
+  starts_at + (hours * INTERVAL '1 hour') AS ends_at`
+
+// upcoming + current (not cancelled) slots, optionally for one model
 async function listBookings(modelRef) {
   await ensureBookingsTable()
   const result = await pool.query(
-    `SELECT id, model_ref, model_name, starts_at, hours, venue, status
+    `SELECT ${BOOKING_COLS}
      FROM bookings
      WHERE status <> 'cancelled'
        AND starts_at + (hours * INTERVAL '1 hour') > NOW()
        AND ($1::text IS NULL OR model_ref = $1)
      ORDER BY starts_at
-     LIMIT 50`,
+     LIMIT 100`,
     [modelRef || null]
   )
   return result.rows
 }
 
-// inserts unless the model is already booked for an overlapping slot;
+// the slot holding a model right now (a DJ is on it), or null (the model plays)
+async function getCurrentBooking(modelRef) {
+  await ensureBookingsTable()
+  const result = await pool.query(
+    `SELECT ${BOOKING_COLS}
+     FROM bookings
+     WHERE model_ref = $1 AND status <> 'cancelled'
+       AND starts_at <= NOW() AND starts_at + (hours * INTERVAL '1 hour') > NOW()
+     ORDER BY starts_at
+     LIMIT 1`,
+    [modelRef]
+  )
+  return result.rows[0] || null
+}
+
+// inserts unless the model already has a slot overlapping this one;
 // returns { booking } or { conflict }
-async function createBooking({ modelRef, modelName, startsAt, hours, venue, contact }) {
+async function createBooking({ modelRef, modelName, djId, djName, startsAt, hours }) {
   await ensureBookingsTable()
   const client = await pool.connect()
   try {
@@ -559,7 +588,7 @@ async function createBooking({ modelRef, modelName, startsAt, hours, venue, cont
     // one booking at a time per model, so two requests can't both pass the check
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [modelRef])
     const clash = await client.query(
-      `SELECT id, starts_at, hours, venue FROM bookings
+      `SELECT ${BOOKING_COLS} FROM bookings
        WHERE model_ref = $1 AND status <> 'cancelled'
          AND starts_at < $2::timestamptz + ($3 * INTERVAL '1 hour')
          AND starts_at + (hours * INTERVAL '1 hour') > $2::timestamptz
@@ -568,10 +597,10 @@ async function createBooking({ modelRef, modelName, startsAt, hours, venue, cont
     )
     if (clash.rows[0]) { await client.query('ROLLBACK'); return { conflict: clash.rows[0] } }
     const result = await client.query(
-      `INSERT INTO bookings (model_ref, model_name, starts_at, hours, venue, contact)
+      `INSERT INTO bookings (model_ref, model_name, dj_id, dj_name, starts_at, hours)
        VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING id, model_ref, model_name, starts_at, hours, venue, status`,
-      [modelRef, modelName || null, startsAt, hours, venue, contact]
+       RETURNING ${BOOKING_COLS}`,
+      [modelRef, modelName || null, djId, djName, startsAt, hours]
     )
     await client.query('COMMIT')
     return { booking: result.rows[0] }
@@ -581,6 +610,18 @@ async function createBooking({ modelRef, modelName, startsAt, hours, venue, cont
   } finally {
     client.release()
   }
+}
+
+// a DJ cancels one of their own slots; returns the row, or null if it isn't theirs
+async function cancelBooking(id, djId) {
+  await ensureBookingsTable()
+  const result = await pool.query(
+    `UPDATE bookings SET status = 'cancelled'
+     WHERE id = $1 AND dj_id = $2 AND status <> 'cancelled'
+     RETURNING ${BOOKING_COLS}`,
+    [id, djId]
+  )
+  return result.rows[0] || null
 }
 
 module.exports = {
@@ -620,5 +661,7 @@ module.exports = {
   listFeedbackForBatch,
   updateFeedbackTrainingBatchStatus,
   listBookings,
-  createBooking
+  getCurrentBooking,
+  createBooking,
+  cancelBooking
 }
