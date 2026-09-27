@@ -6709,11 +6709,29 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
      state 2  ^C open:   menu at the bottom, the chat's top right under the
                          poster cards (gnShelfToCards)
      state 3  drag the grip up: the chat grows over the cards, up to the header */
-.plugin.mrlcfShelf #modelSelectView{order:1;flex:0 0 auto!important;margin-top:0!important;background:#000}
+.plugin.mrlcfShelf #modelSelectView{order:1;flex:0 1 auto!important;min-height:0!important;overflow:hidden;margin-top:0!important;background:#000}
 .plugin.mrlcfShelf .zoneF{order:2}
 .plugin.mrlcfShelf #modelSelectView .modelSelectBody{padding-top:8px}
 .plugin.mrlcfShelf #modelSelectView #modelList{flex:0 0 auto!important;overflow-y:auto!important;max-height:45vh!important}   /* never scrolls -- unless a very small window can't fit the whole list at under half its height */
-.plugin.mrlcfShelf .conv{min-height:0}
+/* NEVER HIDE THE CHAT -- user: "dont make the chat disappear when bringing
+   the panel down, instead of hiding the chat, it should push the model
+   selection down until the chat gets back to its initial position. never
+   hide the chat." The chat never gets smaller than it is with the console
+   closed (--chatClosedH, measured there); dragging the grip down squeezes
+   the MENU instead (its rows slide away under the shortcut row), and once
+   the chat is back where it started the console closes -- the two layouts
+   are then identical, so nothing jumps. ^C open / close runs the same
+   motion, animated (animateShelf). */
+.plugin.mrlcfShelf:has(#modelSelectView:not(.hide)) .conv{flex:1 0 0!important;min-height:var(--chatClosedH,220px)!important}
+
+/* UNDER THE CHAT -- user: "make sure the spider and the fun facts get hidden
+   under the chat." #convCover is a black backing from the MEM row down,
+   marked data-spider-solid so the spider is never drawn over the chat
+   (the song lines + play bar above it stay see-through, and she still walks
+   on them). TRAINED MODELS + its fun fact is clipped where the chat starts
+   (placeCovers()). */
+.conv{isolation:isolate}
+#convCover{position:absolute;left:0;right:0;bottom:0;top:var(--convCoverTop,0px);background:#000;z-index:-1;pointer-events:none}
 
 /* BOOKING -- see #bookingBox. 16px rows like the list; the box's top and
    height come from placeBooking(). The list keeps at least 3 rows of room
@@ -18851,14 +18869,24 @@ renderNpVotes();
   const MIN=15, DEFAULT=350;   /* MIN 60 -> 15: at 15 the grip's centre sits on the [SHOWS] line -- user: "make it possible to open the tab completely until the very top of the page... leave the drag spot on the same line as [SHOWS]" */
   /* model select: the whole menu (it never scrolls) + the shortcut row + the
      chat's minimum (song lines, play bar, MEM, input line) */
+  /* model select: the whole menu (its full height, even while squeezed) +
+     the shortcut row + the chat at its closed-console size -- see "NEVER
+     HIDE THE CHAT" */
+  const onSelect=()=>!modelSelectView.classList.contains('hide');
+  const footH=()=>{ const zf=document.querySelector('.zoneF'); return zf?zf.getBoundingClientRect().height:25; };
+  const chatClosedH=()=>parseFloat(plug.style.getPropertyValue('--chatClosedH'))||220;
   const reserve=()=>{
     if(!omgmView.classList.contains('hide')) return 520;
-    const zf=document.querySelector('.zoneF');
-    return Math.round(modelSelectView.getBoundingClientRect().height + (zf?zf.getBoundingClientRect().height:25) + 170);
+    return Math.round(modelSelectView.scrollHeight + footH() + chatClosedH());
   };
   const maxH=()=>Math.max(MIN, plug.getBoundingClientRect().height-reserve());
+  /* the shelf size at which the menu is squeezed to nothing and the chat
+     sits exactly where it is with the console closed */
+  const closedShelf=()=>Math.max(MIN, Math.round(plug.getBoundingClientRect().height - footH() - chatClosedH()));
   let wanted=DEFAULT;
-  const applyShelf=()=>{ const px=Math.round(Math.min(maxH(),Math.max(MIN,wanted))); plug.style.setProperty('--mrlcfShelfH',px+'px'); return px; };
+  let anim=0;   /* rAF id of a running open/close animation -- see animateShelf */
+  const applyShelf=()=>{ if(anim) return null;   /* an open/close animation owns the size until it ends */
+    const px=Math.round(Math.min(maxH(),Math.max(MIN,wanted))); plug.style.setProperty('--mrlcfShelfH',px+'px'); return px; };
   const setH=px=>{ wanted=Math.max(MIN,px); return applyShelf(); };
   try{ const saved=parseInt(localStorage.getItem('gnumbat.mrlcfShelfH'),10); if(saved>0) wanted=saved; }catch(e){}
   applyShelf();
@@ -18879,7 +18907,12 @@ renderNpVotes();
     { const cb=y-4; if(window.gnCardsBottom!==cb){ window.gnCardsBottom=cb; if(typeof placeDjPanel==='function') requestAnimationFrame(placeDjPanel); } }
     if(first && mrlcfOpen){ wanted=cardsBottom+8; reapply(); }
   });
-  window.gnShelfToCards=function(){ if(window.gnShelfDragOpen) return; if(cardsBottom!=null){ wanted=cardsBottom+8; } applyShelf(); if(typeof fitShelf==='function') fitShelf(); };
+  window.gnShelfToCards=function(){
+    if(window.gnShelfDragOpen) return;
+    if(cardsBottom!=null){ wanted=cardsBottom+8; }
+    if(onSelect() && mrlcfOpen){ const keep=wanted; animateShelf(Math.min(maxH(),Math.max(MIN,wanted)), ()=>{ wanted=keep; applyShelf(); if(typeof fitShelf==='function') fitShelf(); }); return; }
+    applyShelf(); if(typeof fitShelf==='function') fitShelf();
+  };
   const reapply=()=>requestAnimationFrame(()=>{ applyShelf(); if(typeof fitShelf==='function') fitShelf(); });
   window.addEventListener('resize', reapply);
   new MutationObserver(reapply).observe(omgmView,{attributes:true,attributeFilter:['class']});
@@ -18899,10 +18932,38 @@ renderNpVotes();
      The size you settle on is kept for next time. */
   let start=null;
   const plugTop=()=>plug.getBoundingClientRect().top;
-  const looseMax=()=>Math.max(MIN, maxH()+60);   /* a little past the limit, to feel the close coming */
+  const looseMax=()=> onSelect() ? closedShelf() : Math.max(MIN, maxH()+60);
   const setLoose=px=>{ wanted=Math.max(MIN,px); plug.style.setProperty('--mrlcfShelfH', Math.round(Math.min(looseMax(),wanted))+'px'); };
-  /* dragged down past the chat's minimum: let go and the console closes */
-  const listGone=()=> !modelSelectView.classList.contains('hide') && wanted > maxH()+30;
+  /* past half-way between the open limit and the closed spot: let go and it closes */
+  const listGone=()=> onSelect() && wanted > (maxH()+closedShelf())/2;
+  /* ANIMATED OPEN / CLOSE -- user: "make opening and closing of the model
+     selection smoother." The shelf eases between sizes; ^C open starts from
+     the closed spot (menu squeezed to nothing, chat where it was) and eases
+     up to the cards, ^C close eases back down and only then closes. */
+  function animateShelf(to, done){
+    cancelAnimationFrame(anim);
+    const from=parseFloat(getComputedStyle(plug).getPropertyValue('--mrlcfShelfH'))||omscView.getBoundingClientRect().height;
+    to=Math.round(to);
+    if(Math.abs(to-from)<2){ setLoose(to); if(typeof fitShelf==='function') fitShelf(); if(done) done(); return; }
+    const t0=performance.now(), D=260, ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+    plug.classList.add('shelfDragging');   /* same fast path as a drag (no pointer events on the frame) */
+    const step=now=>{
+      const t=Math.min(1,(now-t0)/D);
+      setLoose(from+(to-from)*ease(t));
+      if(typeof fitShelf==='function') fitShelf();
+      if(t<1){ anim=requestAnimationFrame(step); return; }
+      anim=0; plug.classList.remove('shelfDragging'); if(done) done();
+    };
+    anim=requestAnimationFrame(step);
+  }
+  /* ^C open: start at the closed spot so the chat doesn't jump */
+  window.gnShelfPrime=function(){ if(!onSelect()) return; cancelAnimationFrame(anim); const keep=wanted; setLoose(closedShelf()); wanted=keep; if(typeof fitShelf==='function') fitShelf(); };   /* keeps the size it opens to */
+  /* ^C close: ease down to the closed spot, then close for real */
+  window.gnShelfAnimateClose=function(done){
+    if(!onSelect() || activePanel!=='shows'){ done(); return; }
+    const keep=wanted;
+    animateShelf(closedShelf(), ()=>{ wanted=keep; done(); });
+  };
   const nearBottom=y=> y > window.innerHeight - 80;
   function placeClosedGrip(){
     const closedSpot = !mrlcfOpen && !networkOpenNow() && (activePanel==='shows' || activePanel==='forum');
@@ -18914,6 +18975,8 @@ renderNpVotes();
        with model:no model loaded" (12px grip centred in its 16px row) */
     h.style.top=Math.round(meta.getBoundingClientRect().top - plugTop() + 2)+'px';
     closedMetaY=meta.getBoundingClientRect().top - plugTop();
+    /* the chat's size with the console closed -- the open console never makes it smaller */
+    { const c=document.querySelector('.conv'); const ch=c?Math.round(c.getBoundingClientRect().height):0; if(ch>40 && activePanel==='shows') plug.style.setProperty('--chatClosedH', ch+'px'); }
   }
   /* closedMetaY -- where the song/artist lines sit with the tab closed.
      Dragging the open tab down stops there: the moment they reach it the
@@ -18929,6 +18992,7 @@ renderNpVotes();
   requestAnimationFrame(placeClosedGrip);
   h.addEventListener('pointerdown',e=>{
     e.preventDefault();
+    cancelAnimationFrame(anim); anim=0;
     h.setPointerCapture(e.pointerId); h.classList.add('dragging'); plug.classList.add('shelfDragging');
     if(!mrlcfOpen){ start={y:e.clientY, closed:true}; return; }
     start={y:e.clientY, h:omscView.getBoundingClientRect().height, wanted:wanted};
@@ -18950,36 +19014,40 @@ renderNpVotes();
       setMrlcfOpen(true);
       window.gnShelfDragOpen=false;
       if(activePanel!=='shows'){ start=null; h.classList.remove('dragging'); plug.classList.remove('shelfDragging'); return; }
-      setLoose(topAt);
-      start={y:e.clientY, h:Math.min(looseMax(),Math.max(MIN,topAt)), wanted:DEFAULT, fromClosed:true};
+      const from0 = onSelect() ? closedShelf() : topAt;
+      setLoose(from0 + (e.clientY - start.y));
+      start={y:start.y, h:from0, wanted:DEFAULT, fromClosed:true};
       if(typeof fitShelf==='function') fitShelf();
       return;
     }
     setLoose(start.h + (e.clientY-start.y));
     if(typeof fitShelf==='function') fitShelf();
     const my=metaY();
-    if(closedMetaY!=null && my!=null && my >= closedMetaY - 1){
+    if((onSelect() && wanted >= closedShelf() - 1) || (!onSelect() && closedMetaY!=null && my!=null && my >= closedMetaY - 1)){
       wanted = start.wanted!=null ? start.wanted : DEFAULT; applyShelf();
       plug.classList.remove('shelfClosing');
-      setMrlcfOpen(false); placeClosedGrip();
+      window.gnShelfClosingNow=true; setMrlcfOpen(false); window.gnShelfClosingNow=false; placeClosedGrip();
       start={y:e.clientY, closed:true};                // keep dragging: pull up to reopen
       return;
     }
-    plug.classList.toggle('shelfClosing', nearBottom(e.clientY) || listGone());
+    plug.classList.toggle('shelfClosing', onSelect() ? listGone() : (nearBottom(e.clientY) || listGone()));
   }
   const end=e=>{
     if(moveRaf){ cancelAnimationFrame(moveRaf); moveRaf=0; if(moveEv){ const ev=moveEv; moveEv=null; onGripMove(ev); } }
     if(!start) return;
     [0,120,300].forEach(t=>setTimeout(()=>{ if(typeof alignTrainedTitle==='function') alignTrainedTitle(); },t));
     const wasClosedPress=!!start.closed;
-    const closing = !wasClosedPress && e && e.type==='pointerup' && (nearBottom(e.clientY) || listGone());
+    const closing = !wasClosedPress && e && e.type==='pointerup' && (onSelect() ? listGone() : (nearBottom(e.clientY) || listGone()));
     const back=start.wanted;
     start=null; h.classList.remove('dragging'); plug.classList.remove('shelfDragging','shelfClosing');
     if(wasClosedPress) return;                       // a click / tiny move on the closed grip: nothing
     if(closing){
-      wanted = back!=null ? back : DEFAULT; applyShelf();
-      setMrlcfOpen(false);
-      requestAnimationFrame(placeClosedGrip);
+      const fin=()=>{ wanted = back!=null ? back : DEFAULT; applyShelf(); window.gnShelfClosingNow=true; setMrlcfOpen(false); window.gnShelfClosingNow=false; requestAnimationFrame(placeClosedGrip); };
+      if(onSelect()) animateShelf(closedShelf(), fin); else fin();
+      return;
+    }
+    if(onSelect() && wanted > maxH()){                // let go with the menu part-hidden: ease back open
+      animateShelf(maxH(), ()=>{ wanted=maxH(); applyShelf(); try{ localStorage.setItem('gnumbat.mrlcfShelfH', Math.round(wanted)); }catch(err){} if(typeof fitShelf==='function') fitShelf(); });
       return;
     }
     applyShelf();                                    // settle inside the limits
@@ -18988,6 +19056,27 @@ renderNpVotes();
     if(typeof fitShelf==='function') fitShelf();
   };
   h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
+})();
+/* placeCovers -- see "UNDER THE CHAT" */
+(function initCovers(){
+  const conv=document.querySelector('.conv'); if(!conv) return;
+  const cover=document.createElement('div'); cover.id='convCover'; cover.setAttribute('data-spider-solid','');
+  conv.prepend(cover);
+  function placeCovers(){
+    const C=conv.getBoundingClientRect(), mem=document.getElementById('omscHead');
+    const top = (mem && mem.getBoundingClientRect().height) ? mem.getBoundingClientRect().top - C.top : 0;
+    conv.style.setProperty('--convCoverTop', Math.max(0,Math.round(top))+'px');
+    const cm=document.getElementById('chatModels');
+    if(cm){
+      const R=cm.getBoundingClientRect(), cut=R.bottom - C.top;
+      /* less than one text row left above the chat: hide it all rather than a sliver of letters */
+      cm.style.clipPath = (cut>0 && R.height>0) ? (R.height-cut < 16 ? 'inset(0 0 100% 0)' : 'inset(0 0 '+Math.ceil(cut)+'px 0)') : '';
+    }
+  }
+  window.gnPlaceCovers=placeCovers;
+  try{ const ro=new ResizeObserver(()=>requestAnimationFrame(placeCovers)); ro.observe(conv); const cm=document.getElementById('chatModels'); if(cm) ro.observe(cm); }catch(e){}
+  window.addEventListener('resize',()=>requestAnimationFrame(placeCovers));
+  requestAnimationFrame(placeCovers);
 })();
 /* initBooking -- see #bookingBox. The model select lists every model and
    follows the row highlighted in the list (you can still pick another);
@@ -19136,6 +19225,7 @@ function fitShelf(){
      (a move isn't a resize, so its ResizeObserver alone missed it) -- user:
      "align TRAINED MODELS with M-RLCF MODELS" */
   if(typeof alignTrainedTitle==='function') alignTrainedTitle();
+  if(window.gnPlaceCovers) window.gnPlaceCovers();
   if(typeof placeDjPanel==='function') placeDjPanel();
 }
 new MutationObserver(()=>requestAnimationFrame(fitShelf)).observe(modelSelectView,{attributes:true,attributeFilter:['class']});
@@ -19223,9 +19313,18 @@ function applyLayer(){
    always closing it. */
 let chatBeforeRadio=false;
 function setMrlcfOpen(on){
+  /* ^C close eases the shelf down first -- see "ANIMATED OPEN / CLOSE" */
+  if(!on && mrlcfOpen && !window.gnShelfClosingNow && window.gnShelfAnimateClose){
+    if(window.gnShelfClosing) return;
+    window.gnShelfClosing=true;
+    window.gnShelfAnimateClose(()=>{ window.gnShelfClosing=false; window.gnShelfClosingNow=true; setMrlcfOpen(false); window.gnShelfClosingNow=false; });
+    return;
+  }
+  const opening = on && !mrlcfOpen;
   if(on && !mrlcfOpen) chatBeforeRadio=chatOpen;
   if(!on && mrlcfOpen && chatOpen!==chatBeforeRadio) setChatOpen(chatBeforeRadio);
   mrlcfOpen = on; applyLayer();
+  if(opening && !window.gnShelfDragOpen && window.gnShelfPrime) window.gnShelfPrime();
   /* re-align TRAINED MODELS once the tab (and the chat opening with it)
      has settled -- see alignTrainedTitle() */
   if(on){ [60,200,500].forEach(t=>setTimeout(()=>{ if(typeof alignTrainedTitle==='function') alignTrainedTitle(); },t)); }
