@@ -195,6 +195,11 @@ function createEditAgent(opts) {
   const ollamaHost = opts.ollamaHost;
   const ollamaPort = opts.ollamaPort;
   const ollamaModel = opts.ollamaModel;
+  const chatOllamaModel = opts.chatOllamaModel || opts.ollamaModel;
+  // the model Claude Code actually ran last (from its result's modelUsage) --
+  // shown next to the agent name; GNUMBAT_CLAUDE_MODEL until the first answer
+  let claudeModelSeen = process.env.GNUMBAT_CLAUDE_MODEL || null;
+  const noteClaudeModel = (ev) => { try { const k = ev && ev.modelUsage && Object.keys(ev.modelUsage).sort((a, b) => ((ev.modelUsage[b].outputTokens || 0) - (ev.modelUsage[a].outputTokens || 0)))[0]; if (k && k !== claudeModelSeen) { claudeModelSeen = k; } } catch (e) {} };
   // UPDATE -- user: "ollama timed out" on a request that needed Cricket to
   // read_file a big file (base.html, 2000+ lines) TWICE (rule 12's own
   // "read both files before matching a value" fix, just added) before it
@@ -1143,9 +1148,12 @@ Rules:
     if (convBusy.has(id)) { fail("still answering the last one -- one at a time"); return; }
     convBusy.add(id);
     replyTo({ t: "chatThinking", private: true, target: id });
+    let used = null;   // {in, out} of this answer -- the CONVERSATIONAL AGENT box counts them
     const done = (err, answer) => {
       convBusy.delete(id);
-      if (err) fail(err); else replyTo({ t: "chatReply", private: true, target: id, prose: answer });
+      if (err) fail(err);
+      else replyTo({ t: "chatReply", private: true, target: id, prose: answer, usage: used, model: id === "claude" ? claudeModelSeen : extra.model });
+      pushAgentState();
     };
     if (id === "claude") {
       const args = ["-p", text, "--output-format", "json", "--disallowedTools", CHAT_NO_TOOLS, "--append-system-prompt", CHAT_SYSTEM];
@@ -1165,6 +1173,8 @@ Rules:
         try { ev = JSON.parse(out.trim().split("\n").pop()); } catch (e) {}
         if (!ev) { done(AUTH_ERR.test(errOut) ? "Claude isn't logged in -- switch to edit mode and pick claude to log in" : ("claude gave no answer" + (errOut ? ": " + errOut.trim().split("\n").pop().slice(0, 200) : ""))); return; }
         if (ev.session_id) claudeChatSession = ev.session_id;
+        noteClaudeModel(ev);
+        { const u = ev.usage || {}; used = { in: (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0), out: u.output_tokens || 0 }; }
         if (ev.is_error) { done(AUTH_ERR.test(String(ev.result || "")) ? "Claude isn't logged in -- switch to edit mode and pick claude to log in" : String(ev.result || "claude failed").slice(0, 400)); return; }
         setClaudeAuth("connected");
         done(null, String(ev.result || "").trim() || "(no answer)");
@@ -1175,7 +1185,7 @@ Rules:
     hist.push({ role: "user", content: text });
     while (hist.length > 20) hist.shift();
     callAgent(extra, [{ role: "system", content: CHAT_SYSTEM }].concat(hist))
-      .then((answer) => { hist.push({ role: "assistant", content: answer }); done(null, answer.trim()); })
+      .then((answer) => { hist.push({ role: "assistant", content: answer }); const u = usage[extra.id]; used = u ? { in: Math.max(0, u.ctx - 0), out: 0 } : null; done(null, answer.trim()); })
       .catch((e) => { hist.pop(); done(e.message); });
   }
   function agentFrame() {
@@ -1186,7 +1196,9 @@ Rules:
       current: curBy[agentName], usage: usage[agentName], usageAll: usage,
       claudeAuth: claudeAuth === "unknown" && loadTokenSafe() ? "connected" : claudeAuth,
       cricketUp,
-      agents: extraAgents.map((a) => ({ id: a.id, label: a.label, status: agentStatus(a) })),
+      agents: extraAgents.map((a) => ({ id: a.id, label: a.label, status: agentStatus(a), model: a.model })),
+      // the real model behind each agent, for the box's title row
+      models: { cricket: ollamaModel, claude: claudeModelSeen, chatOllama: chatOllamaModel },
     };
   }
   function pushAgentState() { try { broadcast(agentFrame()); } catch (e) {} }
@@ -1406,6 +1418,7 @@ Rules:
           usage.claude.out += u.output_tokens || 0;
           if (typeof ev.total_cost_usd === "number") usage.claude.cost += ev.total_cost_usd;
           if (ev.modelUsage) for (const k in ev.modelUsage) { const cw = ev.modelUsage[k] && ev.modelUsage[k].contextWindow; if (cw) usage.claude.max = cw; }
+          noteClaudeModel(ev);
           // record Claude's edits as the agent's BEFORE anyone re-checks the
           // dirty state, or they'd be folded into the snapshot as "outside"
           // changes (see adoptOutsideChanges)

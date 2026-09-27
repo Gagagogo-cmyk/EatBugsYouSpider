@@ -6731,6 +6731,11 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    on them). TRAINED MODELS + its fun fact is clipped where the chat starts
    (placeCovers()). */
 .conv{isolation:isolate}
+/* TRAINED MODELS + the fun fact go UNDER the chat, see-through play bar zone
+   included -- user: "make sure the TRAINED MODELS and the fun facts [are]
+   under the playbar transparent zone" (the song lines / bar draw on top) */
+.plugin .conv{z-index:7}
+.plugin > #chatModels,.plugin.mrlcfShelf #chatModels,.plugin > #chatModels.tmCorner{z-index:5!important}
 /* the chat's own black used to start 32px under its top -- right across the
    play bar. #convCover (from the MEM row down) is the chat's black now. */
 .conv{background:none!important}
@@ -7129,7 +7134,10 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
    agent strip + "+", no context ring, a hint instead of tasks/discussions.
    Shown with the room chat (not in the training view). */
 #editSide.convShow{display:block}
-#editSide.convMode .esRing,#editSide.convMode .esCols{display:none!important}
+#editSide.convMode .esCols,#editSide.convMode .esPlan{display:none!important}
+/* the model behind the agent, on the title row's right */
+#editSide .esTitle{display:flex;justify-content:space-between;gap:1ch}
+#editSide .esTitle .esModel{text-transform:none;color:#7d8281;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 #editSide .esConvHint{display:none;height:16px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #editSide.convMode .esConvHint{display:block}
 #editSide.convMode .esAgent{cursor:pointer}
@@ -17301,6 +17309,7 @@ Gnumbat.on('chatThinking', function(m){
 Gnumbat.on('chatReply', function(m){
   if(!m || !m.private) return;
   const k=dmKeyOf(m), who=agentLabel(k);
+  noteConvReply(k, m);
   if(!DMS[k]) DMS[k]=[];
   if(m.prose) DMS[k].push({who,t0:chatTimestamp(),t:m.prose});
   /* engine commands the ollama DM may suggest are never shown in the chat */
@@ -19133,6 +19142,31 @@ renderNpVotes();
   };
   h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
 })();
+/* FUN FACT PER VISIT -- user: "change the fun facts at every refresh of the
+   page." One at random each load (never the same one twice in a row), no
+   title, still not the Brain / Lahore brothers one. */
+(function(){
+  const el=document.getElementById('tmFact'); if(!el) return;
+  const FACTS=[
+    'The first computer worm, Creeper (1971), only printed \u201cI\u2019M THE CREEPER: CATCH ME IF YOU CAN\u201d \u2014 so someone wrote Reaper to hunt it down, the first antivirus.',
+    'Elk Cloner (1982), one of the first viruses in the wild, was written by a 15-year-old for the Apple II. Every 50th boot it showed a little poem.',
+    'The Morris worm (1988) slowed roughly 10% of the computers then on the internet to a crawl. Its author was the first person convicted under the US computer fraud law.',
+    'ILOVEYOU (2000) arrived as a love letter in your inbox. Within about ten days it had reached tens of millions of Windows PCs.',
+    'Stuxnet (found in 2010) was built to wreck uranium centrifuges by quietly changing how fast they spun, while showing the operators normal readings.',
+    'WannaCry (2017) was stopped when a researcher registered a nonsense web address hidden in its code \u2014 it turned out to be a kill switch.',
+    'The word \u201cvirus\u201d for a self-copying program comes from 1983: Len Adleman suggested it to his student Fred Cohen, who wrote the first papers on them.',
+    'Melissa (1999) mailed itself to the first 50 people in each victim\u2019s address book, clogging company mail servers around the world.',
+    'The Code Red worm (2001) was named after the Mountain Dew flavour the researchers were drinking when they took it apart.',
+    'CIH, a.k.a. Chernobyl (1998), could overwrite a PC\u2019s BIOS chip, leaving the machine unable to even start.',
+    'Conficker (2008) infected millions of Windows machines. Microsoft offered a $250,000 reward for its authors \u2014 it was never claimed.',
+    'Mydoom (2004) is still counted among the fastest-spreading email worms ever; at its peak, a large share of all email sent was a copy of it.'
+  ];
+  let last=-1; try{ last=parseInt(localStorage.getItem('gnumbat.lastFact'),10); }catch(e){}
+  let i=Math.floor(Math.random()*FACTS.length);
+  if(FACTS.length>1 && i===last) i=(i+1)%FACTS.length;
+  el.textContent=FACTS[i];
+  try{ localStorage.setItem('gnumbat.lastFact',String(i)); }catch(e){}
+})();
 /* placeCovers -- see "UNDER THE CHAT" */
 (function initCovers(){
   const conv=document.querySelector('.conv'); if(!conv) return;
@@ -19140,7 +19174,15 @@ renderNpVotes();
   conv.prepend(cover);
   function placeCovers(){
     const C=conv.getBoundingClientRect(), mem=document.getElementById('omscHead');
-    const top = (mem && mem.getBoundingClientRect().height) ? mem.getBoundingClientRect().top - C.top : 0;
+    let top = (mem && mem.getBoundingClientRect().height) ? mem.getBoundingClientRect().top - C.top : 0;
+    /* one straight edge, left to right -- user: "make the black background
+       behind the chat zone a straight line. It's just a rectangle... it can
+       continue a little above. from conversational agent to memory." It
+       starts at whichever is higher, the MEM row or the agent box's top,
+       4px above it. */
+    const side=document.getElementById('editSide');
+    if(side && getComputedStyle(side).display!=='none'){ const sr=side.getBoundingClientRect(); if(sr.height) top=Math.min(top, sr.top - C.top); }
+    top -= 4;
     conv.style.setProperty('--convCoverTop', Math.max(0,Math.round(top))+'px');
     const cm=document.getElementById('chatModels');
     if(cm){
@@ -19489,6 +19531,36 @@ function setConvAgent(key){
   try{ localStorage.setItem('gnumbat.convAgent',CONV_AGENT); }catch(e){}
   if(typeof renderEditSide==='function') renderEditSide();
 }
+/* agentModelName -- "claude opus 5.5", "ollama qwen2.5-coder:7b", ... --
+   user: "write the actual model of the coding and conversational agent" */
+function prettyModel(m){
+  if(!m) return '';
+  const c=String(m).match(/^claude-(opus|sonnet|haiku|fable)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?/i);
+  if(c) return c[1].toLowerCase()+' '+c[2]+(c[3]?'.'+c[3]:'');
+  return String(m).replace(/^claude-/,'');
+}
+const CONV_MODEL={};   /* model names reported with conversational replies */
+function agentModelName(key, conv){
+  const st=EDIT_AGENT_STATE||{}, models=st.models||{};
+  if(key==='cricket'||key==='ollama'){ const m = conv ? (CONV_MODEL.ollama||models.chatOllama) : models.cricket; return 'ollama'+(m?' '+m:''); }
+  if(key==='claude'){ const m=(conv&&CONV_MODEL.claude)||models.claude; return 'claude'+(m?' '+prettyModel(m):''); }
+  const a=(st.agents||[]).find(x=>x&&x.id===key);
+  return a ? (a.label||a.id)+(a.model&&a.model!==a.label?' '+a.model:'') : key;
+}
+/* CONV_USAGE -- tokens of the conversational agents, summed from their
+   replies' usage (the hub's :msg answers); ctx = the last reply's size */
+const CONV_USAGE={};
+function convUsageOf(key){
+  const u=CONV_USAGE[key]||{ctx:0,in:0,out:0,cost:0};
+  const st=EDIT_AGENT_STATE||{}, a=(st.agents||[]).find(x=>x&&x.id===key);
+  const max = key==='claude' ? (((st.usageAll||{}).claude||{}).max||200000) : key==='ollama' ? 32768 : ((((st.usageAll||{})[key])||{}).max||32768);
+  return Object.assign({max}, u);
+}
+function noteConvReply(key, m){
+  if(m && m.model) CONV_MODEL[key]=m.model;
+  if(m && m.usage){ const u=CONV_USAGE[key]||(CONV_USAGE[key]={ctx:0,in:0,out:0,cost:0}); u.in+=m.usage.in||0; u.out+=m.usage.out||0; u.ctx=(m.usage.in||0)+(m.usage.out||0); }
+  if(typeof renderEditSide==='function') renderEditSide();
+}
 /* which face of the box shows: coding in edit mode, conversational in chat
    mode (with the room chat on screen) */
 function syncAgentBox(){
@@ -19523,9 +19595,13 @@ function renderEditSide(){
   const conv=side.classList.contains('convMode');
   const shownAgent = conv ? convStripKey() : agent;
   side.querySelectorAll('.esAgent').forEach(b=>b.classList.toggle('on', b.dataset.agent===shownAgent));
-  const title=side.querySelector('.esTitle'); if(title) title.textContent = conv ? 'Conversational agent' : 'Coding agent';
+  const title=side.querySelector('.esTitle');
+  if(title){
+    const mdl = agentModelName(conv ? convDmKey() : agent, conv);
+    title.innerHTML = esEsc(conv ? 'Conversational agent' : 'Coding agent') + '<span class="esModel" title="the model answering">'+esEsc(mdl)+'</span>';
+  }
   const hint=document.getElementById('esConvHint');
-  if(hint){ const lbl=agentLabel(convDmKey()); hint.textContent=':msg '+lbl+' <text> to talk to '+lbl; hint.title='agents only answer a :msg -- plain lines go to the room'; }
+  if(hint){ const lbl=agentLabel(convDmKey()); hint.textContent=':msg '+lbl+' <text>'; hint.title='agents only answer a :msg -- plain lines go to the room'; }
   /* only two agents: "..." fills the peek space -- user: "if there is only
      ollama and claude just write ... in the remaining space. center the
      ... vertically in the height of the text." (middle dots: they sit at
@@ -19557,13 +19633,15 @@ function renderEditSide(){
   const up=(st&&st.cricketUp)||'unknown', cdot=document.getElementById('esCricketUp'), cr=side.querySelector('.esAgent[data-agent="cricket"]');
   if(cdot){ cdot.classList.toggle('on', up==='connected'); cdot.classList.toggle('off', up==='disconnected'); cdot.textContent = up==='disconnected' ? '\u2298' : '\u2022'; }
   if(cr) cr.title = up==='connected' ? 'ollama -- the local model is running' : up==='disconnected' ? 'ollama -- not reachable (is Ollama running?)' : 'ollama -- not checked yet';
-  const u=(st&&st.usage)||{ctx:0,max:1,in:0,out:0,cost:0};
+  /* chat mode: the conversational agent's own tokens (counted from its replies) */
+  const u= conv ? convUsageOf(convDmKey()) : ((st&&st.usage)||{ctx:0,max:1,in:0,out:0,cost:0});
   const frac=Math.max(0,Math.min(1,(u.ctx||0)/(u.max||1)));
   const C=2*Math.PI*5.5;
   document.getElementById('esRingFg').style.strokeDasharray=(frac*C).toFixed(2)+' '+C.toFixed(2);
   document.getElementById('esTok').textContent=esFmt(u.ctx)+' / '+esFmt(u.max);
   const ring=document.getElementById('esRing'); ring.classList.toggle('warn', frac>0.85);
-  ring.title='context of this '+window.EDIT_AGENT_LABEL+' discussion: '+Math.round(frac*100)+'% full ('+(u.ctx||0).toLocaleString()+' / '+(u.max||0).toLocaleString()+' tokens) -- a new discussion starts empty.\nNot your Claude plan limit.\nthis session: '+(u.in||0).toLocaleString()+' in, '+(u.out||0).toLocaleString()+' out'+(u.cost?' -- $'+u.cost.toFixed(3):'');
+  if(conv) ring.title='your chat with '+agentLabel(convDmKey())+': last reply '+(u.ctx||0).toLocaleString()+' tokens -- this session: '+(u.in||0).toLocaleString()+' in, '+(u.out||0).toLocaleString()+' out';
+  else ring.title='context of this '+window.EDIT_AGENT_LABEL+' discussion: '+Math.round(frac*100)+'% full ('+(u.ctx||0).toLocaleString()+' / '+(u.max||0).toLocaleString()+' tokens) -- a new discussion starts empty.\nNot your Claude plan limit.\nthis session: '+(u.in||0).toLocaleString()+' in, '+(u.out||0).toLocaleString()+' out'+(u.cost?' -- $'+u.cost.toFixed(3):'');
   const planEl=document.getElementById('esPlan'), plan=u.plan;
   if(planEl){
     let txt='', warn=false;
@@ -19607,6 +19685,7 @@ function placeEditSide(){
   /* ...with a CODING AGENT title on the DJS title's line above it -- user:
      "and aligned on DJ line call this section CODING AGENT" */
   side.style.top=Math.round(top - (inConv ? 16 : 0))+'px';
+  if(window.gnPlaceCovers) requestAnimationFrame(window.gnPlaceCovers);
   alignDiscToPlan();
   /* whole rows down to the input line, nothing cut */
   const cin=document.querySelector('.cline')||document.getElementById('cin');

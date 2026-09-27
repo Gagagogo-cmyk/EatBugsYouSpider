@@ -191,6 +191,7 @@ const editAgent = createEditAgent({
   ollamaHost,
   ollamaPort,
   ollamaModel: editOllamaModel,
+  chatOllamaModel: ollamaModel,   // the model ":msg ollama" talks to (shown in the CONVERSATIONAL AGENT box)
   ollamaTimeoutMs: editOllamaTimeoutMs,
   broadcast,
   post,
@@ -1325,6 +1326,7 @@ const chatHistory = [{ role: "system", content: CRICKET_SYSTEM }];
 const CHAT_HISTORY_CAP = 41; // 1 system + 20 user/assistant pairs, same cap as app.js
 let cricketThinking = false;
 
+let lastCricketUsage = null;
 function callCricket(text) {
   return new Promise((resolve, reject) => {
     chatHistory.push({ role: "user", content: text });
@@ -1356,6 +1358,8 @@ function callCricket(text) {
           const reply = json.message && json.message.content;
           if (!reply) { reject(new Error("no response — check --ollama-model (" + ollamaModel + ")")); return; }
           chatHistory.push({ role: "assistant", content: reply });
+          // tokens of this call, for the CONVERSATIONAL AGENT box's counter
+          lastCricketUsage = { in: json.prompt_eval_count || 0, out: json.eval_count || 0 };
           resolve(reply);
         } catch (e) {
           reject(new Error("parse error: " + e.message));
@@ -1448,7 +1452,7 @@ function handleCricketDM(text, replyTo) {
   callCricket(text)
     .then((reply) => {
       cricketThinking = false;
-      replyTo(Object.assign({ t: "chatReply", private: true }, splitCricketReply(reply)));
+      replyTo(Object.assign({ t: "chatReply", private: true, target: "ollama", model: ollamaModel, usage: lastCricketUsage }, splitCricketReply(reply)));
     })
     .catch((e) => {
       cricketThinking = false;
