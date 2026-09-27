@@ -1528,6 +1528,11 @@ function callCricketAmbient(messages) {
 // last check (an empty/idle room shouldn't get commented into).
 const AMBIENT_CHECK_INTERVAL_MS = 90000;
 function checkCricketAmbient() {
+  // OFF by default -- user: "dont make ollama/or claude/or any agent reply to
+  // message in the conversationnal chat unless it is messaged directly with a
+  // :msg ollama/claude/etc command." GNUMBAT_AMBIENT=1 turns the old
+  // unprompted remarks back on.
+  if (process.env.GNUMBAT_AMBIENT !== "1") return;
   if (cricketThinking) return;
   if (!ambientActivitySinceCheck || ambientRecent.length === 0) return;
   ambientActivitySinceCheck = false;
@@ -2629,7 +2634,11 @@ server.on("upgrade", (req, socket) => {
       // private DM) section's own header comment, above, for the full
       // rundown of why each looks the way it does.
       const chatText = msg.text.trim();
-      if (msg.private === true && msg.target === "cricket") handleCricketDM(chatText, reply);
+      // ":msg ollama ..." (was "cricket") -> the local Cricket/Ollama DM;
+      // ":msg claude|<added agent> ..." -> edit_agent.js converse(), a plain
+      // chat reply that can't touch any file (see its CONVERSATIONAL AGENTS)
+      if (msg.private === true && (msg.target === "cricket" || msg.target === "ollama")) handleCricketDM(chatText, reply);
+      else if (msg.private === true && typeof msg.target === "string" && msg.target) editAgent.converse(msg.target, chatText, reply);
       else if (msg.room === "public") observePublicChat(typeof msg.who === "string" ? msg.who : null, chatText);
       else handleChat(chatText, reply);
     }

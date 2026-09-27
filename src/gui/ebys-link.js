@@ -234,6 +234,15 @@
       transport.send(msg);
       return msg;
     },
+    /* chatAgentDM(target, text) -> {t:'chat', text, private:true, target}.
+       ":msg claude ..." / ":msg <added agent> ..." -- a private chat reply
+       from that agent (edit_agent.js converse(); target "ollama" goes to the
+       same Cricket DM as chatCricketDM). */
+    chatAgentDM: function (target, text) {
+      var msg = { t: "chat", text: String(text), private: true, target: String(target) };
+      transport.send(msg);
+      return msg;
+    },
 
     /* chatEdit(text) -> {t:'editChat', text}. EDIT INTERFACE mode -- Cricket
        as a local coding agent against this repo (see src/gui/edit_agent.js

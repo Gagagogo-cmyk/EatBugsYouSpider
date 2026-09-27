@@ -1120,6 +1120,64 @@ Rules:
       req.end();
     });
   }
+  // ── CONVERSATIONAL AGENTS -- ":msg claude|<added agent> ..." in the chat ─
+  // user: "create the same "coding agent" box but for the chat. name it
+  // "conversational agent"... dont make ollama/or claude/or any agent reply
+  // to message in the conversationnal chat unless it is messaged directly
+  // with a :msg ollama/claude/etc command." A private chat reply, nothing
+  // else: Claude runs with every tool disallowed, from a temp dir (not the
+  // repo); an added model gets no tool loop at all. Ollama's own DM stays in
+  // gui_hub_bridge.js (handleCricketDM). Frames: chatThinking / chatReply
+  // {prose} / chatError, private:true, target:<agent id>.
+  const CHAT_SYSTEM = "You are chatting privately with someone in the chat of Gnumbat, a generative music radio and DJ platform. Talk like a friendly person in a chat room: short (1-4 sentences), plain text, no markdown. From here you can't change the site, files or settings -- if they want the site changed, tell them to switch to edit mode.";
+  const CHAT_NO_TOOLS = "Bash,Edit,MultiEdit,Write,NotebookEdit,Read,Grep,Glob,LS,WebFetch,WebSearch,Task,TodoWrite";
+  const convHist = {};          // agent id -> [{role, content}] (added models)
+  let claudeChatSession = null; // Claude keeps its own chat thread, apart from edit mode's
+  const convBusy = new Set();
+  function converse(target, text, replyTo) {
+    const t = String(target || "").toLowerCase();
+    const extra = extraAgents.find((x) => x.id.toLowerCase() === t || String(x.label).toLowerCase() === t);
+    const id = t === "claude" ? "claude" : extra ? extra.id : null;
+    const fail = (msg) => replyTo({ t: "chatError", private: true, target: id || t, msg });
+    if (!id) { fail("no agent called " + target + " -- :msg ollama, :msg claude, or add one with + in the CONVERSATIONAL AGENT box"); return; }
+    if (convBusy.has(id)) { fail("still answering the last one -- one at a time"); return; }
+    convBusy.add(id);
+    replyTo({ t: "chatThinking", private: true, target: id });
+    const done = (err, answer) => {
+      convBusy.delete(id);
+      if (err) fail(err); else replyTo({ t: "chatReply", private: true, target: id, prose: answer });
+    };
+    if (id === "claude") {
+      const args = ["-p", text, "--output-format", "json", "--disallowedTools", CHAT_NO_TOOLS, "--append-system-prompt", CHAT_SYSTEM];
+      if (process.env.GNUMBAT_CLAUDE_MODEL) args.push("--model", process.env.GNUMBAT_CLAUDE_MODEL);
+      if (claudeChatSession) args.push("--resume", claudeChatSession);
+      let child, out = "", errOut = "";
+      try { child = spawn(claudeBin(), args, { cwd: os.tmpdir(), env: claudeEnv(), stdio: ["ignore", "pipe", "pipe"] }); }
+      catch (e) { done("claude failed to start: " + e.message); return; }
+      const timer = setTimeout(() => { try { child.kill("SIGTERM"); } catch (e) {} }, 180000);
+      child.on("error", (e) => { clearTimeout(timer); done(e.code === "ENOENT" ? "Claude Code isn't installed on this computer" : "claude failed to start: " + e.message); });
+      child.stdout.on("data", (c) => { out += c; });
+      child.stderr.on("data", (c) => { errOut = (errOut + c).slice(-2000); });
+      child.on("close", () => {
+        clearTimeout(timer);
+        if (!convBusy.has(id)) return;   // already reported (spawn error)
+        let ev = null;
+        try { ev = JSON.parse(out.trim().split("\n").pop()); } catch (e) {}
+        if (!ev) { done(AUTH_ERR.test(errOut) ? "Claude isn't logged in -- switch to edit mode and pick claude to log in" : ("claude gave no answer" + (errOut ? ": " + errOut.trim().split("\n").pop().slice(0, 200) : ""))); return; }
+        if (ev.session_id) claudeChatSession = ev.session_id;
+        if (ev.is_error) { done(AUTH_ERR.test(String(ev.result || "")) ? "Claude isn't logged in -- switch to edit mode and pick claude to log in" : String(ev.result || "claude failed").slice(0, 400)); return; }
+        setClaudeAuth("connected");
+        done(null, String(ev.result || "").trim() || "(no answer)");
+      });
+      return;
+    }
+    const hist = convHist[id] || (convHist[id] = []);
+    hist.push({ role: "user", content: text });
+    while (hist.length > 20) hist.shift();
+    callAgent(extra, [{ role: "system", content: CHAT_SYSTEM }].concat(hist))
+      .then((answer) => { hist.push({ role: "assistant", content: answer }); done(null, answer.trim()); })
+      .catch((e) => { hist.pop(); done(e.message); });
+  }
   function agentFrame() {
     return {
       t: "editAgentState", agent: agentName, busy: !!editThinking,
@@ -1379,14 +1437,18 @@ Rules:
   async function handleEditChat(text, replyTo) {
     // commands first (":stop" has to work while a request is running)
     let m;
-    if ((m = /^:agent\s+add\s+(.+)$/i.exec(text))) {
-      if (editThinking) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
+    // ":agents add ..." (plural) -- from the CONVERSATIONAL AGENT box: adds
+    // the model without switching the coding agent to it
+    if ((m = /^:agent(s?)\s+add\s+(.+)$/i.exec(text))) {
+      const keepCoding = !!m[1];
+      if (editThinking && !keepCoding) { replyTo({ t: "editError", msg: "still working -- :stop first" }); return; }
       let a;
-      try { a = makeAgent(m[1].trim().split(/\s+/)); } catch (e) { replyTo({ t: "editError", msg: e.message }); return; }
+      try { a = makeAgent(m[2].trim().split(/\s+/)); } catch (e) { replyTo({ t: "editError", msg: e.message }); return; }
       if (!extraAgents.some((x) => x.id === a.id)) { registerAgent(a); saveAgents(); }
-      agentName = a.id; pushAgentState();
+      if (!keepCoding) agentName = a.id;
+      pushAgentState();
       const need = a.keyEnv && !process.env[a.keyEnv] ? " -- set " + a.keyEnv + " in the hub's environment (then restart it) to use it" : "";
-      replyTo({ t: "editReply", text: "added " + a.label + " (" + a.model + ")" + need, agent: agentName });
+      replyTo({ t: "editReply", text: "added " + a.label + " (" + a.model + ")" + need, agent: keepCoding ? undefined : agentName, added: a.id });
       return;
     }
     if ((m = /^:agent\s+remove\s+(\S+)\s*$/i.exec(text))) {
@@ -1837,7 +1899,7 @@ Rules:
   return {
     handleEditChat, TOOLS, resolveSafe, getCurrentBranch, createBranch, mergeBranch,
     editBegin, editStateFrame, branchesFrame, commitBranch, enterBranch,
-    agentFrame,
+    agentFrame, converse,
   };
 }
 

@@ -501,9 +501,11 @@
       syncCursor(); updateSuggestion();
       return;
     }
-    var onOmscTab = typeof omscView !== "undefined" && omscView && !omscView.classList.contains("hide");
-    if (onOmscTab && typeof handleOmscInput === "function") {
-      handleOmscInput(v);
+    // the room chat everywhere but the training view -- see panel.html chatIsRoom()
+    var onOmscTab = typeof chatIsRoom === "function" ? chatIsRoom() : (typeof omscView !== "undefined" && omscView && !omscView.classList.contains("hide"));
+    // handleOmscInput() returns false for a ":" command meant for the
+    // playback engine (not :msg / :r) -- it falls through to the dispatch below
+    if (onOmscTab && typeof handleOmscInput === "function" && handleOmscInput(v) !== false) {
       cin.value = "";
       suggestCycle = null;
       syncCursor(); updateSuggestion();

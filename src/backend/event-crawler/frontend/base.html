@@ -1743,6 +1743,18 @@
            left side has so the last stop is centred too. */
         .events-grid { padding-right: 8px !important; scroll-snap-type: x mandatory; scroll-padding-left: 8px; box-sizing: border-box; }
         .event { scroll-snap-align: start; }
+
+        /* DROPDOWN ITEMS: TEXT ONLY -- user: "make the dropdown menus selection
+           box of the show scraper not a white selection zone. instead, when
+           the dropdowns open, it should be grey titles and when hovering
+           above the text should highlight in white. not a whole white
+           selection." Grey items, white text on hover, never a white block;
+           the one you picked stays white. (The spider's solid-black backing,
+           gnSpiderSolidBg, is left alone -- it's black like the page.) */
+        .filter-group .weekend-dropdown-menu a { color: var(--mid) !important; background: transparent !important; }
+        .filter-group .weekend-dropdown-menu a.active { color: var(--w) !important; }
+        .filter-group .weekend-dropdown-menu a:hover,
+        .filter-group .weekend-dropdown-menu a.active:hover { color: var(--w) !important; background: transparent !important; }
 </style>
 <script>/* embedded in panel.html -> .gnEmbedded (see the TRAINED MODELS corner rule) */ if (window.parent && window.parent !== window) document.documentElement.classList.add('gnEmbedded');</script>
 </head>
