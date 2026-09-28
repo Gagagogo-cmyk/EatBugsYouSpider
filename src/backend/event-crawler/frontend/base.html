@@ -3433,6 +3433,24 @@ cityModal.addEventListener('click', function(e) {
     window.addEventListener('resize', queueMask);
     setInterval(queueMask, 300);
     queueMask();
+    /* SHORTCUTS FROM ANYWHERE -- user: "make sure the shortcuts work even if
+       the chat box isnt selected. they need to work at any time." Once you
+       click into this page, keys land here, not in panel.html, so its ^C /
+       ^R / ^E / ^N ... never fired. Every Ctrl+letter is handed up and the
+       panel replays it. Kept here: ^C with text selected (that's a copy), and
+       everything while the network page is open (it has its own keys). */
+    window.addEventListener('keydown', function(e){
+        if (!e.ctrlKey || e.metaKey || e.altKey || !/^[a-z]$/i.test(e.key || '')) return;
+        var net = document.getElementById('cityModal');
+        if (net && !net.classList.contains('hide')) return;
+        if (e.key.toLowerCase() === 'c') {
+            var ae = document.activeElement, sel = String(window.getSelection ? window.getSelection() : '');
+            var inSel = ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && (function(){ try { return ae.selectionStart !== ae.selectionEnd; } catch (err) { return false; } })();
+            if (sel || inSel) return;
+        }
+        e.preventDefault();
+        window.parent.postMessage({type: 'gnumbat-key', key: e.key, code: e.code, shift: e.shiftKey, repeat: e.repeat}, '*');
+    }, true);
     var x = 0, y = 0, queued = false;
     function send(){ queued = false; window.parent.postMessage({type: 'gnumbat-spider-pointer', x: x, y: y}, '*'); }
     window.addEventListener('pointermove', function(e){

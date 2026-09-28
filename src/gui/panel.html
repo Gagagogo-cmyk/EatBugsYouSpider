@@ -19974,6 +19974,11 @@ window.addEventListener('message', e=>{
     if(!networkOpen) try{ frame.blur(); window.focus(); }catch(err){}
   }
   if(m.type==='gnumbat-network-key' && m.key==='m'){ setMrlcfOpen(!mrlcfOpen); }
+  /* a shortcut pressed while the show page had focus (base.html SHORTCUTS FROM
+     ANYWHERE): replay it here so every ^ shortcut works whatever is focused */
+  if(m.type==='gnumbat-key' && typeof m.key==='string' && /^[a-z]$/i.test(m.key)){
+    document.body.dispatchEvent(new KeyboardEvent('keydown',{key:m.key, code:String(m.code||''), ctrlKey:true, shiftKey:!!m.shift, repeat:!!m.repeat, bubbles:true, cancelable:true}));
+  }
   /* Enter on the network page: open that model's training DAW -- same as
      picking it on the model select page and pressing Enter there */
   /* Enter on the network page: move into that branch -- see
