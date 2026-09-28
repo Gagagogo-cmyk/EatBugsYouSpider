@@ -20703,9 +20703,13 @@ tabOMSC.onclick();
     else eatStyle.remove();
     for (const f of document.querySelectorAll('iframe')) if (f.contentWindow) tellFrame(f.contentWindow);
   }
+  // survives a refresh -- user: "make sure the refresh of the website doesnt
+  // bring back the cursor". Only donating (or her being fully gone) clears it.
+  const EATEN_KEY = 'gnSpiderEaten';
   function eatCursor(on) {
     if (eaten === on) return;
     eaten = on;
+    try { if (on) localStorage.setItem(EATEN_KEY, '1'); else localStorage.removeItem(EATEN_KEY); } catch (e) {}
     applyPointer();
     if (on) setTimeout(() => { if (eaten && !cursorLeg && !headCursor) showPay(); }, 1200);
     else hidePay();
@@ -21876,6 +21880,7 @@ tabOMSC.onclick();
   };
 
   resize();
+  try { if (localStorage.getItem(EATEN_KEY) === '1') eatCursor(true); } catch (e) {}   // still eaten from before the refresh
   body.x = W / 2; body.y = H / 2;
   makeLegs();
   if (!legs.length) { gone = true; cv.style.display = fv.style.display = hit.style.display = 'none'; return; }
