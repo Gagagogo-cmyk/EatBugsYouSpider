@@ -6744,6 +6744,14 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 .plugin:not(.mrlcfShelf) #omscView:not(.hide) #omscFrame{flex:0 0 auto}
 #convCover{position:absolute;left:0;right:0;bottom:0;top:var(--convCoverTop,0px);background:#000;z-index:-1;pointer-events:none}
 
+/* #npBook -- centred on the song + N/A lines, on the right margin; the
+   same box as the search bars. #bookingBox.bkFlash is its one-second white
+   outline (bookSlot()). */
+.npMeta .npBook{position:absolute;right:0;top:calc((var(--row,16px) * 2 + 2px - 16px) / 2);height:16px;line-height:14px;box-sizing:border-box;padding:0 4px;margin:0;
+  border:1px solid var(--g2,#8e9392);background:#000;color:#fff;font:inherit;font-size:12px;cursor:pointer;z-index:2}
+.npMeta .npBook:hover{border-color:#fff}
+#bookingBox.bkFlash{outline:1px solid #fff;outline-offset:3px}
+
 /* BOOKING -- see #bookingBox. 16px rows like the list; the box's top and
    height come from placeBooking(). The list keeps at least 3 rows of room
    so the 4-row form (plus its title row) always fits beside it. */
@@ -6760,7 +6768,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    no white selection block). A native <select> can't be styled like that
    on macOS, so #bkModelSel stays as the hidden value and #bkModelPick +
    #bkModelMenu draw it. */
-#bookingBox .bkPick{flex:1 1 0;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;line-height:12px}
+#bookingBox .bkPick{flex:1 1 0;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;line-height:14px}
 #bookingBox .bkPick::after{content:" \25BE";color:var(--g3,#7d8281)}
 #bkModelMenu{position:absolute;z-index:30;background:#000;border:1px solid var(--g3,#7d8281);padding:2px 0;max-height:160px;overflow-y:auto;box-sizing:border-box}
 #bkModelMenu div{height:16px;line-height:16px;padding:0 4px;color:var(--g3,#7d8281);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:transparent}
@@ -6769,7 +6777,8 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 #bookingBox .bkList .bkMine{color:#fff;cursor:pointer}
 #bookingBox .bkList .bkMine:hover{text-decoration:line-through}
 #bookingBox .bkList .bkLive{color:#fff}
-#bookingBox .bkIn{height:14px;line-height:12px;box-sizing:border-box;padding:0 3px;margin:0;border:1px solid var(--g2,#555);border-radius:0;
+#bookingBox .bkIn{height:16px;line-height:14px;box-sizing:border-box;padding:0 4px;   /* the TRAINED MODELS search bar's size -- user: "make sure all the search bar, or dropdown menu boxes the same size" */
+  margin:0;border:1px solid var(--g2,#555);border-radius:0;
   background:transparent;color:#fff;font:inherit;min-width:0;outline:none;color-scheme:dark}
 #bookingBox .bkIn:focus{border-color:#fff}
 #bookingBox .bkIn::placeholder{color:var(--g3,#7d8281)}
@@ -6803,7 +6812,7 @@ body.editLocking #bookingBox,body.editLocking #bookingBox *{pointer-events:auto}
 #modelSelectView > #chatModels.radioUp{position:absolute;right:10px;top:20px;width:220px;margin:0}
 #modelSelectView:has(> #chatModels) .modelSelectBody{padding-right:250px}
 #chatModels.radioUp .chatModelsTitle{color:#fff}
-#chatModels .cmListening{color:var(--g3);margin-top:2px}
+#chatModels .cmListening{color:var(--g3);margin-top:0}
 /* votes next to play / forward */
 .nowPlayingBar .npVotes{display:inline-flex;gap:8px;margin-left:16px;color:rgba(255,255,255,.55);white-space:nowrap}
 .nowPlayingBar .npVote{cursor:var(--cursor-cross)}
@@ -8083,6 +8092,12 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
         <!-- honest "--" empty state (see this bar's own CSS comment,
              near .conv's own rule, for why) -- bare value, no label. -->
         <div class="npArtistLine" id="npArtist">N/A</div>
+        <!-- #npBook -- user: "Add a "book a slot" button above the playnow
+             bar. align it vertically with the lines of N/A and models: but
+             align it horizontally on the right-margin. It should open the
+             console and highlight the booking section with a white rectangle
+             around it for a second." See bookSlot(). -->
+        <button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button>
         <!-- #npDj -- DJ TIPS + SOCIALS. user: "the djs will need to be able
              to receive tips and have social media links above their playnow
              bar". Shown only while a dj holds the slot (TUNED_DJ); hidden
@@ -18910,7 +18925,10 @@ new MutationObserver(()=>requestAnimationFrame(syncRadioChat)).observe(modelSele
 new MutationObserver(()=>requestAnimationFrame(syncRadioChat)).observe(omgmView,{attributes:true,attributeFilter:['class']});
 /* "put 0 listening under no trained model yet" -- the listening count moves
    into the Trained Models menu (it travels with it, open or closed) */
-(function(){ const rc=document.getElementById('roomCount'), cm=document.getElementById('chatModels'); if(rc&&cm){ cm.appendChild(rc); rc.classList.add('cmListening'); } })();
+/* ...right under "no trained models yet", then a blank row, then the fun fact
+   -- user: "move 0 listening under the TRAINED MODELS. right under "no
+   trained models yet". then leave a space black and after put the fun fact." */
+(function(){ const rc=document.getElementById('roomCount'), cm=document.getElementById('chatModels'), list=document.getElementById('chatModelList'); if(rc&&cm){ if(list&&list.parentElement===cm) list.after(rc); else cm.appendChild(rc); rc.classList.add('cmListening'); } })();
 /* renderNpVotes -- see #npVotes */
 function npVoteTarget(){ return (typeof TUNED_MODEL!=='undefined' && TUNED_MODEL!=null) ? TUNED_MODEL : selectedModelId; }
 function renderNpVotes(){
@@ -19200,6 +19218,22 @@ renderNpVotes();
   window.addEventListener('resize',()=>requestAnimationFrame(placeCovers));
   requestAnimationFrame(placeCovers);
 })();
+/* bookSlot -- see #npBook. Opens the console on the model list (back from
+   the forum / out of the training view if need be), then outlines the
+   BOOKING box once the console has eased open. */
+function bookSlot(){
+  if(typeof activePanel!=='undefined' && activePanel!=='shows' && typeof setPanel==='function') setPanel('shows');
+  const wasOpen=mrlcfOpen;
+  if(!mrlcfOpen) setMrlcfOpen(true);
+  else if(!omgmView.classList.contains('hide') && typeof logoutModel==='function') logoutModel();
+  const box=document.getElementById('bookingBox'); if(!box) return;
+  setTimeout(()=>{
+    box.classList.add('bkFlash');
+    const first=document.getElementById('bkDate'); if(first) try{ first.focus({preventScroll:true}); }catch(e){}
+    setTimeout(()=>box.classList.remove('bkFlash'),1000);
+  }, wasOpen ? 60 : 420);   /* after the open animation (animateShelf, 260ms) */
+}
+document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault(); bookSlot(); });
 /* initBooking -- see #bookingBox. The model select lists every model and
    follows the row highlighted in the list (you can still pick another);
    its current + upcoming slots fill the rows under the form, yours in white

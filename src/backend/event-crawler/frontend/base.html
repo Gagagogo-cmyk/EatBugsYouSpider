@@ -1744,6 +1744,17 @@
         .events-grid { padding-right: 8px !important; scroll-snap-type: x mandatory; scroll-padding-left: 8px; box-sizing: border-box; }
         .event { scroll-snap-align: start; }
 
+        /* ONE BOX SIZE -- user: "make sure all the search bar, or dropdown menu
+           boxes the same size as the TRAINED MODEL search bar" (panel.html
+           #chatModelSearch: 170 x 16px, 1px border, 12px text, 4px in). The
+           search box and both dropdowns' closed boxes are 16px tall now; the
+           open menus still hang from their bottom edge. */
+        .search-bar { padding: 0 !important; margin-top: 6px; }
+        .search-field { height: 16px !important; box-sizing: border-box; }
+        .search-input, .search-arrow { height: 14px !important; line-height: 14px !important; padding: 0 4px !important; box-sizing: border-box; }
+        .weekend-dropdown { height: 16px !important; }
+        .weekend-dropdown > summary { height: 14px !important; line-height: 14px; padding: 0 4px !important; }
+        .dj-search { height: 16px !important; box-sizing: border-box; padding: 0 4px !important; line-height: 14px; }
         /* DROPDOWN ITEMS: TEXT ONLY -- user: "make the dropdown menus selection
            box of the show scraper not a white selection zone. instead, when
            the dropdowns open, it should be grey titles and when hovering
