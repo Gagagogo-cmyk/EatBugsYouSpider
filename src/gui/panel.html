@@ -6754,19 +6754,23 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 /* ...and back -- user: "invert the position of them. tip above book a
    slot. and keep tip in a box": tip (boxed) on the model line, book a slot
    (plain grey text) on the N/A line */
-/* ...then: "move the tip button right before book a slot. Align the right
-   side of it with the end of the playbar waveform zone." -- book a slot on
-   the N/A line at the right margin; tip on that same line, its right edge on
-   the waveform's end (placeTipBtn() sets --tipRight) */
-.npMeta .npActs{position:absolute;right:0;top:var(--row,16px);display:block;z-index:2}
-.npMeta .npActs #npTip{position:absolute;top:0;right:var(--tipRight,100%);width:var(--tipW,auto);margin-right:0}
-/* the tip box is exactly as wide as "book a slot", tip centred in it -- user:
-   "make the tip box the same lenght as the "book a slot" text. and center tip within it." */
-.npMeta .npActs .npBook{text-align:center}
+/* THE RIGHT-MARGIN STACK -- user: "move the tip button above book a slot,
+   leave one black line in between. make the box horizontally tighter." and
+   "add a x above the book a slot when the console is open. the x another way
+   to close it." One 16px row each, flush right: tip (boxed, tight) on the
+   row above the song line, x on the song line (only while the console is
+   open -- closed, that row is the black line between them), book a slot on
+   the N/A line. */
+.npMeta .npActs{position:absolute;right:0;top:calc(-1 * var(--row,16px));display:flex;flex-direction:column;align-items:flex-end;z-index:2}
+.npMeta .npActs .npClose{visibility:hidden}
+.plugin.mrlcfShelf .npMeta .npActs .npClose{visibility:visible}
+/* the tip row sits above the chat's own top edge: the chat no longer clips
+   what pokes out of it (its history list keeps its own clipping) */
+.plugin .conv{overflow:visible!important}
 .npMeta .npBook{position:relative;height:16px;line-height:16px;box-sizing:border-box;padding:0;margin:0;
   border:0;background:transparent;color:var(--g3,#7d8281);font:inherit;font-size:12px;cursor:pointer;z-index:2}
 .npMeta .npBook:hover,.npMeta .npBook:focus-visible{color:#fff;outline:none}
-.npMeta .npBook.npTipBtn{border:1px solid var(--g2,#8e9392);color:#fff;padding:0 4px;line-height:14px;background:#000}
+.npMeta .npBook.npTipBtn{border:1px solid var(--g2,#8e9392);color:#fff;padding:0 2px;line-height:14px;background:#000}
 .npMeta .npBook.npTipBtn:hover,.npMeta .npBook.npTipBtn:focus-visible{border-color:#fff}
 #bookingBox.bkFlash{outline:1px solid #fff;outline-offset:3px}
 
@@ -6775,7 +6779,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    so the 4-row form (plus its title row) always fits beside it. */
 #bookingBox{position:absolute;right:10px;box-sizing:border-box;margin:0;padding:0;
   display:flex;flex-direction:column;overflow:hidden;z-index:4;color:var(--w,#fff)}
-#modelSelectView #modelList{min-height:calc(7 * var(--row,16px))}   /* title + 7 rows = the box: 3 form rows + status + the 4-row calendar (slots list under it with more models) */
+#modelSelectView #modelList{min-height:calc(11 * var(--row,16px))}   /* title + 11 rows = the box: 3 form rows + status + the calendar (month line, weekdays, up to 6 weeks) */
 #bookingBox .bkRow{flex:0 0 16px;height:16px;line-height:16px;display:flex;gap:1ch;align-items:center;white-space:nowrap;min-width:0}
 #bookingBox .bkTitle{flex:0 0 auto}
 #bookingBox .bkNow{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--g3,#7d8281);text-align:right}
@@ -8142,7 +8146,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
              linked to the stripe pipeline." Opens #npDj's amount row; [send]
              goes through window.gnTipDj (POST /tips/checkout -> Stripe
              Checkout in a new tab), tipping whoever holds the radio. -->
-        <span class="npActs"><button type="button" class="npBook npTipBtn" id="npTip" title="tip whoever is on air (Stripe)">tip</button><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
+        <span class="npActs"><button type="button" class="npBook npTipBtn" id="npTip" title="tip whoever is on air (Stripe)">tip</button><button type="button" class="npBook npClose" id="npClose" title="close the console (^C)" aria-label="close the console">&times;</button><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
         <!-- #npDj -- DJ TIPS + SOCIALS. user: "the djs will need to be able
              to receive tips and have social media links above their playnow
              bar". Shown only while a dj holds the slot (TUNED_DJ); hidden
@@ -19269,6 +19273,41 @@ renderNpVotes();
   el.textContent=FACTS[i];
   try{ localStorage.setItem('gnumbat.lastFact',String(i)); }catch(e){}
 })();
+/* LIVE MEM -- user: "connect the memory bar of the chat as the overall memory
+   used to run the website... i want to see how much memory is the whole
+   webpage taking." The MEM line was a fixed placeholder. Every 2s: the
+   page's memory in MB, the dots filled against the browser's limit for it.
+   Chrome/Edge/Brave/Arc report it (performance.memory: this page + the show
+   page, which runs in the same process); where the browser can measure the
+   whole page exactly (measureUserAgentSpecificMemory, cross-origin-isolated
+   pages only) that figure is used instead. Safari / Firefox don't let a page
+   read its own memory -- the line says so rather than showing a made-up
+   number. */
+(function initMem(){
+  const el=document.querySelector('.omscMemRow .mem'); if(!el) return;
+  const DOTS=8;
+  const mb=b=>b>=1073741824 ? (b/1073741824).toFixed(2)+'GB' : Math.round(b/1048576)+'MB';
+  let exact=null;   /* bytes from measureUserAgentSpecificMemory, when available */
+  function show(used, limit, how){
+    const frac=limit ? Math.min(1, used/limit) : 0, n=Math.max(1, Math.round(frac*DOTS));
+    el.textContent='MEM '+'●'.repeat(n)+'○'.repeat(DOTS-n)+' '+mb(used);
+    el.title=how+': '+mb(used)+(limit?' of '+mb(limit)+' ('+Math.round(frac*100)+'%)':'');
+  }
+  function tick(){
+    const pm=performance && performance.memory;
+    if(exact!=null) show(exact, pm && pm.jsHeapSizeLimit, 'memory used by the whole page');
+    else if(pm && pm.usedJSHeapSize) show(pm.usedJSHeapSize, pm.jsHeapSizeLimit, 'memory used by this page (JS heap, show page included)');
+    else { el.textContent='MEM n/a'; el.title="this browser doesn't let a page read its own memory -- open the panel in Chrome, Edge, Brave or Arc to see it"; }
+  }
+  async function measureExact(){
+    try{
+      if(!(window.crossOriginIsolated && performance.measureUserAgentSpecificMemory)) return;
+      const r=await performance.measureUserAgentSpecificMemory(); exact=r.bytes; tick();
+    }catch(e){}
+  }
+  tick(); measureExact();
+  setInterval(tick,2000); setInterval(measureExact,20000);
+})();
 /* placeCovers -- see "UNDER THE CHAT" */
 (function initCovers(){
   const conv=document.querySelector('.conv'); if(!conv) return;
@@ -19318,19 +19357,7 @@ function bookSlot(){
   }, wasOpen ? 60 : 420);   /* after the open animation (animateShelf, 260ms) */
 }
 document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault(); bookSlot(); });
-/* placeTipBtn -- see ".npActs": tip's right edge = the waveform's right end,
-   as wide as "book a slot" */
-function placeTipBtn(){
-  const acts=document.querySelector('.npMeta .npActs'), tip=document.getElementById('npTip'), book=document.getElementById('npBook'), wave=document.querySelector('#nowPlayingBar .npWave');
-  if(!acts||!tip||!book) return;
-  const A=acts.getBoundingClientRect();
-  acts.style.setProperty('--tipW', Math.round(book.getBoundingClientRect().width)+'px');
-  if(wave && wave.getBoundingClientRect().width){ acts.style.setProperty('--tipRight', Math.round(A.right - wave.getBoundingClientRect().right)+'px'); }
-  else acts.style.setProperty('--tipRight', Math.round(A.width + 8)+'px');
-}
-window.addEventListener('resize',()=>requestAnimationFrame(placeTipBtn));
-try{ new ResizeObserver(()=>requestAnimationFrame(placeTipBtn)).observe(document.getElementById('nowPlayingBar')); }catch(e){}
-requestAnimationFrame(placeTipBtn); setTimeout(placeTipBtn,500);
+document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefault(); if(mrlcfOpen) setMrlcfOpen(false); });
 /* initBooking -- see #bookingBox. The model select lists every model and
    follows the row highlighted in the list (you can still pick another);
    its current + upcoming slots fill the rows under the form, yours in white
@@ -19445,33 +19472,34 @@ requestAnimationFrame(placeTipBtn); setTimeout(placeTipBtn,500);
   $('bkTime').addEventListener('click',()=>{ try{ $('bkTime').showPicker(); }catch(e){} });
   /* ── the calendar (#bkCal) ── */
   const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-  /* COMPACT -- user: "the calendar needs to sit in the space below the
-     booking system. a compact calendar." Two weeks at a time (Monday first):
-     a month line with arrows (two weeks back / on), the weekday letters, two
-     rows of days -- 4 rows in all. */
-  const monday=d=>{ const x=new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; };
-  let calStart=monday(new Date($('bkDate').value+'T00:00'));
+  /* WHOLE MONTH -- user: "the calendar needs to sit in the space below the
+     booking system. a compact calendar." then "make sure the calendar shows
+     the whole month. it is currently cut in half." A month line with arrows,
+     the weekday letters (Monday first), then only as many week rows as the
+     month needs (4-6); the box is tall enough for 6 (see #modelList's
+     min-height). */
+  let calMonth=(()=>{ const d=new Date($('bkDate').value+'T00:00'); return new Date(d.getFullYear(), d.getMonth(), 1); })();
   function dayRows(dstr){ return lastRows.filter(b=>ymd(new Date(b.starts_at))===dstr); }
   function renderCal(){
     const cal=$('bkCal'); if(!cal) return;
-    const today=ymd(new Date()), sel=$('bkDate').value, first=monday(new Date());
+    const today=ymd(new Date()), sel=$('bkDate').value;
+    const thisMonth=new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const y=calMonth.getFullYear(), mo=calMonth.getMonth();
+    const lead=(new Date(y,mo,1).getDay()+6)%7, days=new Date(y,mo+1,0).getDate();
     const booked=new Set(lastRows.map(b=>ymd(new Date(b.starts_at))));
-    const end=new Date(calStart); end.setDate(end.getDate()+13);
-    const lbl = calStart.getMonth()===end.getMonth() ? MONTHS[calStart.getMonth()]+' '+calStart.getFullYear()
-      : MONTHS[calStart.getMonth()]+'–'+MONTHS[end.getMonth()]+' '+end.getFullYear();
-    let h='<div class="bkCalHead"><span class="bkCalNav'+(calStart<=first?' off':'')+'" data-nav="-1" title="two weeks back">‹</span><span>'+lbl+'</span><span class="bkCalNav" data-nav="1" title="two weeks on">›</span></div><div class="bkCalGrid">';
+    let h='<div class="bkCalHead"><span class="bkCalNav'+(calMonth<=thisMonth?' off':'')+'" data-nav="-1" title="previous month">‹</span><span>'+MONTHS[mo]+' '+y+'</span><span class="bkCalNav" data-nav="1" title="next month">›</span></div><div class="bkCalGrid">';
     h+=['M','T','W','T','F','S','S'].map(w=>'<span class="bkWd">'+w+'</span>').join('');
-    for(let i=0;i<14;i++){
-      const dt=new Date(calStart); dt.setDate(dt.getDate()+i);
-      const ds=ymd(dt), cls=['bkD'];
+    for(let i=0;i<lead;i++) h+='<span></span>';
+    for(let d=1; d<=days; d++){
+      const ds=y+'-'+pad(mo+1)+'-'+pad(d), cls=['bkD'];
       if(ds<today) cls.push('past'); if(ds===today) cls.push('today'); if(ds===sel) cls.push('sel'); if(booked.has(ds)) cls.push('booked');
-      h+='<span class="'+cls.join(' ')+'" data-day="'+ds+'" title="'+ds+(booked.has(ds)?' -- slots booked':'')+'">'+dt.getDate()+'</span>';
+      h+='<span class="'+cls.join(' ')+'" data-day="'+ds+'" title="'+ds+(booked.has(ds)?' -- slots booked':'')+'">'+d+'</span>';
     }
     cal.innerHTML=h+'</div>';
   }
   $('bkCal').addEventListener('click',e=>{
     const nav=e.target.closest('[data-nav]');
-    if(nav){ if(nav.classList.contains('off')) return; calStart=new Date(calStart); calStart.setDate(calStart.getDate()+14*Number(nav.dataset.nav)); renderCal(); return; }
+    if(nav){ if(nav.classList.contains('off')) return; calMonth=new Date(calMonth.getFullYear(), calMonth.getMonth()+Number(nav.dataset.nav), 1); renderCal(); return; }
     const d=e.target.closest('.bkD[data-day]'); if(!d || d.classList.contains('past')) return;
     $('bkDate').value=d.dataset.day; renderCal();
     const rows=dayRows(d.dataset.day);
@@ -19491,7 +19519,7 @@ requestAnimationFrame(placeTipBtn); setTimeout(placeTipBtn,500);
     const ch=parseFloat(getComputedStyle(box).fontSize)*0.6||7.2;
     box.style.left=Math.round(H.right-V.left+2*ch)+'px';   /* 2ch right of the list's own right edge */
     box.style.top=Math.round(H.top-V.top)+'px';
-    box.style.height=Math.max(128, Math.round(B.bottom-padB-H.top))+'px';
+    box.style.height=Math.max(192, Math.round(B.bottom-padB-H.top))+'px';
   }
   window.gnPlaceBooking=placeBooking;
   try{ new ResizeObserver(()=>requestAnimationFrame(placeBooking)).observe(view); }catch(e){}
