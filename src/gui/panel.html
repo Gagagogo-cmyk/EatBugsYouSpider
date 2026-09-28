@@ -21159,7 +21159,7 @@ tabOMSC.onclick();
     const m = MIN_CENTS_OF();
     pay.querySelector('[data-a="min"]').textContent =
       PAY_LOOK === 'page'   // in brackets -- user: "and put in between ()"
-        ? '(Stripe minimum charge amount is ' + (m / minor()).toFixed(cur().zero ? 0 : 2) + ' ' + payCur.value + ')'
+        ? '(Minimum charge amount is ' + (m / minor()).toFixed(cur().zero ? 0 : 2) + ' ' + payCur.value + ')'
         : 'Minimum charge amount is ' + (m / minor()).toFixed(cur().zero ? 0 : 2) + ' ' + payCur.value + '.';
     if (cur().def < m) payAmt.placeholder = (m / minor()).toFixed(cur().zero ? 0 : 2);
     updatePay();
