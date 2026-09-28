@@ -4732,6 +4732,7 @@ body.editLocking #chatModels,body.editLocking #chatModels *{pointer-events:auto}
 #chatModelSearch{position:relative;width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--g2);
   color:var(--g3);font-family:var(--mono);font-size:var(--fs);padding:2px 4px;flex-shrink:0}
 #chatModelSearch::placeholder{color:var(--g3);opacity:1}
+#chatModelSearch:focus,#chatModelSearch:focus-visible{outline:none!important;box-shadow:none!important;border-color:#fff!important}   /* selected: white surround, not the browser's blue ring -- user: "for trained model. make the selected state white surround, not blue" */
 #chatModelOnAir{margin-top:2px}
 .chatModelVotes{margin-left:auto;color:var(--g3);white-space:nowrap}
 .chatDock .roomCountBox{position:static;margin-top:0}
