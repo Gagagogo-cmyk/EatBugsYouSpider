@@ -6762,8 +6762,11 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    open -- closed, that row is the black line between them), book a slot on
    the N/A line. */
 .npMeta .npActs{position:absolute;right:0;top:0;display:flex;flex-direction:column;align-items:flex-end;z-index:2}   /* tip moved to the shortcut row (^T) */
-.npMeta .npActs .npClose{visibility:hidden}
-.plugin.mrlcfShelf .npMeta .npActs .npClose{visibility:visible}
+.npMeta .npActs{padding-top:16px}   /* keeps "book a slot" on the N/A line now that the x moved above the booking box */
+#modelSelectView .bkClose{position:absolute;right:10px;top:0;height:16px;line-height:16px;padding:0;margin:0;border:0;background:transparent;
+  color:var(--g3,#7d8281);font:inherit;font-size:12px;cursor:pointer;z-index:5;visibility:hidden}
+.plugin.mrlcfShelf #modelSelectView .bkClose{visibility:visible}
+#modelSelectView .bkClose:hover,#modelSelectView .bkClose:focus-visible{color:#fff;outline:none}
 /* the tip row sits above the chat's own top edge: the chat no longer clips
    what pokes out of it (its history list keeps its own clipping) */
 .plugin .conv{overflow:visible!important}
@@ -7754,6 +7757,11 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
          bookings.js); the title row says who's on that model right now.
          Placed by placeBooking(): top on the M-RLCF MODELS title line,
          bottom on the list's bottom edge. -->
+    <!-- #npClose -- user: "put the X to close it just above the "model on
+         air" since closing it keeps the chat but hides the model selection
+         and the booking system." Right-aligned with #bookingBox, one row
+         above its title row; placeBooking() sets its top. -->
+    <button type="button" class="bkClose" id="npClose" title="close the console (^C)" aria-label="close the console">&times;</button>
     <form id="bookingBox" autocomplete="off" novalidate>
       <div class="bkRow"><span class="bkTitle">BOOKING</span><span class="bkNow" id="bkNow"></span></div>
       <div class="bkRow"><select id="bkModelSel" title="model" hidden></select><span class="bkIn bkPick" id="bkModelPick" tabindex="0" role="button" title="model"></span></div>
@@ -8174,7 +8182,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
              linked to the stripe pipeline." Opens #npDj's amount row; [send]
              goes through window.gnTipDj (POST /tips/checkout -> Stripe
              Checkout in a new tab), tipping whoever holds the radio. -->
-        <span class="npActs"><button type="button" class="npBook npClose" id="npClose" title="close the console (^C)" aria-label="close the console">&times;</button><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
+        <span class="npActs"><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
         <!-- #npDj -- DJ TIPS + SOCIALS. user: "the djs will need to be able
              to receive tips and have social media links above their playnow
              bar". Shown only while a dj holds the slot (TUNED_DJ); hidden
@@ -19819,6 +19827,7 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
     const ch=parseFloat(getComputedStyle(box).fontSize)*0.6||7.2;
     box.style.left=Math.round(H.right-V.left+2*ch)+'px';   /* 2ch right of the list's own right edge */
     box.style.top=Math.round(H.top-V.top)+'px';
+    const x=$('npClose'); if(x) x.style.top=Math.max(0,Math.round(H.top-V.top)-16)+'px';   /* one row above "model on air" */
     box.style.height=Math.max(192, Math.round(B.bottom-padB-H.top))+'px';
   }
   window.gnPlaceBooking=placeBooking;
