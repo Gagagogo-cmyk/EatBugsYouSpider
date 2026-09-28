@@ -20975,7 +20975,7 @@ tabOMSC.onclick();
     // the amount box stays black on the white sheet -- user: "keep white, but
     // put the text boxes in black background" (grey text, white when active)
     'html #gnSpiderPay .amt:focus-within{box-shadow:none;border-color:#000}' +
-    'html #gnSpiderPay .amt span{color:#7d8281}' +
+    'html #gnSpiderPay .amt span,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#fff}' +   // currency sign always white -- user: "keep CA$ white"
     'html #gnSpiderPay .amt input{height:20px;color:#7d8281}' +
     'html #gnSpiderPay .amt:hover input,html #gnSpiderPay .amt:focus-within input,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#fff}' +
     'html #gnSpiderPay .amt input::placeholder{color:#7d8281}' +
