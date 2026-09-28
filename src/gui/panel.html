@@ -19310,7 +19310,8 @@ renderNpVotes();
   h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
 })();
 /* FUN FACT PER VISIT -- user: "change the fun facts at every refresh of the
-   page." One at random each load (never the same one twice in a row), no
+   page." One at random each load (never the same one twice in a row) out of
+   34 now, no
    title, still not the Brain / Lahore brothers one. */
 (function(){
   const el=document.getElementById('tmFact'); if(!el) return;
@@ -19326,7 +19327,30 @@ renderNpVotes();
     'The Code Red worm (2001) was named after the Mountain Dew flavour the researchers were drinking when they took it apart.',
     'CIH, a.k.a. Chernobyl (1998), could overwrite a PC\u2019s BIOS chip, leaving the machine unable to even start.',
     'Conficker (2008) infected millions of Windows machines. Microsoft offered a $250,000 reward for its authors \u2014 it was never claimed.',
-    'Mydoom (2004) is still counted among the fastest-spreading email worms ever; at its peak, a large share of all email sent was a copy of it.'
+    'Mydoom (2004) is still counted among the fastest-spreading email worms ever; at its peak, a large share of all email sent was a copy of it.',
+    /* more -- user: "add more fun facts to the list. its kinda getting repetitive." */
+    'The Samy worm (2005) made its author MySpace’s most popular user: over a million friend requests accepted in about 20 hours, each profile reading “but most of all, samy is my hero”.',
+    'SQL Slammer (2003) was only 376 bytes long. It infected about 75,000 servers in ten minutes, doubling every 8.5 seconds.',
+    'The Blaster worm (2003) carried a hidden message: “billy gates why do you make this possible? Stop making money and fix your software!!”',
+    'The first ransomware, the AIDS Trojan (1989), was mailed on floppy disks to about 20,000 people and asked for $189 sent to a post office box in Panama.',
+    'The Michelangelo virus (1991) was set to wake up on March 6, the painter’s birthday. The news predicted millions of wrecked PCs; only a few thousand were hit.',
+    'The Cascade virus (1987) made the letters on your screen fall off and pile up at the bottom.',
+    'The Ping-Pong virus (1988) did no harm: it just bounced a little ball around the screen.',
+    'The Stoned virus (1987) announced itself with “Your PC is now Stoned!” on boot.',
+    'The Jerusalem virus (1987) deleted every program you ran on a Friday the 13th.',
+    'Sasser (2004) crashed computers around the world, including airline check-ins and hospitals. Its author was an 18-year-old student in Germany.',
+    'The Anna Kournikova worm (2001) promised a photo of the tennis star. Its 20-year-old author built it with a ready-made virus kit.',
+    'Nimda (2001) is “admin” spelled backwards. Within about 22 minutes of its release it was the most widespread worm on the internet.',
+    'Cabir (2004), the first mobile phone worm, spread over Bluetooth between Nokia phones and only ever displayed one word: “Caribe”.',
+    'Mirai (2016) took over hundreds of thousands of webcams and routers still using default passwords, and knocked sites like Twitter and Netflix offline for hours.',
+    'Mirai’s authors were college students who first used it to knock rival Minecraft servers offline.',
+    'Flame (found in 2012) weighed about 20 MB, enormous for malware, and could quietly switch on a computer’s microphone to listen in.',
+    'Concept (1995) was the first widespread macro virus: it hid inside Word documents instead of programs.',
+    'NotPetya (2017) looked like ransomware but couldn’t actually give files back. It caused an estimated $10 billion in damage, shipping giants and hospitals included.',
+    'CryptoLocker (2013) collected an estimated $3 million in ransom before police took down the network that spread it.',
+    'Code Red (2001) defaced websites with “Hacked By Chinese!” and then tried to flood the White House website.',
+    'In the 1940s John von Neumann worked out the theory of machines that copy themselves — decades before the first computer virus existed.',
+    'Core War (1984) was a game where programmers wrote little programs that fought to destroy each other inside a computer’s memory.'
   ];
   let last=-1; try{ last=parseInt(localStorage.getItem('gnumbat.lastFact'),10); }catch(e){}
   let i=Math.floor(Math.random()*FACTS.length);
