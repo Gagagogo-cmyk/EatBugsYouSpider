@@ -7012,12 +7012,13 @@ body.editLocking #bookingBox,body.editLocking #bookingBox *{pointer-events:auto}
 #npDj .npDjLinks{overflow:hidden}
 #npDj a,#npDj .npDjBtn{color:#7d8281;text-decoration:none;cursor:var(--cursor-cross)}
 #npDj a:hover,#npDj .npDjBtn:hover,#npDj .npDjBtn:focus-visible{color:#fff;outline:0}
-#npDj .npDjTip,#npDj .npDjAmt.on,#npDj .npDjSend,#npDj .npDjPayLbl{color:#fff}
+#npDj .npDjAmt.on,#npDj .npDjPayLbl{color:#fff}   /* tip and ⏎ send stay grey, white on hover -- user: "make the tip not in brackets. just tip in grey, when hovering above white. same for send, replace it with the enter symbol" */
 #npDj .npDjOtherWrap{display:flex;align-items:center}
 #npDjOther{width:7ch;height:14px;margin:0;padding:0 2px;box-sizing:border-box;background:var(--bg,#000);border:1px solid var(--g2,#4a4d4a);
   color:#fff;font-family:var(--mono);font-size:12px;line-height:12px}
 #npDjOther::placeholder{color:#7d8281;opacity:1}
 #npDjOther.on{border-color:#fff}
+#npDjOther:focus,#npDjOther:focus-visible{outline:none!important;box-shadow:none!important;border-color:#fff!important}   /* "other" selected: white, not the browser's blue ring */
 #npDj .npDjNote:empty{display:none}
 /* radio tab (placeRadio's .radioUp layout): the gap under the genre line is
    too tight there, so the strip takes a real row and pushes the play bar
@@ -8192,16 +8193,16 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
              height and nothing that lines up with .npMeta moves. Filled by renderNpDj(). -->
         <div id="npDj" hidden aria-label="dj">
           <span class="npDjMain" id="npDjMain">
-            <span class="npDjBtn npDjTip" id="npDjTip" role="button" tabindex="0" title="tip this dj">[tip]</span>
+            <span class="npDjBtn npDjTip" id="npDjTip" role="button" tabindex="0" title="tip whoever is on air">tip</span>
             <span class="npDjLinks" id="npDjLinks"></span>
           </span>
           <span class="npDjPay" id="npDjPay" hidden>
-            <span class="npDjPayLbl" id="npDjPayLbl">tip :</span>
+            <span class="npDjPayLbl" id="npDjPayLbl">tip</span>
             <span class="npDjBtn npDjAmt" data-cents="200"><span class="curSym">&curren;</span>2</span>
             <span class="npDjBtn npDjAmt on" data-cents="500"><span class="curSym">&curren;</span>5</span>
             <span class="npDjBtn npDjAmt" data-cents="1000"><span class="curSym">&curren;</span>10</span>
             <span class="npDjOtherWrap"><span class="curSym">&curren;</span><input type="text" id="npDjOther" inputmode="decimal" placeholder="other" spellcheck="false" autocomplete="off" aria-label="other tip amount"></span>
-            <span class="npDjBtn npDjSend" id="npDjSend" role="button" tabindex="0">[send]</span>
+            <span class="npDjBtn npDjSend" id="npDjSend" role="button" tabindex="0" title="send (Enter)">&#8629;</span>
             <span class="npDjBtn" id="npDjCancel" role="button" tabindex="0" title="cancel">[x]</span>
           </span>
           <span class="npDjNote" id="npDjNote"></span>
@@ -16286,12 +16287,24 @@ function npDjCurrent(){
     return DJS.find(x=>x.id===TUNED_DJ)||{id:TUNED_DJ};
   }catch(e){ return null; }
 }
+/* "tip <dj username>" / "tip <model>" -- whoever is on air (user: "rename tip
+   the radio simply for tip [dj username/model]"); just "tip" with nothing on */
+function npTipLabel(){
+  try{
+    if(typeof TUNED_DJ!=='undefined' && TUNED_DJ!=null) return 'tip '+TUNED_DJ;
+    if(typeof TUNED_MODEL!=='undefined' && TUNED_MODEL!=null){
+      const m=(typeof MODELS!=='undefined'?MODELS:[]).find(x=>x.id===TUNED_MODEL);
+      if(m) return 'tip '+(m.n||'untitled');
+    }
+  }catch(e){}
+  return 'tip';
+}
 function npDjNote(msg){ const n=document.getElementById('npDjNote'); if(n) n.textContent=msg||''; }
 function npDjShowPay(open){
   const main=document.getElementById('npDjMain'), pay=document.getElementById('npDjPay');
   if(!main||!pay) return;
   main.hidden=!!open; pay.hidden=!open; npDjNote('');
-  if(open){ const d=npDjCurrent(); document.getElementById('npDjPayLbl').textContent= d ? 'tip '+d.id+' :' : 'tip the radio :'; }
+  if(open) document.getElementById('npDjPayLbl').textContent=npTipLabel();
   if(!open && NP_TIP_OPEN) NP_TIP_OPEN=false;
 }
 function renderNpDj(){
