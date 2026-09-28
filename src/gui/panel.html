@@ -20981,7 +20981,7 @@ tabOMSC.onclick();
     'html #gnSpiderPay .l .cp{font-size:17px!important;line-height:0;vertical-align:-2px}' +   // a bigger (c) -- user: "can you put the (c) bigger?"
     'html #gnSpiderPay .l,html #gnSpiderPay .l:hover{padding:0 18px;line-height:16px;color:#fff!important}' +   // regular weight again -- user: "remove the bold"   // title always black -- user: "the (c) 2026 PWYW ransomware tittle should remain black. no hover differences"
     // no hover change on the labels either -- user: "same for cursor return/minimum charge/secure checkout/total due. no hover differences"
-    'html #gnSpiderPay .x{top:6px;right:4px;width:18px;height:16px;line-height:16px;color:#7d8281}' +   // on the title's line -- user: "align the x of the ransomware with the title"
+    'html #gnSpiderPay .x{top:6px;right:14px;width:auto;height:16px;line-height:16px;padding:0;text-align:right;color:#7d8281}' +   // right edge on the amount bar's -- user: "align the x with the bar"   // on the title's line -- user: "align the x of the ransomware with the title"
     'html #gnSpiderPay .x:hover{background:transparent;color:#fff}' +
     'html #gnSpiderPay .amt{margin:6px 0 4px;padding:0 6px;border:1px solid #7d8281;background:#fff;gap:2px}' +
     // the amount box stays black on the white sheet -- user: "keep white, but
@@ -21011,7 +21011,33 @@ tabOMSC.onclick();
     'html #gnSpiderPay .n.ok{color:#7d8281}' +
     'html #gnSpiderPay .f{margin-top:6px;color:#7d8281}' +
     // smaller -- user: "put minimum charge text and secure account smaller"
-    'html #gnSpiderPay .hint,html #gnSpiderPay .f,html #gnSpiderPay .f *{font-size:10px!important}html #gnSpiderPay .f svg{width:10px;height:10px}'
+    'html #gnSpiderPay .hint,html #gnSpiderPay .f,html #gnSpiderPay .f *{font-size:10px!important}html #gnSpiderPay .f svg{width:10px;height:10px}' +
+    // PROJECT CONTROLS -- user: "make the text bars and buttons the same style
+    // as the rest of the project". The amount field is a search-box field (black,
+    // 1px grey border, 16px, grey text, white border when typing; CA$/CAD stay
+    // white). Buttons are shortcut chips: a white key cap + light label, white
+    // on hover -- Donate = Enter, No thanks = esc (the keys that already do it);
+    // the dev bypass is a plain grey link.
+    'html #gnSpiderPay .amt{height:16px;margin:6px 0 4px;padding:0 4px;border:1px solid rgb(142,147,146);background:#000;box-sizing:border-box;align-items:center}' +
+    'html #gnSpiderPay .amt:focus-within{border-color:#fff;outline:none;box-shadow:none}' +
+    'html #gnSpiderPay .amt input{height:14px;line-height:14px;color:rgb(125,130,129)}' +
+    'html #gnSpiderPay .amt:hover input,html #gnSpiderPay .amt:focus-within input{color:rgb(125,130,129)}' +
+    'html #gnSpiderPay .amt input::placeholder{color:rgb(125,130,129)}' +
+    'html #gnSpiderPay .amt span,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#fff}' +
+    'html #gnSpiderPay .amt select{color:#fff;padding:0 12px 0 4px;height:14px;line-height:14px;' +
+    'background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%271.5%27/%3E%3C/svg%3E")}' +
+    'html #gnSpiderPay .amt select option{background:#000;color:#fff}' +
+    'html #gnSpiderPay .p,html #gnSpiderPay .no{display:flex;align-items:center;justify-content:center;gap:0;height:16px;min-height:0;margin-top:6px;' +
+    'padding:0;border:0;background:transparent;color:#e2e4e3;line-height:16px}' +
+    'html #gnSpiderPay .p:hover,html #gnSpiderPay .no:hover{background:transparent;color:#fff}' +
+    'html #gnSpiderPay .p svg{display:none}' +
+    'html #gnSpiderPay .p::before,html #gnSpiderPay .no::before{background:#fff;color:#000;padding:0 4px;margin-right:6px;line-height:14px}' +
+    'html #gnSpiderPay .p::before{content:"\\23CE"}html #gnSpiderPay .no::before{content:"esc"}' +
+    'html #gnSpiderPay .p[disabled]{background:transparent;color:rgb(125,130,129)}html #gnSpiderPay .p[disabled]::before{background:rgb(125,130,129)}' +
+    'html #gnSpiderPay .sp{width:10px;height:10px;margin-right:6px;border-color:rgba(255,255,255,.3);border-top-color:#fff}' +
+    'html #gnSpiderPay .p.busy::before{display:none}' +
+    'html #gnSpiderPay .dev{height:auto;min-height:0;margin-top:4px;border:0;background:transparent;color:rgb(125,130,129)}' +
+    'html #gnSpiderPay .dev:hover{color:#fff;border:0}'
     ) : '') +
     '</style>' +
     '<span class="cr se" aria-hidden="true"></span>' +   // bottom-right only -- user: "keep the L shaped only in the bottom right corner"
