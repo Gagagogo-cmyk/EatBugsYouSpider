@@ -3041,8 +3041,13 @@ cityModal.addEventListener('click', function(e) {
         var off = -found.getTimezoneOffset();               // minutes east of UTC
         var zone = 'UTC' + (off < 0 ? '-' : '+') + Math.floor(Math.abs(off) / 60) +
             (Math.abs(off) % 60 ? ':' + two(Math.abs(off) % 60) : '');
-        el.textContent = 'last updated : ' + wd + ' ' + two(found.getDate()) + '-' + two(found.getMonth() + 1) + '-' +
-            found.getFullYear() + ' at ' + two(found.getHours()) + ':' + two(found.getMinutes()) + '\u00a0' + zone;
+        /* three lines, so it never wraps mid-date -- user: "put last update on
+           one line, (day date) on the next and (at hour) on the next" */
+        var lines = ['last updated :', wd + ' ' + two(found.getDate()) + '-' + two(found.getMonth() + 1) + '-' + found.getFullYear(),
+            'at ' + two(found.getHours()) + ':' + two(found.getMinutes()) + '\u00a0' + zone];
+        el.textContent = '';
+        lines.forEach(function (t, i) { if (i) el.appendChild(document.createElement('br')); el.appendChild(document.createTextNode(t)); });
+        el.style.whiteSpace = 'nowrap';
     })();
 
     // "All (x)" count -- see #viewCount's own HTML comment. The count is the
