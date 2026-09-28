@@ -9,7 +9,7 @@
 
 const express = require('express')
 const router = express.Router()
-const { listBookings, getCurrentBooking, createBooking, cancelBooking } = require('../db/queries')
+const { listBookings, getCurrentBooking, createBooking, cancelBooking, challengeBooking, confirmBooking, myBookings, upcomingBookings, setBookingLive } = require('../db/queries')
 const { requireAuth } = require('./auth')
 
 // GET /bookings?model=<ref> -- current + upcoming slots
@@ -28,6 +28,26 @@ router.get('/now', async (req, res) => {
   try {
     const booking = await getCurrentBooking(String(req.query.model))
     res.json({ onAir: booking ? 'dj' : 'model', booking })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /bookings/mine  (logged-in DJ) -- your slots, and the ones you challenge;
+// a slot of yours someone challenged carries challenger_name + challenge_deadline
+router.get('/mine', requireAuth, async (req, res) => {
+  try {
+    res.json(await myBookings(req.user.userId))
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /bookings/upcoming -- every upcoming slot on every model (the show
+// page's CRKT cards, src/backend/event-crawler)
+router.get('/upcoming', async (req, res) => {
+  try {
+    res.json(await upcomingBookings())
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -52,8 +72,51 @@ router.post('/', requireAuth, async (req, res) => {
       startsAt: when.toISOString(),
       hours: Math.round(h * 10) / 10
     })
-    if (out.conflict) return res.status(409).json({ error: 'slot taken', conflict: out.conflict })
+    if (out.conflict) return res.status(409).json({ error: 'booked by ' + out.conflict.dj_name, conflict: out.conflict, canChallenge: out.conflict.dj_id !== req.user.userId && !out.conflict.challenger_name && new Date(out.conflict.starts_at) > new Date() })
     res.status(201).json(out.booking)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /bookings/:id/challenge  (another logged-in DJ) -- "someone booked it":
+// ask for it. The holder has until challenge_deadline to confirm, or the slot
+// becomes the challenger's.
+router.post('/:id/challenge', requireAuth, async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'bad id' })
+  try {
+    const out = await challengeBooking(id, req.user.userId, String(req.user.username || 'dj').slice(0, 255))
+    if (out.error) return res.status(out.code || 400).json({ error: out.error })
+    res.json(out.booking)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /bookings/:id/confirm  (the holder) -- "still using it": dismisses the challenge
+router.post('/:id/confirm', requireAuth, async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'bad id' })
+  try {
+    const row = await confirmBooking(id, req.user.userId)
+    if (!row) return res.status(404).json({ error: 'not your slot' })
+    res.json(row)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /bookings/:id/live  { live: true|false }  (the holder, during the slot)
+// -- going on air opens a 'web' radio session for them at CRKT (the model
+// stops, the dj plays); false ends it
+router.post('/:id/live', requireAuth, async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'bad id' })
+  try {
+    const out = await setBookingLive(id, req.user.userId, req.body && req.body.live !== false)
+    if (out.error) return res.status(out.code || 400).json({ error: out.error })
+    res.json(out.booking)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

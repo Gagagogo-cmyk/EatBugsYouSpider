@@ -543,7 +543,16 @@ function ensureBookingsTable() {
       `ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`,
       `UPDATE bookings SET status = 'booked' WHERE status NOT IN ('booked','cancelled')`,
       `ALTER TABLE bookings ALTER COLUMN status SET DEFAULT 'booked'`,
-      `CREATE INDEX IF NOT EXISTS bookings_model_idx ON bookings(model_ref, starts_at)`
+      `CREATE INDEX IF NOT EXISTS bookings_model_idx ON bookings(model_ref, starts_at)`,
+      // CHALLENGES -- someone else wants a taken slot: the holder has until
+      // challenge_deadline to confirm they'll use it, or it goes to the
+      // challenger (resolveChallenges)
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS challenger_id INTEGER REFERENCES users(id)`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS challenger_name VARCHAR(255)`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS challenge_deadline TIMESTAMPTZ`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ`,
+      // GO LIVE -- the radio session the dj opened when they went on air
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS live_session_id INTEGER`
     ]
     bookingsTableReady = (async () => {
       await pool.query(steps[0])   // the table itself has to exist
@@ -553,12 +562,24 @@ function ensureBookingsTable() {
   return bookingsTableReady
 }
 
-const BOOKING_COLS = `id, model_ref, model_name, dj_name, starts_at, hours, status,
-  starts_at + (hours * INTERVAL '1 hour') AS ends_at`
+const BOOKING_COLS = `id, model_ref, model_name, dj_id, dj_name, starts_at, hours, status,
+  starts_at + (hours * INTERVAL '1 hour') AS ends_at,
+  challenger_name, challenge_deadline, confirmed_at, live_session_id`
+
+// a challenge nobody answered in time: the slot goes to the challenger
+async function resolveChallenges() {
+  await pool.query(
+    `UPDATE bookings
+        SET dj_id = challenger_id, dj_name = challenger_name,
+            challenger_id = NULL, challenger_name = NULL, challenge_deadline = NULL, confirmed_at = NULL
+      WHERE status = 'booked' AND challenger_id IS NOT NULL AND challenge_deadline <= NOW()`
+  )
+}
 
 // upcoming + current (not cancelled) slots, optionally for one model
 async function listBookings(modelRef) {
   await ensureBookingsTable()
+  await resolveChallenges()
   const result = await pool.query(
     `SELECT ${BOOKING_COLS}
      FROM bookings
@@ -575,6 +596,7 @@ async function listBookings(modelRef) {
 // the slot holding a model right now (a DJ is on it), or null (the model plays)
 async function getCurrentBooking(modelRef) {
   await ensureBookingsTable()
+  await resolveChallenges()
   const result = await pool.query(
     `SELECT ${BOOKING_COLS}
      FROM bookings
@@ -591,6 +613,7 @@ async function getCurrentBooking(modelRef) {
 // returns { booking } or { conflict }
 async function createBooking({ modelRef, modelName, djId, djName, startsAt, hours }) {
   await ensureBookingsTable()
+  await resolveChallenges()
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
@@ -633,6 +656,92 @@ async function cancelBooking(id, djId) {
   return result.rows[0] || null
 }
 
+// challenge someone else's upcoming slot. The holder gets until the deadline
+// to confirm: 24h, but never later than 15 minutes before the slot starts
+// (at least 5 minutes from now). Returns { booking } or { error }.
+async function challengeBooking(id, userId, userName) {
+  await ensureBookingsTable()
+  await resolveChallenges()
+  const cur = await pool.query(`SELECT ${BOOKING_COLS} FROM bookings WHERE id = $1`, [id])
+  const b = cur.rows[0]
+  if (!b || b.status !== 'booked') return { error: 'no such slot', code: 404 }
+  if (b.dj_id === userId) return { error: 'that slot is already yours', code: 400 }
+  if (new Date(b.starts_at) <= new Date()) return { error: 'that slot has already started', code: 409 }
+  if (b.challenger_name) return { error: 'already challenged by ' + b.challenger_name, code: 409 }
+  const result = await pool.query(
+    `UPDATE bookings
+        SET challenger_id = $2, challenger_name = $3, confirmed_at = NULL,
+            challenge_deadline = LEAST(starts_at, GREATEST(NOW() + INTERVAL '5 minutes',
+                                   LEAST(NOW() + INTERVAL '24 hours', starts_at - INTERVAL '15 minutes')))
+      WHERE id = $1 AND status = 'booked' AND challenger_id IS NULL
+      RETURNING ${BOOKING_COLS}`,
+    [id, userId, userName]
+  )
+  return result.rows[0] ? { booking: result.rows[0] } : { error: 'could not challenge that slot', code: 409 }
+}
+
+// the holder confirms they'll use the slot: the challenge is dismissed
+async function confirmBooking(id, userId) {
+  await ensureBookingsTable()
+  await resolveChallenges()
+  const result = await pool.query(
+    `UPDATE bookings
+        SET challenger_id = NULL, challenger_name = NULL, challenge_deadline = NULL, confirmed_at = NOW()
+      WHERE id = $1 AND dj_id = $2 AND status = 'booked'
+      RETURNING ${BOOKING_COLS}`,
+    [id, userId]
+  )
+  return result.rows[0] || null
+}
+
+// the signed-in dj's own upcoming slots (and the ones they're challenging)
+async function myBookings(userId) {
+  await ensureBookingsTable()
+  await resolveChallenges()
+  const result = await pool.query(
+    `SELECT ${BOOKING_COLS}, (dj_id = $1) AS mine FROM bookings
+      WHERE status = 'booked' AND (dj_id = $1 OR challenger_id = $1)
+        AND starts_at + (hours * INTERVAL '1 hour') > NOW()
+      ORDER BY starts_at`,
+    [userId]
+  )
+  return result.rows
+}
+
+// every upcoming slot on every model -- the show page lists them as cards at
+// the cybervenue CRKT
+async function upcomingBookings(limit = 200) {
+  await ensureBookingsTable()
+  await resolveChallenges()
+  const result = await pool.query(
+    `SELECT ${BOOKING_COLS} FROM bookings
+      WHERE status = 'booked' AND starts_at + (hours * INTERVAL '1 hour') > NOW()
+      ORDER BY starts_at LIMIT $1`,
+    [limit]
+  )
+  return result.rows
+}
+
+// go live / end: the slot's own dj, during the slot -- opens (or closes) a
+// 'web' radio session for them at CRKT, so the radio shows the dj on air
+async function setBookingLive(id, userId, live) {
+  await ensureBookingsTable()
+  const cur = await pool.query(`SELECT ${BOOKING_COLS} FROM bookings WHERE id = $1 AND dj_id = $2 AND status = 'booked'`, [id, userId])
+  const b = cur.rows[0]
+  if (!b) return { error: 'not your slot', code: 404 }
+  const now = new Date()
+  if (live) {
+    if (now < new Date(b.starts_at) || now >= new Date(b.ends_at)) return { error: 'your slot is not running right now', code: 409 }
+    if (b.live_session_id) return { booking: b }
+    const session = await openSession(userId, 'CRKT', 'web')
+    const r = await pool.query(`UPDATE bookings SET live_session_id = $2 WHERE id = $1 RETURNING ${BOOKING_COLS}`, [id, session.id])
+    return { booking: r.rows[0], session }
+  }
+  if (b.live_session_id) await closeSession(b.live_session_id)
+  const r = await pool.query(`UPDATE bookings SET live_session_id = NULL WHERE id = $1 RETURNING ${BOOKING_COLS}`, [id])
+  return { booking: r.rows[0] }
+}
+
 module.exports = {
   renameUser,
   createUser,
@@ -672,5 +781,10 @@ module.exports = {
   listBookings,
   getCurrentBooking,
   createBooking,
-  cancelBooking
+  cancelBooking,
+  challengeBooking,
+  confirmBooking,
+  myBookings,
+  upcomingBookings,
+  setBookingLive
 }

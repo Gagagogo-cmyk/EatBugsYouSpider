@@ -6799,6 +6799,34 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 #bookingBox .bkList .bkMine{color:#fff;cursor:pointer}
 #bookingBox .bkList .bkMine:hover{text-decoration:line-through}
 #bookingBox .bkList .bkLive{color:#fff}
+#bookingBox .bkAct{color:#fff;cursor:pointer}
+#bookingBox .bkAct:hover{text-decoration:underline}
+#bookingBox .bkList .bkChallenged{color:#fff}
+#bookingBox .bkList .bkChallenged:hover{text-decoration:underline}
+
+/* #goLive -- user: "when you show up at the booking time, the system will ask
+   for your inputs, video and audio. then you'll be able to go on live."
+   Opens by itself when one of your slots is running (checkMySlots). Pick the
+   camera + microphone, see the preview and the mic level, then go live
+   (the radio switches to you: the model stops). */
+#goLive{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:360px;z-index:100001;background:#000;border:1px solid var(--g2,#8e9392);
+  padding:8px 10px;font-family:var(--mono);font-size:12px;line-height:16px;color:var(--g3,#7d8281);box-sizing:border-box}
+#goLive[hidden]{display:none}
+#goLive .glHead{display:flex;justify-content:space-between;color:#fff}
+#goLive .glClose{cursor:pointer;color:var(--g3,#7d8281)}
+#goLive .glClose:hover{color:#fff}
+#goLive .glRow{display:flex;gap:1ch;align-items:center;height:16px;margin-top:4px}
+#goLive .glRow label{flex:0 0 7ch}
+#goLive select{flex:1 1 auto;min-width:0;height:16px;line-height:14px;padding:0 4px;box-sizing:border-box;border:1px solid var(--g2,#8e9392);background:#000;color:#fff;font:inherit;color-scheme:dark}
+#goLive video{display:block;width:100%;aspect-ratio:16/9;background:#050505;margin-top:8px;border:1px solid var(--g4,#4a4d4a);box-sizing:border-box}
+#goLive .glLevel{flex:1 1 auto;height:6px;border:1px solid var(--g4,#4a4d4a);position:relative}
+#goLive .glLevel i{position:absolute;left:0;top:0;bottom:0;width:0;background:#fff}
+#goLive .glBtns{display:flex;justify-content:space-between;margin-top:8px}
+#goLive .glBtn{cursor:pointer;color:#fff;border:1px solid var(--g2,#8e9392);padding:0 4px;height:16px;line-height:14px;box-sizing:border-box;background:#000;font:inherit}
+#goLive .glBtn:hover{border-color:#fff}
+#goLive .glBtn[disabled]{opacity:1;color:var(--g4,#4a4d4a);border-color:var(--g4,#4a4d4a);cursor:default}
+#goLive .glMsg{margin-top:4px;min-height:16px}
+#goLive.onAir{border-color:#fff}
 #bookingBox .bkIn{height:16px;line-height:14px;box-sizing:border-box;padding:0 4px;   /* the TRAINED MODELS search bar's size -- user: "make sure all the search bar, or dropdown menu boxes the same size" */
   margin:0;border:1px solid var(--g2,#555);border-radius:0;
   background:transparent;color:#fff;font:inherit;min-width:0;outline:none;color-scheme:dark}
@@ -8146,7 +8174,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
              linked to the stripe pipeline." Opens #npDj's amount row; [send]
              goes through window.gnTipDj (POST /tips/checkout -> Stripe
              Checkout in a new tab), tipping whoever holds the radio. -->
-        <span class="npActs"><button type="button" class="npBook npTipBtn" id="npTip" title="tip whoever is on air (Stripe)">tip</button><button type="button" class="npBook npClose" id="npClose" title="close the console (^C)" aria-label="close the console">&times;</button><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
+        <span class="npActs"><button type="button" class="npBook npTipBtn" id="npTip" title="tip whoever is on air (Stripe)">tip <span class="curSym">&curren;</span></button><button type="button" class="npBook npClose" id="npClose" title="close the console (^C)" aria-label="close the console">&times;</button><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
         <!-- #npDj -- DJ TIPS + SOCIALS. user: "the djs will need to be able
              to receive tips and have social media links above their playnow
              bar". Shown only while a dj holds the slot (TUNED_DJ); hidden
@@ -8160,10 +8188,10 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
           </span>
           <span class="npDjPay" id="npDjPay" hidden>
             <span class="npDjPayLbl" id="npDjPayLbl">tip :</span>
-            <span class="npDjBtn npDjAmt" data-cents="200">$2</span>
-            <span class="npDjBtn npDjAmt on" data-cents="500">$5</span>
-            <span class="npDjBtn npDjAmt" data-cents="1000">$10</span>
-            <span class="npDjOtherWrap">$<input type="text" id="npDjOther" inputmode="decimal" placeholder="other" spellcheck="false" autocomplete="off" aria-label="other tip amount"></span>
+            <span class="npDjBtn npDjAmt" data-cents="200"><span class="curSym">&curren;</span>2</span>
+            <span class="npDjBtn npDjAmt on" data-cents="500"><span class="curSym">&curren;</span>5</span>
+            <span class="npDjBtn npDjAmt" data-cents="1000"><span class="curSym">&curren;</span>10</span>
+            <span class="npDjOtherWrap"><span class="curSym">&curren;</span><input type="text" id="npDjOther" inputmode="decimal" placeholder="other" spellcheck="false" autocomplete="off" aria-label="other tip amount"></span>
             <span class="npDjBtn npDjSend" id="npDjSend" role="button" tabindex="0">[send]</span>
             <span class="npDjBtn" id="npDjCancel" role="button" tabindex="0" title="cancel">[x]</span>
           </span>
@@ -16219,6 +16247,26 @@ function renderNowPlaying(){
    pattern as window.gnSpiderPay for donations. Until that hook exists the
    row says so instead of pretending a payment went through. */
 let npDjCents=500;
+/* CURRENCY -- user: "add ¤ after tip. [ tip ¤ ]... as it will update to the
+   actual value once the user tells the system what currency they are working
+   with". ¤ (the generic currency sign) until then; ":currency EUR" (any ISO
+   code) in the chat sets it, remembered on this computer. The tip amounts
+   and the Stripe payment use it (CAD until one is set). */
+let CURRENCY=(()=>{ try{ return localStorage.getItem('gnumbat.currency')||null; }catch(e){ return null; } })();
+function curSym(){
+  if(!CURRENCY) return '\u00a4';
+  try{ const p=new Intl.NumberFormat(undefined,{style:'currency',currency:CURRENCY,currencyDisplay:'narrowSymbol'}).formatToParts(1).find(x=>x.type==='currency'); return p?p.value:CURRENCY; }catch(e){ return CURRENCY; }
+}
+function renderCurrency(){ document.querySelectorAll('.curSym').forEach(el=>{ el.textContent=curSym(); }); const t=document.getElementById('npTip'); if(t) t.title='tip whoever is on air (Stripe'+(CURRENCY?', '+CURRENCY:'')+')'; }
+function setCurrency(code){
+  const c=String(code||'').trim().toUpperCase();
+  if(!/^[A-Z]{3}$/.test(c)) return false;
+  try{ new Intl.NumberFormat(undefined,{style:'currency',currency:c}); }catch(e){ return false; }
+  CURRENCY=c; try{ localStorage.setItem('gnumbat.currency',c); }catch(e){}
+  renderCurrency(); return true;
+}
+window.gnSetCurrency=setCurrency;
+requestAnimationFrame(renderCurrency);
 let NP_TIP_OPEN=false;   /* the #npTip button opened the amount row (works with no dj on air) */
 function npDjEsc(t){ return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function npDjCurrent(){
@@ -16272,14 +16320,14 @@ function renderNpDj(){
   act(document.getElementById('npDjSend'),()=>{
     const d=npDjCurrent();
     if(!d && !NP_TIP_OPEN) return;
-    if(!(npDjCents>=100)){ npDjNote('minimum tip is $1'); return; }
+    if(!(npDjCents>=100)){ npDjNote('minimum tip is '+curSym()+'1'); return; }
     if(typeof window.gnTipDj!=='function'){ npDjNote("tips aren't connected yet"); return; }
     npDjNote('...');
-    Promise.resolve().then(()=>window.gnTipDj({dj:d?d.id:null, amountCents:npDjCents, currency:'cad'})).then(ok=>{
+    Promise.resolve().then(()=>window.gnTipDj({dj:d?d.id:null, amountCents:npDjCents, currency:(CURRENCY||'cad').toLowerCase()})).then(ok=>{
       if(ok===false){ npDjNote('tip cancelled'); return; }
       const keepOpen=NP_TIP_OPEN && !d;
       npDjShowPay(false); if(keepOpen){ const b=document.getElementById('npDj'); if(b) b.hidden=false; }
-      npDjNote('finish the payment in the Stripe tab -- $'+(npDjCents/100).toFixed(2)+(d?' to '+d.id:''));
+      npDjNote('finish the payment in the Stripe tab -- '+curSym()+(npDjCents/100).toFixed(2)+(d?' to '+d.id:''));
       if(keepOpen) setTimeout(()=>{ if(!NP_TIP_OPEN) renderNpDj(); },6000);
       setTimeout(()=>npDjNote(''),4000);
     }).catch(err=>npDjNote('tip failed'+(err&&err.message?' -- '+err.message:'')));
@@ -17283,6 +17331,13 @@ function handleOmscInput(v){
   const replyMatch=v.match(/^:r\s+([\s\S]+)$/i);
   /* ":agents add ..." (the "+" menu's typed options) -- the hub's agent list */
   if(/^:agents?\s+add\s+\S/i.test(v)){ if(window.Gnumbat && Gnumbat.chatEdit) Gnumbat.chatEdit(v.replace(/^:agent\s/i,':agents ')); return true; }
+  /* ":currency EUR" -- the tip button's ¤ becomes the real sign */
+  { const cm=v.match(/^:currency(?:\s+(\S+))?\s*$/i);
+    if(cm){
+      const ok=cm[1] && typeof setCurrency==='function' && setCurrency(cm[1]);
+      OMSC_CHAT.push({who:'gnumbot',t0:chatTimestamp(),t: ok ? 'currency set to '+escapeHtml(CURRENCY)+' ('+escapeHtml(curSym())+')' : 'usage: :currency CAD (any 3-letter currency code)'});
+      renderOmscChat(); return true;
+    } }
   /* any other ":" command is for the playback engine, never the room */
   if(!msgMatch && !replyMatch && v[0]===':') return false;
   if(msgMatch){
@@ -19400,6 +19455,17 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
   const models=()=>{ try{ return MODELS.filter(m=>m && !(typeof isHybrid==='function' && isHybrid(m))); }catch(e){ return []; } };
   const chosen=()=>{ const id=sel.value; return models().find(m=>String(m.id)===id) || null; };
   const msg=(t,cls)=>{ const m=$('bkMsg'); m.textContent=t||''; m.className='bkMsg'+(cls?' '+cls:''); m.title=t||''; };
+  const msgHtml=(h,cls)=>{ const m=$('bkMsg'); m.innerHTML=h; m.className='bkMsg'+(cls?' '+cls:''); m.title=m.textContent; };
+  const authPost=(path,body)=>fetch(api()+path,{method:'POST',headers:Object.assign({Authorization:'Bearer '+token()},body?{'Content-Type':'application/json'}:{}),body:body?JSON.stringify(body):undefined})
+    .then(r=>r.json().catch(()=>({})).then(j=>({ok:r.ok,status:r.status,j})));
+  $('bkMsg').addEventListener('click',e=>{
+    const c=e.target.closest('[data-challenge]'); if(!c||!token()) return;
+    authPost('/'+encodeURIComponent(c.dataset.challenge)+'/challenge').then(({ok,j})=>{
+      if(ok) msg('challenged -- '+j.dj_name+' has until '+fmt(j.challenge_deadline)+' to confirm','ok');
+      else msg(j.error||'could not challenge','err');
+      load(); if(window.gnCheckMySlots) window.gnCheckMySlots();
+    }).catch(()=>msg('backend offline','err'));
+  });
   let loadSeq=0, lastRows=[];
   function load(){
     const m=chosen(), seq=++loadSeq;
@@ -19415,8 +19481,10 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
       n.title = live ? 'a DJ holds this model until '+fmt(live.ends_at)+' -- the model is stopped' : 'no DJ booked right now: the model plays';
       if(!$('bkMsg').classList.contains('err') && !$('bkMsg').classList.contains('ok')) msg(lastRows.length ? lastRows.length+' slot'+(lastRows.length>1?'s':'')+' booked' : 'no slots booked -- 24/7 model');
       $('bkList').innerHTML=lastRows.map(b=>{
-        const mine=me() && b.dj_name===me(), isLive=b===live;
-        return '<div class="'+(mine?'bkMine':'')+(isLive?' bkLive':'')+'" data-id="'+b.id+'" title="'+escapeHtml((mine?'your slot -- click to cancel':b.dj_name)+(isLive?' (on air)':''))+'">'+escapeHtml(fmt(b.starts_at)+'–'+hm(new Date(b.ends_at))+' '+b.dj_name)+'</div>';
+        const mine=me() && b.dj_name===me(), isLive=b===live, ch=b.challenger_name;
+        const tip = mine ? (ch ? 'challenged by '+ch+' -- click to confirm you\u2019ll use it (by '+fmt(b.challenge_deadline)+')' : 'your slot -- click to cancel') : (b.dj_name+(ch?' -- challenged by '+ch:''));
+        const txt = fmt(b.starts_at)+'\u2013'+hm(new Date(b.ends_at))+' '+b.dj_name+(ch?(mine?' \u2691 confirm':' \u2691'):'');
+        return '<div class="'+(mine?'bkMine':'')+(mine&&ch?' bkChallenged':'')+(isLive?' bkLive':'')+'" data-id="'+b.id+'" title="'+escapeHtml(tip+(isLive?' (on air)':''))+'">'+escapeHtml(txt)+'</div>';
       }).join('');
     }).catch(()=>{ if(seq===loadSeq){ $('bkList').innerHTML=''; $('bkNow').textContent=''; msg('backend offline'); } });
   }
@@ -19450,11 +19518,21 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
     const startsAt=new Date(date+'T'+time);   /* local time on this computer */
     if(isNaN(startsAt)||startsAt<new Date(Date.now()-60000)){ msg('that time has passed','err'); return; }
     $('bkBook').disabled=true; msg('booking…');
-    fetch(api(),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},body:JSON.stringify({modelRef:String(m.id),modelName:m.n,startsAt:startsAt.toISOString(),hours})})
+    fetch(api(),{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},body:JSON.stringify({modelRef:String(m.id),modelName:m.n,startsAt:startsAt.toISOString(),hours,
+      /* no venue in this system -- the model is the place; these two only keep
+         an older backend (the first booking version, which still asked for
+         them) from refusing the booking. The current one ignores them. */
+      venue:'CRKT', contact:me()||'dj'})})
       .then(r=>r.json().catch(()=>({})).then(j=>({ok:r.ok,status:r.status,j})))
       .then(({ok,status,j})=>{
         if(ok){ msg('booked '+fmt(j.starts_at)+'–'+hm(new Date(j.ends_at)),'ok'); load(); }
-        else if(status===409 && j.conflict) msg('taken '+fmt(j.conflict.starts_at)+'–'+hm(new Date(j.conflict.ends_at))+' '+j.conflict.dj_name,'err');
+        else if(status===409 && j.conflict){
+          /* "If someone else booked it, then it should say someone booked it
+             and propose to challenge it" */
+          const c=j.conflict;
+          if(j.canChallenge) msgHtml('booked by '+escapeHtml(c.dj_name)+' <span class="bkAct" data-challenge="'+c.id+'" title="ask for this slot: '+escapeHtml(c.dj_name)+' has to confirm they\u2019ll use it, or it becomes yours">[challenge]</span>','err');
+          else msg(c.challenger_name ? 'booked by '+c.dj_name+', already challenged' : 'booked by '+c.dj_name+' '+fmt(c.starts_at),'err');
+        }
         else if(status===401) msg('log in again to book','err');
         else msg(j.error||('error '+status),'err');
       })
@@ -19462,8 +19540,109 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
       .finally(()=>sync());
   });
   /* your own slot: click to cancel */
+  /* the holder keeps a challenged slot -- "the other user that booked it must
+     then confirm they are still gonna use the booking to dismiss the challenge" */
+  function confirmSlot(id){
+    authPost('/'+encodeURIComponent(id)+'/confirm').then(({ok,j})=>{
+      msg(ok?'confirmed -- the slot stays yours':(j.error||'could not confirm'), ok?'ok':'err');
+      load(); if(window.gnCheckMySlots) window.gnCheckMySlots();
+    }).catch(()=>msg('backend offline','err'));
+  }
+  window.gnConfirmSlot=confirmSlot;
+  /* ── GO LIVE (#goLive) ── */
+  let glBooking=null, glStream=null, glRaf=0, glDismissed=new Set();
+  const gl=document.createElement('div'); gl.id='goLive'; gl.hidden=true; gl.setAttribute('data-spider-solid','');
+  gl.innerHTML='<div class="glHead"><span id="glTitle">GO LIVE</span><span class="glClose" id="glClose" title="not now">\u00d7</span></div>'
+    +'<div class="glRow"><label for="glCam">video</label><select id="glCam"></select></div>'
+    +'<div class="glRow"><label for="glMic">audio</label><select id="glMic"></select></div>'
+    +'<video id="glVideo" autoplay muted playsinline></video>'
+    +'<div class="glRow"><label>level</label><span class="glLevel"><i id="glLvl"></i></span></div>'
+    +'<div class="glMsg" id="glMsg"></div>'
+    +'<div class="glBtns"><button type="button" class="glBtn" id="glInputs">allow camera + mic</button><button type="button" class="glBtn" id="glGo" disabled>go live</button></div>';
+  document.body.appendChild(gl);
+  const g=id=>document.getElementById(id);
+  const glNote=t=>{ g('glMsg').textContent=t||''; };
+  function stopStream(){ cancelAnimationFrame(glRaf); if(glStream){ glStream.getTracks().forEach(t=>t.stop()); glStream=null; } g('glVideo').srcObject=null; g('glLvl').style.width='0'; }
+  async function listDevices(){
+    const devs=await navigator.mediaDevices.enumerateDevices();
+    const fill=(sel,kind,label)=>{ const cur=g(sel).value; g(sel).innerHTML=devs.filter(d=>d.kind===kind).map((d,i)=>'<option value="'+escapeHtml(d.deviceId)+'">'+escapeHtml(d.label||(label+' '+(i+1)))+'</option>').join('')||'<option value="">none found</option>'; if(cur) g(sel).value=cur; };
+    fill('glCam','videoinput','camera'); fill('glMic','audioinput','microphone');
+  }
+  async function startInputs(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ glNote('this browser has no camera/mic access here (it needs https or localhost)'); return; }
+    stopStream(); glNote('asking for your camera and microphone\u2026');
+    try{
+      const cam=g('glCam').value, mic=g('glMic').value;
+      glStream=await navigator.mediaDevices.getUserMedia({ video: cam?{deviceId:{exact:cam}}:true, audio: mic?{deviceId:{exact:mic}}:true });
+    }catch(e){ glNote(e && e.name==='NotAllowedError' ? 'camera/mic blocked -- allow them in the browser\u2019s address bar, then try again' : 'no camera/mic: '+(e&&e.message||e)); return; }
+    await listDevices();
+    const vt=glStream.getVideoTracks()[0], at=glStream.getAudioTracks()[0];
+    if(vt && vt.getSettings().deviceId) g('glCam').value=vt.getSettings().deviceId;
+    if(at && at.getSettings().deviceId) g('glMic').value=at.getSettings().deviceId;
+    g('glVideo').srcObject=glStream;
+    try{
+      const ac=new (window.AudioContext||window.webkitAudioContext)(), an=ac.createAnalyser(); an.fftSize=512;
+      ac.createMediaStreamSource(glStream).connect(an);
+      const buf=new Uint8Array(an.fftSize);
+      const tick=()=>{ an.getByteTimeDomainData(buf); let pk=0; for(const v of buf) pk=Math.max(pk,Math.abs(v-128)); g('glLvl').style.width=Math.min(100,Math.round(pk/128*140))+'%'; glRaf=requestAnimationFrame(tick); };
+      tick();
+    }catch(e){}
+    g('glInputs').textContent='change inputs'; g('glGo').disabled=false;
+    glNote('inputs ready -- go live when you are');
+  }
+  window.openGoLive=function(b){
+    if(!b || glDismissed.has(b.id)) return;
+    if(glBooking && glBooking.id===b.id && !gl.hidden) return;
+    glBooking=b;
+    g('glTitle').textContent='GO LIVE \u2014 '+(b.model_name||b.model_ref)+' '+hm(new Date(b.starts_at))+'\u2013'+hm(new Date(b.ends_at));
+    const on=!!b.live_session_id;
+    gl.classList.toggle('onAir',on); g('glGo').textContent=on?'end live':'go live'; g('glGo').disabled=!on && !glStream;
+    glNote(on ? 'you are on air' : 'your slot is running -- choose your video and audio inputs');
+    gl.hidden=false;
+    listDevices().catch(()=>{});
+  };
+  g('glClose').addEventListener('click',()=>{ if(glBooking && !glBooking.live_session_id) glDismissed.add(glBooking.id); gl.hidden=true; if(!(glBooking&&glBooking.live_session_id)) stopStream(); });
+  g('glInputs').addEventListener('click',startInputs);
+  ['glCam','glMic'].forEach(id=>g(id).addEventListener('change',()=>{ if(glStream) startInputs(); }));
+  g('glGo').addEventListener('click',()=>{
+    if(!glBooking) return;
+    const goingLive=!glBooking.live_session_id;
+    g('glGo').disabled=true;
+    authPost('/'+encodeURIComponent(glBooking.id)+'/live',{live:goingLive}).then(({ok,j})=>{
+      g('glGo').disabled=false;
+      if(!ok){ glNote(j.error||'could not go live'); return; }
+      glBooking=j;
+      gl.classList.toggle('onAir',goingLive); g('glGo').textContent=goingLive?'end live':'go live';
+      glNote(goingLive ? 'you are on air -- the model has stopped, the radio is yours' : 'live ended -- the model plays again');
+      if(!goingLive){ stopStream(); g('glGo').disabled=true; g('glInputs').textContent='allow camera + mic'; }
+      load();
+    }).catch(()=>{ g('glGo').disabled=false; glNote('backend offline'); });
+  });
+  /* MY SLOTS -- every minute while logged in: a new challenge on one of your
+     slots gets a gnumbot line in the chat ([confirm]); a slot of yours that's
+     running now opens GO LIVE */
+  const told=new Set();
+  function bot(html){ try{ OMSC_CHAT.push({who:'gnumbot',t0:chatTimestamp(),t:html}); renderActiveChat(); }catch(e){} }
+  function checkMySlots(){
+    if(!token()) return;
+    fetch(api()+'/mine',{headers:{Authorization:'Bearer '+token()}}).then(r=>r.ok?r.json():[]).then(rows=>{
+      const now=Date.now();
+      (rows||[]).forEach(b=>{
+        const mdl=escapeHtml(b.model_name||b.model_ref);
+        if(b.mine && b.challenger_name){
+          const k='c'+b.id+':'+b.challenge_deadline;
+          if(!told.has(k)){ told.add(k); bot('your slot on '+mdl+' '+escapeHtml(fmt(b.starts_at))+' was challenged by '+escapeHtml(b.challenger_name)+' -- confirm by '+escapeHtml(fmt(b.challenge_deadline))+' or it goes to them: <a class="botLink" href="#" data-confirm-slot="'+b.id+'">[confirm]</a>'); }
+        }
+        if(b.mine && new Date(b.starts_at)<=now && new Date(b.ends_at)>now && typeof openGoLive==='function') openGoLive(b);
+      });
+    }).catch(()=>{});
+  }
+  window.gnCheckMySlots=checkMySlots;
+  setInterval(checkMySlots,60000); setTimeout(checkMySlots,1500);
+  document.addEventListener('click',e=>{ const a=e.target.closest('[data-confirm-slot]'); if(!a) return; e.preventDefault(); confirmSlot(a.dataset.confirmSlot); },true);
   $('bkList').addEventListener('click',e=>{
     const row=e.target.closest('.bkMine'); if(!row||!token()) return;
+    if(row.classList.contains('bkChallenged')){ confirmSlot(row.dataset.id); return; }
     if(!confirm('Cancel this slot? '+row.textContent)) return;
     fetch(api()+'/'+encodeURIComponent(row.dataset.id)+'/cancel',{method:'POST',headers:{Authorization:'Bearer '+token()}})
       .then(r=>{ msg(r.ok?'slot cancelled':'could not cancel', r.ok?'ok':'err'); load(); })
@@ -19533,7 +19712,7 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
   /* login / logout changes who books */
   ['authSetIn','authLogout'].forEach(fn=>{
     const orig=window[fn]; if(typeof orig!=='function') return;
-    window[fn]=function(){ const r=orig.apply(this,arguments); try{ sync(); load(); }catch(e){} return r; };
+    window[fn]=function(){ const r=orig.apply(this,arguments); try{ sync(); load(); checkMySlots(); }catch(e){} return r; };
   });
   /* who's on air changes with the clock: refresh every minute while shown */
   setInterval(()=>{ if(!view.classList.contains('hide') && mrlcfOpen) load(); },60000);

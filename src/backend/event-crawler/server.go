@@ -333,8 +333,11 @@ func handleEventsJSON(w http.ResponseWriter, r *http.Request) {
 
 func handlePage(title string, filter func(list EventList) EventList) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// + the booked DJ slots, as shows at the cybervenue CRKT (crkt.go) --
+		// fetched before taking the lock, so a slow backend never holds it
+		crkt := crktEvents()
 		mu.RLock()
-		events := filter(cachedEvents)
+		events := filter(withCrkt(cachedEvents, crkt))
 		venuesJSON := cachedMarkers
 		venueList := cachedVenueList
 		genreList := cachedGenreList
