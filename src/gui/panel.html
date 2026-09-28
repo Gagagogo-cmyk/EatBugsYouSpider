@@ -20961,14 +20961,14 @@ tabOMSC.onclick();
     // styles above: black box, grey 1px border, page mono at 12px everywhere,
     // font smoothing off like the panel's body, #posterize3 like .plugin.
     (PAY_LOOK === 'page' ? (
-    // rounded bottom -- user: "make the lower side of the pop up rectangle with round edges, maybe 50 px"
-    'html #gnSpiderPay{width:300px;padding:6px 14px 12px;border-radius:0 0 50px 50px;background:#fff;color:#7d8281;border:1px solid #7d8281;box-shadow:none;' +
+    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#fff;color:#7d8281;border:1px solid #7d8281;box-shadow:none;' +
     'font:12px/1.3 var(--mono,ui-monospace,monospace);-webkit-font-smoothing:none;filter:url(#posterize3);top:50%;transform:translate(-50%,-50%);animation:none}' +   // dead centre -- user: "make the pop up more centered"
     'html #gnSpiderPay *{border-radius:0!important;font-family:inherit!important;font-size:12px!important;font-weight:400!important;letter-spacing:normal!important}' +
     // white box -- user: "put the background of the pop up white". Grey text,
     // black under the cursor ("text in grey except for when the cursor
     // hovers"); Donate is the one solid block, now black on the white
-    'html #gnSpiderPay .l,html #gnSpiderPay .l:hover{padding:0 18px;line-height:16px;color:#000!important;font-weight:700!important}' +   // a little bolder -- user: "make the (c) 2026 PWYW ransomware title a little bolder"   // title always black -- user: "the (c) 2026 PWYW ransomware tittle should remain black. no hover differences"
+    'html #gnSpiderPay .l .cp{font-size:17px!important;line-height:0;vertical-align:-2px}' +   // a bigger (c) -- user: "can you put the (c) bigger?"
+    'html #gnSpiderPay .l,html #gnSpiderPay .l:hover{padding:0 18px;line-height:16px;color:#000!important}' +   // regular weight again -- user: "remove the bold"   // title always black -- user: "the (c) 2026 PWYW ransomware tittle should remain black. no hover differences"
     // no hover change on the labels either -- user: "same for cursor return/minimum charge/secure checkout/total due. no hover differences"
     'html #gnSpiderPay .x{top:6px;right:4px;width:18px;height:16px;line-height:16px;color:#7d8281}' +   // on the title's line -- user: "align the x of the ransomware with the title"
     'html #gnSpiderPay .x:hover{background:transparent;color:#000}' +
@@ -21004,7 +21004,7 @@ tabOMSC.onclick();
     ) : '') +
     '</style>' +
     '<button type="button" class="x" data-a="no" aria-label="Close">&times;</button>' +
-    '<div class="l">&copy; 2026 PWYW Ransomware</div>' +
+    '<div class="l"><span class="cp">&copy;</span> 2026 PWYW Ransomware</div>' +
     '<label class="amt"><span data-a="sym">$</span><input data-a="amt" type="text" inputmode="decimal" autocomplete="off" ' +
     'spellcheck="false" placeholder="1.00" aria-label="Donation amount" aria-describedby="gnSpiderPayMin">' +
     '<select data-a="cur" aria-label="Currency"></select></label>' +
