@@ -6751,12 +6751,15 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    plain grey text, white on hover -- user: "move book a slot on the line
    under tip. remove its rectangle contour. make it grey until the cursor
    hovers above. then it should appear white." */
-/* ...then swapped -- user: "align book a slot with model: and tip with N/A"
-   (column-reverse: #npBook, the second button, goes on top) */
-.npMeta .npActs{position:absolute;right:0;top:0;display:flex;flex-direction:column-reverse;justify-content:flex-end;align-items:flex-end;z-index:2}
+/* ...and back -- user: "invert the position of them. tip above book a
+   slot. and keep tip in a box": tip (boxed) on the model line, book a slot
+   (plain grey text) on the N/A line */
+.npMeta .npActs{position:absolute;right:0;top:0;display:flex;flex-direction:column;align-items:flex-end;z-index:2}
 .npMeta .npBook{position:relative;height:16px;line-height:16px;box-sizing:border-box;padding:0;margin:0;
   border:0;background:transparent;color:var(--g3,#7d8281);font:inherit;font-size:12px;cursor:pointer;z-index:2}
 .npMeta .npBook:hover,.npMeta .npBook:focus-visible{color:#fff;outline:none}
+.npMeta .npBook.npTipBtn{border:1px solid var(--g2,#8e9392);color:#fff;padding:0 4px;line-height:14px;background:#000}
+.npMeta .npBook.npTipBtn:hover,.npMeta .npBook.npTipBtn:focus-visible{border-color:#fff}
 #bookingBox.bkFlash{outline:1px solid #fff;outline-offset:3px}
 
 /* BOOKING -- see #bookingBox. 16px rows like the list; the box's top and
