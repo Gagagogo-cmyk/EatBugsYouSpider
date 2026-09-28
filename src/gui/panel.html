@@ -6754,7 +6754,10 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 /* ...and back -- user: "invert the position of them. tip above book a
    slot. and keep tip in a box": tip (boxed) on the model line, book a slot
    (plain grey text) on the N/A line */
-.npMeta .npActs{position:absolute;right:0;top:0;display:flex;flex-direction:column;align-items:flex-end;z-index:2}
+.npMeta .npActs{position:absolute;right:0;top:0;display:flex;flex-direction:column;align-items:stretch;z-index:2}
+/* the tip box is exactly as wide as "book a slot", tip centred in it -- user:
+   "make the tip box the same lenght as the "book a slot" text. and center tip within it." */
+.npMeta .npActs .npBook{text-align:center}
 .npMeta .npBook{position:relative;height:16px;line-height:16px;box-sizing:border-box;padding:0;margin:0;
   border:0;background:transparent;color:var(--g3,#7d8281);font:inherit;font-size:12px;cursor:pointer;z-index:2}
 .npMeta .npBook:hover,.npMeta .npBook:focus-visible{color:#fff;outline:none}
