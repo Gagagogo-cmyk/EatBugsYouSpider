@@ -6795,9 +6795,9 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    #bkModelMenu draw it. */
 #bookingBox .bkPick{flex:1 1 0;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;line-height:14px}
 #bookingBox .bkPick::after{content:" \25BE";color:var(--g3,#7d8281)}
-#bkModelMenu{position:absolute;z-index:30;background:#000;border:1px solid var(--g3,#7d8281);padding:2px 0;max-height:160px;overflow-y:auto;box-sizing:border-box}
-#bkModelMenu div{height:16px;line-height:16px;padding:0 4px;color:var(--g3,#7d8281);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:transparent}
-#bkModelMenu div:hover{color:#fff}
+#bkModelMenu{position:absolute;z-index:30;background:#000;border:1px solid var(--g3,#7d8281);padding:0;max-height:160px;overflow-y:auto;box-sizing:border-box}
+#bkModelMenu div{height:14px;line-height:14px;padding:0 4px;color:var(--g3,#7d8281);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:transparent}
+#bkModelMenu div:hover{color:#fff}   /* open items = the closed box's own 14px row and 4px sides -- user: "make sure that the opened dropdown boxes keep the same proportion around the text as the closed box with its text." */
 #bkModelMenu div.on{color:#fff}
 #bookingBox .bkList .bkMine{color:#fff;cursor:pointer}
 #bookingBox .bkList .bkMine:hover{text-decoration:line-through}
@@ -20639,11 +20639,24 @@ tabOMSC.onclick();
   const eatStyle = document.createElement('style');
   // id-level specificity so it beats a page's own !important cursor rules
   // (e.g. base.html's text cursor on its search fields)
+  eatStyle.textContent = 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: none !important; }';
   // eaten: a 1px grey dot stays where the pointer was -- user: "when the
   // spider eats the cursor, make it become 1 pixel grey dot instead of simply
-  // nothing." A stolen leg or her head standing in for it: nothing (they draw it).
-  const EAT_DOT = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGPomzzpPwAGGQKziaIYyAAAAABJRU5ErkJggg==") 0 0, none';
-  const eatRule = c => 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: ' + c + ' !important; }';
+  // nothing" / "make sure the original mouse doesnt show up above the pixel
+  // cursor." The real pointer stays cursor:none (an image cursor let the
+  // system arrow show on top); this fixed 1px element is drawn at the pointer
+  // instead, over the embedded show page too. A stolen leg or her head
+  // standing in for the cursor: no dot (they draw it).
+  const eatDot = document.createElement('div');
+  eatDot.id = 'gnEatDot';
+  eatDot.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:#8e9392;pointer-events:none;z-index:2147483646;display:none';
+  document.body.appendChild(eatDot);
+  function placeDot() {
+    const onPay = !pay.hidden && (r => ptr.x >= r.left && ptr.x <= r.right && ptr.y >= r.top && ptr.y <= r.bottom)(pay.getBoundingClientRect());
+    const show = pointerDot() && ptr.inside && !onPay;
+    eatDot.style.display = show ? 'block' : 'none';
+    if (show) eatDot.style.transform = 'translate(' + Math.round(ptr.x) + 'px,' + Math.round(ptr.y) + 'px)';
+  }
   const toldFrame = new WeakMap();
   // suspended: off the SHOWS panel (FORUM or the M-RLCF layer) she isn't
   // there at all -- see window.gnSpiderSetActive below
@@ -20651,13 +20664,12 @@ tabOMSC.onclick();
   const pointerHidden = () => !suspended && (eaten || !!cursorLeg || headCursor);
   const pointerDot = () => pointerHidden() && !cursorLeg && !headCursor;
   function tellFrame(win) {          // re-sent now and then: an embedded page that reloads forgets it
-    const h = pointerHidden(), d = pointerDot(), t = performance.now(), last = toldFrame.get(win);
-    if (last && last.h === h && last.d === d && t - last.t < 500) return;
-    try { win.postMessage({ type: 'gnumbat-spider-eat', eaten: h, dot: d }, '*'); toldFrame.set(win, { h, d, t }); } catch (e) {}
+    const h = pointerHidden(), t = performance.now(), last = toldFrame.get(win);
+    if (last && last.h === h && t - last.t < 500) return;
+    try { win.postMessage({ type: 'gnumbat-spider-eat', eaten: h }, '*'); toldFrame.set(win, { h, t }); } catch (e) {}
   }
   function applyPointer() {          // hide/show the real pointer here and in embedded frames
-    const rule = eatRule(pointerDot() ? EAT_DOT : 'none');
-    if (eatStyle.textContent !== rule) eatStyle.textContent = rule;
+    placeDot();
     if (pointerHidden()) { if (!eatStyle.isConnected) document.head.appendChild(eatStyle); }
     else eatStyle.remove();
     for (const f of document.querySelectorAll('iframe')) if (f.contentWindow) tellFrame(f.contentWindow);
@@ -21771,9 +21783,9 @@ tabOMSC.onclick();
   const setPtr = e => {
     ptr.x = e.clientX; ptr.y = e.clientY; ptr.active = true; ptr.inside = true;
     ptr.movedAt = performance.now();
-    updateHover();
+    updateHover(); placeDot();
   };
-  const lose = () => { if (ptr.inside) { ptr.inside = false; ptr.goneAt = performance.now(); } };
+  const lose = () => { if (ptr.inside) { ptr.inside = false; ptr.goneAt = performance.now(); } placeDot(); };
   // capture phase, so page handlers that stop propagation can't hide the cursor from her
   window.addEventListener('pointermove', setPtr, { passive: true, capture: true });
   window.addEventListener('pointerdown', setPtr, { passive: true, capture: true });
@@ -21805,9 +21817,9 @@ tabOMSC.onclick();
     ptr.x = r.left + fr.clientLeft + parseFloat(cs.paddingLeft || 0) + m.x;
     ptr.y = r.top + fr.clientTop + parseFloat(cs.paddingTop || 0) + m.y;
     ptr.active = true; ptr.inside = true; ptr.movedAt = performance.now();
-    updateHover();
+    updateHover(); placeDot();
   });
-  document.documentElement.addEventListener('pointerleave', () => { ptr.inside = false; });
+  document.documentElement.addEventListener('pointerleave', () => { ptr.inside = false; placeDot(); });
   window.addEventListener('blur', () => { if (!document.activeElement || document.activeElement.tagName !== 'IFRAME' || !relaying.has(document.activeElement)) lose(); });
   window.addEventListener('resize', () => { resize(); maskDirty = true; });
 
