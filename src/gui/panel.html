@@ -6536,9 +6536,9 @@ input,textarea,[contenteditable="true"]{-webkit-user-select:text!important;user-
    want the website to actually translate itself." Google's website
    translator does the translating (the page text goes to Google); its own
    bar, tooltips and highlights are hidden. See GN TRANSLATE in the script. */
-#gnLangBtn{position:absolute;top:0;right:10px;height:15.6px;line-height:15.6px;color:var(--g3,#7d8281);cursor:var(--cursor-cross);z-index:60;user-select:none}
+#gnLangBtn{position:absolute;top:0;right:10px;height:15.6px;line-height:15.6px;color:var(--g3,#7d8281);cursor:var(--cursor-cross);z-index:2147483300;user-select:none}   /* above everything, the network page too */
 #gnLangBtn:hover,#gnLangBtn.open{color:#fff}
-#gnLangMenu{position:absolute;top:18px;right:10px;z-index:61;background:#000;border:1px solid var(--g3,#7d8281);max-height:60vh;overflow-y:auto;min-width:20ch;box-sizing:border-box;padding:0}
+#gnLangMenu{position:absolute;top:18px;right:10px;z-index:2147483301;background:#000;border:1px solid var(--g3,#7d8281);max-height:60vh;overflow-y:auto;min-width:20ch;box-sizing:border-box;padding:0}
 #gnLangMenu[hidden]{display:none}
 #gnLangMenu div{height:14px;line-height:14px;padding:0 4px;color:var(--g3,#7d8281);white-space:nowrap;cursor:var(--cursor-cross)}
 #gnLangMenu div:hover,#gnLangMenu div.on,#gnLangMenu div.hit{color:#fff}
@@ -6546,8 +6546,8 @@ input,textarea,[contenteditable="true"]{-webkit-user-select:text!important;user-
 /* search next to 文A -- user: "put a little search bar next to the language
    selector sign so its easier to find the language you are looking" -- the
    TRAINED MODELS search box's look; matches native name, English name, code */
-#gnLangSearch{position:absolute;top:1px;right:calc(10px + 3ch + 1ch);width:14ch;height:14px;line-height:12px;margin:0;padding:0 4px;box-sizing:border-box;
-  background:#000;border:1px solid var(--g2,#8e9392);color:#fff;font-family:var(--mono);outline:none;z-index:60}
+#gnLangSearch{position:absolute;top:1px;right:calc(10px + 3ch + 1ch);width:calc(170px - 3ch - 1ch);   /* left edge on TRAINED MODELS' (170px corner box, 10px margin) -- user: "align the left side of the language search bar with TRAINED MODELS" */height:14px;line-height:12px;margin:0;padding:0 4px;box-sizing:border-box;
+  background:#000;border:1px solid var(--g2,#8e9392);color:#fff;font-family:var(--mono);outline:none;z-index:2147483300}
 #gnLangSearch::placeholder{color:var(--g3,#7d8281);opacity:1}
 #gnLangSearch:focus{border-color:#fff}
 #gnGtHost{display:none!important}
@@ -6571,6 +6571,17 @@ body{top:0!important}
   height:100vh!important;max-height:none!important;z-index:2147483000!important;
   display:block!important;visibility:visible!important}
 body:has(.plugin.networkOpen) .marginText{display:none!important}
+/* ON THE NETWORK PAGE -- user: "keep [the language selector] through all the
+   panel, including the network panel. languages must always be available" /
+   "also keep the chat with the conversational agents for the network panel"
+   / "coding agent only exist within the seeds and branches". The lifted
+   frame sits at z 2147483000 inside .plugin: 文A + its search/menu and the
+   chat (log, input, CONVERSATIONAL AGENT box) go above it; the now-playing
+   lines, play bar and MEM row don't. syncAgentBox() keeps the box on the
+   conversational agents there, never the coding agent. */
+.plugin.networkOpen .conv{z-index:2147483200!important}
+.plugin.networkOpen .conv > .npMeta,.plugin.networkOpen .conv > #nowPlayingBar,.plugin.networkOpen .conv > #omscHead,.plugin.networkOpen .conv > .omscHead,
+.plugin.networkOpen .conv > .convOverlay,.plugin.networkOpen .conv > #convOverlay{visibility:hidden!important}
 
 /* TIGHTER TAB HIGHLIGHT -- user: "make the white selection box of [SHOW]
    or [FORUM] tighter around the words." Side padding 4px -> 1px and the
@@ -6962,6 +6973,7 @@ body.editLocking #bookingBox,body.editLocking #bookingBox *{pointer-events:auto}
    the forward button), so the waveform line (flex:1) runs longer */
 .nowPlayingBar .npBtns{gap:10px!important;margin-left:6px!important}
 .nowPlayingBar .npVotes{margin-left:2px!important;gap:6px!important}
+.nowPlayingBar .npVotes{position:relative;top:1px}   /* 1px lower -- user: "move the upvote/downvote next to the playbar down of 1 pixel" */
 .nowPlayingBar .npScrub{gap:6px!important}
 .nowPlayingBar{padding-left:0!important;padding-right:0!important}   /* bar runs margin to margin; votes end on the right margin */
 
@@ -19621,7 +19633,9 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
     /* closer to log out -- user: "put tip closer to log out": 3ch before it
        (never left of the middle of the gap) */
     const ch=parseFloat(getComputedStyle(chip).fontSize)*0.6||7.2;
-    const x=Math.min(Math.max((gapL+gapR)/2 - w/2, gapR - 3*ch - w), gapR - 3*ch - w);   /* ...and never onto them ("cursor ransom" is wider than "tip" was) */
+    /* centred on the screen -- user: "center the ransomware shortcut tab in
+       the screen" -- but never onto the login links on its right */
+    const x=Math.min(window.innerWidth/2 - P.left - w/2, gapR - 3*ch - w);
     chip.style.left=Math.round(x + P.left - Z.left)+'px';
     chip.style.top=Math.round(R.top-Z.top + (R.height-chip.getBoundingClientRect().height)/2)+'px';
   }
@@ -20015,6 +20029,7 @@ window.addEventListener('message', e=>{
     /* keys (Enter / arrows / Escape) go to the network page while it's up */
     if(networkOpen) setTimeout(()=>{ try{ frame.focus(); frame.contentWindow.focus(); }catch(err){} },0);
     document.querySelector('.plugin').classList.toggle('networkOpen', networkOpen);
+    if(typeof syncAgentBox==='function') syncAgentBox();   /* conversational agents on the network page */
     if(window.gnSpiderSetActive) window.gnSpiderSetActive(!networkOpen && activePanel==='shows');
     if(!networkOpen) try{ frame.blur(); window.focus(); }catch(err){}
   }
@@ -20202,9 +20217,12 @@ function noteConvReply(key, m){
    mode (with the room chat on screen) */
 function syncAgentBox(){
   const side=document.getElementById('editSide'); if(!side) return;
-  const conv=!(typeof editMode!=='undefined' && editMode);
+  /* network page: always the conversational agents (the coding agent only
+     exists inside a seed/branch, i.e. edit mode on the panel itself) */
+  const net=!!document.querySelector('.plugin.networkOpen');
+  const conv=net || !(typeof editMode!=='undefined' && editMode);
   side.classList.toggle('convMode', conv);
-  side.classList.toggle('convShow', conv && chatIsRoom() && (typeof activePanel==='undefined' || activePanel==='shows'));
+  side.classList.toggle('convShow', conv && (net || (chatIsRoom() && (typeof activePanel==='undefined' || activePanel==='shows'))));
   renderEditSide();
   if(typeof placeEditSide==='function') requestAnimationFrame(placeEditSide);
 }
