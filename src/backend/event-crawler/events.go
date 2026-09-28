@@ -66,7 +66,26 @@ type Event struct {
 // running, not just on its first day. AlreadyHappened is likewise based on
 // the END of the range -- a show that started last week but runs through
 // this weekend hasn't "already happened" yet.
+// cleanDateText -- scraped date text as a person would write it. Some pages
+// (the page-text discovery scraper especially) glue separate tags together:
+// MTelus came out as "SatSeptember, 26" -- user: "make sure the dates of the
+// event dont merge like that lol. keep them normal." Glued words are split
+// ("SatSeptember" -> "Sat September"), a comma stuck between a month and its
+// day goes ("September, 26" -> "September 26"), spaces are collapsed.
+var (
+	gluedWordsRe = regexp.MustCompile(`([a-zà-ÿ])([A-ZÀ-Þ])`)
+	monthCommaRe = regexp.MustCompile(`(?i)\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\.?\s*,\s*(\d{1,2})\b`)
+	manySpacesRe = regexp.MustCompile(`\s+`)
+)
+
+func cleanDateText(s string) string {
+	s = gluedWordsRe.ReplaceAllString(s, "$1 $2")
+	s = monthCommaRe.ReplaceAllString(s, "$1 $2")
+	return strings.TrimSpace(manySpacesRe.ReplaceAllString(s, " "))
+}
+
 func (e *Event) enrichEvent() {
+	e.Date = cleanDateText(e.Date)
 
 	e.PriceValue = parsePrice(e.Price)
 	e.IsFree = e.PriceValue == 0
@@ -401,6 +420,13 @@ func parseDateWithYearHint(date string, yearHint int) (time.Time, error) {
 
 		// Case Piranha Bar: "Thu, Mar 19, 2026"
 		{"Mon, Jan 2, 2006", false},
+
+		// Case MTelus page text, once cleanDateText has un-glued it:
+		// "Sat September 26" (no year)
+		{"Mon January 2", true},
+		{"Mon, January 2", true},
+		{"Monday January 2", true},
+		{"Monday, January 2", true},
 
 		// Case quai des brumes : "10 Fév"
 		{"2 Jan", true},
