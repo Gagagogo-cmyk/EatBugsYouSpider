@@ -3259,7 +3259,11 @@ cityModal.addEventListener('click', function(e) {
            opens the ^R radio tab exactly there, see its 'gnumbat-cards-bottom' */
         try {
             var grid = document.querySelector('.events-grid');
-            if (grid) window.parent.postMessage({type: 'gnumbat-cards-bottom', y: Math.round(grid.getBoundingClientRect().bottom + window.scrollY)}, '*');
+            /* + where the GENRES tags end -- panel.html's console opens down to
+               there (user: "make it open until the genre tags. not further") */
+            var gg = document.getElementById('genresGroup'), gr = gg && gg.getBoundingClientRect();
+            if (grid) window.parent.postMessage({type: 'gnumbat-cards-bottom', y: Math.round(grid.getBoundingClientRect().bottom + window.scrollY),
+                genres: gr && gr.height ? Math.round(gr.bottom + window.scrollY) : null}, '*');
         } catch (err) {}
     }
     function queueMask(){ if (!maskQueued) { maskQueued = true; requestAnimationFrame(sendMask); } }

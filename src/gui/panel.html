@@ -19045,19 +19045,26 @@ renderNpVotes();
      opens it starts right there (+8px), so the M-RLCF side gets all the rest
      of the window. Dragging still adjusts it until the next open. Before
      that message has arrived, the last size (or 350px) is used. */
-  let cardsBottom=null;
+  let cardsBottom=null, genresBottom=null;
+  /* OPEN TO THE GENRES -- user: "when opening the console panel, make it open
+     until the genre tags. not further." ^C opens the shelf to just under the
+     crawler's GENRES tags (8px below them); the cards' bottom is the
+     fallback when the page doesn't report its genres. Dragging still goes
+     anywhere. */
+  const openAt=()=> (genresBottom!=null ? genresBottom : cardsBottom) + 8;
   window.addEventListener('message',e=>{
     const m=e.data, f=document.getElementById('omscFrame');
     if(!m||m.type!=='gnumbat-cards-bottom'||!f||e.source!==f.contentWindow) return;
     const y=Number(m.y); if(!(y>0)) return;
     const first=cardsBottom==null; cardsBottom=y;
+    const g=Number(m.genres); genresBottom = g>0 ? g : null;
     /* the cards' own bottom edge (the row adds 4px under them) -- DJS lines up on it */
     { const cb=y-4; if(window.gnCardsBottom!==cb){ window.gnCardsBottom=cb; if(typeof placeDjPanel==='function') requestAnimationFrame(placeDjPanel); } }
-    if(first && mrlcfOpen){ wanted=cardsBottom+8; reapply(); }
+    if(first && mrlcfOpen){ wanted=openAt(); reapply(); }
   });
   window.gnShelfToCards=function(){
     if(window.gnShelfDragOpen) return;
-    if(cardsBottom!=null){ wanted=cardsBottom+8; }
+    if(cardsBottom!=null){ wanted=openAt(); }
     if(onSelect() && mrlcfOpen){ const keep=wanted; animateShelf(Math.min(maxH(),Math.max(MIN,wanted)), ()=>{ wanted=keep; applyShelf(); if(typeof fitShelf==='function') fitShelf(); }); return; }
     applyShelf(); if(typeof fitShelf==='function') fitShelf();
   };
