@@ -20906,7 +20906,7 @@ tabOMSC.onclick();
     'font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif;' +
     '-webkit-font-smoothing:antialiased;letter-spacing:normal;animation:gnPayIn .22s cubic-bezier(.2,.8,.2,1)}' +
     '@keyframes gnPayIn{from{opacity:0;transform:translate(-50%,8px) scale(.98)}to{opacity:1;transform:translate(-50%,0)}}' +
-    '#gnSpiderPay[hidden]{display:none}' +
+    '#gnSpiderPay[hidden]{display:none}#gnSpiderPay .cr{display:none}' +
     // the only place the real pointer shows while it's eaten: stronger than the eat rule
     'html #gnSpiderPay#gnSpiderPay#gnSpiderPay,html #gnSpiderPay#gnSpiderPay#gnSpiderPay *{cursor:default!important;box-sizing:border-box}' +
     'html #gnSpiderPay#gnSpiderPay#gnSpiderPay button,html #gnSpiderPay#gnSpiderPay#gnSpiderPay button *{cursor:pointer!important}' +
@@ -20963,8 +20963,17 @@ tabOMSC.onclick();
     (PAY_LOOK === 'page' ? (
     // DARK MODE -- user: "and invert it. dark mode." Black box, white title,
     // grey labels, the amount field and Donate white with black text.
-    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#000;color:#7d8281;border:1px solid #7d8281;box-shadow:none;' +
+    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#000;color:#7d8281;border:0;box-shadow:none;' +   // no outline -- user: "remove the surround of this box"
     'font:12px/1.3 var(--mono,ui-monospace,monospace);-webkit-font-smoothing:none;filter:url(#posterize3);top:42%;transform:translate(-50%,-50%);animation:none}' +   // centred, a little high -- user: "make the pop up more centered" / "make it appear a little higher in the frame"
+    // corner marks -- user: "make the corner visible dragable. like something
+    // needs to indicates that its draggable. a shape maybe" -- an L in each
+    // corner (the resize grab zones), grey, white under the cursor
+    'html #gnSpiderPay .cr{display:block;position:absolute;width:8px;height:8px;border:0 solid #7d8281;pointer-events:none}' +
+    'html #gnSpiderPay .cr.nw{left:0;top:0;border-left-width:2px;border-top-width:2px}' +
+    'html #gnSpiderPay .cr.ne{right:0;top:0;border-right-width:2px;border-top-width:2px}' +
+    'html #gnSpiderPay .cr.sw{left:0;bottom:0;border-left-width:2px;border-bottom-width:2px}' +
+    'html #gnSpiderPay .cr.se{right:0;bottom:0;border-right-width:2px;border-bottom-width:2px}' +
+    'html #gnSpiderPay .cr.on{border-color:#fff}' +
     'html #gnSpiderPay *{border-radius:0!important;font-family:inherit!important;font-size:12px!important;font-weight:400!important;letter-spacing:normal!important}' +
     // white box -- user: "put the background of the pop up white". Grey text,
     // black under the cursor ("text in grey except for when the cursor
@@ -21005,6 +21014,7 @@ tabOMSC.onclick();
     'html #gnSpiderPay .hint,html #gnSpiderPay .f,html #gnSpiderPay .f *{font-size:10px!important}html #gnSpiderPay .f svg{width:10px;height:10px}'
     ) : '') +
     '</style>' +
+    '<span class="cr nw" aria-hidden="true"></span><span class="cr ne" aria-hidden="true"></span><span class="cr sw" aria-hidden="true"></span><span class="cr se" aria-hidden="true"></span>' +
     '<button type="button" class="x" data-a="no" aria-label="Close">&times;</button>' +
     '<div class="l"><span class="cp">&copy;</span> 2026 PWYW Ransomware</div>' +
     '<label class="amt"><span data-a="sym">$</span><input data-a="amt" type="text" inputmode="decimal" autocomplete="off" ' +
@@ -21166,6 +21176,7 @@ tabOMSC.onclick();
         const c = cornerAt(e, pay.getBoundingClientRect()), t = e.target.closest && e.target.closest('input,select,button,a');
         if (c && !t) pay.style.setProperty('cursor', (c === 'nw' || c === 'se') ? 'nwse-resize' : 'nesw-resize', 'important');
         else pay.style.removeProperty('cursor');
+        pay.querySelectorAll('.cr').forEach(m => m.classList.toggle('on', !t && m.classList.contains(c || '-')));
         return;
       }
       if (e.pointerId !== drag.id) return;
@@ -21191,6 +21202,7 @@ tabOMSC.onclick();
     });
     const end = e => { if (drag && e.pointerId === drag.id) { drag = null; try { pay.releasePointerCapture(e.pointerId); } catch (err) {} } };
     pay.addEventListener('pointerup', end);
+    pay.addEventListener('pointerleave', () => { if (!drag) pay.querySelectorAll('.cr.on').forEach(m => m.classList.remove('on')); });
     pay.addEventListener('pointercancel', end);
   })();
   pay.addEventListener('click', e => {
