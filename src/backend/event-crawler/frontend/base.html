@@ -2784,7 +2784,9 @@ document.addEventListener('click', function (e) {
         if ((op === 'delete' || op === 'integrate') && node.isSeed) {
             netNote(op === 'delete' ? "seeds can't be deleted -- only branches" : "that's already a seed -- pick a branch to integrate"); return;
         }
-        if (op === 'delete' || op === 'integrate') {
+        /* delete is confirmed in the panel's chat ([y] / [n]); integrate still
+           asks for ^I twice here */
+        if (op === 'integrate') {
             var now = Date.now();
             if (!NET_ARM || NET_ARM.op !== op || NET_ARM.id !== node.id || now - NET_ARM.t > 4000) {
                 NET_ARM = { op: op, id: node.id, t: now };

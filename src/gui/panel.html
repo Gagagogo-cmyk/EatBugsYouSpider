@@ -16872,6 +16872,8 @@ function renderChatModels(){
    hub ('branches' frame, see the ^R commit section next to setEditMode()) and
    relayed into the iframe's #cityModal the same way. */
 var BRANCH_STATE={seed:{id:'gnumbat-agpl-3.0',name:'Gnumbat AGPL 3.0'},branches:[],head:'gnumbat-agpl-3.0'};
+/* Esc answers a pending chat question with "no" (see DELETE ASKS IN THE CHAT) */
+addEventListener('keydown',e=>{ if(e.key==='Escape' && typeof window.gnChatAsk==='function'){ e.preventDefault(); window.gnChatAsk('n'); } },true);
 var NET_CREATE_FROM=null;   /* network ^B "branch from" / ^E "edit" waiting on its branchEnterResult */
 /* EDIT A BRANCH IN PLACE -- user: "also edit branches, if you are listed as
    authors". The network page's ^E enters the branch with this set: while you
@@ -20086,6 +20088,26 @@ window.addEventListener('message', e=>{
     if(m.op==='rename') f.name=String(m.name||'');
     f.who=AUTH_USER;   /* votes are one per user; the rest are authors-only */
     if(m.op==='vote') f.dir=Number(m.dir)>0?1:-1;
+    /* DELETE ASKS IN THE CHAT -- user: "when deleting a branch in the network
+       panel, ask in the chat if the user is certain then enter [y] or [n]".
+       The chat (kept over the network page) takes the answer: the next line
+       typed goes to window.gnChatAsk (ebys-live.js), y deletes, n keeps it,
+       anything else asks again; Esc also keeps it. */
+    if(m.op==='delete'){
+      const b=(BRANCH_STATE.branches||[]).find(x=>x.id===f.id), name=b?b.name:f.id;
+      const say=t=>{ if(typeof log==='function') log('res', t); };
+      say('delete branch "'+name+'"? [y] / [n]');
+      note('confirm in the chat: [y] / [n]');
+      window.gnChatAsk=v=>{
+        const a=String(v||'').trim().toLowerCase();
+        if(a==='y'||a==='yes'){ window.gnChatAsk=null; say('deleting "'+name+'"...'); Gnumbat.branchOp('delete', f); }
+        else if(a==='n'||a==='no'){ window.gnChatAsk=null; say('kept "'+name+'".'); note('kept "'+name+'"'); }
+        else say('type y or n -- delete branch "'+name+'"? [y] / [n]');
+      };
+      const cin=document.getElementById('cin');
+      if(cin) setTimeout(()=>{ try{ window.focus(); cin.focus(); }catch(err){} },0);
+      return;
+    }
     Gnumbat.branchOp(m.op, f);
   }
   if(m.type==='gnumbat-enter-model'){

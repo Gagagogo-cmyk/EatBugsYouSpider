@@ -460,6 +460,17 @@
       syncCursor(); updateSuggestion();
       return;
     }
+    /* A QUESTION ASKED IN THE CHAT -- panel.html sets window.gnChatAsk while it
+       waits for an answer (e.g. the network page's delete: "[y] / [n]"); the
+       next line typed is that answer, not a chat message. */
+    if (typeof window.gnChatAsk === "function") {
+      log("cmd", v);
+      window.gnChatAsk(v);
+      cin.value = "";
+      suggestCycle = null;
+      syncCursor(); updateSuggestion();
+      return;
+    }
     cmdHistory.unshift(v);
     historyIdx = -1;
     /* OMSC tab: hand off to panel.html's handleOmscInput() instead of the
