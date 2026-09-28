@@ -6541,7 +6541,15 @@ input,textarea,[contenteditable="true"]{-webkit-user-select:text!important;user-
 #gnLangMenu{position:absolute;top:18px;right:10px;z-index:61;background:#000;border:1px solid var(--g3,#7d8281);max-height:60vh;overflow-y:auto;min-width:20ch;box-sizing:border-box;padding:0}
 #gnLangMenu[hidden]{display:none}
 #gnLangMenu div{height:14px;line-height:14px;padding:0 4px;color:var(--g3,#7d8281);white-space:nowrap;cursor:var(--cursor-cross)}
-#gnLangMenu div:hover,#gnLangMenu div.on{color:#fff}
+#gnLangMenu div:hover,#gnLangMenu div.on,#gnLangMenu div.hit{color:#fff}
+#gnLangMenu div.nomatch{color:var(--g3,#7d8281);cursor:default}
+/* search next to 文A -- user: "put a little search bar next to the language
+   selector sign so its easier to find the language you are looking" -- the
+   TRAINED MODELS search box's look; matches native name, English name, code */
+#gnLangSearch{position:absolute;top:1px;right:calc(10px + 3ch + 1ch);width:14ch;height:14px;line-height:12px;margin:0;padding:0 4px;box-sizing:border-box;
+  background:#000;border:1px solid var(--g2,#8e9392);color:#fff;font-family:var(--mono);outline:none;z-index:60}
+#gnLangSearch::placeholder{color:var(--g3,#7d8281);opacity:1}
+#gnLangSearch:focus{border-color:#fff}
 #gnGtHost{display:none!important}
 .goog-te-banner-frame,iframe.goog-te-banner-frame,#goog-gt-tt,.goog-te-balloon-frame,.goog-tooltip,.goog-te-spinner-pos,
 .VIpgJd-ZVi9od-ORHb-OEVmcd,.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,.VIpgJd-yAWNEb-L7lbkb,.VIpgJd-ZVi9od-xl07Ob-OEVmcd{display:none!important}
@@ -22028,7 +22036,7 @@ tabOMSC.onclick();
    brings the language back after a refresh. English = the original text,
    which the widget can only give back by reloading, so that one reloads. */
 (function(){
-  const LANGS=[["en", "English"], ["af", "Afrikaans"], ["sq", "Shqip"], ["am", "አማርኛ"], ["ar", "العربية"], ["hy", "Հայերեն"], ["as", "অসমীয়া"], ["ay", "Aymar aru"], ["az", "Azərbaycan"], ["bm", "Bamanankan"], ["eu", "Euskara"], ["be", "Беларуская"], ["bn", "বাংলা"], ["bho", "भोजपुरी"], ["bs", "Bosanski"], ["bg", "Български"], ["ca", "Català"], ["ceb", "Cebuano"], ["ny", "Chichewa"], ["zh-CN", "中文（简体）"], ["zh-TW", "中文（繁體）"], ["co", "Corsu"], ["hr", "Hrvatski"], ["cs", "Čeština"], ["da", "Dansk"], ["dv", "ދިވެހި"], ["doi", "डोगरी"], ["nl", "Nederlands"], ["eo", "Esperanto"], ["et", "Eesti"], ["ee", "Eʋegbe"], ["tl", "Filipino"], ["fi", "Suomi"], ["fr", "Français"], ["fy", "Frysk"], ["gl", "Galego"], ["ka", "ქართული"], ["de", "Deutsch"], ["el", "Ελληνικά"], ["gn", "Avañeʼẽ"], ["gu", "ગુજરાતી"], ["ht", "Kreyòl ayisyen"], ["ha", "Hausa"], ["haw", "ʻŌlelo Hawaiʻi"], ["iw", "עברית"], ["hi", "हिन्दी"], ["hmn", "Hmoob"], ["hu", "Magyar"], ["is", "Íslenska"], ["ig", "Igbo"], ["ilo", "Ilokano"], ["id", "Bahasa Indonesia"], ["ga", "Gaeilge"], ["it", "Italiano"], ["ja", "日本語"], ["jw", "Basa Jawa"], ["kn", "ಕನ್ನಡ"], ["kk", "Қазақ"], ["km", "ខ្មែរ"], ["rw", "Kinyarwanda"], ["gom", "कोंकणी"], ["ko", "한국어"], ["kri", "Krio"], ["ku", "Kurdî"], ["ckb", "کوردیی ناوەندی"], ["ky", "Кыргызча"], ["lo", "ລາວ"], ["la", "Latina"], ["lv", "Latviešu"], ["ln", "Lingála"], ["lt", "Lietuvių"], ["lg", "Luganda"], ["lb", "Lëtzebuergesch"], ["mk", "Македонски"], ["mai", "मैथिली"], ["mg", "Malagasy"], ["ms", "Bahasa Melayu"], ["ml", "മലയാളം"], ["mt", "Malti"], ["mi", "Māori"], ["mr", "मराठी"], ["mni-Mtei", "ꯃꯤꯇꯩꯂꯣꯟ"], ["lus", "Mizo ṭawng"], ["mn", "Монгол"], ["my", "မြန်မာ"], ["ne", "नेपाली"], ["no", "Norsk"], ["or", "ଓଡ଼ିଆ"], ["om", "Afaan Oromoo"], ["ps", "پښتو"], ["fa", "فارسی"], ["pl", "Polski"], ["pt", "Português"], ["pa", "ਪੰਜਾਬੀ"], ["qu", "Runasimi"], ["ro", "Română"], ["ru", "Русский"], ["sm", "Gagana Samoa"], ["sa", "संस्कृतम्"], ["gd", "Gàidhlig"], ["nso", "Sepedi"], ["sr", "Српски"], ["st", "Sesotho"], ["sn", "chiShona"], ["sd", "سنڌي"], ["si", "සිංහල"], ["sk", "Slovenčina"], ["sl", "Slovenščina"], ["so", "Soomaali"], ["es", "Español"], ["su", "Basa Sunda"], ["sw", "Kiswahili"], ["sv", "Svenska"], ["tg", "Тоҷикӣ"], ["ta", "தமிழ்"], ["tt", "Татар"], ["te", "తెలుగు"], ["th", "ไทย"], ["ti", "ትግርኛ"], ["ts", "Xitsonga"], ["tr", "Türkçe"], ["tk", "Türkmen"], ["ak", "Twi"], ["uk", "Українська"], ["ur", "اردو"], ["ug", "ئۇيغۇرچە"], ["uz", "Oʻzbek"], ["vi", "Tiếng Việt"], ["cy", "Cymraeg"], ["xh", "isiXhosa"], ["yi", "ייִדיש"], ["yo", "Yorùbá"], ["zu", "isiZulu"]];
+  const LANGS=[["en", "English", "English"], ["af", "Afrikaans", "Afrikaans"], ["sq", "Shqip", "Albanian"], ["am", "አማርኛ", "Amharic"], ["ar", "العربية", "Arabic"], ["hy", "Հայերեն", "Armenian"], ["as", "অসমীয়া", "Assamese"], ["ay", "Aymar aru", "Aymara"], ["az", "Azərbaycan", "Azerbaijani"], ["bm", "Bamanankan", "Bambara"], ["eu", "Euskara", "Basque"], ["be", "Беларуская", "Belarusian"], ["bn", "বাংলা", "Bengali"], ["bho", "भोजपुरी", "Bhojpuri"], ["bs", "Bosanski", "Bosnian"], ["bg", "Български", "Bulgarian"], ["ca", "Català", "Catalan"], ["ceb", "Cebuano", "Cebuano"], ["ny", "Chichewa", "Chichewa"], ["zh-CN", "中文（简体）", "Chinese Simplified"], ["zh-TW", "中文（繁體）", "Chinese Traditional"], ["co", "Corsu", "Corsican"], ["hr", "Hrvatski", "Croatian"], ["cs", "Čeština", "Czech"], ["da", "Dansk", "Danish"], ["dv", "ދިވެހި", "Dhivehi"], ["doi", "डोगरी", "Dogri"], ["nl", "Nederlands", "Dutch"], ["eo", "Esperanto", "Esperanto"], ["et", "Eesti", "Estonian"], ["ee", "Eʋegbe", "Ewe"], ["tl", "Filipino", "Filipino Tagalog"], ["fi", "Suomi", "Finnish"], ["fr", "Français", "French"], ["fy", "Frysk", "Frisian"], ["gl", "Galego", "Galician"], ["ka", "ქართული", "Georgian"], ["de", "Deutsch", "German"], ["el", "Ελληνικά", "Greek"], ["gn", "Avañeʼẽ", "Guarani"], ["gu", "ગુજરાતી", "Gujarati"], ["ht", "Kreyòl ayisyen", "Haitian Creole"], ["ha", "Hausa", "Hausa"], ["haw", "ʻŌlelo Hawaiʻi", "Hawaiian"], ["iw", "עברית", "Hebrew"], ["hi", "हिन्दी", "Hindi"], ["hmn", "Hmoob", "Hmong"], ["hu", "Magyar", "Hungarian"], ["is", "Íslenska", "Icelandic"], ["ig", "Igbo", "Igbo"], ["ilo", "Ilokano", "Ilocano"], ["id", "Bahasa Indonesia", "Indonesian"], ["ga", "Gaeilge", "Irish"], ["it", "Italiano", "Italian"], ["ja", "日本語", "Japanese"], ["jw", "Basa Jawa", "Javanese"], ["kn", "ಕನ್ನಡ", "Kannada"], ["kk", "Қазақ", "Kazakh"], ["km", "ខ្មែរ", "Khmer"], ["rw", "Kinyarwanda", "Kinyarwanda"], ["gom", "कोंकणी", "Konkani"], ["ko", "한국어", "Korean"], ["kri", "Krio", "Krio"], ["ku", "Kurdî", "Kurdish Kurmanji"], ["ckb", "کوردیی ناوەندی", "Kurdish Sorani"], ["ky", "Кыргызча", "Kyrgyz"], ["lo", "ລາວ", "Lao"], ["la", "Latina", "Latin"], ["lv", "Latviešu", "Latvian"], ["ln", "Lingála", "Lingala"], ["lt", "Lietuvių", "Lithuanian"], ["lg", "Luganda", "Luganda"], ["lb", "Lëtzebuergesch", "Luxembourgish"], ["mk", "Македонски", "Macedonian"], ["mai", "मैथिली", "Maithili"], ["mg", "Malagasy", "Malagasy"], ["ms", "Bahasa Melayu", "Malay"], ["ml", "മലയാളം", "Malayalam"], ["mt", "Malti", "Maltese"], ["mi", "Māori", "Maori"], ["mr", "मराठी", "Marathi"], ["mni-Mtei", "ꯃꯤꯇꯩꯂꯣꯟ", "Meiteilon Manipuri"], ["lus", "Mizo ṭawng", "Mizo"], ["mn", "Монгол", "Mongolian"], ["my", "မြန်မာ", "Myanmar Burmese"], ["ne", "नेपाली", "Nepali"], ["no", "Norsk", "Norwegian"], ["or", "ଓଡ଼ିଆ", "Odia Oriya"], ["om", "Afaan Oromoo", "Oromo"], ["ps", "پښتو", "Pashto"], ["fa", "فارسی", "Persian Farsi"], ["pl", "Polski", "Polish"], ["pt", "Português", "Portuguese"], ["pa", "ਪੰਜਾਬੀ", "Punjabi"], ["qu", "Runasimi", "Quechua"], ["ro", "Română", "Romanian"], ["ru", "Русский", "Russian"], ["sm", "Gagana Samoa", "Samoan"], ["sa", "संस्कृतम्", "Sanskrit"], ["gd", "Gàidhlig", "Scots Gaelic"], ["nso", "Sepedi", "Sepedi"], ["sr", "Српски", "Serbian"], ["st", "Sesotho", "Sesotho"], ["sn", "chiShona", "Shona"], ["sd", "سنڌي", "Sindhi"], ["si", "සිංහල", "Sinhala"], ["sk", "Slovenčina", "Slovak"], ["sl", "Slovenščina", "Slovenian"], ["so", "Soomaali", "Somali"], ["es", "Español", "Spanish"], ["su", "Basa Sunda", "Sundanese"], ["sw", "Kiswahili", "Swahili"], ["sv", "Svenska", "Swedish"], ["tg", "Тоҷикӣ", "Tajik"], ["ta", "தமிழ்", "Tamil"], ["tt", "Татар", "Tatar"], ["te", "తెలుగు", "Telugu"], ["th", "ไทย", "Thai"], ["ti", "ትግርኛ", "Tigrinya"], ["ts", "Xitsonga", "Tsonga"], ["tr", "Türkçe", "Turkish"], ["tk", "Türkmen", "Turkmen"], ["ak", "Twi", "Twi Akan"], ["uk", "Українська", "Ukrainian"], ["ur", "اردو", "Urdu"], ["ug", "ئۇيغۇرچە", "Uyghur"], ["uz", "Oʻzbek", "Uzbek"], ["vi", "Tiếng Việt", "Vietnamese"], ["cy", "Cymraeg", "Welsh"], ["xh", "isiXhosa", "Xhosa"], ["yi", "ייִדיש", "Yiddish"], ["yo", "Yorùbá", "Yoruba"], ["zu", "isiZulu", "Zulu"]];
   const plug=document.querySelector('.plugin'); if(!plug) return;
   const cookieLang=()=>{ const m=document.cookie.match(/(?:^|;\s*)googtrans=\/[^\/;]*\/([^;]+)/); return m?decodeURIComponent(m[1]):'en'; };
   function setCookie(lang){
@@ -22063,14 +22071,36 @@ tabOMSC.onclick();
   const btn=document.createElement('span'); btn.id='gnLangBtn'; btn.className='notranslate'; btn.setAttribute('translate','no');
   btn.textContent='\u6587A'; btn.title='language'; btn.setAttribute('role','button'); btn.tabIndex=0;
   const menu=document.createElement('div'); menu.id='gnLangMenu'; menu.className='notranslate'; menu.setAttribute('translate','no'); menu.hidden=true;
-  menu.innerHTML=LANGS.map(([c,n])=>'<div data-l="'+c+'" lang="'+c+'" title="'+c+'">'+n+'</div>').join('');
-  plug.append(btn, menu);
+  menu.innerHTML=LANGS.map(([c,n,en])=>'<div data-l="'+c+'" lang="'+c+'" title="'+en+'">'+n+'</div>').join('')+'<div class="nomatch" hidden>no match</div>';
+  const search=document.createElement('input');
+  search.id='gnLangSearch'; search.type='text'; search.placeholder=': search'; search.spellcheck=false; search.autocomplete='off';
+  search.className='notranslate'; search.setAttribute('translate','no'); search.setAttribute('aria-label','search languages');
+  plug.append(search, btn, menu);
+  const norm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  function filter(){
+    const q=norm(search.value.trim()); let first=null;
+    menu.querySelectorAll('div[data-l]').forEach(d=>{
+      const L=LANGS.find(x=>x[0]===d.dataset.l);
+      const ok=!q || norm(L[1]).includes(q) || norm(L[2]).includes(q) || norm(L[0])===q || norm(L[0]).startsWith(q);
+      d.hidden=!ok; d.classList.remove('hit'); if(ok && !first) first=d;
+    });
+    if(q && first) first.classList.add('hit');   /* Enter picks this one */
+    menu.querySelector('.nomatch').hidden=!!first;
+    return first;
+  }
+  search.addEventListener('input',()=>{ if(menu.hidden) open(true); filter(); menu.scrollTop=0; });
+  search.addEventListener('focus',()=>{ if(search.value.trim()){ open(true); filter(); } });
+  search.addEventListener('keydown',e=>{
+    e.stopPropagation();
+    if(e.key==='Enter'){ e.preventDefault(); const d=filter(); if(d){ open(false); search.value=''; filter(); search.blur(); if(d.dataset.l!==cookieLang() || d.dataset.l!=='en') apply(d.dataset.l); } }
+    else if(e.key==='Escape'){ e.preventDefault(); search.value=''; filter(); open(false); search.blur(); }
+  });
   const mark=()=>{ const cur=cookieLang(); menu.querySelectorAll('div').forEach(d=>d.classList.toggle('on', d.dataset.l===cur)); };
   const open=o=>{ menu.hidden=!o; btn.classList.toggle('open',o); if(o){ mark(); const on=menu.querySelector('.on'); if(on) on.scrollIntoView({block:'nearest'}); } };
   btn.addEventListener('click',e=>{ e.stopPropagation(); open(menu.hidden); });
   btn.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(menu.hidden); } });
-  menu.addEventListener('click',e=>{ const d=e.target.closest('div[data-l]'); if(!d) return; e.stopPropagation(); open(false); if(d.dataset.l!==cookieLang() || d.dataset.l!=='en') apply(d.dataset.l); });
-  document.addEventListener('click',e=>{ if(!menu.hidden && !e.target.closest('#gnLangMenu,#gnLangBtn')) open(false); },true);
+  menu.addEventListener('click',e=>{ const d=e.target.closest('div[data-l]'); if(!d) return; e.stopPropagation(); open(false); search.value=''; filter(); if(d.dataset.l!==cookieLang() || d.dataset.l!=='en') apply(d.dataset.l); });
+  document.addEventListener('click',e=>{ if(!menu.hidden && !e.target.closest('#gnLangMenu,#gnLangBtn,#gnLangSearch')) open(false); },true);
   document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !menu.hidden) open(false); });
   window.gnSetLanguage=apply;
   /* already picked before this load: the widget reads the cookie and translates */
