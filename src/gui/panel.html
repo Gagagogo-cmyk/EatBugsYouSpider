@@ -20831,10 +20831,11 @@ tabOMSC.onclick();
     'd="M4 7V5a4 4 0 1 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-6A1.5 1.5 0 0 1 3.5 7H4zm2 0h4V5a2 2 0 1 0-4 0v2z"/></svg>';
   pay.innerHTML =
     '<style>' +
+    // light mode -- user: "make the pop up of the ransomware inverted. I want it light mode. not dark."
     '#gnSpiderPay{position:fixed;left:50%;top:14%;transform:translateX(-50%);z-index:2147483647;' +
-    'box-sizing:border-box;width:400px;max-width:calc(100% - 32px);background:#1c1d22;color:#e3e3e8;' +
+    'box-sizing:border-box;width:400px;max-width:calc(100% - 32px);background:#fff;color:#1c1d22;' +
     'border-radius:12px;padding:10px 28px 20px;text-align:left;' +
-    'box-shadow:0 30px 60px -12px rgba(0,0,0,.6),0 18px 36px -18px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.09);' +
+    'box-shadow:0 30px 60px -12px rgba(0,0,0,.35),0 18px 36px -18px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.08);' +
     'font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif;' +
     '-webkit-font-smoothing:antialiased;letter-spacing:normal;animation:gnPayIn .22s cubic-bezier(.2,.8,.2,1)}' +
     '@keyframes gnPayIn{from{opacity:0;transform:translate(-50%,8px) scale(.98)}to{opacity:1;transform:translate(-50%,0)}}' +
@@ -20844,44 +20845,44 @@ tabOMSC.onclick();
     'html #gnSpiderPay#gnSpiderPay#gnSpiderPay button,html #gnSpiderPay#gnSpiderPay#gnSpiderPay button *{cursor:pointer!important}' +
     'html #gnSpiderPay#gnSpiderPay#gnSpiderPay input{cursor:text!important}' +
     '#gnSpiderPay .hint{margin:0 0 16px 2px;color:#6b6c76;font-size:12px}' +
-    '#gnSpiderPay .amt{display:flex;align-items:center;gap:4px;margin:10px 0 6px;padding:4px 14px;border:1px solid #34353d;' +
-    'border-radius:8px;background:#141519;transition:border-color .15s,box-shadow .15s}' +
+    '#gnSpiderPay .amt{display:flex;align-items:center;gap:4px;margin:10px 0 6px;padding:4px 14px;border:1px solid #d8d9de;' +
+    'border-radius:8px;background:#f6f6f8;transition:border-color .15s,box-shadow .15s}' +
     '#gnSpiderPay .amt:focus-within{border-color:#8b8c96;box-shadow:0 0 0 3px rgba(139,140,150,.22)}' +
-    '#gnSpiderPay .amt span{font-size:30px;font-weight:600;color:#9a9ba5;white-space:nowrap}' +
+    '#gnSpiderPay .amt span{font-size:30px;font-weight:600;color:#6b6c76;white-space:nowrap}' +
     '#gnSpiderPay .amt select{-webkit-appearance:none;appearance:none;flex:0 0 auto;margin:0 -6px 0 6px;padding:4px 20px 4px 8px;' +
-    'border:0;border-radius:6px;background:transparent url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%239a9ba5%27 stroke-width=%271.5%27/%3E%3C/svg%3E") no-repeat right 7px center;' +
-    'color:#e3e3e8;font-family:inherit;font-size:13px;font-weight:600;line-height:1.2;outline:0}' +
+    'border:0;border-radius:6px;background:transparent url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%236b6c76%27 stroke-width=%271.5%27/%3E%3C/svg%3E") no-repeat right 7px center;' +
+    'color:#1c1d22;font-family:inherit;font-size:13px;font-weight:600;line-height:1.2;outline:0}' +
     // no box of any kind around the currency picker -- not even a focus ring
     'html #gnSpiderPay#gnSpiderPay#gnSpiderPay .amt select,html #gnSpiderPay#gnSpiderPay#gnSpiderPay .amt select:focus,' +
     'html #gnSpiderPay#gnSpiderPay#gnSpiderPay .amt select:focus-visible,html #gnSpiderPay#gnSpiderPay#gnSpiderPay .amt select:hover' +
     '{border:0!important;outline:0!important;box-shadow:none!important;background-color:transparent!important}' +
     'html #gnSpiderPay#gnSpiderPay#gnSpiderPay select{cursor:pointer!important}' +
     '#gnSpiderPay .amt input{-webkit-appearance:none;appearance:none;flex:1;min-width:0;width:100%;height:46px;margin:0;padding:0;' +
-    'border:0;outline:0;background:transparent;box-shadow:none;color:#fff;font-family:inherit;font-size:30px;font-weight:600;' +
+    'border:0;outline:0;background:transparent;box-shadow:none;color:#000;font-family:inherit;font-size:30px;font-weight:600;' +
     'letter-spacing:-.02em;text-transform:none}' +
-    '#gnSpiderPay .amt input::placeholder{color:#5d5e68;opacity:1}' +
+    '#gnSpiderPay .amt input::placeholder{color:#a3a4ad;opacity:1}' +
     '#gnSpiderPay .x{position:absolute;top:6px;right:12px;width:28px;height:28px;border:0;border-radius:6px;' +
     'background:transparent;color:#8b8c96;font-size:18px;line-height:28px;padding:0}' +
-    '#gnSpiderPay .x:hover{background:#2a2b32;color:#fff}' +
-    '#gnSpiderPay .l{margin:0;line-height:20px;padding:0 30px;text-align:center;color:#9a9ba5;font-size:14px;font-weight:500;white-space:nowrap}' +
-    '#gnSpiderPay .a{font-size:36px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#fff;margin-bottom:20px}' +
-    '#gnSpiderPay .r{display:flex;justify-content:space-between;padding:12px 0;font-size:14px;border-top:1px solid #2e2f37}' +
+    '#gnSpiderPay .x:hover{background:#ececf0;color:#000}' +
+    '#gnSpiderPay .l{margin:0;line-height:20px;padding:0 30px;text-align:center;color:#6b6c76;font-size:14px;font-weight:500;white-space:nowrap}' +
+    '#gnSpiderPay .a{font-size:36px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:#000;margin-bottom:20px}' +
+    '#gnSpiderPay .r{display:flex;justify-content:space-between;padding:12px 0;font-size:14px;border-top:1px solid #e6e6ea}' +
     '#gnSpiderPay .r span:last-child{font-variant-numeric:tabular-nums}' +
     '#gnSpiderPay .t{font-weight:600}' +
     '#gnSpiderPay .p{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;margin-top:14px;' +
-    'border:0;border-radius:6px;background:#fff;color:#000;font:inherit;font-size:16px;font-weight:600;' +
+    'border:0;border-radius:6px;background:#000;color:#fff;font:inherit;font-size:16px;font-weight:600;' +
     'box-shadow:0 1px 1px rgba(0,0,0,.3);transition:background .15s,transform .05s}' +
-    '#gnSpiderPay .p:hover{background:#e3e3e8}#gnSpiderPay .p:active{transform:translateY(1px)}' +
-    '#gnSpiderPay .p:focus-visible,#gnSpiderPay .no:focus-visible,#gnSpiderPay .x:focus-visible{outline:2px solid rgba(255,255,255,.5);outline-offset:2px}' +
+    '#gnSpiderPay .p:hover{background:#2a2b32}#gnSpiderPay .p:active{transform:translateY(1px)}' +
+    '#gnSpiderPay .p:focus-visible,#gnSpiderPay .no:focus-visible,#gnSpiderPay .x:focus-visible{outline:2px solid rgba(0,0,0,.4);outline-offset:2px}' +
     '#gnSpiderPay .p[disabled]{background:#8b8c96}' +
-    '#gnSpiderPay .sp{width:16px;height:16px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;' +
+    '#gnSpiderPay .sp{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;' +
     'animation:gnPaySpin .7s linear infinite;display:none}#gnSpiderPay .p.busy .sp{display:inline-block}' +
     '#gnSpiderPay .p.busy svg{display:none}' +
     '@keyframes gnPaySpin{to{transform:rotate(360deg)}}' +
     '#gnSpiderPay .no{display:block;width:100%;margin-top:8px;height:36px;border:0;border-radius:6px;background:transparent;' +
-    'color:#9a9ba5;font:inherit;font-size:14px;font-weight:500}#gnSpiderPay .no:hover{color:#fff;background:#2a2b32}' +
-    '#gnSpiderPay .n{margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(255,77,106,.12);color:#ff8fa3;font-size:13px}' +
-    '#gnSpiderPay .n:empty{display:none}#gnSpiderPay .n.ok{background:#2a2b32;color:#9a9ba5}' +
+    'color:#6b6c76;font:inherit;font-size:14px;font-weight:500}#gnSpiderPay .no:hover{color:#000;background:#ececf0}' +
+    '#gnSpiderPay .n{margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(255,77,106,.12);color:#d6294a;font-size:13px}' +
+    '#gnSpiderPay .n:empty{display:none}#gnSpiderPay .n.ok{background:#ececf0;color:#6b6c76}' +
     '#gnSpiderPay .f{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;color:#6b6c76;font-size:12px}' +
     '</style>' +
     '<button type="button" class="x" data-a="no" aria-label="Close">&times;</button>' +
