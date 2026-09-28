@@ -6770,8 +6770,8 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 .npMeta .npBook{position:relative;height:16px;line-height:16px;box-sizing:border-box;padding:0;margin:0;
   border:0;background:transparent;color:var(--g3,#7d8281);font:inherit;font-size:12px;cursor:pointer;z-index:2}
 .npMeta .npBook:hover,.npMeta .npBook:focus-visible{color:#fff;outline:none}
-.npMeta .npBook.npTipBtn{border:1px solid var(--g2,#8e9392);color:#fff;padding:0 2px;line-height:14px;background:#000}
-.npMeta .npBook.npTipBtn:hover,.npMeta .npBook.npTipBtn:focus-visible{border-color:#fff}
+.npMeta .npBook.npTipBtn{border:1px solid var(--g2,#8e9392);color:var(--g3,#7d8281);padding:0 2px;line-height:14px;background:#000}   /* grey, white on hover -- user: "tip should be written in grey. when hovered above it should turn white." */
+.npMeta .npBook.npTipBtn:hover,.npMeta .npBook.npTipBtn:focus-visible{border-color:#fff;color:#fff}
 #bookingBox.bkFlash{outline:1px solid #fff;outline-offset:3px}
 
 /* BOOKING -- see #bookingBox. 16px rows like the list; the box's top and
@@ -21281,11 +21281,17 @@ tabOMSC.onclick();
   // times a second and on scroll/resize) plus what embedded pages send up
   const OWN = new Set([cv, fv, hit]);
   // (dropdown menu boxes too, so the cursor is safe on them)
-  const MASK_SEL = 'img,video,canvas,svg,button,input,select,textarea,[role=menu],[role=listbox],.arrDropMenu,[data-spider-solid]';
+  const MASK_SEL = 'img,video,canvas,svg,button,input,select,textarea,[role=button],.npVote,.npDjBtn,.npBtn,[role=menu],[role=listbox],.arrDropMenu,[data-spider-solid]';
   // ...except these, which she walks OVER: the panel's now-playing bar (song,
   // artist, times, waveform, play/next), and anything marked data-spider-over
   const OVER_SEL = '#nowPlayingBar,.npMeta,[data-spider-over]';
-  const over = el => !!el.closest(OVER_SEL);
+  /* ...except its buttons: every button is protected, wherever it sits --
+     user: "make sure the spider goes under the tip button too. all buttons
+     are protected" (tip, x, book a slot, play/skip, the votes, [tip]/[send]).
+     Protected = cut out of her (she passes under it) and the cursor is safe
+     on it (see covered()). */
+  const BTN_SEL = 'button,[role=button],a[href],input,select,textarea,.npVote,.npDjBtn,.npBtn';
+  const over = el => !!el.closest(OVER_SEL) && !el.closest(BTN_SEL);
   let pageMask = [], maskAt = 0, maskDirty = true;
   const frameMask = new Map();     // iframe -> rects in that frame's own viewport
   const inter = (a, b) => {
