@@ -20890,6 +20890,12 @@ tabOMSC.onclick();
   // button) since the donation itself goes through the site's Stripe checkout
   const LOCK = '<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" ' +
     'd="M4 7V5a4 4 0 1 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-6A1.5 1.5 0 0 1 3.5 7H4zm2 0h4V5a2 2 0 1 0-4 0v2z"/></svg>';
+  // PAY_LOOK -- which look the ransom sheet wears. 'page' = black box in the
+  // page's own mono, posterized (current). 'sheet' = the ORIGINAL look kept as
+  // a backup (user: "keep a backup of the original version. I might go back
+  // after"): the white hosted-checkout sheet, system font, rounded corners.
+  // Switch by changing this one word.
+  const PAY_LOOK = 'page';
   pay.innerHTML =
     '<style>' +
     // light mode -- user: "make the pop up of the ransomware inverted. I want it light mode. not dark."
@@ -20947,39 +20953,48 @@ tabOMSC.onclick();
     '#gnSpiderPay .dev{display:block;width:100%;margin-top:6px;height:28px;border:1px dashed #c4c5cc;border-radius:6px;background:transparent;' +
     'color:#8b8c96;font:inherit;font-size:12px}#gnSpiderPay .dev:hover{color:#000;border-color:#000}' +
     '#gnSpiderPay .f{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;color:#6b6c76;font-size:12px}' +
-    // GREY SQUARE, PAGE TYPE, POSTERIZED, COMPACT -- user: "make the ransomware
-    // pop up a grey square (with sharp edges). change the typeface for the same
+    // PAGE LOOK (PAY_LOOK === 'page', above) -- user: "make the ransomware pop up
+    // a grey square (with sharp edges). change the typeface for the same
     // typeface the whole page uses. apply the same posterized hard edges effect
-    // and make it more compact". Overrides everything above (same page mono,
-    // font smoothing off like the panel's body, #posterize3 like .plugin).
-    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#7d8281;color:#000;box-shadow:none;' +
-    'font:12px/1.3 var(--mono,ui-monospace,monospace);-webkit-font-smoothing:none;filter:url(#posterize3);top:18%;animation:none}' +
-    'html #gnSpiderPay *{border-radius:0!important;font-family:inherit!important;letter-spacing:normal!important}' +
-    'html #gnSpiderPay .l{padding:0 18px;line-height:16px;color:#000;font-size:12px;font-weight:400}' +
-    'html #gnSpiderPay .x{top:2px;right:4px;width:18px;height:18px;line-height:18px;font-size:14px;color:#000}' +
+    // and make it more compact", then "use the same font size for all text" and
+    // "dont make the pop up a grey box. make it black". Overrides the sheet
+    // styles above: black box, grey 1px border, page mono at 12px everywhere,
+    // font smoothing off like the panel's body, #posterize3 like .plugin.
+    (PAY_LOOK === 'page' ? (
+    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#000;color:#7d8281;border:1px solid #7d8281;box-shadow:none;' +
+    'font:12px/1.3 var(--mono,ui-monospace,monospace);-webkit-font-smoothing:none;filter:url(#posterize3);top:50%;transform:translate(-50%,-50%);animation:none}' +   // dead centre -- user: "make the pop up more centered"
+    'html #gnSpiderPay *{border-radius:0!important;font-family:inherit!important;font-size:12px!important;font-weight:400!important;letter-spacing:normal!important}' +
+    // grey text, white only under the cursor -- user: "text in grey except for
+    // when the cursor hovers"; Donate stays white ("donate remains white")
+    'html #gnSpiderPay .l{padding:0 18px;line-height:16px;color:#7d8281}' +
+    'html #gnSpiderPay .l:hover,html #gnSpiderPay .r:hover,html #gnSpiderPay .hint:hover,html #gnSpiderPay .f:hover{color:#fff}' +
+    'html #gnSpiderPay .x{top:2px;right:4px;width:18px;height:18px;line-height:18px;color:#7d8281}' +
     'html #gnSpiderPay .x:hover{background:transparent;color:#fff}' +
-    'html #gnSpiderPay .amt{margin:6px 0 2px;padding:0 6px;border:0;background:#000;gap:2px}' +
-    'html #gnSpiderPay .amt:focus-within{box-shadow:none;outline:1px solid #fff}' +
-    'html #gnSpiderPay .amt span{font-size:18px;font-weight:400;color:#7d8281}' +
-    'html #gnSpiderPay .amt input{height:28px;font-size:18px;font-weight:400;color:#fff}' +
+    'html #gnSpiderPay .amt{margin:6px 0 2px;padding:0 6px;border:1px solid #7d8281;background:#000;gap:2px}' +
+    'html #gnSpiderPay .amt:focus-within{box-shadow:none;border-color:#fff}' +
+    'html #gnSpiderPay .amt span{color:#7d8281}' +
+    'html #gnSpiderPay .amt input{height:20px;color:#7d8281}' +
+    'html #gnSpiderPay .amt:hover input,html #gnSpiderPay .amt:focus-within input,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#fff}' +
     'html #gnSpiderPay .amt input::placeholder{color:#7d8281}' +
-    'html #gnSpiderPay .amt select{font-size:12px;font-weight:400;color:#fff;padding:2px 14px 2px 4px;margin:0;background-position:right 2px center;' +
+    'html #gnSpiderPay .amt select{color:#7d8281;padding:2px 14px 2px 4px;margin:0;background-position:right 2px center;' +
     'background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%271.5%27/%3E%3C/svg%3E")}' +
     'html #gnSpiderPay .amt select option{background:#000;color:#fff}' +
-    'html #gnSpiderPay .hint{margin:0 0 6px;color:#000;font-size:11px}' +
-    'html #gnSpiderPay .r{padding:3px 0;font-size:12px;border-top:1px solid #000}' +
-    'html #gnSpiderPay .t{font-weight:400}' +
-    'html #gnSpiderPay .p{height:24px;margin-top:6px;background:#000;color:#fff;font-size:12px;font-weight:400;box-shadow:none;gap:6px}' +
+    'html #gnSpiderPay .amt select:hover{color:#fff!important}' +
+    'html #gnSpiderPay .hint{margin:0 0 6px;color:#7d8281}' +
+    'html #gnSpiderPay .r{padding:3px 0;border-top:1px solid #7d8281;color:#7d8281}' +
+    'html #gnSpiderPay .p{height:22px;margin-top:6px;background:#fff;color:#000;box-shadow:none;gap:6px}' +
     'html #gnSpiderPay .p:hover{background:#fff;color:#000}' +
-    'html #gnSpiderPay .p[disabled]{background:#000;color:#7d8281}' +
+    'html #gnSpiderPay .p[disabled]{background:#7d8281;color:#000}' +
+    'html #gnSpiderPay .sp{border-color:rgba(0,0,0,.25);border-top-color:#000}' +
     'html #gnSpiderPay .p:focus-visible,html #gnSpiderPay .no:focus-visible,html #gnSpiderPay .x:focus-visible{outline:1px solid #fff;outline-offset:1px}' +
-    'html #gnSpiderPay .no{height:20px;margin-top:2px;color:#000;font-size:12px;font-weight:400}' +
+    'html #gnSpiderPay .no{height:20px;margin-top:2px;color:#7d8281}' +
     'html #gnSpiderPay .no:hover{background:transparent;color:#fff}' +
-    'html #gnSpiderPay .dev{height:20px;margin-top:2px;border:1px dashed #000;color:#000;font-size:11px}' +
+    'html #gnSpiderPay .dev{height:20px;margin-top:2px;border:1px dashed #7d8281;color:#7d8281}' +
     'html #gnSpiderPay .dev:hover{color:#fff;border-color:#fff}' +
-    'html #gnSpiderPay .n{margin-top:6px;padding:3px 6px;background:#000;color:#fff;font-size:11px}' +
-    'html #gnSpiderPay .n.ok{background:#000;color:#7d8281}' +
-    'html #gnSpiderPay .f{margin-top:6px;color:#000;font-size:11px}' +
+    'html #gnSpiderPay .n{margin-top:6px;padding:3px 6px;background:#000;border:1px solid #7d8281;color:#7d8281}' +
+    'html #gnSpiderPay .n.ok{color:#7d8281}' +
+    'html #gnSpiderPay .f{margin-top:6px;color:#7d8281}'
+    ) : '') +
     '</style>' +
     '<button type="button" class="x" data-a="no" aria-label="Close">&times;</button>' +
     '<div class="l">&copy; 2026 PWYW Ransomware</div>' +
@@ -21079,7 +21094,21 @@ tabOMSC.onclick();
     // is written under the field, and the button simply can't be pressed
     if (!payBusy) note('');
   }
-  payAmt.addEventListener('input', updatePay);
+  /* CASH-REGISTER ENTRY -- user: "when entering the amount, keep the dot in
+     the text editor. so it places itself automatically... like pressing three
+     time 1 does 1.11". Digits fill in from the right behind a fixed dot (1 ->
+     0.01, 11 -> 0.11, 111 -> 1.11; backspace walks it back); currencies
+     without cents (JPY...) just take whole numbers. Works on the input event,
+     so typing, deleting and pasting all go through it. */
+  function cashRegister() {
+    const d = payAmt.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 10);
+    if (!d) payAmt.value = '';
+    else { const n = parseInt(d, 10); payAmt.value = cur().zero ? String(n) : (n / 100).toFixed(2); }
+    try { const L = payAmt.value.length; payAmt.setSelectionRange(L, L); } catch (err) {}
+    updatePay();
+  }
+  payAmt.addEventListener('input', cashRegister);
+  payCur.addEventListener('change', () => { if (payAmt.value) cashRegister(); });
   // typing in the amount mustn't trigger the page's own keyboard shortcuts
   for (const t of ['keydown', 'keyup', 'keypress']) pay.addEventListener(t, e => {
     e.stopPropagation();
