@@ -3334,10 +3334,14 @@ cityModal.addEventListener('click', function(e) {
     var eatStyle = document.createElement('style');
     /* id-level specificity so it beats this page's own !important cursor
        rules (the search fields' text cursor) */
-    eatStyle.textContent = 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: none !important; }';
+    /* eaten: a 1px grey dot (panel.html's EAT_DOT); a leg/head cursor: none */
+    var EAT_DOT = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGPomzzpPwAGGQKziaIYyAAAAABJRU5ErkJggg==") 0 0, none';
+    function eatRule(c){ return 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: ' + c + ' !important; }'; }
     window.addEventListener('message', function(e){
         if (e.source !== window.parent || !e.data || e.data.type !== 'gnumbat-spider-eat') return;
-        if (e.data.eaten) document.head.appendChild(eatStyle); else if (eatStyle.parentNode) eatStyle.parentNode.removeChild(eatStyle);
+        var rule = eatRule(e.data.dot ? EAT_DOT : 'none');
+        if (eatStyle.textContent !== rule) eatStyle.textContent = rule;
+        if (e.data.eaten) { if (!eatStyle.parentNode) document.head.appendChild(eatStyle); } else if (eatStyle.parentNode) eatStyle.parentNode.removeChild(eatStyle);
     });
 })();
 </script>
