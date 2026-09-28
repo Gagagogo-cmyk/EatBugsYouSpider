@@ -20649,13 +20649,23 @@ tabOMSC.onclick();
   // standing in for the cursor: no dot (they draw it).
   const eatDot = document.createElement('div');
   eatDot.id = 'gnEatDot';
-  eatDot.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:#262626;pointer-events:none;z-index:2147483646;display:none';
+  // same luminosity everywhere -- user: "maintain the same luminosity across
+  // the whole page. i believe some parts make the cursor brighter": no
+  // blending/filter/opacity from anything around it, and snapped to whole
+  // device pixels (a dot straddling pixels -- page zoom, scaled displays --
+  // gets smeared and its brightness changes as it moves).
+  eatDot.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:#262626;pointer-events:none;z-index:2147483646;display:none;' +
+    'opacity:1;filter:none;mix-blend-mode:normal;isolation:isolate;will-change:transform;image-rendering:pixelated';
   document.body.appendChild(eatDot);
   function placeDot() {
     const onPay = !pay.hidden && (r => ptr.x >= r.left && ptr.x <= r.right && ptr.y >= r.top && ptr.y <= r.bottom)(pay.getBoundingClientRect());
     const show = pointerDot() && ptr.inside && !onPay;
     eatDot.style.display = show ? 'block' : 'none';
-    if (show) eatDot.style.transform = 'translate(' + Math.round(ptr.x) + 'px,' + Math.round(ptr.y) + 'px)';
+    if (!show) return;
+    const dpr = window.devicePixelRatio || 1, n = Math.max(1, Math.round(dpr)), sz = n / dpr + 'px';
+    if (eatDot.style.width !== sz) { eatDot.style.width = sz; eatDot.style.height = sz; }
+    const snap = v => Math.round(v * dpr) / dpr;   // whole device pixels
+    eatDot.style.transform = 'translate(' + snap(ptr.x) + 'px,' + snap(ptr.y) + 'px)';
   }
   const toldFrame = new WeakMap();
   // suspended: off the SHOWS panel (FORUM or the M-RLCF layer) she isn't
