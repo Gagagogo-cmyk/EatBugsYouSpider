@@ -20968,7 +20968,7 @@ tabOMSC.onclick();
     // black under the cursor ("text in grey except for when the cursor
     // hovers"); Donate is the one solid block, now black on the white
     'html #gnSpiderPay .l,html #gnSpiderPay .l:hover{padding:0 18px;line-height:16px;color:#000!important}' +   // title always black -- user: "the (c) 2026 PWYW ransomware tittle should remain black. no hover differences"
-    'html #gnSpiderPay .l:hover,html #gnSpiderPay .r:hover,html #gnSpiderPay .hint:hover,html #gnSpiderPay .f:hover{color:#000}' +
+    // no hover change on the labels either -- user: "same for cursor return/minimum charge/secure checkout/total due. no hover differences"
     'html #gnSpiderPay .x{top:2px;right:4px;width:18px;height:18px;line-height:18px;color:#7d8281}' +
     'html #gnSpiderPay .x:hover{background:transparent;color:#000}' +
     'html #gnSpiderPay .amt{margin:6px 0 2px;padding:0 6px;border:1px solid #7d8281;background:#000;gap:2px}' +
@@ -20984,7 +20984,7 @@ tabOMSC.onclick();
     'background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%271.5%27/%3E%3C/svg%3E")}' +
     'html #gnSpiderPay .amt select option{background:#000;color:#fff}' +
     'html #gnSpiderPay .amt select:hover{color:#fff!important}' +
-    'html #gnSpiderPay .hint{margin:0 0 6px;color:#7d8281}' +
+    'html #gnSpiderPay .hint{margin:0 0 6px;color:#7d8281;text-align:center}' +   // centred -- user: "center minimum charge in the pop up"
     'html #gnSpiderPay .r{padding:3px 0;border-top:1px solid #7d8281;color:#7d8281}' +
     'html #gnSpiderPay .p{height:22px;margin-top:6px;background:#000;color:#fff;box-shadow:none;gap:6px}' +
     'html #gnSpiderPay .p:hover{background:#000;color:#fff}' +
@@ -21083,7 +21083,9 @@ tabOMSC.onclick();
     payAmt.placeholder = (cur().def / minor()).toFixed(cur().zero ? 0 : 2);
     const m = MIN_CENTS_OF();
     pay.querySelector('[data-a="min"]').textContent =
-      'Minimum charge amount is ' + (m / minor()).toFixed(cur().zero ? 0 : 2) + ' ' + payCur.value + '.';
+      PAY_LOOK === 'page'   // in brackets -- user: "and put in between ()"
+        ? '(Minimum charge amount is ' + (m / minor()).toFixed(cur().zero ? 0 : 2) + ' ' + payCur.value + ')'
+        : 'Minimum charge amount is ' + (m / minor()).toFixed(cur().zero ? 0 : 2) + ' ' + payCur.value + '.';
     if (cur().def < m) payAmt.placeholder = (m / minor()).toFixed(cur().zero ? 0 : 2);
     updatePay();
   }
