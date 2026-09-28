@@ -8179,7 +8179,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
              align it horizontally on the right-margin. It should open the
              console and highlight the booking section with a white rectangle
              around it for a second." See bookSlot(). -->
-        <!-- (#npTip lived here -- now the shortcut row's ^T tip, #tipChip.) user: "add a tip button next to the booking button,
+        <!-- (#npTip lived here -- tipping is #npDj's [tip] under the N/A line again; the shortcut row has ^R cursor ransom instead.) user: "add a tip button next to the booking button,
              linked to the stripe pipeline." Opens #npDj's amount row; [send]
              goes through window.gnTipDj (POST /tips/checkout -> Stripe
              Checkout in a new tab), tipping whoever holds the radio. -->
@@ -8580,7 +8580,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
          first word). Applies to every <b>keycap</b>Title chip in the
          footer/panels, both the static HTML below and the matching
          innerHTML/textContent assignments further down the file. -->
-    <span class="fg"><span class="chip" id="mrlcfChip"><b>^C</b>console</span><!-- ^T tip -- user: "remove the tip box. instead create a shortcut in the shortcut tabs. ^T tip" (was #npTip above the play bar). Opens #npDj's amount row. --><span class="chip" id="tipChip" style="margin-left:6px" title="tip whoever is on air (Stripe)"><b>^T</b>tip</span></span><!-- ^W wadio -> ^C console, and the hidden ^C chat chip REMOVED -- user: "remove the chat shortcut, use ^C console instead of ^W wadio." --><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
+    <span class="fg"><span class="chip" id="mrlcfChip"><b>^C</b>console</span><!-- ^R cursor ransom -- user: "remove the shortcut tab tip and replace it by ^R cursor ransom. it should open the pop up anytime" (the spider's donate-to-get-your-cursor-back sheet, #gnSpiderPay). Tipping moved back under the N/A line (#npDj). --><span class="chip" id="ransomChip" style="margin-left:6px" title="pay the spider's cursor ransom"><b>^R</b>cursor ransom</span></span><!-- ^W wadio -> ^C console, and the hidden ^C chat chip REMOVED -- user: "remove the chat shortcut, use ^C console instead of ^W wadio." --><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
     <!-- id="editModeGroup" ADDED -- EDIT INTERFACE (spec: a global button,
          above/near the chat, that suspends normal page behavior and lets
          the user talk to Cricket about changing this page itself). Lives
@@ -16266,7 +16266,7 @@ function curSym(){
   if(!CURRENCY) return '\u00a4';
   try{ const p=new Intl.NumberFormat(undefined,{style:'currency',currency:CURRENCY,currencyDisplay:'narrowSymbol'}).formatToParts(1).find(x=>x.type==='currency'); return p?p.value:CURRENCY; }catch(e){ return CURRENCY; }
 }
-function renderCurrency(){ document.querySelectorAll('.curSym').forEach(el=>{ el.textContent=curSym(); }); const t=document.getElementById('tipChip'); if(t) t.title='tip whoever is on air (Stripe'+(CURRENCY?', '+CURRENCY:'')+')'; }
+function renderCurrency(){ document.querySelectorAll('.curSym').forEach(el=>{ el.textContent=curSym(); }); }
 function setCurrency(code){
   const c=String(code||'').trim().toUpperCase();
   if(!/^[A-Z]{3}$/.test(c)) return false;
@@ -16292,15 +16292,15 @@ function npDjShowPay(open){
   if(!main||!pay) return;
   main.hidden=!!open; pay.hidden=!open; npDjNote('');
   if(open){ const d=npDjCurrent(); document.getElementById('npDjPayLbl').textContent= d ? 'tip '+d.id+' :' : 'tip the radio :'; }
-  if(!open && NP_TIP_OPEN){ NP_TIP_OPEN=false; if(!npDjCurrent()){ const b=document.getElementById('npDj'); if(b) b.hidden=true; } }
+  if(!open && NP_TIP_OPEN) NP_TIP_OPEN=false;
 }
 function renderNpDj(){
   const box=document.getElementById('npDj'); if(!box) return;
   const d=npDjCurrent();
   if(!d){
-    /* no dj: the row only shows while the [tip] button's amount row is open */
-    if(NP_TIP_OPEN){ box.hidden=false; document.getElementById('npDjLinks').innerHTML=''; return; }
-    box.hidden=true; npDjShowPay(false); return;
+    /* no dj: just [tip] (the radio), always under the N/A line */
+    if(box.dataset.dj){ delete box.dataset.dj; if(!NP_TIP_OPEN) npDjShowPay(false); }
+    document.getElementById('npDjLinks').innerHTML=''; box.hidden=false; return;
   }
   if(box.dataset.dj!==d.id){ box.dataset.dj=d.id; npDjShowPay(false); }
   const links=(Array.isArray(d.socials)?d.socials:[]).filter(l=>l && /^https?:\/\//i.test(String(l.url||'')));
@@ -16313,18 +16313,10 @@ function renderNpDj(){
   const other=document.getElementById('npDjOther');
   const act=(el,fn)=>{ if(!el) return; el.addEventListener('click',fn); el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fn(e); } }); };
   const pick=el=>{ box.querySelectorAll('.npDjAmt').forEach(b=>b.classList.toggle('on',b===el)); if(other) other.classList.toggle('on',!el); };
-  act(document.getElementById('npDjTip'),()=>npDjShowPay(true));
-  /* #npTip -- the always-there tip button */
-  /* ^T tip (the shortcut row's #tipChip, or the key) toggles the amount row */
-  window.gnToggleTip=()=>{
-    if(NP_TIP_OPEN || !document.getElementById('npDjPay').hidden){ npDjShowPay(false); renderNpDj(); return; }
-    NP_TIP_OPEN=true; box.hidden=false; npDjShowPay(true);
-  };
-  addEventListener('keydown',e=>{ if(e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='t'){ e.preventDefault(); e.stopPropagation(); window.gnToggleTip(); } },true);
-  act(document.getElementById('tipChip'),()=>{
-    if(NP_TIP_OPEN || !document.getElementById('npDjPay').hidden){ npDjShowPay(false); renderNpDj(); return; }
-    NP_TIP_OPEN=true; box.hidden=false; npDjShowPay(true);
-  });
+  /* [tip] under the N/A line -- user: "put tip section under N/A". Always
+     there now (the ^T tip chip became ^R cursor ransom); with no dj on air
+     it tips the radio. */
+  act(document.getElementById('npDjTip'),()=>{ NP_TIP_OPEN=true; npDjShowPay(true); });
   act(document.getElementById('npDjCancel'),()=>npDjShowPay(false));
   box.querySelectorAll('.npDjAmt').forEach(b=>act(b,()=>{ npDjCents=+b.dataset.cents; if(other) other.value=''; pick(b); npDjNote(''); }));
   if(other){
@@ -19513,7 +19505,7 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
    ends (the same fixed spot on every screen -- see placeCo2) and the start of
    the login group (log out when logged in, register when not). */
 (function(){
-  const chip=document.getElementById('tipChip'), plug=document.querySelector('.plugin'), zone=document.querySelector('.zoneF');
+  const chip=document.getElementById('ransomChip'), plug=document.querySelector('.plugin'), zone=document.querySelector('.zoneF');
   if(!chip||!plug||!zone) return;
   /* stays inside the shortcut row (its chip styles live there), placed
      absolutely within it */
@@ -19533,7 +19525,7 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
     /* closer to log out -- user: "put tip closer to log out": 3ch before it
        (never left of the middle of the gap) */
     const ch=parseFloat(getComputedStyle(chip).fontSize)*0.6||7.2;
-    const x=Math.max((gapL+gapR)/2 - w/2, gapR - 3*ch - w);
+    const x=Math.min(Math.max((gapL+gapR)/2 - w/2, gapR - 3*ch - w), gapR - 3*ch - w);   /* ...and never onto them ("cursor ransom" is wider than "tip" was) */
     chip.style.left=Math.round(x + P.left - Z.left)+'px';
     chip.style.top=Math.round(R.top-Z.top + (R.height-chip.getBoundingClientRect().height)/2)+'px';
   }
@@ -20892,6 +20884,15 @@ tabOMSC.onclick();
   });
   function showPay() { if (suspended) return; payBusy = false; payAmt.value = ''; applyCurrency(); note(''); pay.hidden = false; }
   function hidePay() { pay.hidden = true; }
+  // ^R cursor ransom (shortcut row #ransomChip, or the key): the sheet anytime,
+  // eaten or not, on any panel. Pressed again: closed.
+  function toggleRansom() {
+    if (!pay.hidden) { hidePay(); return; }
+    payBusy = false; payAmt.value = ''; applyCurrency(); note(''); pay.hidden = false;
+  }
+  window.gnCursorRansom = toggleRansom;
+  addEventListener('keydown', e => { if (e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && e.key.toLowerCase() === 'r') { e.preventDefault(); e.stopPropagation(); toggleRansom(); } }, true);
+  (() => { const c = document.getElementById('ransomChip'); if (c) c.addEventListener('click', e => { e.preventDefault(); toggleRansom(); }); })();
   pay.addEventListener('click', e => {
     const a = e.target.closest && e.target.closest('button') && e.target.closest('button').dataset.a;
     if (a === 'no') { hidePay(); return; }
