@@ -1736,6 +1736,12 @@
            left padding (and 9px less margin) so that edge -- and the left
            line -- sits 9px left of the content, which itself doesn't move */
         .page { margin-left: 191px !important; padding-left: 9px !important; box-sizing: border-box; }
+        /* ...only when the posters overflow and scroll -- user: "only put them
+           when enough posters are in so they are needed graphically to enclose
+           the space. but when there isnt enough poster to scroll, dont put
+           them". centerCards() toggles .gnEnds; the lines just go
+           transparent so nothing moves. */
+        .events-grid:not(.gnEnds) { border-left-color: transparent !important; border-right-color: transparent !important; }
 
         /* CARDS CENTERED -- user: "center the poster cards in between the
            two row infos on both sides of the cards" (the sidebar on the left,
@@ -3373,11 +3379,18 @@ cityModal.addEventListener('click', function(e) {
         grid.style.setProperty('width', w + 'px', 'important');
         grid.style.setProperty('margin-left', (x - (pr.left + pl)) + 'px', 'important');
         grid.style.setProperty('margin-right', '0', 'important');
+        grid.classList.toggle('gnEnds', grid.scrollWidth > grid.clientWidth + 1);   /* end lines only when it scrolls */
     }
     window.gnCenterCards = centerCards;
     window.addEventListener('resize', centerCards);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', centerCards); else centerCards();
     window.addEventListener('load', centerCards);
+    /* cards added/removed/filtered change whether it scrolls */
+    var mo = new MutationObserver(function(recs){   /* skip its own writes on the grid itself (no loop) */
+        if (recs.some(function(r){ return r.type === 'childList' || r.target !== r.target.ownerDocument.querySelector('.events-grid'); })) requestAnimationFrame(centerCards);
+    });
+    function watch(){ var g = document.querySelector('.events-grid'); if (g) mo.observe(g, {childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'hidden', 'class']}); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
 })();
 </script>
 </body>
