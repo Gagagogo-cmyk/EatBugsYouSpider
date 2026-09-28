@@ -1748,6 +1748,21 @@
         .events-grid { padding-right: 8px !important; scroll-snap-type: x mandatory; scroll-padding-left: 8px; box-sizing: border-box; }
         .event { scroll-snap-align: start; }
 
+        /* NETWORK SELECTION LIKE THE MODEL MENU -- user: "make the selected model
+           text and box in [white], and make the selection a white highlight.
+           right now its the opposite... i want white text as the selected
+           branch and the highlight as the moving "cursor". just like the
+           model selection menu, but for the network page." The branch you're
+           on (.current): white text in a white box. The cursor you move with
+           the arrows / a click (.sel): the solid white highlight, black text.
+           Every other node grey (the seed too, unless you're on it). */
+        .cityNode.current { background: transparent !important; color: var(--w) !important; border-color: var(--w) !important; }
+        .cityNode.seed:not(.current) { color: var(--mid); border-color: var(--mid); }
+        .cityNode.sel { outline: none !important; background: var(--w) !important; color: #000 !important; border-color: var(--w) !important; }
+        .netNode.current rect { fill: transparent; stroke: var(--w); }
+        .netNode.current text { fill: var(--w); }
+        .netNode.sel rect { fill: var(--w); stroke: var(--w); }
+        .netNode.sel text { fill: #000; }
         /* ONE BOX SIZE -- user: "make sure all the search bar, or dropdown menu
            boxes the same size as the TRAINED MODEL search bar" (panel.html
            #chatModelSearch: 170 x 16px, 1px border, 12px text, 4px in). The
@@ -1771,6 +1786,21 @@
         .filter-group .weekend-dropdown-menu a:hover,
         .filter-group .weekend-dropdown-menu a.active:hover { color: var(--w) !important; background: transparent !important; }
 </style>
+<script>
+/* radio cards (crkt.go): "the link to event of the gnumbat online sets should
+   stay on the same page, and just switch to the model where the dj is
+   playing/or is gonna play." Inside the panel the click tells panel.html
+   which model ('gnumbat-open-model'); on its own the page just follows the
+   link to the panel, in this same tab. */
+document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a.radioLink'); if (!a) return;
+    if (!(window.parent && window.parent !== window)) return;
+    var id = null; try { id = new URL(a.href).searchParams.get('model'); } catch (err) {}
+    if (!id) return;
+    e.preventDefault();
+    window.parent.postMessage({type: 'gnumbat-open-model', id: id}, '*');
+});
+</script>
 <script>/* embedded in panel.html -> .gnEmbedded (see the TRAINED MODELS corner rule) */ if (window.parent && window.parent !== window) document.documentElement.classList.add('gnEmbedded');</script>
 </head>
 <body>
@@ -2086,7 +2116,7 @@
              security/tracking gap for an unknown third-party destination);
              "noreferrer" additionally withholds the Referer header, so the
              ticket vendor site doesn't see it was linked from a scraper. -->
-        {{if .TicketURL}}<a href="{{.TicketURL}}" target="_blank" rel="noopener noreferrer">Link to event ↗</a>{{end}}
+        {{if eq .VenueKey "crkt"}}<a href="{{.TicketURL}}" class="radioLink">Link to event ↗</a>{{else if .TicketURL}}<a href="{{.TicketURL}}" target="_blank" rel="noopener noreferrer">Link to event ↗</a>{{end}}
         </div>
     </div>
     {{end}}
@@ -3328,7 +3358,12 @@ cityModal.addEventListener('click', function(e) {
         var L = side.getBoundingClientRect().right;
         var R = window.innerWidth - (document.documentElement.classList.contains('gnEmbedded') ? 170 + 10 : 10);
         var avail = R - L;
-        var n = Math.max(1, Math.min(cards, Math.floor((avail - 2 * MIN_GAP - CHROME + GAP) / (CARD + GAP))));
+        /* the gallery is always as wide as the whole cards the space fits --
+           with only a few shows they sit on its LEFT, the rest stays empty
+           (user: "align the shows poster to the left, dont center them if
+           there are not enough to cover the whole poster space") */
+        void cards;
+        var n = Math.max(1, Math.floor((avail - 2 * MIN_GAP - CHROME + GAP) / (CARD + GAP)));
         var w = n * (CARD + GAP) - GAP + CHROME;
         var x = Math.round(L + Math.max(0, (avail - w) / 2));
         var pr = page.getBoundingClientRect(), pl = parseFloat(getComputedStyle(page).paddingLeft) || 0;

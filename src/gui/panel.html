@@ -19353,10 +19353,16 @@ renderNpVotes();
     'Core War (1984) was a game where programmers wrote little programs that fought to destroy each other inside a computer’s memory.'
   ];
   let last=-1; try{ last=parseInt(localStorage.getItem('gnumbat.lastFact'),10); }catch(e){}
-  let i=Math.floor(Math.random()*FACTS.length);
-  if(FACTS.length>1 && i===last) i=(i+1)%FACTS.length;
-  el.textContent=FACTS[i];
-  try{ localStorage.setItem('gnumbat.lastFact',String(i)); }catch(e){}
+  /* ...and a new one every minute -- user: "make the fun fact change every
+     minute" (never the one just shown) */
+  function nextFact(){
+    let i=Math.floor(Math.random()*FACTS.length);
+    if(FACTS.length>1 && i===last) i=(i+1)%FACTS.length;
+    last=i; el.textContent=FACTS[i];
+    try{ localStorage.setItem('gnumbat.lastFact',String(i)); }catch(e){}
+  }
+  nextFact();
+  setInterval(nextFact,60000);
 })();
 /* LIVE MEM -- user: "connect the memory bar of the chat as the overall memory
    used to run the website... i want to see how much memory is the whole
@@ -19460,6 +19466,21 @@ function bookSlot(){
   }, wasOpen ? 60 : 420);   /* after the open animation (animateShelf, 260ms) */
 }
 document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault(); bookSlot(); });
+/* 'gnumbat-open-model' -- a radio card's link on the show page (in the
+   iframe): stay here and switch to that model -- tuned in when it's a trained
+   channel (tuneToModel), and highlighted in the model list either way; a
+   model still in training has no channel yet, so the console opens on it. */
+window.addEventListener('message',e=>{
+  const m=e.data, f=document.getElementById('omscFrame');
+  if(!m || m.type!=='gnumbat-open-model' || !f || e.source!==f.contentWindow) return;
+  const model=(typeof MODELS!=='undefined' ? MODELS : []).find(x=>x && String(x.id)===String(m.id));
+  if(!model) return;
+  selectedModelId=model.id;
+  if(typeof renderCurrentModelView==='function') renderCurrentModelView();
+  const trained = typeof isTrainedModel==='function' && isTrainedModel(model);
+  if(trained && typeof tuneToModel==='function') tuneToModel(model.id);
+  else if(!mrlcfOpen) setMrlcfOpen(true);
+});
 /* ?model=<id> -- the show page's radio cards link here (event-crawler crkt.go):
    the model is highlighted in the list and the console opens on the booking
    box, pointed at it. Waits up to 10s for the model list to arrive. */
