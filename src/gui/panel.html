@@ -12903,7 +12903,7 @@ function hist(seed,live){
     vuEl.querySelectorAll('.vmtr i').forEach(el=>{el.style.height=levelPct;});
     vuEl.querySelectorAll('.vmtr b').forEach(el=>{el.style.bottom=peakPct;});
     const dbEl=vuEl.querySelector('.vuDb');
-    if(dbEl) dbEl.textContent=peak>0.0008?`${(20*Math.log10(peak)).toFixed(1)}dB`:'-\u221edB';
+    if(dbEl){ const t=peak>0.0008?`${(20*Math.log10(peak)).toFixed(1)}dB`:'-\u221edB'; if(dbEl.textContent!==t) dbEl.textContent=t; }   /* only when it changes (was rewritten every frame) */
   }
   requestAnimationFrame(tickVuMeters);
   // user: "the scroll is lagging a lot" — a wheel/pointer gesture can fire
@@ -20604,8 +20604,18 @@ tabOMSC.onclick();
      lands where Safari needs it. Falls back to documentElement only
      before the first real pointermove (nothing to resolve yet). */
   var lastX = null, lastY = null;
-  addEventListener('pointermove', function(e){ lastX = e.clientX; lastY = e.clientY; }, {passive:true});
-  setInterval(function(){
+  /* SMOOTHER, SAME LOOK -- user: "i dont want the look of the website to
+     change at all, but i want it to run smoother". This workaround is for
+     Safari's cursor only, and forced a whole-page style recalc 20x/second
+     everywhere. Now: other browsers skip it, and Safari runs it only after
+     the pointer moved (and every 0.5s as a fallback). */
+  var isSafari = /Safari\//.test(navigator.userAgent) && !/Chrome\/|Chromium\/|Edg\//.test(navigator.userAgent);
+  var moved = false, lastRun = 0;
+  addEventListener('pointermove', function(e){ lastX = e.clientX; lastY = e.clientY; moved = true; }, {passive:true});
+  if (isSafari) setInterval(function(){
+    var now = Date.now();
+    if (!moved && now - lastRun < 500) return;
+    moved = false; lastRun = now;
     var el = (lastX !== null) ? document.elementFromPoint(lastX, lastY) : null;
     if(!el) el = document.documentElement;
     var prev = el.style.cursor;
