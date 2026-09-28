@@ -7351,7 +7351,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
      the mockup's fake data while gnumbat-link.js is still figuring out whether
      there's a real hub to talk to. JS below hides this once Gnumbat.state is
      actually "open", and brings it back if the connection ever drops. -->
-<div class="disconnected" id="disconnected">missing hub - refresh</div>
+<div class="disconnected hide" id="disconnected">missing hub - refresh</div>
 <!-- MARGIN WATERMARK -- see .marginText's own CSS comment. Two static,
      JS-untouched strings; not gated by .hide like most elements here. -->
 <div class="marginText" id="marginTextLeft">(c) 2026 Gnumbat AGPL 3.0</div>
@@ -8985,8 +8985,15 @@ let arrowTarget=null; // null | 'bake' | 'vcl' | 'mel' | 'bas' | 'drm'
    Every future transition (drop to "reconnecting" if the hub dies mid-
    session, "open" again on reconnect) is caught by the "_state" listener. */
 const disconnectedEl=document.getElementById('disconnected');
+/* NO FLASH ON REFRESH -- user: "when restarting the page make sure there is
+   no "missing hub" message for a microsecond when there actually is." It
+   starts hidden (see its markup) and only shows once the hub has stayed
+   unreachable for 1.5s; connecting hides it at once. Same grace when the
+   hub drops mid-session, so a quick reconnect doesn't flicker it either. */
+let disconnectedTimer=0;
 function syncDisconnectedScreen(){
-  disconnectedEl.classList.toggle('hide', Gnumbat.state==='open');
+  if(Gnumbat.state==='open'){ clearTimeout(disconnectedTimer); disconnectedTimer=0; disconnectedEl.classList.add('hide'); return; }
+  if(!disconnectedTimer) disconnectedTimer=setTimeout(()=>{ disconnectedTimer=0; if(Gnumbat.state!=='open') disconnectedEl.classList.remove('hide'); },1500);
 }
 syncDisconnectedScreen();
 Gnumbat.on('_state', syncDisconnectedScreen);
