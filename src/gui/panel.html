@@ -6754,7 +6754,12 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 /* ...and back -- user: "invert the position of them. tip above book a
    slot. and keep tip in a box": tip (boxed) on the model line, book a slot
    (plain grey text) on the N/A line */
-.npMeta .npActs{position:absolute;right:0;top:0;display:flex;flex-direction:column;align-items:stretch;z-index:2}
+/* ...then: "move the tip button right before book a slot. Align the right
+   side of it with the end of the playbar waveform zone." -- book a slot on
+   the N/A line at the right margin; tip on that same line, its right edge on
+   the waveform's end (placeTipBtn() sets --tipRight) */
+.npMeta .npActs{position:absolute;right:0;top:var(--row,16px);display:block;z-index:2}
+.npMeta .npActs #npTip{position:absolute;top:0;right:var(--tipRight,100%);width:var(--tipW,auto);margin-right:0}
 /* the tip box is exactly as wide as "book a slot", tip centred in it -- user:
    "make the tip box the same lenght as the "book a slot" text. and center tip within it." */
 .npMeta .npActs .npBook{text-align:center}
@@ -6770,7 +6775,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    so the 4-row form (plus its title row) always fits beside it. */
 #bookingBox{position:absolute;right:10px;box-sizing:border-box;margin:0;padding:0;
   display:flex;flex-direction:column;overflow:hidden;z-index:4;color:var(--w,#fff)}
-#modelSelectView #modelList{min-height:calc(6 * var(--row,16px))}   /* title + 6 rows = the box: 4 form rows + 2 slots (more with more models) */
+#modelSelectView #modelList{min-height:calc(7 * var(--row,16px))}   /* title + 7 rows = the box: 3 form rows + status + the 4-row calendar (slots list under it with more models) */
 #bookingBox .bkRow{flex:0 0 16px;height:16px;line-height:16px;display:flex;gap:1ch;align-items:center;white-space:nowrap;min-width:0}
 #bookingBox .bkTitle{flex:0 0 auto}
 #bookingBox .bkNow{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--g3,#7d8281);text-align:right}
@@ -6796,9 +6801,29 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 #bookingBox .bkIn:focus{border-color:#fff}
 #bookingBox .bkIn::placeholder{color:var(--g3,#7d8281)}
 #bookingBox .bkIn::-webkit-calendar-picker-indicator{display:none}   /* no room: a click opens the picker (showPicker) */
-#bookingBox #bkDate{flex:1 1 auto}
-#bookingBox #bkTime{flex:0 0 10ch}
-#bookingBox #bkDate,#bookingBox #bkTime{cursor:pointer}
+#bookingBox #bkTime{flex:0 0 9.5ch;cursor:pointer;padding:0 2px}
+#bookingBox .bkRow:has(#bkTime){gap:.6ch}
+#bookingBox #bkHours{flex:0 0 4ch!important}
+#bookingBox .bkDj{flex:0 1 auto}
+#bookingBox .bkBook{margin-left:auto}
+#bookingBox .bkMsg{text-align:right}
+/* the calendar: month + arrows, weekday initials, a 7-column grid of days on
+   16px rows -- grey days, white on hover, today white, the picked day boxed
+   like a search bar, days with slots on this model underlined, past days dim */
+#bookingBox .bkCal{flex:0 0 auto;margin-top:0}
+#bookingBox .bkCalHead{display:flex;justify-content:space-between;height:16px;line-height:16px}
+#bookingBox .bkCalHead .bkCalNav{color:var(--g3,#7d8281);cursor:pointer;padding:0 .5ch}
+#bookingBox .bkCalHead .bkCalNav:hover{color:#fff}
+#bookingBox .bkCalHead .bkCalNav.off{visibility:hidden}
+#bookingBox .bkCalGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:16px;line-height:14px;text-align:center}
+#bookingBox .bkCalGrid .bkWd{color:var(--g3,#7d8281);line-height:16px}
+#bookingBox .bkCalGrid .bkD{color:var(--g3,#7d8281);cursor:pointer;border:1px solid transparent;box-sizing:border-box}
+#bookingBox .bkCalGrid .bkD:hover{color:#fff}
+#bookingBox .bkCalGrid .bkD.today{color:#fff}
+#bookingBox .bkCalGrid .bkD.booked{text-decoration:underline;text-underline-offset:2px}
+#bookingBox .bkCalGrid .bkD.sel{border-color:#fff;color:#fff}
+#bookingBox .bkCalGrid .bkD.past{color:var(--g4,#4a4d4a);cursor:default}   /* a solid dark grey: opacity vanishes under the posterize filter */
+#bookingBox .bkCalGrid .bkD.past:hover{color:var(--g4,#4a4d4a)}
 #bookingBox #bkHours{flex:0 0 5ch;-moz-appearance:textfield}
 #bookingBox #bkHours::-webkit-inner-spin-button{display:none}
 #bookingBox .bkUnit{color:var(--g3,#7d8281);margin-left:-.5ch}
@@ -7699,10 +7724,13 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
          bottom on the list's bottom edge. -->
     <form id="bookingBox" autocomplete="off" novalidate>
       <div class="bkRow"><span class="bkTitle">BOOKING</span><span class="bkNow" id="bkNow"></span></div>
-      <div class="bkRow"><input class="bkIn" id="bkDate" type="date" title="date" required><input class="bkIn" id="bkTime" type="time" value="21:00" step="900" title="start" required></div>
-      <div class="bkRow"><select id="bkModelSel" title="model" hidden></select><span class="bkIn bkPick" id="bkModelPick" tabindex="0" role="button" title="model"></span><input class="bkIn" id="bkHours" type="number" min="0.5" max="24" step="0.5" value="2" title="hours" required><span class="bkUnit">h</span></div>
-      <div class="bkRow"><span class="bkDj" id="bkDj"></span><button type="submit" class="chip bkBook" id="bkBook"><b>&#9166;</b>book</button></div>
-      <div class="bkRow"><span class="bkMsg" id="bkMsg"></span></div>
+      <div class="bkRow"><select id="bkModelSel" title="model" hidden></select><span class="bkIn bkPick" id="bkModelPick" tabindex="0" role="button" title="model"></span></div>
+      <div class="bkRow"><input type="hidden" id="bkDate"><input class="bkIn" id="bkTime" type="time" value="21:00" step="900" title="start" required><input class="bkIn" id="bkHours" type="number" min="0.5" max="24" step="0.5" value="2" title="hours" required><span class="bkUnit">h</span><button type="submit" class="chip bkBook" id="bkBook"><b>&#9166;</b>book</button></div>
+      <div class="bkRow"><span class="bkDj" id="bkDj"></span><span class="bkMsg" id="bkMsg"></span></div>
+      <!-- #bkCal -- user: "instead of adding a popup calendar, use the space
+           below the booking system as a calendar to select a date. make a
+           minimal looking calendar in the same ui as the panel." See renderCal(). -->
+      <div class="bkCal" id="bkCal"></div>
       <div class="bkList" id="bkList"></div>
     </form>
     <div class="states">
@@ -19285,11 +19313,24 @@ function bookSlot(){
   const box=document.getElementById('bookingBox'); if(!box) return;
   setTimeout(()=>{
     box.classList.add('bkFlash');
-    const first=document.getElementById('bkDate'); if(first) try{ first.focus({preventScroll:true}); }catch(e){}
+
     setTimeout(()=>box.classList.remove('bkFlash'),1000);
   }, wasOpen ? 60 : 420);   /* after the open animation (animateShelf, 260ms) */
 }
 document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault(); bookSlot(); });
+/* placeTipBtn -- see ".npActs": tip's right edge = the waveform's right end,
+   as wide as "book a slot" */
+function placeTipBtn(){
+  const acts=document.querySelector('.npMeta .npActs'), tip=document.getElementById('npTip'), book=document.getElementById('npBook'), wave=document.querySelector('#nowPlayingBar .npWave');
+  if(!acts||!tip||!book) return;
+  const A=acts.getBoundingClientRect();
+  acts.style.setProperty('--tipW', Math.round(book.getBoundingClientRect().width)+'px');
+  if(wave && wave.getBoundingClientRect().width){ acts.style.setProperty('--tipRight', Math.round(A.right - wave.getBoundingClientRect().right)+'px'); }
+  else acts.style.setProperty('--tipRight', Math.round(A.width + 8)+'px');
+}
+window.addEventListener('resize',()=>requestAnimationFrame(placeTipBtn));
+try{ new ResizeObserver(()=>requestAnimationFrame(placeTipBtn)).observe(document.getElementById('nowPlayingBar')); }catch(e){}
+requestAnimationFrame(placeTipBtn); setTimeout(placeTipBtn,500);
 /* initBooking -- see #bookingBox. The model select lists every model and
    follows the row highlighted in the list (you can still pick another);
    its current + upcoming slots fill the rows under the form, yours in white
@@ -19339,6 +19380,7 @@ document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault
     fetch(api()+'?model='+encodeURIComponent(String(m.id))).then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status))).then(rows=>{
       if(seq!==loadSeq) return;
       lastRows=rows||[];
+      if(window.gnRenderBookingCal) window.gnRenderBookingCal();
       const now=Date.now(), live=lastRows.find(b=>new Date(b.starts_at)<=now && new Date(b.ends_at)>now);
       const n=$('bkNow');
       n.textContent = live ? live.dj_name+' →'+hm(new Date(live.ends_at)) : 'model on air';   /* a DJ holds it until then */
@@ -19400,7 +19442,43 @@ document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault
       .then(r=>{ msg(r.ok?'slot cancelled':'could not cancel', r.ok?'ok':'err'); load(); })
       .catch(()=>msg('backend offline','err'));
   });
-  ['bkDate','bkTime'].forEach(id=>$(id).addEventListener('click',()=>{ try{ $(id).showPicker(); }catch(e){} }));
+  $('bkTime').addEventListener('click',()=>{ try{ $('bkTime').showPicker(); }catch(e){} });
+  /* ── the calendar (#bkCal) ── */
+  const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  /* COMPACT -- user: "the calendar needs to sit in the space below the
+     booking system. a compact calendar." Two weeks at a time (Monday first):
+     a month line with arrows (two weeks back / on), the weekday letters, two
+     rows of days -- 4 rows in all. */
+  const monday=d=>{ const x=new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; };
+  let calStart=monday(new Date($('bkDate').value+'T00:00'));
+  function dayRows(dstr){ return lastRows.filter(b=>ymd(new Date(b.starts_at))===dstr); }
+  function renderCal(){
+    const cal=$('bkCal'); if(!cal) return;
+    const today=ymd(new Date()), sel=$('bkDate').value, first=monday(new Date());
+    const booked=new Set(lastRows.map(b=>ymd(new Date(b.starts_at))));
+    const end=new Date(calStart); end.setDate(end.getDate()+13);
+    const lbl = calStart.getMonth()===end.getMonth() ? MONTHS[calStart.getMonth()]+' '+calStart.getFullYear()
+      : MONTHS[calStart.getMonth()]+'–'+MONTHS[end.getMonth()]+' '+end.getFullYear();
+    let h='<div class="bkCalHead"><span class="bkCalNav'+(calStart<=first?' off':'')+'" data-nav="-1" title="two weeks back">‹</span><span>'+lbl+'</span><span class="bkCalNav" data-nav="1" title="two weeks on">›</span></div><div class="bkCalGrid">';
+    h+=['M','T','W','T','F','S','S'].map(w=>'<span class="bkWd">'+w+'</span>').join('');
+    for(let i=0;i<14;i++){
+      const dt=new Date(calStart); dt.setDate(dt.getDate()+i);
+      const ds=ymd(dt), cls=['bkD'];
+      if(ds<today) cls.push('past'); if(ds===today) cls.push('today'); if(ds===sel) cls.push('sel'); if(booked.has(ds)) cls.push('booked');
+      h+='<span class="'+cls.join(' ')+'" data-day="'+ds+'" title="'+ds+(booked.has(ds)?' -- slots booked':'')+'">'+dt.getDate()+'</span>';
+    }
+    cal.innerHTML=h+'</div>';
+  }
+  $('bkCal').addEventListener('click',e=>{
+    const nav=e.target.closest('[data-nav]');
+    if(nav){ if(nav.classList.contains('off')) return; calStart=new Date(calStart); calStart.setDate(calStart.getDate()+14*Number(nav.dataset.nav)); renderCal(); return; }
+    const d=e.target.closest('.bkD[data-day]'); if(!d || d.classList.contains('past')) return;
+    $('bkDate').value=d.dataset.day; renderCal();
+    const rows=dayRows(d.dataset.day);
+    msg(rows.length ? rows.map(b=>hm(new Date(b.starts_at))+'\u2013'+hm(new Date(b.ends_at))+' '+b.dj_name).join(', ') : d.dataset.day.slice(5)+' free');
+  });
+  window.gnRenderBookingCal=renderCal;
+  renderCal();
   /* keys typed here are the form's, never the list's/page's shortcuts */
   box.addEventListener('keydown',e=>{ if(!e.ctrlKey && !e.metaKey) e.stopPropagation(); if(e.key==='Escape'){ document.activeElement&&document.activeElement.blur(); } });
   /* same height as the model menu: from the M-RLCF MODELS title line to the
@@ -19413,7 +19491,7 @@ document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault
     const ch=parseFloat(getComputedStyle(box).fontSize)*0.6||7.2;
     box.style.left=Math.round(H.right-V.left+2*ch)+'px';   /* 2ch right of the list's own right edge */
     box.style.top=Math.round(H.top-V.top)+'px';
-    box.style.height=Math.max(112, Math.round(B.bottom-padB-H.top))+'px';
+    box.style.height=Math.max(128, Math.round(B.bottom-padB-H.top))+'px';
   }
   window.gnPlaceBooking=placeBooking;
   try{ new ResizeObserver(()=>requestAnimationFrame(placeBooking)).observe(view); }catch(e){}
@@ -19572,6 +19650,10 @@ function setMrlcfOpen(on){
   if(!on && mrlcfOpen && chatOpen!==chatBeforeRadio) setChatOpen(chatBeforeRadio);
   mrlcfOpen = on; applyLayer();
   if(opening && !window.gnShelfDragOpen && window.gnShelfPrime) window.gnShelfPrime();
+  /* the chat line takes the keyboard right away -- user: "when opening the
+     console, the chat box [should] select itself automatically, so the user
+     can start writing right away" */
+  if(opening) requestAnimationFrame(()=>{ const c=document.getElementById('cin'); if(c) try{ c.focus({preventScroll:true}); }catch(e){} });
   /* re-align TRAINED MODELS once the tab (and the chat opening with it)
      has settled -- see alignTrainedTitle() */
   if(on){ [60,200,500].forEach(t=>setTimeout(()=>{ if(typeof alignTrainedTitle==='function') alignTrainedTitle(); },t)); }

@@ -516,7 +516,11 @@ async function renameUser(id, username) {
 let bookingsTableReady = null
 function ensureBookingsTable() {
   if (!bookingsTableReady) {
-    bookingsTableReady = pool.query(
+    // one statement at a time, each allowed to fail on its own: an older
+    // table (the first version booked a venue + contact) is moved over step
+    // by step, and a leftover venue/contact column can never block a booking
+    // -- it's made optional first, then dropped
+    const steps = [
       `CREATE TABLE IF NOT EXISTS bookings (
          id          SERIAL PRIMARY KEY,
          model_ref   VARCHAR(255) NOT NULL,
@@ -527,19 +531,24 @@ function ensureBookingsTable() {
          hours       NUMERIC(4,1) NOT NULL CHECK (hours > 0 AND hours <= 24),
          status      VARCHAR(20) DEFAULT 'booked',
          created_at  TIMESTAMP DEFAULT NOW()
-       );
-       -- the first version booked a venue + contact: move it over
-       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dj_id INTEGER REFERENCES users(id);
-       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dj_name VARCHAR(255);
-       UPDATE bookings SET dj_name = COALESCE(dj_name, 'dj') WHERE dj_name IS NULL;
-       ALTER TABLE bookings ALTER COLUMN dj_name SET NOT NULL;
-       ALTER TABLE bookings DROP COLUMN IF EXISTS venue;
-       ALTER TABLE bookings DROP COLUMN IF EXISTS contact;
-       ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check;
-       UPDATE bookings SET status = 'booked' WHERE status NOT IN ('booked','cancelled');
-       ALTER TABLE bookings ALTER COLUMN status SET DEFAULT 'booked';
-       CREATE INDEX IF NOT EXISTS bookings_model_idx ON bookings(model_ref, starts_at);`
-    ).catch(err => { bookingsTableReady = null; throw err })
+       )`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dj_id INTEGER REFERENCES users(id)`,
+      `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dj_name VARCHAR(255)`,
+      `UPDATE bookings SET dj_name = 'dj' WHERE dj_name IS NULL`,
+      `ALTER TABLE bookings ALTER COLUMN dj_name SET NOT NULL`,
+      `ALTER TABLE bookings ALTER COLUMN venue DROP NOT NULL`,
+      `ALTER TABLE bookings ALTER COLUMN contact DROP NOT NULL`,
+      `ALTER TABLE bookings DROP COLUMN IF EXISTS venue`,
+      `ALTER TABLE bookings DROP COLUMN IF EXISTS contact`,
+      `ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`,
+      `UPDATE bookings SET status = 'booked' WHERE status NOT IN ('booked','cancelled')`,
+      `ALTER TABLE bookings ALTER COLUMN status SET DEFAULT 'booked'`,
+      `CREATE INDEX IF NOT EXISTS bookings_model_idx ON bookings(model_ref, starts_at)`
+    ]
+    bookingsTableReady = (async () => {
+      await pool.query(steps[0])   // the table itself has to exist
+      for (const sql of steps.slice(1)) await pool.query(sql).catch(() => {})
+    })().catch(err => { bookingsTableReady = null; throw err })
   }
   return bookingsTableReady
 }
