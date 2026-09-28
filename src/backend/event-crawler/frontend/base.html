@@ -985,10 +985,9 @@
             color: var(--mid);
             text-transform: uppercase;
         }
-        /* a booked radio slot (crkt.go): the poster area stays, just black --
-           user: "remove the rectangle for the actual poster area. just keep
-           it the same dimension but let it black." */
-        .event .event-noimg.event-radio { border: none; background: #000; }
+        /* a booked radio slot (crkt.go): same bordered poster rectangle as
+           every other card, just empty inside (no "poster not available"). */
+        .event .event-noimg.event-radio { background: transparent; }
         .event.event-today .event-when { color: var(--w); }
         /* user: "remove all effect on the images. i just want the normal
            images." No filter of any kind on the poster now -- plain,
