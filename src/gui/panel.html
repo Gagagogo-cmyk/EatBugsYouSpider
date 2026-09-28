@@ -20969,7 +20969,7 @@ tabOMSC.onclick();
     // hovers"); Donate is the one solid block, now black on the white
     'html #gnSpiderPay .l,html #gnSpiderPay .l:hover{padding:0 18px;line-height:16px;color:#000!important}' +   // title always black -- user: "the (c) 2026 PWYW ransomware tittle should remain black. no hover differences"
     // no hover change on the labels either -- user: "same for cursor return/minimum charge/secure checkout/total due. no hover differences"
-    'html #gnSpiderPay .x{top:2px;right:4px;width:18px;height:18px;line-height:18px;color:#7d8281}' +
+    'html #gnSpiderPay .x{top:6px;right:4px;width:18px;height:16px;line-height:16px;color:#7d8281}' +   // on the title's line -- user: "align the x of the ransomware with the title"
     'html #gnSpiderPay .x:hover{background:transparent;color:#000}' +
     'html #gnSpiderPay .amt{margin:6px 0 2px;padding:0 6px;border:1px solid #7d8281;background:#000;gap:2px}' +
     // the amount box stays black on the white sheet -- user: "keep white, but
@@ -21136,6 +21136,29 @@ tabOMSC.onclick();
   window.gnCursorRansom = toggleRansom;
   addEventListener('keydown', e => { if (e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && e.key.toLowerCase() === 'r' && ransomOn()) { e.preventDefault(); e.stopPropagation(); toggleRansom(); } }, true);
   (() => { const c = document.getElementById('ransomChip'); if (c) c.addEventListener('click', e => { e.preventDefault(); if (ransomOn()) toggleRansom(); }); })();
+  // DRAGGABLE -- user: "make the ransomware box dragable across the screen".
+  // Grab it anywhere but its field, picker and buttons; it stays on screen
+  // and keeps the spot it was dropped at.
+  (() => {
+    let drag = null;
+    pay.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || (e.target.closest && e.target.closest('input,select,button,a'))) return;
+      const r = pay.getBoundingClientRect();
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, id: e.pointerId };
+      pay.style.left = r.left + 'px'; pay.style.top = r.top + 'px'; pay.style.transform = 'none';
+      try { pay.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
+    });
+    pay.addEventListener('pointermove', e => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const w = pay.offsetWidth, h = pay.offsetHeight;
+      pay.style.left = Math.max(0, Math.min(innerWidth - w, e.clientX - drag.dx)) + 'px';
+      pay.style.top = Math.max(0, Math.min(innerHeight - h, e.clientY - drag.dy)) + 'px';
+    });
+    const end = e => { if (drag && e.pointerId === drag.id) { drag = null; try { pay.releasePointerCapture(e.pointerId); } catch (err) {} } };
+    pay.addEventListener('pointerup', end);
+    pay.addEventListener('pointercancel', end);
+  })();
   pay.addEventListener('click', e => {
     const a = e.target.closest && e.target.closest('button') && e.target.closest('button').dataset.a;
     if (a === 'no') { hidePay(); return; }
