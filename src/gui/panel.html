@@ -21037,7 +21037,11 @@ tabOMSC.onclick();
     'html #gnSpiderPay .sp{width:10px;height:10px;margin-right:6px;border-color:rgba(255,255,255,.3);border-top-color:#fff}' +
     'html #gnSpiderPay .p.busy::before{display:none}' +
     'html #gnSpiderPay .dev{height:auto;min-height:0;margin-top:4px;border:0;background:transparent;color:rgb(125,130,129)}' +
-    'html #gnSpiderPay .dev:hover{color:#fff;border:0}'
+    'html #gnSpiderPay .dev:hover{color:#fff;border:0}' +
+    // squeezed narrow (resize grip), lines wrap instead of spilling out
+    'html #gnSpiderPay .r{flex-wrap:wrap;column-gap:1ch}html #gnSpiderPay .l{padding:0 14px;white-space:normal;overflow-wrap:anywhere}' +
+    'html #gnSpiderPay .p,html #gnSpiderPay .no{height:auto;min-height:16px;flex-wrap:wrap;white-space:normal;text-align:center}' +
+    'html #gnSpiderPay .amt input{min-width:2ch}'
     ) : '') +
     '</style>' +
     '<span class="cr se" aria-hidden="true"></span>' +   // bottom-right only -- user: "keep the L shaped only in the bottom right corner"
@@ -21191,7 +21195,7 @@ tabOMSC.onclick();
     // ...and RESIZABLE from any corner -- user: "make it resizable if I grab a
     // corner." 10px grab zone per corner; width follows (240px min), height can
     // grow but never below what the content needs.
-    const CORNER = 10, MIN_W = 240;
+    const CORNER = 10, MIN_W = 160;   // narrower -- user: "allow it to stretch even smaller horizontally before blocking"
     const cornerAt = (e, r) => {
       const L = e.clientX - r.left < CORNER, R = r.right - e.clientX < CORNER, T = e.clientY - r.top < CORNER, B = r.bottom - e.clientY < CORNER;
       return R && B ? 'se' : null;   // the bottom-right grip only, where its L mark is
