@@ -21505,7 +21505,7 @@ tabOMSC.onclick();
     ctx.lineTo(kx, ky);       // femur
     ctx.lineTo(ex, ey);       // tibia
     ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
-    ctx.lineWidth = 1.6; ctx.strokeStyle = '#808080'; ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = '#808080'; ctx.stroke();   // 1px legs -- user: "make the width of the spider legs thiner... 1 pixel thick"
     // foot target
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(l.fx, l.fy, ringR(), 0, TAU); ctx.stroke();
@@ -21565,7 +21565,7 @@ tabOMSC.onclick();
     ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]);
     for (let i = 1; i < F; i++) ctx.lineTo(P[i][0], P[i][1]);
     ctx.lineTo(ex, ey);
-    ctx.lineJoin = 'bevel'; ctx.lineWidth = 1.6; ctx.strokeStyle = '#808080'; ctx.stroke();
+    ctx.lineJoin = 'bevel'; ctx.lineWidth = 1; ctx.strokeStyle = '#808080'; ctx.stroke();   // 1px, like the legs still on her
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
     const ft = pc.pts[pc.pts.length - 1];
     ctx.beginPath(); ctx.arc(ft[0], ft[1], ringR(), 0, TAU); ctx.stroke();
