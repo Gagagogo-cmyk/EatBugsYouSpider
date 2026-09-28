@@ -20649,7 +20649,7 @@ tabOMSC.onclick();
   // standing in for the cursor: no dot (they draw it).
   const eatDot = document.createElement('div');
   eatDot.id = 'gnEatDot';
-  eatDot.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:#8e9392;pointer-events:none;z-index:2147483646;display:none';
+  eatDot.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:#262626;pointer-events:none;z-index:2147483646;display:none';
   document.body.appendChild(eatDot);
   function placeDot() {
     const onPay = !pay.hidden && (r => ptr.x >= r.left && ptr.x <= r.right && ptr.y >= r.top && ptr.y <= r.bottom)(pay.getBoundingClientRect());
