@@ -6530,6 +6530,23 @@ input,textarea,[contenteditable="true"]{-webkit-user-select:text!important;user-
 .radioUp.npMeta,.radioUp#nowPlayingBar{margin-left:10px;margin-right:10px}
 .radioUp.npMeta{flex:0 0 auto;color:rgb(226,228,227)} /* the colour it inherits inside .conv */
 .radioUp#nowPlayingBar{flex:0 0 auto}
+/* 文A LANGUAGES -- user: "on the top right corner of the screen, I want a 文A
+   text in grey (hover in white). when clicking on it I want to see a drop
+   down menu of all translatable languages. when clicking on a language, I
+   want the website to actually translate itself." Google's website
+   translator does the translating (the page text goes to Google); its own
+   bar, tooltips and highlights are hidden. See GN TRANSLATE in the script. */
+#gnLangBtn{position:absolute;top:0;right:10px;height:15.6px;line-height:15.6px;color:var(--g3,#7d8281);cursor:var(--cursor-cross);z-index:60;user-select:none}
+#gnLangBtn:hover,#gnLangBtn.open{color:#fff}
+#gnLangMenu{position:absolute;top:18px;right:10px;z-index:61;background:#000;border:1px solid var(--g3,#7d8281);max-height:60vh;overflow-y:auto;min-width:20ch;box-sizing:border-box;padding:0}
+#gnLangMenu[hidden]{display:none}
+#gnLangMenu div{height:14px;line-height:14px;padding:0 4px;color:var(--g3,#7d8281);white-space:nowrap;cursor:var(--cursor-cross)}
+#gnLangMenu div:hover,#gnLangMenu div.on{color:#fff}
+#gnGtHost{display:none!important}
+.goog-te-banner-frame,iframe.goog-te-banner-frame,#goog-gt-tt,.goog-te-balloon-frame,.goog-tooltip,.goog-te-spinner-pos,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,.VIpgJd-yAWNEb-L7lbkb,.VIpgJd-ZVi9od-xl07Ob-OEVmcd{display:none!important}
+body{top:0!important}
+.goog-text-highlight,font[style]{background:none!important;box-shadow:none!important}
 /* NETWORK PAGE -- user: "when using the network shortcut tab, it should open
    a page in base.html. It should open a full page of the network of
    gnumbat. Like, above everything. It's the higher page of the website
@@ -8581,7 +8598,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
          first word). Applies to every <b>keycap</b>Title chip in the
          footer/panels, both the static HTML below and the matching
          innerHTML/textContent assignments further down the file. -->
-    <span class="fg"><span class="chip" id="mrlcfChip"><b>^C</b>console</span><!-- ^R cursor ransom -- user: "remove the shortcut tab tip and replace it by ^R cursor ransom. it should open the pop up anytime" (the spider's donate-to-get-your-cursor-back sheet, #gnSpiderPay). Tipping moved back under the N/A line (#npDj). --><span class="chip" id="ransomChip" style="margin-left:6px" title="pay the spider's cursor ransom"><b>^R</b>cursor ransom</span></span><!-- ^W wadio -> ^C console, and the hidden ^C chat chip REMOVED -- user: "remove the chat shortcut, use ^C console instead of ^W wadio." --><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
+    <span class="fg"><span class="chip" id="mrlcfChip"><b>^C</b>console</span><!-- ^R cursor ransom -- user: "remove the shortcut tab tip and replace it by ^R cursor ransom. it should open the pop up anytime" (the spider's donate-to-get-your-cursor-back sheet, #gnSpiderPay). Tipping moved back under the N/A line (#npDj). --><span class="chip" id="ransomChip" style="margin-left:6px" title="pay the spider's cursor ransom"><b>^R</b>(c) 2026 PWYW Ransomware</span></span><!-- ^W wadio -> ^C console, and the hidden ^C chat chip REMOVED -- user: "remove the chat shortcut, use ^C console instead of ^W wadio." --><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
     <!-- id="editModeGroup" ADDED -- EDIT INTERFACE (spec: a global button,
          above/near the chat, that suspends normal page behavior and lets
          the user talk to Cricket about changing this page itself). Lives
@@ -19530,7 +19547,14 @@ function bookSlot(){
     setTimeout(()=>box.classList.remove('bkFlash'),1000);
   }, wasOpen ? 60 : 420);   /* after the open animation (animateShelf, 260ms) */
 }
-document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault(); bookSlot(); });
+/* a second click closes it again -- user: "when clicking on book a slot for a
+   second time it should close the menu." (booking showing = console open on
+   the model select page, not inside a model's DAW) */
+document.getElementById('npBook').addEventListener('click',e=>{
+  e.preventDefault();
+  if(mrlcfOpen && omgmView.classList.contains('hide')){ setMrlcfOpen(false); return; }
+  bookSlot();
+});
 /* 'gnumbat-open-model' -- a radio card's link on the show page (in the
    iframe): stay here and switch to that model -- tuned in when it's a trained
    channel (tuneToModel), and highlighted in the model list either way; a
@@ -21993,6 +22017,68 @@ tabOMSC.onclick();
 })();
 </script>
 <!-- ===== /graphgazer spider ===== -->
-<script src="ebys-live.js"></script>
+<script src="ebys-live.js">
+</script>
+<script>
+/* ── GN TRANSLATE (文A, top right) -- see #gnLangBtn's CSS comment ─────────
+   Google's website translator, driven from our own menu: picking a language
+   sets its googtrans cookie and switches its (hidden) language select, so the
+   page translates in place, live updates included. The show page (other
+   port) gets the same pick as 'gnumbat-lang' and does the same. The cookie
+   brings the language back after a refresh. English = the original text,
+   which the widget can only give back by reloading, so that one reloads. */
+(function(){
+  const LANGS=[["en", "English"], ["af", "Afrikaans"], ["sq", "Shqip"], ["am", "አማርኛ"], ["ar", "العربية"], ["hy", "Հայերեն"], ["as", "অসমীয়া"], ["ay", "Aymar aru"], ["az", "Azərbaycan"], ["bm", "Bamanankan"], ["eu", "Euskara"], ["be", "Беларуская"], ["bn", "বাংলা"], ["bho", "भोजपुरी"], ["bs", "Bosanski"], ["bg", "Български"], ["ca", "Català"], ["ceb", "Cebuano"], ["ny", "Chichewa"], ["zh-CN", "中文（简体）"], ["zh-TW", "中文（繁體）"], ["co", "Corsu"], ["hr", "Hrvatski"], ["cs", "Čeština"], ["da", "Dansk"], ["dv", "ދިވެހި"], ["doi", "डोगरी"], ["nl", "Nederlands"], ["eo", "Esperanto"], ["et", "Eesti"], ["ee", "Eʋegbe"], ["tl", "Filipino"], ["fi", "Suomi"], ["fr", "Français"], ["fy", "Frysk"], ["gl", "Galego"], ["ka", "ქართული"], ["de", "Deutsch"], ["el", "Ελληνικά"], ["gn", "Avañeʼẽ"], ["gu", "ગુજરાતી"], ["ht", "Kreyòl ayisyen"], ["ha", "Hausa"], ["haw", "ʻŌlelo Hawaiʻi"], ["iw", "עברית"], ["hi", "हिन्दी"], ["hmn", "Hmoob"], ["hu", "Magyar"], ["is", "Íslenska"], ["ig", "Igbo"], ["ilo", "Ilokano"], ["id", "Bahasa Indonesia"], ["ga", "Gaeilge"], ["it", "Italiano"], ["ja", "日本語"], ["jw", "Basa Jawa"], ["kn", "ಕನ್ನಡ"], ["kk", "Қазақ"], ["km", "ខ្មែរ"], ["rw", "Kinyarwanda"], ["gom", "कोंकणी"], ["ko", "한국어"], ["kri", "Krio"], ["ku", "Kurdî"], ["ckb", "کوردیی ناوەندی"], ["ky", "Кыргызча"], ["lo", "ລາວ"], ["la", "Latina"], ["lv", "Latviešu"], ["ln", "Lingála"], ["lt", "Lietuvių"], ["lg", "Luganda"], ["lb", "Lëtzebuergesch"], ["mk", "Македонски"], ["mai", "मैथिली"], ["mg", "Malagasy"], ["ms", "Bahasa Melayu"], ["ml", "മലയാളം"], ["mt", "Malti"], ["mi", "Māori"], ["mr", "मराठी"], ["mni-Mtei", "ꯃꯤꯇꯩꯂꯣꯟ"], ["lus", "Mizo ṭawng"], ["mn", "Монгол"], ["my", "မြန်မာ"], ["ne", "नेपाली"], ["no", "Norsk"], ["or", "ଓଡ଼ିଆ"], ["om", "Afaan Oromoo"], ["ps", "پښتو"], ["fa", "فارسی"], ["pl", "Polski"], ["pt", "Português"], ["pa", "ਪੰਜਾਬੀ"], ["qu", "Runasimi"], ["ro", "Română"], ["ru", "Русский"], ["sm", "Gagana Samoa"], ["sa", "संस्कृतम्"], ["gd", "Gàidhlig"], ["nso", "Sepedi"], ["sr", "Српски"], ["st", "Sesotho"], ["sn", "chiShona"], ["sd", "سنڌي"], ["si", "සිංහල"], ["sk", "Slovenčina"], ["sl", "Slovenščina"], ["so", "Soomaali"], ["es", "Español"], ["su", "Basa Sunda"], ["sw", "Kiswahili"], ["sv", "Svenska"], ["tg", "Тоҷикӣ"], ["ta", "தமிழ்"], ["tt", "Татар"], ["te", "తెలుగు"], ["th", "ไทย"], ["ti", "ትግርኛ"], ["ts", "Xitsonga"], ["tr", "Türkçe"], ["tk", "Türkmen"], ["ak", "Twi"], ["uk", "Українська"], ["ur", "اردو"], ["ug", "ئۇيغۇرچە"], ["uz", "Oʻzbek"], ["vi", "Tiếng Việt"], ["cy", "Cymraeg"], ["xh", "isiXhosa"], ["yi", "ייִדיש"], ["yo", "Yorùbá"], ["zu", "isiZulu"]];
+  const plug=document.querySelector('.plugin'); if(!plug) return;
+  const cookieLang=()=>{ const m=document.cookie.match(/(?:^|;\s*)googtrans=\/[^\/;]*\/([^;]+)/); return m?decodeURIComponent(m[1]):'en'; };
+  function setCookie(lang){
+    const v=lang&&lang!=='en'?'/en/'+lang:'';
+    const exp=v?'':'; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    [null,location.hostname,'.'+location.hostname].forEach(d=>{ document.cookie='googtrans='+v+'; path=/'+(d?'; domain='+d:'')+exp; });
+  }
+  function load(cb){
+    if(window.google && google.translate && google.translate.TranslateElement && document.getElementById('gnGtHost').childNodes.length){ if(cb) cb(); return; }
+    const prev=window.gnGtInit;
+    window.gnGtInit=function(){ try{ new google.translate.TranslateElement({pageLanguage:'en',autoDisplay:false},'gnGtHost'); }catch(e){} if(prev) prev(); if(cb) cb(); };
+    if(!document.getElementById('gnGtScript')){
+      const sc=document.createElement('script'); sc.id='gnGtScript';
+      sc.src='https://translate.google.com/translate_a/element.js?cb=gnGtInit';
+      sc.onerror=()=>{ if(typeof log==='function') log('res',"can't reach Google Translate -- is this computer online?"); };
+      document.head.appendChild(sc);
+    }
+  }
+  function pick(lang, tries){
+    const c=document.querySelector('select.goog-te-combo');
+    if(c && [...c.options].some(o=>o.value===lang)){ c.value=lang; c.dispatchEvent(new Event('change')); return; }
+    if((tries||0)<60) setTimeout(()=>pick(lang,(tries||0)+1),100);
+  }
+  function frameTell(lang){ try{ const f=document.getElementById('omscFrame'); if(f && f.contentWindow) f.contentWindow.postMessage({type:'gnumbat-lang', lang},'*'); }catch(e){} }
+  function apply(lang){
+    setCookie(lang);
+    frameTell(lang);
+    if(lang==='en'){ setTimeout(()=>location.reload(),150); return; }
+    load(()=>pick(lang));
+  }
+  const host=document.createElement('div'); host.id='gnGtHost'; host.className='notranslate'; document.body.appendChild(host);
+  const btn=document.createElement('span'); btn.id='gnLangBtn'; btn.className='notranslate'; btn.setAttribute('translate','no');
+  btn.textContent='\u6587A'; btn.title='language'; btn.setAttribute('role','button'); btn.tabIndex=0;
+  const menu=document.createElement('div'); menu.id='gnLangMenu'; menu.className='notranslate'; menu.setAttribute('translate','no'); menu.hidden=true;
+  menu.innerHTML=LANGS.map(([c,n])=>'<div data-l="'+c+'" lang="'+c+'" title="'+c+'">'+n+'</div>').join('');
+  plug.append(btn, menu);
+  const mark=()=>{ const cur=cookieLang(); menu.querySelectorAll('div').forEach(d=>d.classList.toggle('on', d.dataset.l===cur)); };
+  const open=o=>{ menu.hidden=!o; btn.classList.toggle('open',o); if(o){ mark(); const on=menu.querySelector('.on'); if(on) on.scrollIntoView({block:'nearest'}); } };
+  btn.addEventListener('click',e=>{ e.stopPropagation(); open(menu.hidden); });
+  btn.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(menu.hidden); } });
+  menu.addEventListener('click',e=>{ const d=e.target.closest('div[data-l]'); if(!d) return; e.stopPropagation(); open(false); if(d.dataset.l!==cookieLang() || d.dataset.l!=='en') apply(d.dataset.l); });
+  document.addEventListener('click',e=>{ if(!menu.hidden && !e.target.closest('#gnLangMenu,#gnLangBtn')) open(false); },true);
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !menu.hidden) open(false); });
+  window.gnSetLanguage=apply;
+  /* already picked before this load: the widget reads the cookie and translates */
+  const cur=cookieLang();
+  if(cur!=='en') load(()=>pick(cur));
+  const f=document.getElementById('omscFrame');
+  if(f) f.addEventListener('load',()=>{ const c=cookieLang(); if(c!=='en') frameTell(c); });
+})();
+</script>
 </body>
 </html>

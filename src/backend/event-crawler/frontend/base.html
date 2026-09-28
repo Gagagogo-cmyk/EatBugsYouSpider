@@ -1816,6 +1816,14 @@
            4px sides, so its text sits exactly like the summary's. */
         .filter-group .weekend-dropdown-menu { padding: 0 !important; }
         .filter-group .weekend-dropdown-menu a { height: 14px !important; line-height: 14px !important; padding: 0 4px !important; margin: 0 !important; border: 0 !important; box-sizing: content-box; }
+        /* 文A LANGUAGES (panel.html's #gnLangBtn / GN TRANSLATE): Google's
+           website translator translates this page too; its own bar,
+           tooltips and highlights stay hidden. */
+        #gnGtHost { display: none !important; }
+        .goog-te-banner-frame, iframe.goog-te-banner-frame, #goog-gt-tt, .goog-te-balloon-frame, .goog-tooltip, .goog-te-spinner-pos,
+        .VIpgJd-ZVi9od-ORHb-OEVmcd, .VIpgJd-ZVi9od-aZ2wEe-wOHMyf, .VIpgJd-yAWNEb-L7lbkb, .VIpgJd-ZVi9od-xl07Ob-OEVmcd { display: none !important; }
+        body { top: 0 !important; }
+        .goog-text-highlight, font[style] { background: none !important; box-shadow: none !important; }
 </style>
 <script>
 /* radio cards (crkt.go): "the link to event of the gnumbat online sets should
@@ -3540,6 +3548,47 @@ cityModal.addEventListener('click', function(e) {
     });
     function watch(){ var g = document.querySelector('.events-grid'); if (g) mo.observe(g, {childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'hidden', 'class']}); }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
+})();
+</script>
+<script>
+/* GN TRANSLATE, show-page side -- panel.html owns the 文A menu and sends the
+   pick as 'gnumbat-lang'; this page sets Google's googtrans cookie and
+   switches the widget's hidden select (English = original: reload). A pick
+   already in the cookie translates it on load. */
+(function () {
+    function cookieLang() { var m = document.cookie.match(/(?:^|;\s*)googtrans=\/[^\/;]*\/([^;]+)/); return m ? decodeURIComponent(m[1]) : 'en'; }
+    function setCookie(lang) {
+        var v = lang && lang !== 'en' ? '/en/' + lang : '', exp = v ? '' : '; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        [null, location.hostname, '.' + location.hostname].forEach(function (d) { document.cookie = 'googtrans=' + v + '; path=/' + (d ? '; domain=' + d : '') + exp; });
+    }
+    var host = document.createElement('div'); host.id = 'gnGtHost'; host.className = 'notranslate';
+    (document.body || document.documentElement).appendChild(host);
+    function load(cb) {
+        if (window.google && google.translate && google.translate.TranslateElement && host.childNodes.length) { if (cb) cb(); return; }
+        window.gnGtInit = function () { try { new google.translate.TranslateElement({pageLanguage: 'en', autoDisplay: false}, 'gnGtHost'); } catch (e) {} if (cb) cb(); };
+        if (!document.getElementById('gnGtScript')) {
+            var sc = document.createElement('script'); sc.id = 'gnGtScript';
+            sc.src = 'https://translate.google.com/translate_a/element.js?cb=gnGtInit';
+            document.head.appendChild(sc);
+        }
+    }
+    function pick(lang, tries) {
+        var c = document.querySelector('select.goog-te-combo');
+        if (c && [].some.call(c.options, function (o) { return o.value === lang; })) { c.value = lang; c.dispatchEvent(new Event('change')); return; }
+        if ((tries || 0) < 60) setTimeout(function () { pick(lang, (tries || 0) + 1); }, 100);
+    }
+    function apply(lang) {
+        var was = cookieLang();
+        setCookie(lang);
+        if (lang === 'en') { if (was !== 'en') location.reload(); return; }
+        load(function () { pick(lang); });
+    }
+    window.addEventListener('message', function (e) {
+        if (e.source !== window.parent || !e.data || e.data.type !== 'gnumbat-lang' || typeof e.data.lang !== 'string') return;
+        apply(e.data.lang);
+    });
+    var cur = cookieLang();
+    if (cur !== 'en') load(function () { pick(cur); });
 })();
 </script>
 </body>
