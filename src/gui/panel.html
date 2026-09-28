@@ -6747,7 +6747,8 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
 /* #npBook -- centred on the song + N/A lines, on the right margin; the
    same box as the search bars. #bookingBox.bkFlash is its one-second white
    outline (bookSlot()). */
-.npMeta .npBook{position:absolute;right:0;top:calc((var(--row,16px) * 2 + 2px - 16px) / 2);height:16px;line-height:14px;box-sizing:border-box;padding:0 4px;margin:0;
+.npMeta .npActs{position:absolute;right:0;top:calc((var(--row,16px) * 2 + 2px - 16px) / 2);display:flex;gap:1ch;z-index:2}
+.npMeta .npBook{position:relative;height:16px;line-height:14px;box-sizing:border-box;padding:0 4px;margin:0;
   border:1px solid var(--g2,#8e9392);background:#000;color:#fff;font:inherit;font-size:12px;cursor:pointer;z-index:2}
 .npMeta .npBook:hover{border-color:#fff}
 #bookingBox.bkFlash{outline:1px solid #fff;outline-offset:3px}
@@ -8097,7 +8098,11 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
              align it horizontally on the right-margin. It should open the
              console and highlight the booking section with a white rectangle
              around it for a second." See bookSlot(). -->
-        <button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button>
+        <!-- #npTip -- user: "add a tip button next to the booking button,
+             linked to the stripe pipeline." Opens #npDj's amount row; [send]
+             goes through window.gnTipDj (POST /tips/checkout -> Stripe
+             Checkout in a new tab), tipping whoever holds the radio. -->
+        <span class="npActs"><button type="button" class="npBook npTipBtn" id="npTip" title="tip whoever is on air (Stripe)">tip</button><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
         <!-- #npDj -- DJ TIPS + SOCIALS. user: "the djs will need to be able
              to receive tips and have social media links above their playnow
              bar". Shown only while a dj holds the slot (TUNED_DJ); hidden
@@ -16170,6 +16175,7 @@ function renderNowPlaying(){
    pattern as window.gnSpiderPay for donations. Until that hook exists the
    row says so instead of pretending a payment went through. */
 let npDjCents=500;
+let NP_TIP_OPEN=false;   /* the #npTip button opened the amount row (works with no dj on air) */
 function npDjEsc(t){ return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function npDjCurrent(){
   /* try/catch, not just typeof: this script runs before DJS/TUNED_DJ's own
@@ -16184,12 +16190,17 @@ function npDjShowPay(open){
   const main=document.getElementById('npDjMain'), pay=document.getElementById('npDjPay');
   if(!main||!pay) return;
   main.hidden=!!open; pay.hidden=!open; npDjNote('');
-  if(open){ const d=npDjCurrent(); document.getElementById('npDjPayLbl').textContent='tip '+(d?d.id:'')+' :'; }
+  if(open){ const d=npDjCurrent(); document.getElementById('npDjPayLbl').textContent= d ? 'tip '+d.id+' :' : 'tip the radio :'; }
+  if(!open && NP_TIP_OPEN){ NP_TIP_OPEN=false; if(!npDjCurrent()){ const b=document.getElementById('npDj'); if(b) b.hidden=true; } }
 }
 function renderNpDj(){
   const box=document.getElementById('npDj'); if(!box) return;
   const d=npDjCurrent();
-  if(!d){ box.hidden=true; npDjShowPay(false); return; }
+  if(!d){
+    /* no dj: the row only shows while the [tip] button's amount row is open */
+    if(NP_TIP_OPEN){ box.hidden=false; document.getElementById('npDjLinks').innerHTML=''; return; }
+    box.hidden=true; npDjShowPay(false); return;
+  }
   if(box.dataset.dj!==d.id){ box.dataset.dj=d.id; npDjShowPay(false); }
   const links=(Array.isArray(d.socials)?d.socials:[]).filter(l=>l && /^https?:\/\//i.test(String(l.url||'')));
   document.getElementById('npDjLinks').innerHTML=links.map(l=>
@@ -16202,6 +16213,11 @@ function renderNpDj(){
   const act=(el,fn)=>{ if(!el) return; el.addEventListener('click',fn); el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fn(e); } }); };
   const pick=el=>{ box.querySelectorAll('.npDjAmt').forEach(b=>b.classList.toggle('on',b===el)); if(other) other.classList.toggle('on',!el); };
   act(document.getElementById('npDjTip'),()=>npDjShowPay(true));
+  /* #npTip -- the always-there tip button */
+  act(document.getElementById('npTip'),()=>{
+    if(NP_TIP_OPEN || !document.getElementById('npDjPay').hidden){ npDjShowPay(false); renderNpDj(); return; }
+    NP_TIP_OPEN=true; box.hidden=false; npDjShowPay(true);
+  });
   act(document.getElementById('npDjCancel'),()=>npDjShowPay(false));
   box.querySelectorAll('.npDjAmt').forEach(b=>act(b,()=>{ npDjCents=+b.dataset.cents; if(other) other.value=''; pick(b); npDjNote(''); }));
   if(other){
@@ -16210,17 +16226,37 @@ function renderNpDj(){
     other.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); document.getElementById('npDjSend').click(); } if(e.key==='Escape'){ npDjShowPay(false); other.blur(); } });
   }
   act(document.getElementById('npDjSend'),()=>{
-    const d=npDjCurrent(); if(!d) return;
+    const d=npDjCurrent();
+    if(!d && !NP_TIP_OPEN) return;
     if(!(npDjCents>=100)){ npDjNote('minimum tip is $1'); return; }
     if(typeof window.gnTipDj!=='function'){ npDjNote("tips aren't connected yet"); return; }
     npDjNote('...');
-    Promise.resolve().then(()=>window.gnTipDj({dj:d.id, amountCents:npDjCents, currency:'cad'})).then(ok=>{
+    Promise.resolve().then(()=>window.gnTipDj({dj:d?d.id:null, amountCents:npDjCents, currency:'cad'})).then(ok=>{
       if(ok===false){ npDjNote('tip cancelled'); return; }
-      npDjShowPay(false); npDjNote('thanks -- $'+(npDjCents/100).toFixed(2)+' to '+d.id);
+      const keepOpen=NP_TIP_OPEN && !d;
+      npDjShowPay(false); if(keepOpen){ const b=document.getElementById('npDj'); if(b) b.hidden=false; }
+      npDjNote('finish the payment in the Stripe tab -- $'+(npDjCents/100).toFixed(2)+(d?' to '+d.id:''));
+      if(keepOpen) setTimeout(()=>{ if(!NP_TIP_OPEN) renderNpDj(); },6000);
       setTimeout(()=>npDjNote(''),4000);
     }).catch(err=>npDjNote('tip failed'+(err&&err.message?' -- '+err.message:'')));
   });
 })();
+/* window.gnTipDj -- the Stripe pipeline: POST /tips/checkout on the backend
+   (the login's AUTH_URL) makes a Stripe Checkout page for this amount,
+   tagged with the live radio session so the webhook's split pays whoever is
+   on air; it opens in a new tab. The tab is opened right on the click (before
+   the request) so pop-up blockers let it through. */
+window.gnTipDj=function({amountCents, currency}){
+  const tab=window.open('about:blank','_blank');
+  const base=(typeof AUTH_URL==='string'?AUTH_URL:'http://localhost:3000').replace(/\/+$/,'');
+  return fetch(base+'/tips/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amountCents,currency})})
+    .then(r=>r.json().catch(()=>({})).then(j=>({ok:r.ok,j})))
+    .then(({ok,j})=>{
+      if(!ok || !j.url){ try{ tab&&tab.close(); }catch(e){} throw new Error(j.error||'backend offline'); }
+      if(tab) tab.location.href=j.url; else window.location.href=j.url;
+      return true;
+    }, err=>{ try{ tab&&tab.close(); }catch(e){} throw new Error(err&&err.message&&!/fetch/i.test(err.message)?err.message:'backend offline'); });
+};
 function npChannelLines(){
   try{
     if(typeof TUNED_DJ!=='undefined' && TUNED_DJ!=null){
