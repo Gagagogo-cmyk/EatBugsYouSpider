@@ -3347,7 +3347,20 @@ cityModal.addEventListener('click', function(e) {
     /* id-level specificity so it beats this page's own !important cursor
        rules (the search fields' text cursor) */
     /* hidden entirely: panel.html draws the eaten cursor's 1px dot on top */
-    eatStyle.textContent = 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: none !important; }';
+    function eatRule(c){ return 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: ' + c + ' !important; }'; }
+    eatStyle.textContent = eatRule('none');
+    /* side-window bug (see panel.html's kickPointer): coming back into the
+       window, flip to another invisible cursor and back so Chrome re-sends it */
+    var EAT_ALT = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=") 0 0, none', kickT = 0;
+    function kickPointer(){
+        if (!eatStyle.parentNode) return;
+        eatStyle.textContent = eatRule(EAT_ALT);
+        clearTimeout(kickT);
+        kickT = setTimeout(function(){ eatStyle.textContent = eatRule('none'); }, 120);
+    }
+    document.addEventListener('mouseover', function(e){ if (!e.relatedTarget) kickPointer(); }, true);
+    document.documentElement.addEventListener('pointerenter', kickPointer);
+    window.addEventListener('focus', kickPointer);
     window.addEventListener('message', function(e){
         if (e.source !== window.parent || !e.data || e.data.type !== 'gnumbat-spider-eat') return;
         if (e.data.eaten) { if (!eatStyle.parentNode) document.head.appendChild(eatStyle); } else if (eatStyle.parentNode) eatStyle.parentNode.removeChild(eatStyle);

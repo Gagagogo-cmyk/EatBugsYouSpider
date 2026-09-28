@@ -20640,7 +20640,25 @@ tabOMSC.onclick();
   const eatStyle = document.createElement('style');
   // id-level specificity so it beats a page's own !important cursor rules
   // (e.g. base.html's text cursor on its search fields)
-  eatStyle.textContent = 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: none !important; }';
+  const eatRule = c => 'html:not(#gnNo) *:not(#gnNo), html:not(#gnNo) *:not(#gnNo)::before, html:not(#gnNo) *:not(#gnNo)::after, html:not(#gnNo) { cursor: ' + c + ' !important; }';
+  eatStyle.textContent = eatRule('none');
+  // SIDE-WINDOW BUG -- user: "when I exit the screen by touching the left side
+  // of the window and come back, the cursor goes back to its original visible
+  // state." At the window edge macOS puts up its own (resize) cursor; coming
+  // back in, Chrome still thinks it's showing "none" so it never re-sends it
+  // and the arrow stays. On every re-entry, flip to a DIFFERENT invisible
+  // cursor (a transparent 1px image) and back, so Chrome has to set it again.
+  const EAT_ALT = 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=") 0 0, none';
+  let kickT = 0;
+  function kickPointer() {
+    if (!eatStyle.isConnected) return;
+    eatStyle.textContent = eatRule(EAT_ALT);
+    clearTimeout(kickT);
+    kickT = setTimeout(() => { eatStyle.textContent = eatRule('none'); }, 120);
+  }
+  document.addEventListener('mouseover', e => { if (!e.relatedTarget) kickPointer(); }, true);
+  document.documentElement.addEventListener('pointerenter', kickPointer);
+  window.addEventListener('focus', kickPointer);
   // eaten: a 1px grey dot stays where the pointer was -- user: "when the
   // spider eats the cursor, make it become 1 pixel grey dot instead of simply
   // nothing" / "make sure the original mouse doesnt show up above the pixel
