@@ -21014,7 +21014,7 @@ tabOMSC.onclick();
     'html #gnSpiderPay .hint,html #gnSpiderPay .f,html #gnSpiderPay .f *{font-size:10px!important}html #gnSpiderPay .f svg{width:10px;height:10px}'
     ) : '') +
     '</style>' +
-    '<span class="cr nw" aria-hidden="true"></span><span class="cr ne" aria-hidden="true"></span><span class="cr sw" aria-hidden="true"></span><span class="cr se" aria-hidden="true"></span>' +
+    '<span class="cr se" aria-hidden="true"></span>' +   // bottom-right only -- user: "keep the L shaped only in the bottom right corner"
     '<button type="button" class="x" data-a="no" aria-label="Close">&times;</button>' +
     '<div class="l"><span class="cp">&copy;</span> 2026 PWYW Ransomware</div>' +
     '<label class="amt"><span data-a="sym">$</span><input data-a="amt" type="text" inputmode="decimal" autocomplete="off" ' +
@@ -21159,7 +21159,7 @@ tabOMSC.onclick();
     const CORNER = 10, MIN_W = 240;
     const cornerAt = (e, r) => {
       const L = e.clientX - r.left < CORNER, R = r.right - e.clientX < CORNER, T = e.clientY - r.top < CORNER, B = r.bottom - e.clientY < CORNER;
-      return (L || R) && (T || B) ? (T ? 'n' : 's') + (L ? 'w' : 'e') : null;
+      return R && B ? 'se' : null;   // the bottom-right grip only, where its L mark is
     };
     let drag = null;
     pay.addEventListener('pointerdown', e => {
