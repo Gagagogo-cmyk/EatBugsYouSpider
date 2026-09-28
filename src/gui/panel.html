@@ -20961,38 +20961,37 @@ tabOMSC.onclick();
     // styles above: black box, grey 1px border, page mono at 12px everywhere,
     // font smoothing off like the panel's body, #posterize3 like .plugin.
     (PAY_LOOK === 'page' ? (
-    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#fff;color:#7d8281;border:1px solid #7d8281;box-shadow:none;' +
+    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#000;color:#7d8281;border:1px solid #7d8281;box-shadow:none;' +
     'font:12px/1.3 var(--mono,ui-monospace,monospace);-webkit-font-smoothing:none;filter:url(#posterize3);top:50%;transform:translate(-50%,-50%);animation:none}' +   // dead centre -- user: "make the pop up more centered"
     'html #gnSpiderPay *{border-radius:0!important;font-family:inherit!important;font-size:12px!important;font-weight:400!important;letter-spacing:normal!important}' +
-    // white box -- user: "put the background of the pop up white". Grey text,
-    // black under the cursor ("text in grey except for when the cursor
-    // hovers"); Donate is the one solid block, now black on the white
+    // grey text, white only under the cursor -- user: "text in grey except for
+    // when the cursor hovers"; Donate stays white ("donate remains white")
     'html #gnSpiderPay .l{padding:0 18px;line-height:16px;color:#7d8281}' +
-    'html #gnSpiderPay .l:hover,html #gnSpiderPay .r:hover,html #gnSpiderPay .hint:hover,html #gnSpiderPay .f:hover{color:#000}' +
+    'html #gnSpiderPay .l:hover,html #gnSpiderPay .r:hover,html #gnSpiderPay .hint:hover,html #gnSpiderPay .f:hover{color:#fff}' +
     'html #gnSpiderPay .x{top:2px;right:4px;width:18px;height:18px;line-height:18px;color:#7d8281}' +
-    'html #gnSpiderPay .x:hover{background:transparent;color:#000}' +
-    'html #gnSpiderPay .amt{margin:6px 0 2px;padding:0 6px;border:1px solid #7d8281;background:#fff;gap:2px}' +
-    'html #gnSpiderPay .amt:focus-within{box-shadow:none;border-color:#000}' +
+    'html #gnSpiderPay .x:hover{background:transparent;color:#fff}' +
+    'html #gnSpiderPay .amt{margin:6px 0 2px;padding:0 6px;border:1px solid #7d8281;background:#000;gap:2px}' +
+    'html #gnSpiderPay .amt:focus-within{box-shadow:none;border-color:#fff}' +
     'html #gnSpiderPay .amt span{color:#7d8281}' +
     'html #gnSpiderPay .amt input{height:20px;color:#7d8281}' +
-    'html #gnSpiderPay .amt:hover input,html #gnSpiderPay .amt:focus-within input,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#000}' +
+    'html #gnSpiderPay .amt:hover input,html #gnSpiderPay .amt:focus-within input,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#fff}' +
     'html #gnSpiderPay .amt input::placeholder{color:#7d8281}' +
     'html #gnSpiderPay .amt select{color:#7d8281;padding:2px 14px 2px 4px;margin:0;background-position:right 2px center;' +
-    'background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%237d8281%27 stroke-width=%271.5%27/%3E%3C/svg%3E")}' +
-    'html #gnSpiderPay .amt select option{background:#fff;color:#000}' +
-    'html #gnSpiderPay .amt select:hover{color:#000!important}' +
+    'background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%271.5%27/%3E%3C/svg%3E")}' +
+    'html #gnSpiderPay .amt select option{background:#000;color:#fff}' +
+    'html #gnSpiderPay .amt select:hover{color:#fff!important}' +
     'html #gnSpiderPay .hint{margin:0 0 6px;color:#7d8281}' +
     'html #gnSpiderPay .r{padding:3px 0;border-top:1px solid #7d8281;color:#7d8281}' +
-    'html #gnSpiderPay .p{height:22px;margin-top:6px;background:#000;color:#fff;box-shadow:none;gap:6px}' +
-    'html #gnSpiderPay .p:hover{background:#000;color:#fff}' +
-    'html #gnSpiderPay .p[disabled]{background:#7d8281;color:#fff}' +
-    'html #gnSpiderPay .sp{border-color:rgba(255,255,255,.3);border-top-color:#fff}' +
-    'html #gnSpiderPay .p:focus-visible,html #gnSpiderPay .no:focus-visible,html #gnSpiderPay .x:focus-visible{outline:1px solid #000;outline-offset:1px}' +
+    'html #gnSpiderPay .p{height:22px;margin-top:6px;background:#fff;color:#000;box-shadow:none;gap:6px}' +
+    'html #gnSpiderPay .p:hover{background:#fff;color:#000}' +
+    'html #gnSpiderPay .p[disabled]{background:#7d8281;color:#000}' +
+    'html #gnSpiderPay .sp{border-color:rgba(0,0,0,.25);border-top-color:#000}' +
+    'html #gnSpiderPay .p:focus-visible,html #gnSpiderPay .no:focus-visible,html #gnSpiderPay .x:focus-visible{outline:1px solid #fff;outline-offset:1px}' +
     'html #gnSpiderPay .no{height:20px;margin-top:2px;color:#7d8281}' +
-    'html #gnSpiderPay .no:hover{background:transparent;color:#000}' +
+    'html #gnSpiderPay .no:hover{background:transparent;color:#fff}' +
     'html #gnSpiderPay .dev{height:20px;margin-top:2px;border:1px dashed #7d8281;color:#7d8281}' +
-    'html #gnSpiderPay .dev:hover{color:#000;border-color:#000}' +
-    'html #gnSpiderPay .n{margin-top:6px;padding:3px 6px;background:#fff;border:1px solid #7d8281;color:#7d8281}' +
+    'html #gnSpiderPay .dev:hover{color:#fff;border-color:#fff}' +
+    'html #gnSpiderPay .n{margin-top:6px;padding:3px 6px;background:#000;border:1px solid #7d8281;color:#7d8281}' +
     'html #gnSpiderPay .n.ok{color:#7d8281}' +
     'html #gnSpiderPay .f{margin-top:6px;color:#7d8281}'
     ) : '') +
