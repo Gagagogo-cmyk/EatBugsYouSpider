@@ -2661,6 +2661,11 @@ server.on("upgrade", (req, socket) => {
   // that reloads mid-edit (edit_agent.js's reloadUI) needs to learn right
   // away whether there are uncommitted edits.
   try { reply(editAgent.branchesFrame()); reply(editAgent.editStateFrame()); } catch (err) { post("initial branches push failed: " + err.message); }
+  // the agents' connected/disconnected dots, right away -- user: "make sure the
+  // dot for coding and conversational agent is white when connected and a
+  // crossed circle when disconnected" (was only sent on entering edit mode, so
+  // the chat's CONVERSATIONAL AGENT box never learned it after a refresh)
+  try { reply(editAgent.agentFrame()); } catch (err) {}
 
   attachWebSocket(socket, (text) => {
     let msg;

@@ -1770,8 +1770,8 @@
            the space between the two; scroll-snap keeps every scroll stop on
            whole cards, and the 200px scroll-end room became the same 8px the
            left side has so the last stop is centred too. */
-        .events-grid { padding-right: 8px !important; scroll-snap-type: x mandatory; scroll-padding-left: 8px; box-sizing: border-box; }
-        .event { scroll-snap-align: start; }
+        .events-grid { padding-right: 8px !important; scroll-snap-type: none; scroll-padding-left: 8px; box-sizing: border-box; }
+        .event { scroll-snap-align: none; }   /* free scrolling, no snapping -- user: "dont snap the show cards when dragging, let them move freely" */
 
         /* NETWORK SELECTION LIKE THE MODEL MENU -- user: "make the selected model
            text and box in [white], and make the selection a white highlight.

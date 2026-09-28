@@ -8106,7 +8106,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
          script, next to setMrlcfOpen(). -->
     <div id="editSide" aria-label="edit agent">
       <div class="chatModelsTitle esTitle">Coding agent</div>
-      <div class="esHead"><span class="esAgents"><span class="esAgent" data-agent="cricket">ollama <span class="esAuth" id="esCricketUp" aria-hidden="true">•</span></span><span class="esAgent" data-agent="claude">claude <span class="esAuth" id="esAuth" aria-hidden="true">•</span></span></span><span class="esRing" id="esRing" title="context"><span class="esPlan" id="esPlan"></span><span class="esCtxLbl">ctx</span><svg viewBox="0 0 14 14" width="14" height="14"><circle cx="7" cy="7" r="5.5" class="esRingBg"/><circle cx="7" cy="7" r="5.5" class="esRingFg" id="esRingFg"/></svg><span id="esTok">0</span></span></div>
+      <div class="esHead"><span class="esAgents"><span class="esAgent" data-agent="cricket">ollama <span class="esAuth off" id="esCricketUp" aria-hidden="true">⊘</span></span><span class="esAgent" data-agent="claude">claude <span class="esAuth off" id="esAuth" aria-hidden="true">⊘</span></span></span><span class="esRing" id="esRing" title="context"><span class="esPlan" id="esPlan"></span><span class="esCtxLbl">ctx</span><svg viewBox="0 0 14 14" width="14" height="14"><circle cx="7" cy="7" r="5.5" class="esRingBg"/><circle cx="7" cy="7" r="5.5" class="esRingFg" id="esRingFg"/></svg><span id="esTok">0</span></span></div>
       <div class="esConvHint" id="esConvHint"></div>
       <div class="esCols">
         <div class="esCol"><div class="chatModelsTitle esSub">Tasks <span class="esStop" id="esStop">stop</span></div><div class="esList" id="esTasks"></div></div>
@@ -20244,11 +20244,11 @@ function renderEditSide(){
     st.agents.forEach(a=>{
       if(!a || !a.id || strip.querySelector('.esAgent[data-agent="'+CSS.escape(a.id)+'"]')) return;
       const el=document.createElement('span'); el.className='esAgent'; el.dataset.agent=a.id;
-      el.innerHTML=esEsc(a.label||a.id)+' <span class="esAuth" aria-hidden="true">\u2022</span>'; strip.appendChild(el);
+      el.innerHTML=esEsc(a.label||a.id)+' <span class="esAuth off" aria-hidden="true">\u2298</span>'; strip.appendChild(el);
     });
     st.agents.forEach(a=>{
       const el=a&&a.id&&strip.querySelector('.esAgent[data-agent="'+CSS.escape(a.id)+'"]'); if(!el||a.id==='claude'||a.id==='cricket') return;
-      const d=el.querySelector('.esAuth'); if(d){ d.classList.toggle('on',a.status==='connected'); d.classList.toggle('off',a.status==='disconnected'); d.textContent=a.status==='disconnected'?'\u2298':'\u2022'; }
+      const d=el.querySelector('.esAuth'); if(d){ d.classList.toggle('on',a.status==='connected'); d.classList.toggle('off',a.status!=='connected'); d.textContent=a.status==='connected'?'\u2022':'\u2298'; }
       el.title=(a.label||a.id)+' -- '+(a.status||'not checked yet');
     });
   }
@@ -20283,7 +20283,10 @@ function renderEditSide(){
   if(strip){ const on=strip.querySelector('.esAgent.on'); if(on && (on.offsetLeft < strip.scrollLeft || on.offsetLeft+on.offsetWidth > strip.scrollLeft+strip.clientWidth+1)) strip.scrollTo({left:on.offsetLeft-strip.firstElementChild.offsetLeft, behavior:'smooth'}); }
   side.classList.toggle('busy', !conv && !!(st&&st.busy));
   const auth=(st&&st.claudeAuth)||'unknown', dot=document.getElementById('esAuth'), cl=side.querySelector('.esAgent[data-agent="claude"]');
-  if(dot){ dot.classList.toggle('on', auth==='connected'); dot.classList.toggle('off', auth==='disconnected'); dot.textContent = auth==='disconnected' ? '\u2298' : '\u2022'; }   /* ⊘ disconnected -- user: "use something that resembles Ø (but no lines that exit the circle)" */
+  /* white \u2022 only when connected; anything else (disconnected, not checked yet) is
+     the grey \u2298 -- user: "make sure the dot for coding and conversational agent
+     is white when connected and a crossed circle when disconnected" */
+  if(dot){ dot.classList.toggle('on', auth==='connected'); dot.classList.toggle('off', auth!=='connected'); dot.textContent = auth==='connected' ? '\u2022' : '\u2298'; }   /* ⊘ disconnected -- user: "use something that resembles Ø (but no lines that exit the circle)" */
   if(cl) cl.title = auth==='connected' ? 'claude -- connected to your Claude account' : auth==='disconnected' ? 'claude -- not connected: send a prompt (or :login) to log in' : 'claude -- account not checked yet';
   if(window.__claudeAuthSeen && window.__claudeAuthSeen!==auth && auth!=='unknown'){
     try{ OMSC_CHAT.push({who:'gnumbot',t0:chatTimestamp(),t: auth==='connected' ? 'Claude is connected to your account.' : 'Claude is disconnected from your account.'}); renderActiveChat(); }catch(e){}
@@ -20291,7 +20294,7 @@ function renderEditSide(){
   window.__claudeAuthSeen=auth;
   /* cricket: same dot, for the local Ollama being reachable */
   const up=(st&&st.cricketUp)||'unknown', cdot=document.getElementById('esCricketUp'), cr=side.querySelector('.esAgent[data-agent="cricket"]');
-  if(cdot){ cdot.classList.toggle('on', up==='connected'); cdot.classList.toggle('off', up==='disconnected'); cdot.textContent = up==='disconnected' ? '\u2298' : '\u2022'; }
+  if(cdot){ cdot.classList.toggle('on', up==='connected'); cdot.classList.toggle('off', up!=='connected'); cdot.textContent = up==='connected' ? '\u2022' : '\u2298'; }
   if(cr) cr.title = up==='connected' ? 'ollama -- the local model is running' : up==='disconnected' ? 'ollama -- not reachable (is Ollama running?)' : 'ollama -- not checked yet';
   /* chat mode: the conversational agent's own tokens (counted from its replies) */
   const u= conv ? convUsageOf(convDmKey()) : ((st&&st.usage)||{ctx:0,max:1,in:0,out:0,cost:0});
@@ -21023,7 +21026,7 @@ tabOMSC.onclick();
     'html #gnSpiderPay .amt input{height:14px;line-height:14px;color:rgb(125,130,129)}' +
     'html #gnSpiderPay .amt:hover input,html #gnSpiderPay .amt:focus-within input{color:rgb(125,130,129)}' +
     'html #gnSpiderPay .amt input::placeholder{color:rgb(125,130,129)}' +
-    'html #gnSpiderPay .amt span,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#fff}' +
+    'html #gnSpiderPay .amt span,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:rgb(125,130,129)}' +   // CA$ grey -- user: "put CA$ in grey"
     'html #gnSpiderPay .amt select{color:#fff;padding:0 12px 0 4px;height:14px;line-height:14px;' +
     'background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%271.5%27/%3E%3C/svg%3E")}' +
     'html #gnSpiderPay .amt select option{background:#000;color:#fff}' +
