@@ -19050,8 +19050,9 @@ renderNpVotes();
      that message has arrived, the last size (or 350px) is used. */
   let cardsBottom=null, genresBottom=null;
   /* OPEN TO THE GENRES -- user: "when opening the console panel, make it open
-     until the genre tags. not further." ^C opens the shelf to just under the
-     crawler's GENRES tags (8px below them); the cards' bottom is the
+     until the genre tags. not further." then "console should open until the
+     first tag". ^C opens the shelf to just under the crawler's FIRST genre
+     tag (8px below it); the cards' bottom is the
      fallback when the page doesn't report its genres. Dragging still goes
      anywhere. */
   const openAt=()=> (genresBottom!=null ? genresBottom : cardsBottom) + 8;

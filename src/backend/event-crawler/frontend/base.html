@@ -3259,9 +3259,16 @@ cityModal.addEventListener('click', function(e) {
            opens the ^R radio tab exactly there, see its 'gnumbat-cards-bottom' */
         try {
             var grid = document.querySelector('.events-grid');
-            /* + where the GENRES tags end -- panel.html's console opens down to
-               there (user: "make it open until the genre tags. not further") */
-            var gg = document.getElementById('genresGroup'), gr = gg && gg.getBoundingClientRect();
+            /* + where the FIRST genre tag ends -- panel.html's console opens down
+               to there (user: "console should open until the first tag":
+               GENRES / [tag] / [console]). No tags yet: the "no genres tagged
+               yet" line stands in for it. */
+            var gg = null;
+            var tags = document.querySelectorAll('#genreTags .bandTag');
+            for (var ti = 0; ti < tags.length && !gg; ti++) if (tags[ti].getBoundingClientRect().height) gg = tags[ti];
+            if (!gg) { var ge = document.getElementById('genreEmpty'); if (ge && ge.getBoundingClientRect().height) gg = ge; }
+            if (!gg) gg = document.getElementById('genresGroup');
+            var gr = gg && gg.getBoundingClientRect();
             if (grid) window.parent.postMessage({type: 'gnumbat-cards-bottom', y: Math.round(grid.getBoundingClientRect().bottom + window.scrollY),
                 genres: gr && gr.height ? Math.round(gr.bottom + window.scrollY) : null}, '*');
         } catch (err) {}
