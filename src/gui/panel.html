@@ -21160,17 +21160,26 @@ tabOMSC.onclick();
   for (const t of ['keydown', 'keyup', 'keypress']) pay.addEventListener(t, e => {
     e.stopPropagation();
     if (t !== 'keydown') return;
-    if (e.key === 'Escape') hidePay();
-    else if (e.key === 'Enter' && e.target === payAmt && !payBtn.disabled) payBtn.click();
+    if (e.key === 'Escape') { e.preventDefault(); hidePay(); }
+    else if (e.key === 'Enter' && !(e.target.closest && e.target.closest('button,select'))) { e.preventDefault(); if (!payBtn.disabled) payBtn.click(); }
   });
-  function showPay() { if (suspended) return; payBusy = false; payAmt.value = ''; applyCurrency(); note(''); pay.hidden = false; }
+  // esc / ⏎ whatever has focus while the sheet is up -- user: "make sure esc and
+  // enter actually work for the pop up" (they're its No thanks / Donate chips).
+  // The field gets focus on open so the keys land here, not in the show frame.
+  addEventListener('keydown', e => {
+    if (pay.hidden || (e.target.closest && e.target.closest('#gnSpiderPay'))) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hidePay(); }
+    else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopPropagation(); if (!payBtn.disabled) payBtn.click(); }
+  }, true);
+  const focusPay = () => setTimeout(() => { if (!pay.hidden) try { payAmt.focus({ preventScroll: true }); } catch (err) {} }, 0);
+  function showPay() { if (suspended) return; payBusy = false; payAmt.value = ''; applyCurrency(); note(''); pay.hidden = false; focusPay(); }
   function hidePay() { pay.hidden = true; }
   // ^R cursor ransom (shortcut row #ransomChip, or the key): only while your
   // cursor is eaten -- user: "the ^R ransomware should only appear if the
   // cursor gets eaten" (applyPointer shows/hides the chip). Pressed again: closed.
   function toggleRansom() {
     if (!pay.hidden) { hidePay(); return; }
-    payBusy = false; payAmt.value = ''; applyCurrency(); note(''); pay.hidden = false;
+    payBusy = false; payAmt.value = ''; applyCurrency(); note(''); pay.hidden = false; focusPay();
   }
   window.gnCursorRansom = toggleRansom;
   addEventListener('keydown', e => { if (e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && e.key.toLowerCase() === 'r' && ransomOn()) { e.preventDefault(); e.stopPropagation(); toggleRansom(); } }, true);
