@@ -6546,7 +6546,12 @@ input,textarea,[contenteditable="true"]{-webkit-user-select:text!important;user-
 /* search next to 文A -- user: "put a little search bar next to the language
    selector sign so its easier to find the language you are looking" -- the
    TRAINED MODELS search box's look; matches native name, English name, code */
-#gnLangSearch{position:absolute;top:1px;right:calc(10px + 3ch + 1ch);width:calc(170px - 3ch - 1ch);   /* left edge on TRAINED MODELS' (170px corner box, 10px margin) -- user: "align the left side of the language search bar with TRAINED MODELS" */height:14px;line-height:12px;margin:0;padding:0 4px;box-sizing:border-box;
+/* the search IS the selector now -- user: "instead of puttin search and the A
+   icon for language. remove it and put it in the search bar. so when clicking
+   on the search, the dropdown should appear" -- 文A is its placeholder */
+#gnLangBtn{display:none!important}
+#gnLangMenu{width:170px}
+#gnLangSearch{position:absolute;top:1px;right:10px;width:170px;   /* left edge on TRAINED MODELS' (170px corner box, 10px margin) -- user: "align the left side of the language search bar with TRAINED MODELS" */height:14px;line-height:12px;margin:0;padding:0 4px;box-sizing:border-box;
   background:#000;border:1px solid var(--g2,#8e9392);color:#fff;font-family:var(--mono);outline:none;z-index:2147483300}
 #gnLangSearch::placeholder{color:var(--g3,#7d8281);opacity:1}
 #gnLangSearch:focus{border-color:#fff}
@@ -22140,7 +22145,7 @@ tabOMSC.onclick();
   const menu=document.createElement('div'); menu.id='gnLangMenu'; menu.className='notranslate'; menu.setAttribute('translate','no'); menu.hidden=true;
   menu.innerHTML=LANGS.map(([c,n,en])=>'<div data-l="'+c+'" lang="'+c+'" title="'+en+'">'+n+'</div>').join('')+'<div class="nomatch" hidden>no match</div>';
   const search=document.createElement('input');
-  search.id='gnLangSearch'; search.type='text'; search.placeholder=': search'; search.spellcheck=false; search.autocomplete='off';
+  search.id='gnLangSearch'; search.type='text'; search.placeholder='\u6587A : search'; search.spellcheck=false; search.autocomplete='off';
   search.className='notranslate'; search.setAttribute('translate','no'); search.setAttribute('aria-label','search languages');
   plug.append(search, btn, menu);
   const norm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -22156,14 +22161,21 @@ tabOMSC.onclick();
     return first;
   }
   search.addEventListener('input',()=>{ if(menu.hidden) open(true); filter(); menu.scrollTop=0; });
-  search.addEventListener('focus',()=>{ if(search.value.trim()){ open(true); filter(); } });
+  search.addEventListener('focus',()=>{ open(true); filter(); });
+  search.addEventListener('click',()=>{ if(menu.hidden){ open(true); filter(); } });
+  /* clicking anywhere else closes it -- the show page is another frame, so
+     its clicks never reach this document: go by the search losing focus
+     (a press on the menu itself doesn't count) */
+  let menuPress=false;
+  menu.addEventListener('pointerdown',()=>{ menuPress=true; setTimeout(()=>{ menuPress=false; },600); });
+  search.addEventListener('blur',()=>{ setTimeout(()=>{ if(!menuPress && document.activeElement!==search && !menu.hidden) open(false); },120); });
   search.addEventListener('keydown',e=>{
     e.stopPropagation();
     if(e.key==='Enter'){ e.preventDefault(); const d=filter(); if(d){ open(false); search.value=''; filter(); search.blur(); if(d.dataset.l!==cookieLang() || d.dataset.l!=='en') apply(d.dataset.l); } }
     else if(e.key==='Escape'){ e.preventDefault(); search.value=''; filter(); open(false); search.blur(); }
   });
   const mark=()=>{ const cur=cookieLang(); menu.querySelectorAll('div').forEach(d=>d.classList.toggle('on', d.dataset.l===cur)); };
-  const open=o=>{ menu.hidden=!o; btn.classList.toggle('open',o); if(o){ mark(); const on=menu.querySelector('.on'); if(on) on.scrollIntoView({block:'nearest'}); } };
+  const open=o=>{ menu.hidden=!o; btn.classList.toggle('open',o); if(!o && document.activeElement===search) search.blur(); if(o){ mark(); const on=menu.querySelector('.on'); if(on) on.scrollIntoView({block:'nearest'}); } };
   btn.addEventListener('click',e=>{ e.stopPropagation(); open(menu.hidden); });
   btn.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(menu.hidden); } });
   menu.addEventListener('click',e=>{ const d=e.target.closest('div[data-l]'); if(!d) return; e.stopPropagation(); open(false); search.value=''; filter(); if(d.dataset.l!==cookieLang() || d.dataset.l!=='en') apply(d.dataset.l); });
