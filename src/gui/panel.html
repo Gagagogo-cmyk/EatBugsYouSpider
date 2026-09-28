@@ -20961,42 +20961,44 @@ tabOMSC.onclick();
     // styles above: black box, grey 1px border, page mono at 12px everywhere,
     // font smoothing off like the panel's body, #posterize3 like .plugin.
     (PAY_LOOK === 'page' ? (
-    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#fff;color:#7d8281;border:1px solid #7d8281;box-shadow:none;' +
+    // DARK MODE -- user: "and invert it. dark mode." Black box, white title,
+    // grey labels, the amount field and Donate white with black text.
+    'html #gnSpiderPay{width:300px;padding:6px 14px 10px;border-radius:0;background:#000;color:#7d8281;border:1px solid #7d8281;box-shadow:none;' +
     'font:12px/1.3 var(--mono,ui-monospace,monospace);-webkit-font-smoothing:none;filter:url(#posterize3);top:50%;transform:translate(-50%,-50%);animation:none}' +   // dead centre -- user: "make the pop up more centered"
     'html #gnSpiderPay *{border-radius:0!important;font-family:inherit!important;font-size:12px!important;font-weight:400!important;letter-spacing:normal!important}' +
     // white box -- user: "put the background of the pop up white". Grey text,
     // black under the cursor ("text in grey except for when the cursor
     // hovers"); Donate is the one solid block, now black on the white
     'html #gnSpiderPay .l .cp{font-size:17px!important;line-height:0;vertical-align:-2px}' +   // a bigger (c) -- user: "can you put the (c) bigger?"
-    'html #gnSpiderPay .l,html #gnSpiderPay .l:hover{padding:0 18px;line-height:16px;color:#000!important}' +   // regular weight again -- user: "remove the bold"   // title always black -- user: "the (c) 2026 PWYW ransomware tittle should remain black. no hover differences"
+    'html #gnSpiderPay .l,html #gnSpiderPay .l:hover{padding:0 18px;line-height:16px;color:#fff!important}' +   // regular weight again -- user: "remove the bold"   // title always black -- user: "the (c) 2026 PWYW ransomware tittle should remain black. no hover differences"
     // no hover change on the labels either -- user: "same for cursor return/minimum charge/secure checkout/total due. no hover differences"
     'html #gnSpiderPay .x{top:6px;right:4px;width:18px;height:16px;line-height:16px;color:#7d8281}' +   // on the title's line -- user: "align the x of the ransomware with the title"
-    'html #gnSpiderPay .x:hover{background:transparent;color:#000}' +
-    'html #gnSpiderPay .amt{margin:6px 0 2px;padding:0 6px;border:1px solid #7d8281;background:#000;gap:2px}' +
+    'html #gnSpiderPay .x:hover{background:transparent;color:#fff}' +
+    'html #gnSpiderPay .amt{margin:6px 0 2px;padding:0 6px;border:1px solid #7d8281;background:#fff;gap:2px}' +
     // the amount box stays black on the white sheet -- user: "keep white, but
     // put the text boxes in black background" (grey text, white when active)
-    'html #gnSpiderPay .amt:focus-within{box-shadow:none;border-color:#000}' +
-    'html #gnSpiderPay .amt span,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#fff}' +   // currency sign always white -- user: "keep CA$ white"
+    'html #gnSpiderPay .amt:focus-within{box-shadow:none;border-color:#fff}' +
+    'html #gnSpiderPay .amt span,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#000}' +   // currency sign always white -- user: "keep CA$ white"
     'html #gnSpiderPay .amt input{height:20px;color:#7d8281}' +
-    'html #gnSpiderPay .amt:hover input,html #gnSpiderPay .amt:focus-within input,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#fff}' +
+    'html #gnSpiderPay .amt:hover input,html #gnSpiderPay .amt:focus-within input,html #gnSpiderPay .amt:hover span,html #gnSpiderPay .amt:focus-within span{color:#000}' +
     'html #gnSpiderPay .amt input::placeholder{color:#7d8281}' +
     // currency always white -- user: "keep currency (CAD) in white"
-    'html #gnSpiderPay .amt select{color:#fff;padding:2px 14px 2px 4px;margin:0;background-position:right 2px center;' +
-    'background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%23fff%27 stroke-width=%271.5%27/%3E%3C/svg%3E")}' +
-    'html #gnSpiderPay .amt select option{background:#000;color:#fff}' +
-    'html #gnSpiderPay .amt select:hover{color:#fff!important}' +
+    'html #gnSpiderPay .amt select{color:#000;padding:2px 14px 2px 4px;margin:0;background-position:right 2px center;' +
+    'background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%23000%27 stroke-width=%271.5%27/%3E%3C/svg%3E")}' +
+    'html #gnSpiderPay .amt select option{background:#fff;color:#000}' +
+    'html #gnSpiderPay .amt select:hover{color:#000!important}' +
     'html #gnSpiderPay .hint{margin:0 0 6px;color:#7d8281;text-align:center}' +   // centred -- user: "center minimum charge in the pop up"
     'html #gnSpiderPay .r{padding:3px 0;border-top:1px solid #7d8281;color:#7d8281}' +
-    'html #gnSpiderPay .p{height:22px;margin-top:6px;background:#000;color:#fff;box-shadow:none;gap:6px}' +
-    'html #gnSpiderPay .p:hover{background:#000;color:#fff}' +
-    'html #gnSpiderPay .p[disabled]{background:#7d8281;color:#fff}' +
-    'html #gnSpiderPay .sp{border-color:rgba(255,255,255,.3);border-top-color:#fff}' +
-    'html #gnSpiderPay .p:focus-visible,html #gnSpiderPay .no:focus-visible,html #gnSpiderPay .x:focus-visible{outline:1px solid #000;outline-offset:1px}' +
-    'html #gnSpiderPay .no{height:20px;margin-top:2px;color:#7d8281}' +
-    'html #gnSpiderPay .no:hover{background:transparent;color:#000}' +
-    'html #gnSpiderPay .dev{height:20px;margin-top:2px;border:1px dashed #7d8281;color:#7d8281}' +
-    'html #gnSpiderPay .dev:hover{color:#000;border-color:#000}' +
-    'html #gnSpiderPay .n{margin-top:6px;padding:3px 6px;background:#fff;border:1px solid #7d8281;color:#7d8281}' +
+    'html #gnSpiderPay .p{height:auto;min-height:22px;margin-top:6px;background:#fff;color:#000;box-shadow:none;gap:6px}' +
+    'html #gnSpiderPay .p:hover{background:#fff;color:#000}' +
+    'html #gnSpiderPay .p[disabled]{background:#7d8281;color:#000}' +
+    'html #gnSpiderPay .sp{border-color:rgba(0,0,0,.25);border-top-color:#000}' +
+    'html #gnSpiderPay .p:focus-visible,html #gnSpiderPay .no:focus-visible,html #gnSpiderPay .x:focus-visible{outline:1px solid #fff;outline-offset:1px}' +
+    'html #gnSpiderPay .no{height:auto;min-height:20px;margin-top:2px;color:#7d8281}' +
+    'html #gnSpiderPay .no:hover{background:transparent;color:#fff}' +
+    'html #gnSpiderPay .dev{height:auto;min-height:20px;margin-top:2px;border:1px dashed #7d8281;color:#7d8281}' +
+    'html #gnSpiderPay .dev:hover{color:#fff;border-color:#fff}' +
+    'html #gnSpiderPay .n{margin-top:6px;padding:3px 6px;background:#000;border:1px solid #7d8281;color:#7d8281}' +
     'html #gnSpiderPay .n.ok{color:#7d8281}' +
     'html #gnSpiderPay .f{margin-top:6px;color:#7d8281}' +
     // smaller -- user: "put minimum charge text and secure account smaller"
@@ -21141,17 +21143,48 @@ tabOMSC.onclick();
   // Grab it anywhere but its field, picker and buttons; it stays on screen
   // and keeps the spot it was dropped at.
   (() => {
+    // ...and RESIZABLE from any corner -- user: "make it resizable if I grab a
+    // corner." 10px grab zone per corner; width follows (240px min), height can
+    // grow but never below what the content needs.
+    const CORNER = 10, MIN_W = 240;
+    const cornerAt = (e, r) => {
+      const L = e.clientX - r.left < CORNER, R = r.right - e.clientX < CORNER, T = e.clientY - r.top < CORNER, B = r.bottom - e.clientY < CORNER;
+      return (L || R) && (T || B) ? (T ? 'n' : 's') + (L ? 'w' : 'e') : null;
+    };
     let drag = null;
     pay.addEventListener('pointerdown', e => {
       if (e.button !== 0 || (e.target.closest && e.target.closest('input,select,button,a'))) return;
       const r = pay.getBoundingClientRect();
-      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, id: e.pointerId };
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, id: e.pointerId, corner: cornerAt(e, r), r };
       pay.style.left = r.left + 'px'; pay.style.top = r.top + 'px'; pay.style.transform = 'none';
+      pay.style.width = r.width + 'px'; pay.style.maxWidth = 'none'; pay.style.boxSizing = 'border-box';
       try { pay.setPointerCapture(e.pointerId); } catch (err) {}
       e.preventDefault();
     });
     pay.addEventListener('pointermove', e => {
-      if (!drag || e.pointerId !== drag.id) return;
+      if (!drag) {                 // resize arrows over the corners
+        const c = cornerAt(e, pay.getBoundingClientRect()), t = e.target.closest && e.target.closest('input,select,button,a');
+        if (c && !t) pay.style.setProperty('cursor', (c === 'nw' || c === 'se') ? 'nwse-resize' : 'nesw-resize', 'important');
+        else pay.style.removeProperty('cursor');
+        return;
+      }
+      if (e.pointerId !== drag.id) return;
+      if (drag.corner) {
+        const r = drag.r, c = drag.corner;
+        let left = r.left, top = r.top, w = r.width, h = r.height;
+        if (c[1] === 'e') w = Math.min(innerWidth - r.left, Math.max(MIN_W, e.clientX - r.left));
+        else { const x = Math.max(0, Math.min(r.right - MIN_W, e.clientX)); w = r.right - x; left = x; }
+        if (c[0] === 's') h = Math.min(innerHeight - r.top, e.clientY - r.top);
+        else { const y = Math.max(0, e.clientY); h = r.bottom - y; top = y; }
+        pay.style.width = w + 'px';
+        pay.style.minHeight = '0px';
+        const need = pay.scrollHeight;                 // content height at this width
+        h = Math.max(need, h);
+        if (c[0] === 'n') top = r.bottom - h;
+        pay.style.minHeight = h + 'px';
+        pay.style.left = Math.max(0, left) + 'px'; pay.style.top = Math.max(0, top) + 'px';
+        return;
+      }
       const w = pay.offsetWidth, h = pay.offsetHeight;
       pay.style.left = Math.max(0, Math.min(innerWidth - w, e.clientX - drag.dx)) + 'px';
       pay.style.top = Math.max(0, Math.min(innerHeight - h, e.clientY - drag.dy)) + 'px';
