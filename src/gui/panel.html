@@ -20654,7 +20654,7 @@ tabOMSC.onclick();
   // blending/filter/opacity from anything around it, and snapped to whole
   // device pixels (a dot straddling pixels -- page zoom, scaled displays --
   // gets smeared and its brightness changes as it moves).
-  eatDot.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:#262626;pointer-events:none;z-index:2147483646;display:none;' +
+  eatDot.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:#383838;pointer-events:none;z-index:2147483646;display:none;' +
     'opacity:1;filter:none;mix-blend-mode:normal;isolation:isolate;will-change:transform;image-rendering:pixelated';
   document.body.appendChild(eatDot);
   function placeDot() {
