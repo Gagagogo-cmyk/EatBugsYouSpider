@@ -1702,6 +1702,14 @@
         /* Enter chip on the right margin -- user: "enter branch needs to be
            aligned with the right-margin." */
         .netFoot { justify-content: flex-end; }
+        /* network actions + votes (see the NETWORK ACTIONS markup comment) */
+        .netFoot .netChip + .netChip { margin-left: 2ch; }
+        .netFoot .netChip.netEnter { margin-left: 6ch; }
+        .netNode text.netVote { pointer-events: all; cursor: pointer; }
+        .netNode:not(.sel) text.netVote:hover { fill: var(--w); }
+        .netNode.sel text.netVote:hover { text-decoration: underline; }
+        #netRenameIn { width: 24ch; height: 14px; line-height: 12px; margin: 0 0 0 1ch; padding: 0 4px; box-sizing: border-box;
+                       background: #000; color: var(--w); border: 1px solid var(--w); font: 12px var(--mono); outline: none; }
 
         /* CARDS DOWN -- user: "move the poster cards down a little so their
            top aligns with the bottom of [SHOWS]" (panel.html's header line;
@@ -2176,7 +2184,16 @@ document.addEventListener('click', function (e) {
     </div>
     <div class="netMargin" id="netMarginL">(c) 2026 Gnumbat AGPL 3.0</div>
     <div class="netMargin" id="netMarginR">(c) 2026 Gnumbat AGPL 3.0</div>
-    <div class="netFoot"><span class="netChip" id="netEnterChip"><b>Enter</b>enter branch</span></div>
+    <!-- NETWORK ACTIONS -- user: "in network, add the option to delete
+         branches, integrate them to the seed, rename, create from
+         seed/branch (this would take you to the selected seed/branch and
+         open edit mode directly)" and "also edit branches, if you are listed
+         as authors". ^B branch from = enter it + edit mode, your ^S commit
+         becomes its child; ^E edit = same, but ^S saves INTO it (authors
+         only). All act on the selected node; the hub
+         does the work (edit_agent.js "NETWORK PAGE ACTIONS"). Votes are the
+         up/down counts inside each box (click them). -->
+    <div class="netFoot"><span class="netChip" id="netCreateChip"><b>^B</b>branch from</span><span class="netChip" id="netEditChip"><b>^E</b>edit</span><span class="netChip" id="netRenameChip"><b>^K</b>rename</span><span class="netChip" id="netIntegrateChip"><b>^I</b>integrate to seed</span><span class="netChip" id="netDeleteChip"><b>^D</b>delete</span><span class="netChip netEnter" id="netEnterChip"><b>Enter</b>enter branch</span></div>
 </div>
 
 <script>
@@ -2621,7 +2638,7 @@ document.addEventListener('click', function (e) {
        Declared after the radial version above in the same scope, so this one
        is the renderCityMap every caller gets. Same sizes as panel.html's
        TREE_* constants. */
-    var NT_COL_W = 180, NT_ROW_H = 28, NT_NODE_W = 150, NT_NODE_H = 18, NT_PAD = 14, NT_NAME_MAX = 16;
+    var NT_COL_W = 220, NT_ROW_H = 28, NT_NODE_W = 190, NT_NODE_H = 18, NT_PAD = 14, NT_NAME_MAX = 16;   /* wider: the name sits left, its ↑/↓ votes right */
     function renderCityMap() {
         /* MODEL NETWORK -- user: "when pressing enter i need to enter the
            model." The page draws panel.html's MODELS forest (every seed and
@@ -2642,7 +2659,7 @@ document.addEventListener('click', function (e) {
             var seed = BRANCH_STATE.seed, seedList = BRANCH_STATE.seeds && BRANCH_STATE.seeds.length ? BRANCH_STATE.seeds : [seed];
             seedList.forEach(function(sd) { byId[sd.id] = { id: sd.id, name: sd.name, isSeed: true, kids: [] }; roots.push(byId[sd.id]); });
             (BRANCH_STATE.branches || []).forEach(function(b) {
-                byId[b.id] = { id: b.id, name: b.name, createdAt: b.createdAt, kids: [], parentId: b.parent };
+                byId[b.id] = { id: b.id, name: b.name, createdAt: b.createdAt, integratedAt: b.integratedAt, authors: b.authors || [], kids: [], parentId: b.parent };
             });
             Object.keys(byId).forEach(function(id) {
                 var n = byId[id]; if (n.isSeed) return;
@@ -2676,11 +2693,17 @@ document.addEventListener('click', function (e) {
                 lines += '<path d="M' + x1 + ',' + y1 + ' H' + mid + ' V' + y2 + ' H' + x2 + '"/>';
             }
             var label = n.name.length > NT_NAME_MAX ? n.name.slice(0, NT_NAME_MAX - 1) + '\u2026' : n.name;
-            var tip = n.isSeed ? 'seed' : ('branch' + (n.createdAt ? ' -- ' + String(n.createdAt).replace('T', ' ').slice(0, 16) : ''));
+            var tip = n.isSeed ? 'seed' : ('branch' + (n.createdAt ? ' -- ' + String(n.createdAt).replace('T', ' ').slice(0, 16) : '')
+                + (n.authors && n.authors.length ? ' -- by ' + n.authors.join(', ') : '') + (n.integratedAt ? ' -- integrated into its seed' : ''));
+            var vt = (BRANCH_STATE.votes || {})[n.id] || {}, cy = py(n) + NT_NODE_H / 2, rx = px(n) + NT_NODE_W - 6;
             nodes += '<g class="netNode' + (n.id === CUR ? ' current' : '') + (n.id === NET_SEL ? ' sel' : '') + '" data-id="' + esc(n.id) + '">'
                 + '<title>' + esc(n.name + ' -- ' + tip) + '</title>'
                 + '<rect x="' + px(n) + '" y="' + py(n) + '" width="' + NT_NODE_W + '" height="' + NT_NODE_H + '"/>'
-                + '<text x="' + (px(n) + NT_NODE_W / 2) + '" y="' + (py(n) + NT_NODE_H / 2) + '" text-anchor="middle" dominant-baseline="central">' + esc(label) + '</text></g>';
+                + '<text x="' + (px(n) + 6) + '" y="' + cy + '" dominant-baseline="central">' + esc(label) + '</text>'
+                + (MODEL_NET && MODEL_NET.models && MODEL_NET.models.length ? '' :
+                   '<text class="netVote" data-v="-1" x="' + rx + '" y="' + cy + '" text-anchor="end" dominant-baseline="central"><title>downvote</title>\u2193' + (vt.down || 0) + '</text>'
+                 + '<text class="netVote" data-v="1" x="' + (rx - 5 * 7.2) + '" y="' + cy + '" text-anchor="end" dominant-baseline="central"><title>upvote</title>\u2191' + (vt.up || 0) + '</text>')
+                + '</g>';
         });
         /* natural size, shrunk (never grown) to fit the page */
         var fit = Math.min(1, cityMapWrap.clientWidth / W || 1, cityMapWrap.clientHeight / H || 1);
@@ -2688,7 +2711,10 @@ document.addEventListener('click', function (e) {
             + '<g class="netLines">' + lines + '</g>' + nodes + '</svg>';
         cityMapWrap.querySelectorAll('.netNode').forEach(function(g) {
             g.addEventListener('click', function() { NET_SEL = g.getAttribute('data-id'); renderCityMap(); });
-            g.addEventListener('dblclick', function() { NET_SEL = g.getAttribute('data-id'); enterSelectedBranch(); });
+            g.addEventListener('dblclick', function(e) { if (e.target.closest('.netVote')) return; NET_SEL = g.getAttribute('data-id'); enterSelectedBranch(); });
+            g.querySelectorAll('.netVote').forEach(function(v) {
+                v.addEventListener('click', function(e) { e.stopPropagation(); NET_SEL = g.getAttribute('data-id'); netOp('vote', { dir: +v.getAttribute('data-v') }); });
+            });
         });
     }
     var NET_SEL = null, NET_ORDER = [], netHintTimer = 0, MODEL_NET = null, NET_CUR = null;
@@ -2719,6 +2745,76 @@ document.addEventListener('click', function (e) {
             window.parent.postMessage({type: 'gnumbat-enter-branch', id: node.id}, '*');
         }
     }
+    /* NETWORK ACTIONS (see the netFoot markup comment). The panel owns the hub
+       connection: these relay out and the outcome comes back as
+       'gnumbat-network-note'. Delete and integrate ask for the same key again
+       within 4s, rename types the new name on the hint line. */
+    var NET_ARM = null, NET_RENAMING = false;
+    function netNote(t, keep) {
+        clearTimeout(netHintTimer);
+        cityHint.textContent = t;
+        if (!keep) netHintTimer = setTimeout(function() { if (!NET_RENAMING) cityHint.textContent = ''; }, 4000);
+    }
+    function netSelNode() { return NET_ORDER.filter(function(n) { return n.id === NET_SEL; })[0] || null; }
+    function netPost(msg) { if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*'); }
+    function netOp(op, extra) {
+        var node = netSelNode(); if (!node) return;
+        if (MODEL_NET && MODEL_NET.models && MODEL_NET.models.length) return;
+        if ((op === 'delete' || op === 'integrate') && node.isSeed) {
+            netNote(op === 'delete' ? "seeds can't be deleted -- only branches" : "that's already a seed -- pick a branch to integrate"); return;
+        }
+        if (op === 'delete' || op === 'integrate') {
+            var now = Date.now();
+            if (!NET_ARM || NET_ARM.op !== op || NET_ARM.id !== node.id || now - NET_ARM.t > 4000) {
+                NET_ARM = { op: op, id: node.id, t: now };
+                netNote(op === 'delete' ? 'press ^D again to delete "' + node.name + '"' : 'press ^I again to integrate "' + node.name + '" into its seed');
+                return;
+            }
+            NET_ARM = null;
+        }
+        netPost(Object.assign({ type: 'gnumbat-branch-op', op: op, id: node.id }, extra || {}));
+    }
+    function netRename() {
+        var node = netSelNode(); if (!node || (MODEL_NET && MODEL_NET.models && MODEL_NET.models.length)) return;
+        NET_RENAMING = true;
+        clearTimeout(netHintTimer);
+        cityHint.textContent = 'rename "' + node.name + '" to:';
+        var inp = document.createElement('input');
+        inp.id = 'netRenameIn'; inp.type = 'text'; inp.maxLength = 60; inp.spellcheck = false; inp.autocomplete = 'off'; inp.value = node.name;
+        cityHint.appendChild(inp);
+        inp.focus(); inp.select();
+        function done() { NET_RENAMING = false; cityHint.textContent = ''; }
+        inp.addEventListener('keydown', function(e) {
+            e.stopPropagation();
+            if (e.key === 'Escape') { e.preventDefault(); done(); }
+            else if (e.key === 'Enter') {
+                e.preventDefault();
+                var v = inp.value.replace(/\s+/g, ' ').trim();
+                done();
+                if (v && v !== node.name) netPost({ type: 'gnumbat-branch-op', op: 'rename', id: node.id, name: v });
+            }
+        });
+        inp.addEventListener('blur', function() { if (NET_RENAMING) done(); });
+    }
+    /* create from -- enter that seed/branch and open edit mode there, so the
+       next ^S commit branches off it. Already on it: just close and edit. */
+    function netCreateFrom() {
+        var node = netSelNode(); if (!node || (MODEL_NET && MODEL_NET.models && MODEL_NET.models.length)) return;
+        if (node.id === NET_CUR) closeCityModal();
+        netPost({ type: 'gnumbat-create-from', id: node.id, here: node.id === NET_CUR });
+    }
+    /* edit -- the same trip, but ^S then saves into this branch (authors only;
+       the panel checks the author list, the hub checks it again on save) */
+    function netEdit() {
+        var node = netSelNode(); if (!node || (MODEL_NET && MODEL_NET.models && MODEL_NET.models.length)) return;
+        if (node.isSeed) { netNote('seeds change by integrating a branch into them (^I) -- ^B to branch from it'); return; }
+        netPost({ type: 'gnumbat-edit-branch', id: node.id, here: node.id === NET_CUR });
+    }
+    document.getElementById('netCreateChip').addEventListener('click', netCreateFrom);
+    document.getElementById('netEditChip').addEventListener('click', netEdit);
+    document.getElementById('netRenameChip').addEventListener('click', netRename);
+    document.getElementById('netIntegrateChip').addEventListener('click', function() { netOp('integrate'); });
+    document.getElementById('netDeleteChip').addEventListener('click', function() { netOp('delete'); });
     function openCityModal() {
         cityModal.classList.remove('hide');
         /* always open on the node you're on -- a selection left over from a
@@ -2740,9 +2836,14 @@ document.addEventListener('click', function (e) {
         if (!cityModal.classList.contains('hide')) renderCityMap();
     });
     document.addEventListener('keydown', function(e) {
-        if (cityModal.classList.contains('hide')) return;
+        if (cityModal.classList.contains('hide') || NET_RENAMING) return;
         var k = (e.key || '').toLowerCase();
-        if (k === 'escape' || (e.ctrlKey && !e.metaKey && !e.altKey && k === 'n')) {
+        var ctl = e.ctrlKey && !e.metaKey && !e.altKey;
+        if (ctl && (k === 'b' || k === 'e' || k === 'k' || k === 'i' || k === 'd')) {
+            e.preventDefault();
+            if (e.repeat) return;
+            if (k === 'b') netCreateFrom(); else if (k === 'e') netEdit(); else if (k === 'k') netRename(); else if (k === 'i') netOp('integrate'); else netOp('delete');
+        } else if (k === 'escape' || (ctl && k === 'n')) {
             e.preventDefault();
             closeCityModal();
         } else if (k === 'enter') {
@@ -2798,7 +2899,8 @@ window.addEventListener('message', function(e) {
             seed: e.data.seed,
             seeds: e.data.seeds || [e.data.seed],
             branches: e.data.branches || [],
-            head: e.data.head || e.data.seed.id
+            head: e.data.head || e.data.seed.id,
+            votes: e.data.votes || {}
         };
         if (!cityModal.classList.contains('hide')) renderCityMap();
     }

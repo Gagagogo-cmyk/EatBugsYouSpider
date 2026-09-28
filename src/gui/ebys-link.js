@@ -275,8 +275,9 @@
       transport.send(msg);
       return msg;
     },
-    editCommit: function (name) {
+    editCommit: function (name, who) {
       var msg = { t: "editCommit", name: String(name) };
+      if (who) msg.who = String(who);   /* recorded as the branch's author */
       transport.send(msg);
       return msg;
     },
@@ -285,6 +286,15 @@
        {ok, branch|error}; on success every panel gets 'reloadUI'. */
     branchEnter: function (id) {
       var msg = { t: "branchEnter", id: String(id) };
+      transport.send(msg);
+      return msg;
+    },
+    /* branchOp(op, fields) -> {t:'branchOp', op, ...fields}. Network page
+       rename / delete / integrate / save (edit in place) {id,who,name?},
+       vote {id,who,dir};
+       answers 'branchOpResult' {op, ok, result|error}. */
+    branchOp: function (op, fields) {
+      var msg = Object.assign({}, fields || {}, { t: "branchOp", op: String(op) });
       transport.send(msg);
       return msg;
     },

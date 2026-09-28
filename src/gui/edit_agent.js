@@ -1850,13 +1850,184 @@ Rules:
       // branches/<id>/ like any branch); each one roots its own tree on the
       // network page. Gnumbat AGPL 3.0 stays the first.
       seeds: [{ id: m.seed.id, name: m.seed.name }].concat((m.otherSeeds || []).map((s) => ({ id: s.id, name: s.name }))),
-      branches: m.branches.map((b) => ({ id: b.id, name: b.name, parent: b.parent, createdAt: b.createdAt })),
+      branches: m.branches.map((b) => ({ id: b.id, name: b.name, parent: b.parent, createdAt: b.createdAt, integratedAt: b.integratedAt || null, authors: b.authors || [] })),
       head: m.head,
+      // {id: {up, down}} for every seed and branch -- see voteNode()
+      votes: voteCounts(m),
     };
+  }
+
+  // NETWORK PAGE ACTIONS -- user: "in network, add the option to delete
+  // branches, integrate them to the seed, rename, create from seed/branch
+  // (this would take you to the selected seed/branch and open edit mode
+  // directly). also add a upvote and downvote system for each branch/seed."
+  // Create-from needs nothing here: it is enterBranch() + the panel opening
+  // edit mode, so the next ^S commit becomes a child of that node.
+  function nodeOf(m, id) {
+    if (id === m.seed.id) return { kind: "seed", node: m.seed };
+    const os = (m.otherSeeds || []).find((x) => x.id === id);
+    if (os) return { kind: "seed", node: os };
+    const b = m.branches.find((x) => x.id === id);
+    return b ? { kind: "branch", node: b } : null;
+  }
+  function rootSeedOf(m, id) {
+    const seen = new Set();
+    let cur = nodeOf(m, id);
+    while (cur && cur.kind === "branch" && !seen.has(cur.node.id)) {
+      seen.add(cur.node.id);
+      cur = nodeOf(m, cur.node.parent) || { kind: "seed", node: m.seed };
+    }
+    return cur ? cur.node : m.seed;
+  }
+  // AUTHORS -- user: "also edit branches, if you are listed as authors".
+  // commitBranch() records who committed; only those can edit the branch in
+  // place (saveBranch), rename, delete or integrate it. Branches from before
+  // authors were recorded have none listed: any signed-in user may.
+  function requireAuthor(n, rawWho, what) {
+    const who = String(rawWho == null ? "" : rawWho).trim();
+    if (!who) throw new Error("log in to " + what);
+    if (n.kind !== "branch") return who;
+    const a = n.node.authors || [];
+    if (a.length && !a.includes(who)) throw new Error("only its authors (" + a.join(", ") + ") can " + what + " it");
+    return who;
+  }
+  // ^S while editing a branch in place: snapshot the working files INTO that
+  // branch (it must be the one you're on) instead of committing a new child.
+  function saveBranch(rawId, rawWho) {
+    const id = String(rawId == null ? "" : rawId);
+    const m = loadBranchManifest();
+    const n = nodeOf(m, id);
+    if (!n) throw new Error("no seed or branch with that id");
+    if (n.kind === "seed") throw new Error("seeds change by integrating a branch into them (^I)");
+    const who = requireAuthor(n, rawWho, "edit");
+    if (m.head !== id) throw new Error("you're not on this branch anymore -- enter it again (^E on the network page)");
+    const files = changedFiles(m);
+    if (!files.length) throw new Error("nothing to save -- no edits since the last save");
+    const b = n.node;
+    copySnapshot(id);
+    b.hashes = currentHashes();
+    b.files = Array.from(new Set((b.files || []).concat(files)));
+    b.updatedAt = new Date().toISOString();
+    b.authors = b.authors || [];
+    if (!b.authors.includes(who)) b.authors.push(who);
+    saveBranchManifest(m);
+    post("edit-mode save -> branch '" + b.name + "' (" + id + "), " + files.length + " file(s), by " + who);
+    return { id, name: b.name, files };
+  }
+  function cleanName(rawName) {
+    const name = String(rawName == null ? "" : rawName).replace(/\s+/g, " ").trim();
+    if (!name) throw new Error("it needs a name");
+    if (name.length > 60) throw new Error("name is too long (60 characters max)");
+    return name;
+  }
+  function renameNode(rawId, rawName, rawWho) {
+    const id = String(rawId == null ? "" : rawId), name = cleanName(rawName);
+    const m = loadBranchManifest();
+    const n = nodeOf(m, id);
+    if (!n) throw new Error("no seed or branch with that id");
+    requireAuthor(n, rawWho, "rename");
+    const all = [m.seed].concat(m.otherSeeds || [], m.branches);
+    if (all.some((x) => x.id !== id && String(x.name).toLowerCase() === name.toLowerCase())) {
+      throw new Error('"' + name + '" is already taken -- pick another name');
+    }
+    const old = n.node.name;
+    n.node.name = name;
+    saveBranchManifest(m);
+    post("network: renamed '" + old + "' -> '" + name + "' (" + id + ")");
+    return { id, name, old };
+  }
+  // Branches only (a seed roots a whole tree). Its children move up to its
+  // parent; the snapshot goes to branches/_deleted/ instead of being erased.
+  function deleteBranch(rawId, rawWho) {
+    const id = String(rawId == null ? "" : rawId);
+    const m = loadBranchManifest();
+    const n = nodeOf(m, id);
+    if (!n) throw new Error("no seed or branch with that id");
+    if (n.kind === "seed") throw new Error("seeds can't be deleted -- only branches");
+    requireAuthor(n, rawWho, "delete");
+    if (m.head === id) throw new Error("you're on this branch -- enter another one first (Enter)");
+    const b = n.node;
+    for (const k of m.branches) if (k.parent === id) k.parent = b.parent;
+    m.branches = m.branches.filter((x) => x.id !== id);
+    if (m.votes) delete m.votes[id];
+    const dir = path.join(BRANCH_ROOT, id);
+    if (fs.existsSync(dir)) {
+      const trash = path.join(BRANCH_ROOT, "_deleted");
+      fs.mkdirSync(trash, { recursive: true });
+      fs.renameSync(dir, path.join(trash, timestamp() + "-" + id));
+    }
+    saveBranchManifest(m);
+    post("network: deleted branch '" + b.name + "' (" + id + ") -- snapshot kept in branches/_deleted/");
+    return { id, name: b.name };
+  }
+  // The branch's snapshot becomes its seed's (the seed's old one is saved to
+  // _autosave first). The branch stays, marked integrated. If you are on the
+  // seed, the working files follow it (refused while there are uncommitted
+  // edits) and the caller reloads every panel (result.reload).
+  function integrateBranch(rawId, rawWho) {
+    const id = String(rawId == null ? "" : rawId);
+    const m = loadBranchManifest();
+    const n = nodeOf(m, id);
+    if (!n) throw new Error("no seed or branch with that id");
+    if (n.kind === "seed") throw new Error("that's already a seed -- pick a branch to integrate");
+    requireAuthor(n, rawWho, "integrate");
+    const b = n.node, seed = rootSeedOf(m, id);
+    if (!b.hashes) throw new Error("this branch has no snapshot");
+    const onSeed = m.head === seed.id;
+    if (onSeed) {
+      const dirty = changedFiles(m);
+      if (dirty.length) throw new Error("there are edits that aren't committed (" + dirty.map((f) => path.basename(f)).join(", ") + ") -- commit them with ^S first");
+    }
+    const seedDir = path.join(BRANCH_ROOT, seed.id), brDir = path.join(BRANCH_ROOT, id);
+    if (fs.existsSync(seedDir)) {
+      const keep = path.join(BRANCH_ROOT, "_autosave", timestamp() + "-" + slugify("seed-" + seed.id + "-before-" + id));
+      fs.mkdirSync(keep, { recursive: true });
+      for (const f of fs.readdirSync(seedDir)) fs.copyFileSync(path.join(seedDir, f), path.join(keep, f));
+    }
+    fs.mkdirSync(seedDir, { recursive: true });
+    for (const rel of BRANCH_FILES) {
+      const src = path.join(brDir, path.basename(rel));
+      if (fs.existsSync(src)) fs.copyFileSync(src, path.join(seedDir, path.basename(rel)));
+    }
+    seed.hashes = Object.assign({}, b.hashes);
+    b.integratedAt = new Date().toISOString();
+    if (onSeed) {
+      autosaveWorking("before-integrate-" + id);
+      for (const rel of BRANCH_FILES) {
+        const src = path.join(seedDir, path.basename(rel));
+        if (fs.existsSync(src)) fs.copyFileSync(src, path.join(repoRoot, rel));
+      }
+    }
+    saveBranchManifest(m);
+    post("network: integrated branch '" + b.name + "' into seed '" + seed.name + "'" + (onSeed ? " (working files updated)" : ""));
+    return { id, name: b.name, seed: seed.id, seedName: seed.name, reload: onSeed };
+  }
+  // One vote per user per node: +1 / -1, the same vote again takes it back.
+  function voteNode(rawId, rawWho, dir) {
+    const id = String(rawId == null ? "" : rawId), who = String(rawWho == null ? "" : rawWho).trim();
+    if (!who) throw new Error("log in to vote");
+    const d = dir > 0 ? 1 : dir < 0 ? -1 : 0;
+    if (!d) throw new Error("bad vote");
+    const m = loadBranchManifest();
+    if (!nodeOf(m, id)) throw new Error("no seed or branch with that id");
+    m.votes = m.votes || {};
+    const v = m.votes[id] = m.votes[id] || {};
+    if (v[who] === d) delete v[who]; else v[who] = d;
+    saveBranchManifest(m);
+    return { id, vote: v[who] || 0 };
+  }
+  function voteCounts(m) {
+    const out = {};
+    for (const [id, v] of Object.entries(m.votes || {})) {
+      let up = 0, down = 0;
+      for (const d of Object.values(v || {})) { if (d > 0) up++; else if (d < 0) down++; }
+      out[id] = { up, down };
+    }
+    return out;
   }
   // Throws (message shown to the user) when there is nothing to commit or
   // the name is unusable; otherwise snapshots and records the new branch.
-  function commitBranch(rawName) {
+  function commitBranch(rawName, rawWho) {
     const name = String(rawName == null ? "" : rawName).replace(/\s+/g, " ").trim();
     if (!name) throw new Error("a branch needs a name");
     if (name.length > 60) throw new Error("branch name is too long (60 characters max)");
@@ -1874,7 +2045,8 @@ Rules:
       id = id + "-" + i;
     }
     copySnapshot(id);
-    const branch = { id, name, parent: m.head, createdAt: new Date().toISOString(), hashes: currentHashes(), files };
+    const who = String(rawWho == null ? "" : rawWho).trim();
+    const branch = { id, name, parent: m.head, createdAt: new Date().toISOString(), hashes: currentHashes(), files, authors: who ? [who] : [] };
     m.branches.push(branch);
     m.head = id;
     saveBranchManifest(m);
@@ -1912,6 +2084,7 @@ Rules:
   return {
     handleEditChat, TOOLS, resolveSafe, getCurrentBranch, createBranch, mergeBranch,
     editBegin, editStateFrame, branchesFrame, commitBranch, enterBranch,
+    renameNode, deleteBranch, integrateBranch, voteNode, saveBranch,
     agentFrame, converse,
   };
 }

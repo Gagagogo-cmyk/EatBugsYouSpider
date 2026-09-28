@@ -2709,7 +2709,7 @@ server.on("upgrade", (req, socket) => {
     // sender with the outcome.
     else if (msg.t === "editCommit") {
       try {
-        const made = editAgent.commitBranch(msg.name);
+        const made = editAgent.commitBranch(msg.name, msg.who);
         reply({ t: "editCommitResult", ok: true, branch: made });
         broadcast(editAgent.branchesFrame());
         reply(editAgent.editStateFrame());
@@ -2728,6 +2728,27 @@ server.on("upgrade", (req, socket) => {
         if (!b.already) { broadcast(editAgent.branchesFrame()); broadcast({ t: "reloadUI" }); }
       } catch (err) {
         reply({ t: "branchEnterResult", ok: false, error: err.message });
+      }
+    }
+    // branchOp: the network page's other actions (edit_agent.js "NETWORK PAGE
+    // ACTIONS"): rename / delete / integrate / vote, and save (^S while
+    // editing a branch in place -- authors only). Every panel gets the
+    // new branch list; integrating into the seed you're on reloads them all.
+    else if (msg.t === "branchOp") {
+      try {
+        let r;
+        if (msg.op === "rename") r = editAgent.renameNode(msg.id, msg.name, msg.who);
+        else if (msg.op === "delete") r = editAgent.deleteBranch(msg.id, msg.who);
+        else if (msg.op === "integrate") r = editAgent.integrateBranch(msg.id, msg.who);
+        else if (msg.op === "save") r = editAgent.saveBranch(msg.id, msg.who);
+        else if (msg.op === "vote") r = editAgent.voteNode(msg.id, msg.who, Number(msg.dir));
+        else throw new Error("unknown network action '" + msg.op + "'");
+        reply({ t: "branchOpResult", op: msg.op, ok: true, result: r });
+        if (msg.op === "save") reply(editAgent.editStateFrame());
+        broadcast(editAgent.branchesFrame());
+        if (r && r.reload) broadcast({ t: "reloadUI" });
+      } catch (err) {
+        reply({ t: "branchOpResult", op: msg.op, ok: false, error: err.message });
       }
     }
     else if (msg.t === "branchesList") {

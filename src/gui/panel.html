@@ -16817,18 +16817,34 @@ function renderChatModels(){
    hub ('branches' frame, see the ^R commit section next to setEditMode()) and
    relayed into the iframe's #cityModal the same way. */
 var BRANCH_STATE={seed:{id:'gnumbat-agpl-3.0',name:'Gnumbat AGPL 3.0'},branches:[],head:'gnumbat-agpl-3.0'};
+var NET_CREATE_FROM=null;   /* network ^B "branch from" / ^E "edit" waiting on its branchEnterResult */
+/* EDIT A BRANCH IN PLACE -- user: "also edit branches, if you are listed as
+   authors". The network page's ^E enters the branch with this set: while you
+   are on it in edit mode, ^S saves INTO it (edit_agent.js saveBranch, authors
+   only) instead of committing a new child. Survives the reloads edit mode
+   does; leaving edit mode clears it. */
+function editInPlaceId(){ try{ return sessionStorage.getItem('gnumbat.editInPlace')||null; }catch(e){ return null; } }
+function setEditInPlace(id){ try{ if(id) sessionStorage.setItem('gnumbat.editInPlace',String(id)); else sessionStorage.removeItem('gnumbat.editInPlace'); }catch(e){} }
+function editInPlaceActive(){ const id=editInPlaceId(); return !!id && BRANCH_STATE.head===id; }
+function editInPlaceName(){ const id=editInPlaceId(), b=(BRANCH_STATE.branches||[]).find(x=>x.id===id); return b?b.name:id; }
+function saveInPlace(){
+  editCommitPrompt=false;
+  editStatusShow('thinking','saving into "'+editInPlaceName()+'"...');
+  Gnumbat.branchOp('save',{id:editInPlaceId(), who:AUTH_USER});
+}
 function postBranchListToFrame(){
   try{
     const frame=document.getElementById('omscFrame');
     if(!frame || !frame.contentWindow) return;
-    frame.contentWindow.postMessage({type:'gnumbat-branch-list', seed:BRANCH_STATE.seed, seeds:BRANCH_STATE.seeds, branches:BRANCH_STATE.branches, head:BRANCH_STATE.head},'*');
+    frame.contentWindow.postMessage({type:'gnumbat-branch-list', seed:BRANCH_STATE.seed, seeds:BRANCH_STATE.seeds, branches:BRANCH_STATE.branches, head:BRANCH_STATE.head, votes:BRANCH_STATE.votes||{}},'*');
   }catch(e){}
 }
 if(window.Gnumbat && typeof Gnumbat.on==='function'){
   Gnumbat.on('branches', function(m){
     if(!m || !m.seed) return;
-    BRANCH_STATE={seed:m.seed, seeds:m.seeds||[m.seed], branches:m.branches||[], head:m.head||m.seed.id};
+    BRANCH_STATE={seed:m.seed, seeds:m.seeds||[m.seed], branches:m.branches||[], head:m.head||m.seed.id, votes:m.votes||{}};
     postBranchListToFrame();
+    if(typeof editCommitChipRefresh==='function') editCommitChipRefresh();   /* ^S commit vs save (edit in place) */
   });
 }
 function renderDjPanel(){
@@ -18289,14 +18305,14 @@ function setEditMode(on, opts){
      stays in edit mode. */
   if(!on && editMode && editDirty && !opts.force){
     if(editCommitPrompt){ editCommitPrompt=false; editExitAfterCommit=false; }
-    else { editExitAfterCommit=true; openEditCommitPrompt('exit'); return; }
+    else { editExitAfterCommit=true; if(editInPlaceActive()) saveInPlace(); else openEditCommitPrompt('exit'); return; }
   }
   editMode=on;
   requestAnimationFrame(()=>{ if(typeof syncAgentBox==='function') syncAgentBox(); });
   const commitChip=document.getElementById('editCommitChip');
   if(commitChip) commitChip.classList.toggle('hide', !on);
   if(on){ if(window.Gnumbat && Gnumbat.editBegin) Gnumbat.editBegin(); }
-  else { editDirty=null; editChanged=[]; editCommitPrompt=false; editExitAfterCommit=false; }
+  else { editDirty=null; editChanged=[]; editCommitPrompt=false; editExitAfterCommit=false; setEditInPlace(null); }
   editCommitChipRefresh();
   // GRID INSPECTOR -- see its own IIFE just above this function, and the
   // CSS block near #editModeFrame, for the full explanation. Follows
@@ -18406,12 +18422,13 @@ document.getElementById('editModeChip').onclick=function(){setEditMode(!editMode
 function editCommitChipRefresh(){
   const chip=document.getElementById('editCommitChip');
   if(!chip) return;
-  chip.innerHTML='<b>^S</b>commit'+(editDirty && editChanged.length ? ' ('+editChanged.length+')' : '');
+  chip.innerHTML='<b>^S</b>'+(editInPlaceActive()?'save':'commit')+(editDirty && editChanged.length ? ' ('+editChanged.length+')' : '');
 }
 function requestEditCommit(){
   if(!editMode) return;
   if(!window.Gnumbat || Gnumbat.state!=='open'){ editStatusShow('err','cannot commit -- the hub is not connected'); return; }
   if(editDirty===false){ editStatusShow('err','nothing to commit -- no edits since the last commit'); return; }
+  if(editInPlaceActive()){ saveInPlace(); return; }
   openEditCommitPrompt('manual');
 }
 function openEditCommitPrompt(reason, why){
@@ -18437,7 +18454,7 @@ function handleEditCommitInput(v){
   if(!name) return;
   editCommitPrompt=false;
   editStatusShow('thinking','committing "'+name+'"...');
-  if(window.Gnumbat && Gnumbat.editCommit) Gnumbat.editCommit(name);
+  if(window.Gnumbat && Gnumbat.editCommit) Gnumbat.editCommit(name, authOk()?AUTH_USER:null);   /* you're recorded as its author */
 }
 document.getElementById('editCommitChip').onclick=function(){requestEditCommit();document.getElementById('cin').focus();};
 // ^R -- capture phase + stopImmediatePropagation, only while editing: ^R
@@ -18459,7 +18476,41 @@ if(window.Gnumbat && typeof Gnumbat.on==='function'){
     editChanged=(m && m.changed) || [];
     editCommitChipRefresh();
   });
+  Gnumbat.on('branchOpResult', function(m){
+    const f=document.getElementById('omscFrame'), r=(m&&m.result)||{};
+    let t;
+    if(!m || !m.ok) t='can\'t '+((m&&m.op)||'do that')+' -- '+((m&&m.error)||'failed');
+    else if(m.op==='rename') t='renamed to "'+r.name+'"';
+    else if(m.op==='delete') t='deleted "'+r.name+'"';
+    else if(m.op==='integrate') t='"'+r.name+'" integrated into '+(r.seedName||'its seed')+(r.reload?' -- reloading...':'');
+    else if(m.op==='save'){
+      /* ^S while editing a branch in place (see saveInPlace) */
+      if(m.ok){
+        editDirty=false; editChanged=[]; editCommitChipRefresh();
+        const msg='saved into "'+r.name+'" ('+((r.files&&r.files.length)||0)+' file'+((r.files&&r.files.length===1)?'':'s')+').';
+        editStatusShow('ok', msg); if(typeof log==='function') log('res', msg);
+        if(editExitAfterCommit){ editExitAfterCommit=false; setEditMode(false,{force:true}); }
+      }else{
+        editExitAfterCommit=false;
+        editStatusShow('err','save failed -- '+((m&&m.error)||'failed')); if(typeof log==='function') log('res','save failed -- '+((m&&m.error)||'failed'));
+      }
+      return;
+    }
+    else return;   /* votes: the counts themselves update */
+    try{ f.contentWindow.postMessage({type:'gnumbat-network-note', text:t},'*'); }catch(err){}
+  });
   Gnumbat.on('branchEnterResult', function(m){
+    /* create from (network ^E): the flag only stays set if the enter works
+       (and the reload that follows picks it up); already there -> edit now */
+    if(NET_CREATE_FROM){
+      NET_CREATE_FROM=null;
+      if(!(m && m.ok)){ try{ sessionStorage.removeItem('gnumbat.resumeEditMode'); }catch(err){} setEditInPlace(null); }
+      else if(m.branch && m.branch.already){
+        try{ sessionStorage.removeItem('gnumbat.resumeEditMode'); }catch(err){}
+        try{ document.getElementById('omscFrame').contentWindow.postMessage({type:'gnumbat-toggle-city-modal'},'*'); }catch(err){}
+        if(!editMode) setEditMode(true);
+      }
+    }
     const f=document.getElementById('omscFrame');
     const t = m && m.ok ? 'entering "'+((m.branch&&m.branch.name)||'')+'"...' : ('can\'t enter it -- '+((m&&m.error)||'failed'));
     try{ f.contentWindow.postMessage({type:'gnumbat-network-note', text:t},'*'); }catch(err){}
@@ -19932,6 +19983,40 @@ window.addEventListener('message', e=>{
     if(!authOk()){ note('log in to enter a branch'); return; }
     if(!(window.Gnumbat && typeof Gnumbat.branchEnter==='function')){ note("can't reach the hub -- is ./run.sh running?"); return; }
     Gnumbat.branchEnter(m.id);
+  }
+  /* NETWORK ACTIONS -- base.html's ^E create from / ^K rename / ^I integrate
+     / ^D delete / the ↑↓ votes (edit_agent.js "NETWORK PAGE ACTIONS").
+     Signed-in users only, like entering a branch. */
+  if(m.type==='gnumbat-branch-op' || m.type==='gnumbat-create-from' || m.type==='gnumbat-edit-branch'){
+    const note=t=>{ try{ frame.contentWindow.postMessage({type:'gnumbat-network-note', text:t},'*'); }catch(err){} };
+    if(!authOk()){ note(m.op==='vote' ? 'log in to vote' : 'log in to change the network'); return; }
+    if(!(window.Gnumbat && typeof Gnumbat.branchOp==='function' && typeof Gnumbat.branchEnter==='function')){ note("can't reach the hub -- is ./run.sh running?"); return; }
+    if(m.type==='gnumbat-edit-branch'){
+      const b=(BRANCH_STATE.branches||[]).find(x=>x.id===String(m.id));
+      if(!b){ note('seeds change by integrating a branch into them (^I) -- ^B to branch from it'); return; }
+      if(b.authors && b.authors.length && !b.authors.includes(AUTH_USER)){ note('only its authors ('+b.authors.join(', ')+') can edit it -- ^B to branch from it instead'); return; }
+      setEditInPlace(b.id);
+      if(m.here){ if(!editMode) setEditMode(true); else editCommitChipRefresh(); return; }
+      NET_CREATE_FROM=String(m.id);
+      try{ sessionStorage.setItem('gnumbat.resumeEditMode','1'); }catch(err){}
+      Gnumbat.branchEnter(m.id);
+      return;
+    }
+    if(m.type==='gnumbat-create-from'){
+      setEditInPlace(null);
+      /* already on it: straight into edit mode. Otherwise enter it; the
+         reload that follows resumes edit mode (resumeEditMode's flag). */
+      if(m.here){ if(!editMode) setEditMode(true); return; }
+      NET_CREATE_FROM=String(m.id);
+      try{ sessionStorage.setItem('gnumbat.resumeEditMode','1'); }catch(err){}
+      Gnumbat.branchEnter(m.id);
+      return;
+    }
+    const f={id:String(m.id)};
+    if(m.op==='rename') f.name=String(m.name||'');
+    f.who=AUTH_USER;   /* votes are one per user; the rest are authors-only */
+    if(m.op==='vote') f.dir=Number(m.dir)>0?1:-1;
+    Gnumbat.branchOp(m.op, f);
   }
   if(m.type==='gnumbat-enter-model'){
     const mod=MODELS.find(x=>String(x.id)===String(m.id)); if(!mod) return;
