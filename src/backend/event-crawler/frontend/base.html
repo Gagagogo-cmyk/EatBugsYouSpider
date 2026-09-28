@@ -2050,7 +2050,11 @@
 <div class="events-grid">
     {{range .Events}}
     <div class="event{{if .IsToday}} event-today{{else if .IsThisWeek}} event-week{{end}}">
-        {{if .EventImage}}<img src="{{proxyImg .EventImage}}" alt="{{.Name}}">{{end}}
+        {{if .EventImage}}<img src="{{proxyImg .EventImage}}" alt="{{.Name}}">{{else}}<div class="event-noimg">{{if eq .VenueKey "crkt"}}gnumbat radio{{else}}poster not available{{end}}</div>{{end}}
+        <!-- no image: the same 160px poster slot as .event-empty, so every card
+             is the same height -- user: "make the card of the cybervenue the
+             same height as all the other cards... just keep gnumbat radio.
+             same layout as other cards." (CRKT = the booked DJ slots, crkt.go) -->
         <!-- .eventText -- see its own CSS comment (near .event h3): wraps
              everything that isn't the poster image, so this whole block
              (plus .bandTags, appended as h3's sibling by the <script>

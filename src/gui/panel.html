@@ -19351,7 +19351,9 @@ renderNpVotes();
   let exact=null;   /* bytes from measureUserAgentSpecificMemory, when available */
   function show(used, limit, how){
     const frac=limit ? Math.min(1, used/limit) : 0, n=Math.max(1, Math.round(frac*DOTS));
-    el.textContent='MEM '+'●'.repeat(n)+'○'.repeat(DOTS-n)+' '+mb(used);
+    /* used / the computer's total -- user: "put the total gb of the computer next to it. x/16 gb" */
+    const gb=b=>b/1073741824, tot=limit ? Math.round(gb(limit)) : null;
+    el.textContent='MEM '+'●'.repeat(n)+'○'.repeat(DOTS-n)+' '+(tot ? gb(used).toFixed(1)+'/'+tot+' GB' : mb(used));
     el.title=how+': '+mb(used)+(limit?' of '+mb(limit)+' ('+Math.round(frac*100)+'%)':'');
   }
   /* the hub's measure (gui_hub_bridge.js "MEMORY"): this browser's web-page

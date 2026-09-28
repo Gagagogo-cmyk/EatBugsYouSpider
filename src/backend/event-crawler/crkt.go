@@ -80,15 +80,14 @@ func crktEvents() EventList {
 		}
 		start = start.In(loc)
 		_ = end
-		model := b.ModelRef
-		if b.ModelName != nil && *b.ModelName != "" {
-			model = *b.ModelName
-		}
+		// same layout as the scraped cards, nothing extra: the dj, CRKT --
+		// gnumbat radio, date + time, free (user: "dont overkill it with name.
+		// just keep gnumbat radio")
 		e := Event{
 			VenueKey: crktVenueKey,
-			Name:     b.DJName + " on " + model,
+			Name:     b.DJName,
 			Venue:    crktVenueName,
-			Address:  "cybervenue -- live on Gnumbat radio",
+			Address:  "gnumbat radio",
 			Date:     fmt.Sprintf("%s %d, %d", start.Month().String(), start.Day(), start.Year()),
 			Time:     start.Format("15:04"),
 			Price:    "free",
