@@ -841,6 +841,44 @@ function roomCounts() {
   for (const room of socketRoom.values()) counts[room] = (counts[room] || 0) + 1;
   return counts;
 }
+// ── MEMORY -- the panel's MEM line ─────────────────────────────────────────
+// user: "connect the memory bar of the chat as the overall memory used to
+// run the website" / "figure out why the mem bar is n/a". Safari and Firefox
+// never let a page read its own memory, so the hub (on the same computer)
+// measures it: every 2s, while a panel is connected, `ps` is summed per
+// browser over its web-page + GPU processes, and sent as
+// {t:"sysMem", browsers:{safari, chrome, edge, brave, arc, firefox}, hub, total, free}
+// (bytes). The panel shows its own browser's figure.
+const os = require("os");
+const { execFile } = require("child_process");
+const MEM_FAMILIES = {
+  safari: /com\.apple\.WebKit\.(WebContent|GPU)/,
+  chrome: /Google Chrome Helper \((Renderer|GPU)\)/,
+  edge: /Microsoft Edge Helper \((Renderer|GPU)\)/,
+  brave: /Brave Browser Helper \((Renderer|GPU)\)/,
+  arc: /Browser Helper \((Renderer|GPU)\)/,
+  firefox: /plugin-container|firefox.*(-contentproc|gpu)|Firefox.*(Web Content|GPU)/i,
+};
+function sampleMemory() {
+  if (clients.size === 0) return;
+  execFile("ps", ["-axo", "rss=,comm="], { timeout: 1500, maxBuffer: 4 * 1024 * 1024 }, (err, out) => {
+    if (err) return;
+    const browsers = {};
+    for (const line of String(out).split("\n")) {
+      const m = /^\s*(\d+)\s+(.+)$/.exec(line);
+      if (!m) continue;
+      const kb = Number(m[1]), comm = m[2];
+      for (const fam in MEM_FAMILIES) {
+        // Arc's helper name is a suffix of Chrome/Edge/Brave's -- only count it when none of those matched
+        if (fam === "arc" && /(Chrome|Edge|Brave) Browser Helper|Google Chrome Helper/.test(comm)) continue;
+        if (MEM_FAMILIES[fam].test(comm)) browsers[fam] = (browsers[fam] || 0) + kb * 1024;
+      }
+    }
+    broadcast({ t: "sysMem", browsers, hub: process.memoryUsage().rss, total: os.totalmem(), free: os.freemem() });
+  });
+}
+setInterval(sampleMemory, 2000).unref();
+
 function broadcastPresence() { broadcast({ t: "roomPresence", counts: roomCounts() }); }
 function setSocketRoom(socket, room) {
   const next = typeof room === "string" && room ? room.slice(0, 200) : null;

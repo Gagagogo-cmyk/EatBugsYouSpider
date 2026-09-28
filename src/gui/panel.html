@@ -19354,11 +19354,27 @@ renderNpVotes();
     el.textContent='MEM '+'●'.repeat(n)+'○'.repeat(DOTS-n)+' '+mb(used);
     el.title=how+': '+mb(used)+(limit?' of '+mb(limit)+' ('+Math.round(frac*100)+'%)':'');
   }
+  /* the hub's measure (gui_hub_bridge.js "MEMORY"): this browser's web-page
+     + GPU processes on this computer, against its total memory -- works in
+     Safari / Firefox too, and counts more than the JS heap does. Its figure
+     wins whenever it's arriving. */
+  const ua=navigator.userAgent;
+  const fam = /Edg\//.test(ua) ? 'edge' : /Firefox\//.test(ua) ? 'firefox' : (navigator.brave ? 'brave' : /Chrome\//.test(ua) ? 'chrome' : /Safari\//.test(ua) ? 'safari' : 'chrome');
+  const FAM_NAME={safari:'Safari',chrome:'Chrome',edge:'Edge',brave:'Brave',arc:'Arc',firefox:'Firefox'};
+  let hubMem=null, hubAt=0;
+  if(window.Gnumbat && Gnumbat.on) Gnumbat.on('sysMem', m=>{
+    if(!m || !m.browsers) return;
+    /* Arc reports as Chrome in its user agent: take whichever of the two is running */
+    let f=fam; if(f==='chrome' && !m.browsers.chrome && m.browsers.arc) f='arc';
+    const b=m.browsers[f]; if(!b) return;
+    hubMem={bytes:b, total:m.total, name:FAM_NAME[f]||f}; hubAt=Date.now(); tick();
+  });
   function tick(){
     const pm=performance && performance.memory;
-    if(exact!=null) show(exact, pm && pm.jsHeapSizeLimit, 'memory used by the whole page');
+    if(hubMem && Date.now()-hubAt<8000) show(hubMem.bytes, hubMem.total, 'memory '+hubMem.name+'\u2019s web pages are using on this computer (all its tabs; measured by the hub)');
+    else if(exact!=null) show(exact, pm && pm.jsHeapSizeLimit, 'memory used by the whole page');
     else if(pm && pm.usedJSHeapSize) show(pm.usedJSHeapSize, pm.jsHeapSizeLimit, 'memory used by this page (JS heap, show page included)');
-    else { el.textContent='MEM n/a'; el.title="this browser doesn't let a page read its own memory -- open the panel in Chrome, Edge, Brave or Arc to see it"; }
+    else { el.textContent='MEM n/a'; el.title="this browser doesn't let a page read its own memory, and the hub (which measures it for Safari / Firefox) isn't connected"; }
   }
   async function measureExact(){
     try{
@@ -19419,7 +19435,8 @@ function bookSlot(){
 }
 document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault(); bookSlot(); });
 document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefault(); if(mrlcfOpen) setMrlcfOpen(false); });
-/* placeTipChip -- user: "put it centered in between delete and log out".
+/* placeTipChip -- user: "put it centered in between delete and log out",
+   then "put tip closer to log out" (3ch before it now).
    ^T tip sits on the shortcut row, centred in the gap between where ^D delete
    ends (the same fixed spot on every screen -- see placeCo2) and the start of
    the login group (log out when logged in, register when not). */
@@ -19441,7 +19458,11 @@ document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefaul
     const firstShown=lg ? [...lg.querySelectorAll('*')].find(el=>el.getBoundingClientRect().width>0 && el.children.length===0) : null;
     const gapR = firstShown ? firstShown.getBoundingClientRect().left-P.left : P.width-103;
     const w=chip.getBoundingClientRect().width;
-    chip.style.left=Math.round((gapL+gapR)/2 - w/2 + P.left - Z.left)+'px';
+    /* closer to log out -- user: "put tip closer to log out": 3ch before it
+       (never left of the middle of the gap) */
+    const ch=parseFloat(getComputedStyle(chip).fontSize)*0.6||7.2;
+    const x=Math.max((gapL+gapR)/2 - w/2, gapR - 3*ch - w);
+    chip.style.left=Math.round(x + P.left - Z.left)+'px';
     chip.style.top=Math.round(R.top-Z.top + (R.height-chip.getBoundingClientRect().height)/2)+'px';
   }
   window.gnPlaceTipChip=placeTipChip;
