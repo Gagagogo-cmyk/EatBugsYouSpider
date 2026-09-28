@@ -1704,7 +1704,10 @@
         .netFoot { justify-content: flex-end; }
         /* network actions + votes (see the NETWORK ACTIONS markup comment) */
         .netFoot .netChip + .netChip { margin-left: 2ch; }
-        .netFoot .netChip.netEnter { margin-left: 6ch; }
+        /* actions on the left margin, Enter stays on the right -- user: "put
+           the network branch edit, etc (B,E,K,I,D) next to the left-margin" */
+        .netFoot { justify-content: flex-start !important; }
+        .netFoot .netChip.netEnter { margin-left: auto; }
         .netNode text.netVote { pointer-events: all; cursor: pointer; }
         .netNode:not(.sel) text.netVote:hover { fill: var(--w); }
         .netNode.sel text.netVote:hover { text-decoration: underline; }
@@ -2701,8 +2704,9 @@ document.addEventListener('click', function (e) {
                 + '<rect x="' + px(n) + '" y="' + py(n) + '" width="' + NT_NODE_W + '" height="' + NT_NODE_H + '"/>'
                 + '<text x="' + (px(n) + 6) + '" y="' + cy + '" dominant-baseline="central">' + esc(label) + '</text>'
                 + (MODEL_NET && MODEL_NET.models && MODEL_NET.models.length ? '' :
+                   /* ↑n ↓n 6px apart, like the model select page's VOTES column */
                    '<text class="netVote" data-v="-1" x="' + rx + '" y="' + cy + '" text-anchor="end" dominant-baseline="central"><title>downvote</title>\u2193' + (vt.down || 0) + '</text>'
-                 + '<text class="netVote" data-v="1" x="' + (rx - 5 * 7.2) + '" y="' + cy + '" text-anchor="end" dominant-baseline="central"><title>upvote</title>\u2191' + (vt.up || 0) + '</text>')
+                 + '<text class="netVote" data-v="1" x="' + (rx - 7.2 * (1 + String(vt.down || 0).length) - 6) + '" y="' + cy + '" text-anchor="end" dominant-baseline="central"><title>upvote</title>\u2191' + (vt.up || 0) + '</text>')
                 + '</g>';
         });
         /* natural size, shrunk (never grown) to fit the page */
