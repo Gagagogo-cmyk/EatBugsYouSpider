@@ -985,6 +985,10 @@
             color: var(--mid);
             text-transform: uppercase;
         }
+        /* a booked radio slot (crkt.go): the poster area stays, just black --
+           user: "remove the rectangle for the actual poster area. just keep
+           it the same dimension but let it black." */
+        .event .event-noimg.event-radio { border: none; background: #000; }
         .event.event-today .event-when { color: var(--w); }
         /* user: "remove all effect on the images. i just want the normal
            images." No filter of any kind on the poster now -- plain,
@@ -2050,7 +2054,7 @@
 <div class="events-grid">
     {{range .Events}}
     <div class="event{{if .IsToday}} event-today{{else if .IsThisWeek}} event-week{{end}}">
-        {{if .EventImage}}<img src="{{proxyImg .EventImage}}" alt="{{.Name}}">{{else}}<div class="event-noimg">{{if eq .VenueKey "crkt"}}gnumbat radio{{else}}poster not available{{end}}</div>{{end}}
+        {{if .EventImage}}<img src="{{proxyImg .EventImage}}" alt="{{.Name}}">{{else}}{{if eq .VenueKey "crkt"}}<div class="event-noimg event-radio" aria-hidden="true"></div>{{else}}<div class="event-noimg">poster not available</div>{{end}}{{end}}
         <!-- no image: the same 160px poster slot as .event-empty, so every card
              is the same height -- user: "make the card of the cybervenue the
              same height as all the other cards... just keep gnumbat radio.
@@ -2064,7 +2068,7 @@
              the full reasoning. -->
         <div class="eventText">
         <h3>{{.Name}}</h3>
-        <p>{{.Venue}} — {{.Address}}</p>
+        {{if eq .VenueKey "crkt"}}<p>{{.Venue}}</p>{{else}}<p>{{.Venue}} — {{.Address}}</p>{{end}}
         <p class="event-when">{{.Date}} · {{.Time}}</p>
         <p>{{.Price}}</p>
         <!-- target="_blank" rel="noopener noreferrer" -- user: "make sure

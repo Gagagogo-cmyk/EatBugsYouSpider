@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"regexp"
 	"sort"
 	"strconv"
@@ -567,7 +568,7 @@ func convertFrenchTime(t string) string {
 }
 
 func inferYear(t time.Time) int {
-	now := time.Now()
+	now := time.Now().In(loc)
 	year := now.Year()
 
 	if now.Month() >= time.November && t.Month() <= time.February {
@@ -576,13 +577,19 @@ func inferYear(t time.Time) int {
 	return year
 }
 
+// daysUntil -- calendar days from today to eventDate, both in the shows' own
+// time zone (loc, Montreal). It used the machine's zone for "today": on a
+// UTC machine (a server) every evening show fell out of Tonight after 8pm
+// Montreal time -- user: "i booked a slot for tn but it doesnt show up on
+// tonight in the scraper filter".
 func daysUntil(eventDate time.Time) int {
-	now := time.Now()
+	now := time.Now().In(loc)
+	ev := eventDate.In(loc)
 
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	eventDay := time.Date(eventDate.Year(), eventDate.Month(), eventDate.Day(), 0, 0, 0, 0, now.Location())
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	eventDay := time.Date(ev.Year(), ev.Month(), ev.Day(), 0, 0, 0, 0, loc)
 
-	return int(eventDay.Sub(today).Hours() / 24)
+	return int(math.Round(eventDay.Sub(today).Hours() / 24)) // rounded: a daylight-saving day is 23 or 25 hours
 }
 
 func isPast(t time.Time) bool {
@@ -596,7 +603,7 @@ func isSameDay(a, b time.Time) bool {
 }
 
 func isToday(t time.Time) bool {
-	return isSameDay(t, time.Now())
+	return isSameDay(t.In(loc), time.Now().In(loc))
 }
 
 // isThisWeekend includes Friday as the weekend

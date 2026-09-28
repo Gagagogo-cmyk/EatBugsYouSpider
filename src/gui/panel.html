@@ -19460,6 +19460,22 @@ function bookSlot(){
   }, wasOpen ? 60 : 420);   /* after the open animation (animateShelf, 260ms) */
 }
 document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault(); bookSlot(); });
+/* ?model=<id> -- the show page's radio cards link here (event-crawler crkt.go):
+   the model is highlighted in the list and the console opens on the booking
+   box, pointed at it. Waits up to 10s for the model list to arrive. */
+(function(){
+  let want=null; try{ want=new URLSearchParams(location.search).get('model'); }catch(e){}
+  if(!want) return;
+  let tries=0;
+  const go=()=>{
+    const m=(typeof MODELS!=='undefined' ? MODELS : []).find(x=>x && String(x.id)===want);
+    if(!m){ if(++tries<40) setTimeout(go,250); return; }
+    selectedModelId=m.id;
+    if(typeof renderCurrentModelView==='function') renderCurrentModelView();
+    bookSlot();
+  };
+  setTimeout(go,300);
+})();
 document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefault(); if(mrlcfOpen) setMrlcfOpen(false); });
 /* placeTipChip -- user: "put it centered in between delete and log out",
    then "put tip closer to log out" (3ch before it now).
