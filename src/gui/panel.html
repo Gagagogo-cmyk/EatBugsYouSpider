@@ -6761,7 +6761,7 @@ body.loggedOut .chip.authOnly b{background:var(--g3)!important;color:#000!import
    row above the song line, x on the song line (only while the console is
    open -- closed, that row is the black line between them), book a slot on
    the N/A line. */
-.npMeta .npActs{position:absolute;right:0;top:calc(-1 * var(--row,16px));display:flex;flex-direction:column;align-items:flex-end;z-index:2}
+.npMeta .npActs{position:absolute;right:0;top:0;display:flex;flex-direction:column;align-items:flex-end;z-index:2}   /* tip moved to the shortcut row (^T) */
 .npMeta .npActs .npClose{visibility:hidden}
 .plugin.mrlcfShelf .npMeta .npActs .npClose{visibility:visible}
 /* the tip row sits above the chat's own top edge: the chat no longer clips
@@ -8170,11 +8170,11 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
              align it horizontally on the right-margin. It should open the
              console and highlight the booking section with a white rectangle
              around it for a second." See bookSlot(). -->
-        <!-- #npTip -- user: "add a tip button next to the booking button,
+        <!-- (#npTip lived here -- now the shortcut row's ^T tip, #tipChip.) user: "add a tip button next to the booking button,
              linked to the stripe pipeline." Opens #npDj's amount row; [send]
              goes through window.gnTipDj (POST /tips/checkout -> Stripe
              Checkout in a new tab), tipping whoever holds the radio. -->
-        <span class="npActs"><button type="button" class="npBook npTipBtn" id="npTip" title="tip whoever is on air (Stripe)">tip (<span class="curSym">&curren;</span>)</button><button type="button" class="npBook npClose" id="npClose" title="close the console (^C)" aria-label="close the console">&times;</button><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
+        <span class="npActs"><button type="button" class="npBook npClose" id="npClose" title="close the console (^C)" aria-label="close the console">&times;</button><button type="button" class="npBook" id="npBook" title="book a DJ slot on a model">book a slot</button></span>
         <!-- #npDj -- DJ TIPS + SOCIALS. user: "the djs will need to be able
              to receive tips and have social media links above their playnow
              bar". Shown only while a dj holds the slot (TUNED_DJ); hidden
@@ -8571,7 +8571,7 @@ body:not(.loggedOut) .plugin:has(#omgmView:not(.hide)) #loginGroup{right:10px;tr
          first word). Applies to every <b>keycap</b>Title chip in the
          footer/panels, both the static HTML below and the matching
          innerHTML/textContent assignments further down the file. -->
-    <span class="fg"><span class="chip" id="mrlcfChip"><b>^C</b>console</span></span><!-- ^W wadio -> ^C console, and the hidden ^C chat chip REMOVED -- user: "remove the chat shortcut, use ^C console instead of ^W wadio." --><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
+    <span class="fg"><span class="chip" id="mrlcfChip"><b>^C</b>console</span><!-- ^T tip -- user: "remove the tip box. instead create a shortcut in the shortcut tabs. ^T tip" (was #npTip above the play bar). Opens #npDj's amount row. --><span class="chip" id="tipChip" style="margin-left:6px" title="tip whoever is on air (Stripe)"><b>^T</b>tip</span></span><!-- ^W wadio -> ^C console, and the hidden ^C chat chip REMOVED -- user: "remove the chat shortcut, use ^C console instead of ^W wadio." --><span class="fg hide" id="cmdChipGroup" style="margin-left:6px"><span class="chip langChip"><b>^A</b>&#25991;</span></span>
     <!-- id="editModeGroup" ADDED -- EDIT INTERFACE (spec: a global button,
          above/near the chat, that suspends normal page behavior and lets
          the user talk to Cricket about changing this page itself). Lives
@@ -16257,7 +16257,7 @@ function curSym(){
   if(!CURRENCY) return '\u00a4';
   try{ const p=new Intl.NumberFormat(undefined,{style:'currency',currency:CURRENCY,currencyDisplay:'narrowSymbol'}).formatToParts(1).find(x=>x.type==='currency'); return p?p.value:CURRENCY; }catch(e){ return CURRENCY; }
 }
-function renderCurrency(){ document.querySelectorAll('.curSym').forEach(el=>{ el.textContent=curSym(); }); const t=document.getElementById('npTip'); if(t) t.title='tip whoever is on air (Stripe'+(CURRENCY?', '+CURRENCY:'')+')'; }
+function renderCurrency(){ document.querySelectorAll('.curSym').forEach(el=>{ el.textContent=curSym(); }); const t=document.getElementById('tipChip'); if(t) t.title='tip whoever is on air (Stripe'+(CURRENCY?', '+CURRENCY:'')+')'; }
 function setCurrency(code){
   const c=String(code||'').trim().toUpperCase();
   if(!/^[A-Z]{3}$/.test(c)) return false;
@@ -16306,7 +16306,13 @@ function renderNpDj(){
   const pick=el=>{ box.querySelectorAll('.npDjAmt').forEach(b=>b.classList.toggle('on',b===el)); if(other) other.classList.toggle('on',!el); };
   act(document.getElementById('npDjTip'),()=>npDjShowPay(true));
   /* #npTip -- the always-there tip button */
-  act(document.getElementById('npTip'),()=>{
+  /* ^T tip (the shortcut row's #tipChip, or the key) toggles the amount row */
+  window.gnToggleTip=()=>{
+    if(NP_TIP_OPEN || !document.getElementById('npDjPay').hidden){ npDjShowPay(false); renderNpDj(); return; }
+    NP_TIP_OPEN=true; box.hidden=false; npDjShowPay(true);
+  };
+  addEventListener('keydown',e=>{ if(e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='t'){ e.preventDefault(); e.stopPropagation(); window.gnToggleTip(); } },true);
+  act(document.getElementById('tipChip'),()=>{
     if(NP_TIP_OPEN || !document.getElementById('npDjPay').hidden){ npDjShowPay(false); renderNpDj(); return; }
     NP_TIP_OPEN=true; box.hidden=false; npDjShowPay(true);
   });
@@ -19413,6 +19419,37 @@ function bookSlot(){
 }
 document.getElementById('npBook').addEventListener('click',e=>{ e.preventDefault(); bookSlot(); });
 document.getElementById('npClose').addEventListener('click',e=>{ e.preventDefault(); if(mrlcfOpen) setMrlcfOpen(false); });
+/* placeTipChip -- user: "put it centered in between delete and log out".
+   ^T tip sits on the shortcut row, centred in the gap between where ^D delete
+   ends (the same fixed spot on every screen -- see placeCo2) and the start of
+   the login group (log out when logged in, register when not). */
+(function(){
+  const chip=document.getElementById('tipChip'), plug=document.querySelector('.plugin'), zone=document.querySelector('.zoneF');
+  if(!chip||!plug||!zone) return;
+  /* stays inside the shortcut row (its chip styles live there), placed
+     absolutely within it */
+  if(getComputedStyle(zone).position==='static') zone.style.position='relative';
+  zone.appendChild(chip);
+  chip.style.position='absolute'; chip.style.margin='0'; chip.style.zIndex='9';
+  function placeTipChip(){
+    const row=document.getElementById('mrlcfChip'); if(!row) return;
+    const P=plug.getBoundingClientRect(), R=row.getBoundingClientRect(), Z=zone.getBoundingClientRect();
+    const del=document.getElementById('modelDeleteChip');
+    const dr=del && del.getBoundingClientRect();
+    const gapL = dr && dr.width ? dr.right-P.left : 832;
+    const lg=document.getElementById('loginGroup');
+    const firstShown=lg ? [...lg.querySelectorAll('*')].find(el=>el.getBoundingClientRect().width>0 && el.children.length===0) : null;
+    const gapR = firstShown ? firstShown.getBoundingClientRect().left-P.left : P.width-103;
+    const w=chip.getBoundingClientRect().width;
+    chip.style.left=Math.round((gapL+gapR)/2 - w/2 + P.left - Z.left)+'px';
+    chip.style.top=Math.round(R.top-Z.top + (R.height-chip.getBoundingClientRect().height)/2)+'px';
+  }
+  window.gnPlaceTipChip=placeTipChip;
+  window.addEventListener('resize',()=>requestAnimationFrame(placeTipChip));
+  try{ const ro=new ResizeObserver(()=>requestAnimationFrame(placeTipChip)); ro.observe(document.querySelector('.zoneF')); const lg=document.getElementById('loginGroup'); if(lg){ ro.observe(lg); new MutationObserver(()=>requestAnimationFrame(placeTipChip)).observe(lg,{subtree:true,attributes:true,childList:true}); } }catch(e){}
+  new MutationObserver(()=>requestAnimationFrame(placeTipChip)).observe(plug,{attributes:true,attributeFilter:['class']});
+  requestAnimationFrame(placeTipChip); setTimeout(placeTipChip,600);
+})();
 /* initBooking -- see #bookingBox. The model select lists every model and
    follows the row highlighted in the list (you can still pick another);
    its current + upcoming slots fill the rows under the form, yours in white
